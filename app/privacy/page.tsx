@@ -3,7 +3,7 @@ export default function Privacy() {
   return (
     <main className="entry">
       <section className="panel">
-        <p className="eyebrow">CLOCKTOWER TABLE</p>
+        <p className="eyebrow">FEARVILLE</p>
         <h1>Privacy and account data</h1>
         <p>
           Guest play uses a random private seat credential. If you choose Google

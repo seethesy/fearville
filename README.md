@@ -1,4 +1,4 @@
-# Clocktower Table
+# Fearville
 
 A text-only, in-person Trouble Brewing companion: a web app, shared Cloudflare Worker/D1 backend, and native SwiftUI iPhone client. Both clients use the same server-authoritative rules and action forms.
 

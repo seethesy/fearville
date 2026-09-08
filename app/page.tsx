@@ -29,9 +29,9 @@ export default function Home() {
   return (
     <main className="entry">
       <header className="brand">
-        <span className="brand-mark">CT</span>
+        <span className="brand-mark">F</span>
         <span>
-          CLOCKTOWER <b>TABLE</b>
+          FEARVILLE
         </span>
         <span className="edition">IN PERSON</span>
       </header>

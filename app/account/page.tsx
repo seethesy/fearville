@@ -64,7 +64,7 @@ export default function Account() {
         <Link className="brand-mark" href="/">
           CT
         </Link>
-        <span>CLOCKTOWER TABLE</span>
+        <span>FEARVILLE</span>
       </header>
       <div className="account-layout">
         <section className="panel">

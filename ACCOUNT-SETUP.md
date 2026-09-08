@@ -27,7 +27,7 @@ Both web and iOS use the Services ID through this backend, so provider identity 
 
 ## Configure the deployed backend
 
-Use the Sites runtime environment-variable settings for Clocktower Table to enter these values securely, then redeploy the saved site version. Never put secrets in browser variables, Swift source, Git, or chat. The checked-in `.env.example` lists the names only. Local files alone do not configure the deployed site. You can provide local credential-file paths for a later configuration task instead of pasting their contents.
+Use the Sites runtime environment-variable settings for Fearville to enter these values securely, then redeploy the saved site version. Never put secrets in browser variables, Swift source, Git, or chat. The checked-in `.env.example` lists the names only. Local files alone do not configure the deployed site. You can provide local credential-file paths for a later configuration task instead of pasting their contents.
 
 The application has a fixed HTTPS origin in `lib/accounts/service.ts`. If changing domain, update that origin, the iOS `ClocktowerAPIURL`, and both providers' registered callbacks together. Use the deployed HTTPS app to validate Apple sign-in; localhost is not its configured return URL.
 

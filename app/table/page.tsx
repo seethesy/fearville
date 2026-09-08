@@ -235,7 +235,7 @@ export default function Table() {
     return (
       <main className="entry">
         <header className="brand">
-          <span className="brand-mark">CT</span>CLOCKTOWER TABLE
+          <span className="brand-mark">F</span>FEARVILLE
         </header>
         <section className="panel recovery-panel">
           <h1>
@@ -317,7 +317,7 @@ export default function Table() {
           CT
         </Link>
         <span>
-          CLOCKTOWER <b>TABLE</b>
+          FEARVILLE
         </span>
         <span className="connection">
           {online ? 'Connected' : 'Reconnecting…'}

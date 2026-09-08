@@ -28,7 +28,7 @@ struct RootView: View {
             guard scene == .active, store.authenticated else { return }
             while !Task.isCancelled { await store.refresh(); do { try await Task.sleep(for: .seconds(2)) } catch { return } }
         }
-        .overlay { if scene != .active { Color.tableBackground.overlay(Text("CLOCKTOWER TABLE").tracking(3)).ignoresSafeArea() } }
+        .overlay { if scene != .active { Color.tableBackground.overlay(Text("FEARVILLE").tracking(3)).ignoresSafeArea() } }
     }
 }
 struct WelcomeView: View {
@@ -42,7 +42,7 @@ struct WelcomeView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 28) {
-                    Text("CLOCKTOWER TABLE").font(.caption.bold()).tracking(3).foregroundStyle(Color.tableHighlight)
+                    Text("FEARVILLE").font(.caption.bold()).tracking(3).foregroundStyle(Color.tableHighlight)
                     Text("A seat at\nthe table.").font(.system(size: 52, design: .serif))
                     Text("Trouble Brewing · In person").foregroundStyle(.secondary)
                     if let account = store.accountState?.account {
