@@ -9,6 +9,7 @@ Requires Node 22.13 or newer.
 ```sh
 npm ci
 npx wrangler d1 execute site-creator-d1 --local --config wrangler.local.json --file drizzle/0000_complex_alice.sql
+npx wrangler d1 execute site-creator-d1 --local --config wrangler.local.json --file drizzle/0001_fine_komodo.sql
 npm run dev
 ```
 
@@ -36,13 +37,13 @@ Integration tests require the development server and create a test session. They
 - Only votes meeting the alive-player majority threshold qualify. A tie at the highest qualifying count blocks execution. The day ends at a Storyteller confirmation step so character effects and win rulings can be reviewed.
 - Poison, Monk protection, Imp attacks, Mayor redirection, Imp succession, conditional Ravenkeeper/Undertaker wakes, first-night information, recurring information, Spy information, Virgin execution, Slayer claims (including bluffs), Saint loss, and win-condition prompts are supported. Registration is a human ruling, not randomly automated.
 - Storytellers may pause, extend, advance, edit, override, or rewind. Rewinding restores the selected decision and later game changes while retaining messages; it sends a correction and pauses the restored timer. Information already read cannot be erased from a person’s knowledge. Rewinding across player joins is refused to avoid orphaning a device identity.
-- Recovery credentials are stored as hashes on the backend, HttpOnly cookies on web, and Keychain items on iOS. They expire after 30 days. Do not share the Storyteller recovery key. There is no account/password system.
+- Recovery credentials are stored as hashes on the backend, HttpOnly cookies on web, and Keychain items on iOS. They expire after 30 days. Do not share the Storyteller recovery key. Optional Google and Apple accounts can save seats across devices. Explicit provider linking, sign-out, and account deletion are included. See ACCOUNT-SETUP.md to activate providers.
 
 ## iOS and TestFlight
 
 Open `ios/ClocktowerTable.xcodeproj` on a Mac. Follow `ios/TESTFLIGHT.md`. The SwiftUI app is a native client, not a web wrapper. A shared scheme and an unsigned simulator CI workflow are included. The project has not been compiled with Xcode in the Windows authoring environment; a Mac build and device checks remain required before distribution.
 
-The Sites preview is initially owner-only. Player access must be enabled explicitly before independent phones or the native app can use its backend. Do not embed a Sites owner bypass token in the iOS app. The session API itself enforces per-seat credentials even when the entry page is public.
+The deployed entry page is public at https://clocktower-table.phatsyloaf.chatgpt.site. Do not embed a Sites owner bypass token in the iOS app. The session API itself enforces per-seat credentials even when the entry page is public.
 
 ## Sources and scope
 
@@ -55,8 +56,9 @@ Only Trouble Brewing is supported: no Travellers, custom scripts, remote voice c
 
 ## Validation on the authoring host
 
-- 18 engine tests passed.
+- 18 engine tests and 7 account cryptography tests passed.
 - Multi-client API integration tests passed against the local D1-backed server.
 - TypeScript checking, app/domain lint, and the production build passed.
-- The unmodified starter component catalog has pre-existing lint findings; `npm run lint` scans that catalog too. The app/domain check is `npx oxlint app lib/game db tests`.
+- The unmodified starter component catalog has pre-existing lint findings; `npm run lint` scans that catalog too. The app/domain check is `npx oxlint app lib/game lib/accounts components/account-panel.tsx db tests`.
 - No browser interaction tests or Xcode compilation were performed. Native signing, device verification, and TestFlight upload remain Mac-side steps.
+

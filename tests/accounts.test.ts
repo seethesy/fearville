@@ -1,0 +1,16 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {generateKeyPair,exportJWK,createLocalJWKSet,SignJWT,exportPKCS8,jwtVerify} from 'jose';
+import {validateIdentity,appleSecret,encryptToken,decryptToken,challenge,random,providerName} from '../lib/accounts/oidc.ts';
+const {privateKey,publicKey}=await generateKeyPair('RS256');
+const jwk=await exportJWK(publicKey);jwk.kid='test';
+const keys=createLocalJWKSet({keys:[jwk]});
+const sign=(overrides:Record<string,unknown>={})=>new SignJWT({sub:'subject-a',email:'test@example.invalid',email_verified:true,nonce:'nonce-a',...overrides}).setProtectedHeader({alg:'RS256',kid:'test'}).setIssuer('https://accounts.google.com').setAudience('client-a').setIssuedAt().setExpirationTime('5m').sign(privateKey);
+void test('valid provider identity preserves subject as identity',async()=>{const user=await validateIdentity(await sign(),'google','client-a','nonce-a',keys);assert.equal(user.subject,'subject-a');assert.equal(user.email,'test@example.invalid');});
+void test('wrong audience, issuer, nonce, and unsigned tokens fail',async()=>{const token=await sign();await assert.rejects(()=>validateIdentity(token,'google','wrong-client','nonce-a',keys));await assert.rejects(()=>validateIdentity(token,'apple','client-a','nonce-a',keys));await assert.rejects(()=>validateIdentity(token,'google','client-a','wrong-nonce',keys));await assert.rejects(()=>validateIdentity(token.split('.').slice(0,2).join('.')+'.','google','client-a','nonce-a',keys));});
+void test('unverified email and missing nonce cannot create an account',async()=>{await assert.rejects(async()=>validateIdentity(await sign({email_verified:false}),'google','client-a','nonce-a',keys));await assert.rejects(async()=>validateIdentity(await sign({nonce:undefined}),'google','client-a','nonce-a',keys));});
+void test('expired provider token is rejected',async()=>{const expired=await new SignJWT({sub:'subject-a',nonce:'nonce-a'}).setProtectedHeader({alg:'RS256',kid:'test'}).setIssuer('https://accounts.google.com').setAudience('client-a').setIssuedAt(Math.floor(Date.now()/1000)-900).setExpirationTime(Math.floor(Date.now()/1000)-600).sign(privateKey);await assert.rejects(()=>validateIdentity(expired,'google','client-a','nonce-a',keys));});
+void test('Apple client assertion uses correct key, audience, issuer and subject',async()=>{const pair=await generateKeyPair('ES256',{extractable:true});const pem=await exportPKCS8(pair.privateKey);const token=await appleSecret('service-id','team-id','key-id',pem);const {payload}=await jwtVerify(token,pair.publicKey,{issuer:'team-id',audience:'https://appleid.apple.com'});assert.equal(payload.sub,'service-id');});
+void test('stored Apple refresh credential is encrypted and rejects tampering',async()=>{const key=random();const encrypted=await encryptToken('private-refresh-token',key);assert.ok(!encrypted.includes('private-refresh-token'));assert.equal(await decryptToken(encrypted,key),'private-refresh-token');await assert.rejects(()=>decryptToken(encrypted,random()));});
+void test('native exchange uses standard S256 PKCE challenge',async()=>{assert.equal(await challenge('dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk'),'E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM');assert.equal(random().length,43);assert.throws(()=>providerName('untrusted'));});
+

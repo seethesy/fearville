@@ -1,5 +1,6 @@
 'use client';
 import Link from 'next/link';
+import { AccountPanel } from '@/components/account-panel';
 import { useState } from 'react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 export default function Home() {
@@ -71,6 +72,7 @@ export default function Home() {
           </Link>
         </section>
         <section className="panel entry-panel">
+          <AccountPanel compact />
           <p className="eyebrow">TAKE YOUR PLACE</p>
           <Tabs defaultValue="join">
             <TabsList className="wide-tabs">

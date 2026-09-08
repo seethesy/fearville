@@ -806,6 +806,7 @@ export default function Table() {
         >
           Save recovery key
         </button>
+        <Link href="/account">Account & saved games</Link>
         <Link href="/">Switch session</Link>
       </footer>
       <Dialog

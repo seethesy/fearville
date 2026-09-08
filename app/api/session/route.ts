@@ -1,4 +1,5 @@
 import { database } from '@/db';
+import { accountAuth, attachMember } from '@/lib/accounts/service';
 import { newGame, newPlayer, uuid } from '@/lib/game/types';
 import { requireThat, log } from '@/lib/game/engine';
 import {
@@ -38,6 +39,7 @@ export async function POST(r: Request) {
     const token = uuid() + uuid();
     const tokenHash = await hash(token);
     const db = database();
+    const account = await accountAuth(r);
     if (body.action === 'restore') {
       requireThat(
         typeof body.recoveryKey === 'string' && body.recoveryKey.length < 200,
@@ -48,6 +50,7 @@ export async function POST(r: Request) {
           headers: { authorization: 'Bearer ' + body.recoveryKey },
         }),
       );
+      if (account) await attachMember(await hash(body.recoveryKey), account.id);
       return json({ code: restored.code, token: body.recoveryKey }, 200, {
         'Set-Cookie': cookie(r, body.recoveryKey),
       });
@@ -83,6 +86,7 @@ export async function POST(r: Request) {
             )
             .bind(tokenHash, code, 'host', expires()),
         ]);
+        if (account) await attachMember(tokenHash, account.id);
         return json({ code, token }, 200, { 'Set-Cookie': cookie(r, token) });
       }
       throw Error('Unable to create a session. Try again.');
@@ -116,8 +120,10 @@ export async function POST(r: Request) {
           )
           .bind(tokenHash, code, player.id, expires()),
       ]);
-      if (results[0].meta.changes === 1)
+      if (results[0].meta.changes === 1) {
+        if (account) await attachMember(tokenHash, account.id);
         return json({ code, token }, 200, { 'Set-Cookie': cookie(r, token) });
+      }
     }
     return json({ error: 'The table changed. Please join again.' }, 409);
   } catch (e) {

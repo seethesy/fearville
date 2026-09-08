@@ -856,3 +856,73 @@ footer {
     width: 100%;
   }
 }
+.account-panel {
+  padding-bottom: 24px;
+  margin-bottom: 24px;
+  border-bottom: 1px solid #555;
+}
+.account-panel .eyebrow {
+  margin-bottom: 10px;
+}
+.account-panel p {
+  font-size: 0.9rem;
+}
+.account-panel .quiet-link {
+  margin-top: 0;
+}
+.provider-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 14px;
+}
+.provider-buttons button {
+  flex: 1;
+  min-width: 160px;
+  background: #ededed;
+  color: #222;
+  border-color: #ddd;
+  font-size: 0.875rem;
+}
+.provider-buttons button:disabled {
+  background: #454545;
+  color: #ddd;
+  border-color: #666;
+  opacity: 0.65;
+}
+.account-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  padding: 50px 0;
+}
+.account-layout h1 {
+  font:
+    2.5rem Georgia,
+    serif;
+}
+.saved-game {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #555;
+  padding: 18px 0;
+}
+.saved-game strong {
+  letter-spacing: 0.12em;
+  color: #f6a265;
+}
+.saved-game p {
+  margin: 5px 0;
+  color: #bbb;
+  font-size: 0.875rem;
+}
+@media (max-width: 800px) {
+  .account-layout {
+    grid-template-columns: 1fr;
+  }
+  .provider-buttons {
+    flex-direction: column;
+  }
+}
