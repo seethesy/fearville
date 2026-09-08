@@ -3,7 +3,7 @@ import { database } from '@/db';
 import { hash, tokenOf } from '@/lib/game/store';
 import { random, appleSecret, decryptToken, type Provider } from './oidc';
 export const accountCookie = 'ct_account';
-export const origin = 'https://clocktower-table.phatsyloaf.chatgpt.site';
+export const origin = 'https://fearville.phatsyloaf.chatgpt.site';
 export function config(key: string) {
   const value = (env as unknown as Record<string, unknown>)[key];
   return typeof value === 'string' ? value.trim() : '';

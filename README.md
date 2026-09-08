@@ -43,7 +43,7 @@ Integration tests require the development server and create a test session. They
 
 Open `ios/ClocktowerTable.xcodeproj` on a Mac. Follow `ios/TESTFLIGHT.md`. The SwiftUI app is a native client, not a web wrapper. A shared scheme and an unsigned simulator CI workflow are included. The project has not been compiled with Xcode in the Windows authoring environment; a Mac build and device checks remain required before distribution.
 
-The deployed entry page is public at https://clocktower-table.phatsyloaf.chatgpt.site. Do not embed a Sites owner bypass token in the iOS app. The session API itself enforces per-seat credentials even when the entry page is public.
+The deployed entry page is public at https://fearville.phatsyloaf.chatgpt.site. Do not embed a Sites owner bypass token in the iOS app. The session API itself enforces per-seat credentials even when the entry page is public.
 
 ## Sources and scope
 

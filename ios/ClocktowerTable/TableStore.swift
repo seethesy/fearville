@@ -38,7 +38,7 @@ private enum Keychain {
     let baseURL: URL
     private let network: URLSession
     init() {
-        baseURL = URL(string: Bundle.main.object(forInfoDictionaryKey: "ClocktowerAPIURL") as? String ?? "https://clocktower-table.phatsyloaf.chatgpt.site")!
+        baseURL = URL(string: Bundle.main.object(forInfoDictionaryKey: "ClocktowerAPIURL") as? String ?? "https://fearville.phatsyloaf.chatgpt.site")!
         let config = URLSessionConfiguration.ephemeral
         config.timeoutIntervalForRequest = 15
         config.requestCachePolicy = .reloadIgnoringLocalCacheData
