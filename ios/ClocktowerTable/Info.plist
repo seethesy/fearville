@@ -14,5 +14,6 @@
 <key>UISupportedInterfaceOrientations</key><array><string>UIInterfaceOrientationPortrait</string><string>UIInterfaceOrientationLandscapeLeft</string><string>UIInterfaceOrientationLandscapeRight</string></array>
 <key>UIUserInterfaceStyle</key><string>Dark</string>
 <key>ITSAppUsesNonExemptEncryption</key><false/>
-<key>ClocktowerAPIURL</key><string>https://clocktower-table.tangy-reed-8113.chatgpt.site</string>
+<key>ClocktowerAPIURL</key><string>https://clocktower-table.phatsyloaf.chatgpt.site</string>
 </dict></plist>
+

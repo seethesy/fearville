@@ -32,7 +32,7 @@ private enum Keychain {
     let baseURL: URL
     private let network: URLSession
     init() {
-        baseURL = URL(string: Bundle.main.object(forInfoDictionaryKey: "ClocktowerAPIURL") as? String ?? "https://clocktower-table.tangy-reed-8113.chatgpt.site")!
+        baseURL = URL(string: Bundle.main.object(forInfoDictionaryKey: "ClocktowerAPIURL") as? String ?? "https://clocktower-table.phatsyloaf.chatgpt.site")!
         let config = URLSessionConfiguration.ephemeral
         config.timeoutIntervalForRequest = 15
         config.requestCachePolicy = .reloadIgnoringLocalCacheData
@@ -83,3 +83,4 @@ private enum Keychain {
     var recoveryKey: String { token }
     func leave() { Keychain.clear(); token = ""; game = nil; authenticated = false; online = false; error = "" }
 }
+
