@@ -1,6 +1,14 @@
 'use client';
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
+import {
+  Play,
+  Users,
+  MessageSquare,
+  BookOpen,
+  Settings,
+  Radio,
+} from 'lucide-react';
 import type { GameView } from '@/lib/game/view';
 import type { Control, Field } from '@/lib/game/types';
 import { ROLES } from '@/lib/game/types';
@@ -117,7 +125,16 @@ export default function Table() {
     [recovery, setRecovery] = useState(''),
     [restore, setRestore] = useState(''),
     [revealed, setRevealed] = useState(false),
-    [chatPlayer, setChatPlayer] = useState('all');
+    [chatPlayer, setChatPlayer] = useState('all'),
+    [activeTab, setActiveTab] = useState('flow'),
+    [compact, setCompact] = useState(false);
+  useEffect(() => {
+    const media = window.matchMedia('(max-width: 800px)');
+    const update = () => setCompact(media.matches);
+    update();
+    media.addEventListener('change', update);
+    return () => media.removeEventListener('change', update);
+  }, []);
   const refresh = useCallback(async () => {
     try {
       const r = await fetch('/api/game', { cache: 'no-store' });
@@ -290,6 +307,9 @@ export default function Table() {
         'rewind',
         'end',
         'overridePhase',
+        'pause',
+        'resume',
+        'extend',
       ].includes(c.action),
   );
   const chat = game.controls.find((c) => c.action === 'chat')!;
@@ -311,18 +331,28 @@ export default function Table() {
       m.from === chatPlayer,
   );
   return (
-    <main className="table-shell">
+    <main
+      className={`table-shell ${game.host ? 'host-table' : 'player-table'}`}
+    >
       <header className="brand table-header">
-        <Link href="/" className="brand-mark">
-          CT
+        <Link href="/" className="table-wordmark">
+          Fearville
         </Link>
-        <span>
-          FEARVILLE
+        <span className="table-identity">
+          {game.host ? 'STORYTELLER' : name(game.me)}
+        </span>
+        <span className="table-script">Trouble Brewing</span>
+        <span className="session-code">
+          <span>Session</span> {game.code}
         </span>
         <span className="connection">
+          <Radio size={14} aria-hidden="true" />{' '}
           {online ? 'Connected' : 'Reconnecting…'}
         </span>
-        <span className="session-code">{game.code}</span>
+        <span className="table-population">
+          {game.players.length} players ·{' '}
+          {game.players.filter((p) => p.alive).length} alive
+        </span>
       </header>
       {!online && (
         <p className="error" aria-live="polite">
@@ -343,19 +373,28 @@ export default function Table() {
                 : `${game.phaseLabel}${game.phase === 'night' ? ' ' + game.night : game.day ? ' · Day ' + game.day : ''}`}
           </h1>
         </div>
-        <div className="clock-box">
-          <span>
-            {game.deadline
-              ? 'TIME REMAINING'
-              : game.remaining
-                ? 'PAUSED'
-                : 'AT THE TABLE'}
-          </span>
-          <strong>
-            {game.remaining || game.deadline
-              ? clock
-              : game.players.length.toString().padStart(2, '0')}
-          </strong>
+        <div className="timer-toolbar">
+          <div className="clock-box">
+            <span>
+              {game.deadline
+                ? 'TIME REMAINING'
+                : game.remaining
+                  ? 'PAUSED'
+                  : 'AT THE TABLE'}
+            </span>
+            <strong>
+              {game.remaining || game.deadline
+                ? clock
+                : game.players.length.toString().padStart(2, '0')}
+            </strong>
+          </div>
+          {game.host && (
+            <div className="timer-actions">
+              {game.controls
+                .filter((c) => ['pause', 'resume', 'extend'].includes(c.action))
+                .map((c) => button(c))}
+            </div>
+          )}
         </div>
       </div>
       {notice && (
@@ -371,20 +410,40 @@ export default function Table() {
           {error}
         </p>
       )}
-      <Tabs defaultValue="flow">
-        <TabsList className="table-tabs">
-          <TabsTrigger value="flow">Game flow</TabsTrigger>
+      <Tabs
+        className="game-tabs"
+        value={activeTab}
+        onValueChange={(value) => setActiveTab(String(value))}
+        orientation={compact ? 'horizontal' : 'vertical'}
+      >
+        <TabsList className="table-tabs" aria-label="Game navigation">
+          <TabsTrigger value="flow">
+            <Play aria-hidden="true" />
+            <span>Game flow</span>
+          </TabsTrigger>
           <TabsTrigger value="seats">
-            Seats <span className="count">{game.players.length}</span>
+            <Users aria-hidden="true" />
+            <span>Seats</span>{' '}
+            <span className="count">{game.players.length}</span>
           </TabsTrigger>
           <TabsTrigger value="messages">
-            Messages <span className="count">{game.messages.length}</span>
+            <MessageSquare aria-hidden="true" />
+            <span>Messages</span>{' '}
+            <span className="count">{game.messages.length}</span>
           </TabsTrigger>
-          <TabsTrigger value="script">Script</TabsTrigger>
-          {game.host && <TabsTrigger value="control">Controls</TabsTrigger>}
+          <TabsTrigger value="script">
+            <BookOpen aria-hidden="true" />
+            <span>Script</span>
+          </TabsTrigger>
+          {game.host && (
+            <TabsTrigger value="control">
+              <Settings aria-hidden="true" />
+              <span>Controls</span>
+            </TabsTrigger>
+          )}
         </TabsList>
         <TabsContent value="flow">
-          <div className="workspace-grid">
+          <div className="workspace-grid flow-dashboard">
             <section className="panel flow-panel">
               <p className="eyebrow">
                 {game.phase === 'night'
@@ -471,7 +530,7 @@ export default function Table() {
                       : game.phase === 'discovery'
                         ? 'Find a quiet conversation.'
                         : game.phase === 'discussion'
-                          ? 'Bring the town together.'
+                          ? 'Let the town talk.'
                           : game.phase === 'nomination'
                             ? 'Who will you nominate?'
                             : game.phase === 'dayReview'
@@ -532,7 +591,7 @@ export default function Table() {
                 {core.map((c, i) => button(c, i === 0))}
               </div>
             </section>
-            <aside className="panel">
+            <aside className="panel character-panel">
               <p className="eyebrow">
                 {game.host ? 'YOUR GRIMOIRE' : 'YOUR SEAT'}
               </p>
@@ -606,6 +665,43 @@ export default function Table() {
                 Session data syncs across devices. Stay connected during play.
               </p>
             </aside>
+            <section className="panel recent-messages">
+              <div className="section-heading">
+                <p className="eyebrow">PRIVATE MESSAGES</p>
+                <button
+                  className="text-action"
+                  onClick={() => setActiveTab('messages')}
+                >
+                  View all
+                </button>
+              </div>
+              {game.messages.length === 0 ? (
+                <p className="muted">
+                  No messages yet. Your conversations will appear here.
+                </p>
+              ) : (
+                game.messages
+                  .slice(-3)
+                  .reverse()
+                  .map((m) => (
+                    <article className="message" key={m.id}>
+                      <div>
+                        <strong>
+                          {m.from === 'host' ? 'Storyteller' : name(m.from)}
+                        </strong>
+                        <small>
+                          {new Date(m.at).toLocaleTimeString([], {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
+                        </small>
+                      </div>
+                      <p>{m.text}</p>
+                    </article>
+                  ))
+              )}
+              <div className="actions">{button(chat)}</div>
+            </section>
           </div>
         </TabsContent>
         <TabsContent value="seats">
