@@ -65,7 +65,12 @@ export function controls(g: Game, a: Actor): Control[] {
     danger = false,
   ) => result.push({ action, title, description, fields, danger });
   if (a.host) {
-    if (g.phase === 'lobby')
+    if (g.phase === 'lobby') {
+      add(
+        'randomAssign',
+        'Randomly assign roles',
+        'Preview a balanced Trouble Brewing setup for 5–15 players. Replaces all assigned characters, Demon bluffs, and the red herring. You can edit individual roles in Seats afterward.',
+      );
       add(
         'start',
         'Deal roles & begin night',
@@ -73,6 +78,7 @@ export function controls(g: Game, a: Actor): Control[] {
           (setupIssues(g).join(' ') || 'Setup is ready.'),
         overrideFields,
       );
+    }
     if (g.phase === 'night') {
       const t = tasks(g).find((t) => !t.done);
       if (t) {

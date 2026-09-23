@@ -30,6 +30,7 @@ import {
 import { Checkbox } from '@/components/ui/checkbox';
 import { InviteFriends } from '@/components/social/invite-friends';
 import { RateStoryteller } from '@/components/social/rate-storyteller';
+import { RulesReference } from '@/components/rules-reference';
 import {
   AlertDialog,
   AlertDialogContent,
@@ -160,9 +161,18 @@ export default function Table() {
   useEffect(() => {
     const initial = setTimeout(() => void refresh(), 0);
     const id = setInterval(() => void refresh(), 2000);
+    const resume = () => {
+      if (!document.hidden) void refresh();
+    };
+    window.addEventListener('online', resume);
+    window.addEventListener('pageshow', resume);
+    document.addEventListener('visibilitychange', resume);
     return () => {
       clearTimeout(initial);
       clearInterval(id);
+      window.removeEventListener('online', resume);
+      window.removeEventListener('pageshow', resume);
+      document.removeEventListener('visibilitychange', resume);
     };
   }, [refresh]);
   useEffect(() => {
@@ -433,9 +443,9 @@ export default function Table() {
             <span>Messages</span>{' '}
             <span className="count">{game.messages.length}</span>
           </TabsTrigger>
-          <TabsTrigger value="script">
+          <TabsTrigger value="script" aria-label="Rules & roles">
             <BookOpen aria-hidden="true" />
-            <span>Script</span>
+            <span>Rules</span>
           </TabsTrigger>
           {game.host && (
             <TabsTrigger value="control">
@@ -481,12 +491,18 @@ export default function Table() {
                     {game.host
                       ? 'Share the code ' +
                         game.code +
-                        '. Players join on their own devices. Assign each character in Seats before dealing roles.'
+                        '. Players join on their own devices. Randomly assign roles below, or choose each character manually in Seats.'
                       : 'Your Storyteller will assign characters and begin the game. Keep this screen open.'}
                   </p>
                   <div className="code-display">{game.code}</div>
                   {game.host && (
                     <div className="checklist">
+                      <button
+                        className="secondary"
+                        onClick={() => setActiveTab('seats')}
+                      >
+                        Manually assign roles
+                      </button>
                       {game.issues.length ? (
                         game.issues.map((s) => <p key={s}>{s}</p>)
                       ) : (
@@ -744,6 +760,24 @@ export default function Table() {
           </div>
         </TabsContent>
         <TabsContent value="seats">
+          {game.host && game.phase === 'lobby' && (
+            <section className="panel poll-result">
+              <h2>Assign the town’s characters.</h2>
+              <p className="muted">
+                Edit each seat to choose its character manually, or start with a
+                random setup and adjust it. Roles are revealed only when you
+                begin the game.
+              </p>
+              <div className="actions">
+                {game.controls
+                  .filter((c) => c.action === 'randomAssign')
+                  .map((c) => button(c, true))}
+                {game.controls
+                  .filter((c) => c.action === 'configure')
+                  .map((c) => button(c))}
+              </div>
+            </section>
+          )}
           <div className="seat-grid">
             {game.players.map((p) => (
               <section className="panel seat-card" key={p.id}>
@@ -858,29 +892,11 @@ export default function Table() {
         </TabsContent>
         <TabsContent value="script">
           <div className="panel">
-            <p className="eyebrow">TROUBLE BREWING</p>
-            <h2>Character reference</h2>
-            <p className="muted">
-              All characters on the script, including those not in play.
-              Descriptions are brief summaries; consult the{' '}
-              <Link
-                href="https://wiki.bloodontheclocktower.com/Trouble_Brewing"
-                target="_blank"
-                rel="noreferrer"
-              >
-                official wiki
-              </Link>{' '}
-              for full rulings.
-            </p>
-            <div className="script-grid">
-              {ROLES.map((r) => (
-                <article key={r.id}>
-                  <small>{r.team}</small>
-                  <h3>{r.name}</h3>
-                  <p>{r.description}</p>
-                </article>
-              ))}
-            </div>
+            <h2>Rules & roles</h2>
+            <Link className="quiet-link" href="/rules">
+              Open the full reference page →
+            </Link>
+            <RulesReference />
           </div>
         </TabsContent>
         {game.host && (
@@ -942,6 +958,7 @@ export default function Table() {
           Save recovery key
         </button>
         <Link href="/account">Account & saved games</Link>
+        <Link href="/rules">Rules & roles</Link>
         <Link href="/">Switch session</Link>
       </footer>
       <Dialog

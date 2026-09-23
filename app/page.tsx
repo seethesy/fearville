@@ -1,13 +1,61 @@
 'use client';
 import Link from 'next/link';
 import { AccountPanel } from '@/components/account-panel';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 export default function Home() {
   const [name, setName] = useState(''),
     [code, setCode] = useState(''),
     [error, setError] = useState(''),
-    [busy, setBusy] = useState(false);
+    [busy, setBusy] = useState(false),
+    [recoveryKey, setRecoveryKey] = useState(''),
+    [entryTab, setEntryTab] = useState('join'),
+    [session, setSession] = useState<{
+      code: string;
+      host: boolean;
+      name: string;
+      phase: string;
+    } | null>(null);
+  useEffect(() => {
+    let live = true;
+    const load = async () => {
+      try {
+        const r = await fetch('/api/session', { cache: 'no-store' });
+        if (!r.ok) {
+          if (live && r.status === 401) setSession(null);
+          return;
+        }
+        const d = (await r.json()) as {
+          code: string;
+          host: boolean;
+          name: string;
+          phase: string;
+        };
+        if (live)
+          setSession({
+            code: d.code,
+            host: d.host,
+            name: d.name,
+            phase: d.phase,
+          });
+      } catch {
+        /* Keep the existing return link available during a disconnect. */
+      }
+    };
+    const resume = () => {
+      if (!document.hidden) void load();
+    };
+    void load();
+    window.addEventListener('pageshow', resume);
+    window.addEventListener('online', resume);
+    document.addEventListener('visibilitychange', resume);
+    return () => {
+      live = false;
+      window.removeEventListener('pageshow', resume);
+      window.removeEventListener('online', resume);
+      document.removeEventListener('visibilitychange', resume);
+    };
+  }, []);
   async function enter(action: string) {
     setBusy(true);
     setError('');
@@ -15,7 +63,12 @@ export default function Home() {
       const r = await fetch('/api/session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action, name, code }),
+        body: JSON.stringify({
+          action,
+          name,
+          code,
+          ...(action === 'restore' ? { recoveryKey: recoveryKey.trim() } : {}),
+        }),
       });
       const d = (await r.json()) as { error?: string };
       if (!r.ok) throw Error(d.error || 'Could not connect.');
@@ -30,9 +83,7 @@ export default function Home() {
     <main className="entry">
       <header className="brand">
         <span className="brand-mark">F</span>
-        <span>
-          FEARVILLE
-        </span>
+        <span>FEARVILLE</span>
         <span className="edition">IN PERSON</span>
       </header>
       <div className="entry-grid">
@@ -70,25 +121,55 @@ export default function Home() {
           <Link className="quiet-link" href="/table">
             Return to your session →
           </Link>
+          <Link className="quiet-link" href="/rules">
+            Read the rules & roles →
+          </Link>
         </section>
         <section className="panel entry-panel">
+          {session && (
+            <section
+              className="resume-session"
+              aria-label="Your current session"
+            >
+              <p className="eyebrow">YOUR SEAT IS SAVED</p>
+              <h2>
+                {session.host
+                  ? 'Return as Storyteller.'
+                  : `Welcome back, ${session.name}.`}
+              </h2>
+              <p className="muted">
+                Session {session.code}. Closing this tab or switching apps does
+                not give up your seat.
+              </p>
+              <Link className="primary full resume-link" href="/table">
+                {session.phase === 'lobby' ? 'Rejoin lobby' : 'Return to game'}{' '}
+                →
+              </Link>
+            </section>
+          )}
           <AccountPanel compact />
           <p className="eyebrow">TAKE YOUR PLACE</p>
-          <Tabs defaultValue="join">
+          <Tabs
+            value={entryTab}
+            onValueChange={(value) => setEntryTab(String(value))}
+          >
             <TabsList className="wide-tabs">
               <TabsTrigger value="join">Join a game</TabsTrigger>
               <TabsTrigger value="host">Storytell</TabsTrigger>
+              <TabsTrigger value="return">Rejoin</TabsTrigger>
             </TabsList>
-            <label className="field">
-              Your name
-              <input
-                maxLength={32}
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Name at the table"
-                autoComplete="off"
-              />
-            </label>
+            {entryTab !== 'return' && (
+              <label className="field">
+                Your name
+                <input
+                  maxLength={32}
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Name at the table"
+                  autoComplete="off"
+                />
+              </label>
+            )}
             <TabsContent value="join">
               <form
                 onSubmit={(e) => {
@@ -134,6 +215,49 @@ export default function Home() {
               </button>
               <p className="hint">
                 You’ll receive a code to share with your players.
+              </p>
+            </TabsContent>
+            <TabsContent value="return">
+              <h2>Return to your seat.</h2>
+              <p className="muted">
+                On the same browser, use Return to your session. On a different
+                device or after clearing browser data, use your private recovery
+                key or sign in to your saved account.
+              </p>
+              <Link className="secondary full resume-link" href="/table">
+                Return to your session →
+              </Link>
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  void enter('restore');
+                }}
+              >
+                <label className="field">
+                  Private recovery key
+                  <input
+                    type="password"
+                    autoComplete="off"
+                    autoCapitalize="none"
+                    spellCheck={false}
+                    value={recoveryKey}
+                    onChange={(e) => setRecoveryKey(e.target.value)}
+                    required
+                  />
+                </label>
+                <button
+                  className="primary full"
+                  disabled={busy || !recoveryKey.trim()}
+                >
+                  {busy ? 'Restoring…' : 'Restore my seat'}
+                </button>
+              </form>
+              <Link className="quiet-link" href="/account">
+                Account & saved games →
+              </Link>
+              <p className="hint">
+                Players and Storytellers can both return. A session code alone
+                cannot restore someone’s private seat.
               </p>
             </TabsContent>
           </Tabs>

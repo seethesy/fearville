@@ -16,11 +16,21 @@ import {
   checkOrigin,
   limited,
   tokenOf,
+  read,
 } from '@/lib/game/store';
 export async function GET(r: Request) {
   try {
     const { actor, code } = await auth(r);
-    return json({ code, host: actor.host, recoveryKey: tokenOf(r) });
+    const { game } = await read(code);
+    const player = game.players.find((p) => p.id === actor.id);
+    requireThat(actor.host || player, 'This seat is no longer available.');
+    return json({
+      code,
+      host: actor.host,
+      name: actor.host ? game.hostName : player!.name,
+      phase: game.phase,
+      recoveryKey: tokenOf(r),
+    });
   } catch (e) {
     return errorResponse(e);
   }
@@ -54,6 +64,37 @@ export async function POST(r: Request) {
       return json({ code: restored.code, token: body.recoveryKey }, 200, {
         'Set-Cookie': cookie(r, body.recoveryKey),
       });
+    }
+    // A returning device keeps its existing identity, including Storyteller
+    // permissions, instead of creating another seat or failing after start.
+    if (body.action === 'join' && tokenOf(r)) {
+      let current: Awaited<ReturnType<typeof auth>> | null = null;
+      try {
+        current = await auth(r);
+      } catch (e) {
+        if (!(e instanceof Error) || e.message !== 'AUTH') throw e;
+      }
+      if (
+        current?.code ===
+        String(body.code || '')
+          .trim()
+          .toUpperCase()
+      ) {
+        const { game } = await read(current.code);
+        requireThat(
+          current.actor.host ||
+            game.players.some((p) => p.id === current.actor.id),
+          'This seat is no longer available.',
+        );
+        if (account) await attachMember(await hash(tokenOf(r)), account.id);
+        return json(
+          { code: current.code, token: tokenOf(r), resumed: true },
+          200,
+          {
+            'Set-Cookie': cookie(r, tokenOf(r)),
+          },
+        );
+      }
     }
     const name = String(body.name || '')
       .trim()
@@ -92,7 +133,9 @@ export async function POST(r: Request) {
       throw Error('Unable to create a session. Try again.');
     }
     requireThat(body.action === 'join', 'Unknown session action.');
-    const code = String(body.code || '').toUpperCase();
+    const code = String(body.code || '')
+      .trim()
+      .toUpperCase();
     if (await joinSession(code, name, tokenHash)) {
       if (account) await attachMember(tokenHash, account.id);
       return json({ code, token }, 200, { 'Set-Cookie': cookie(r, token) });

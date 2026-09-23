@@ -17,8 +17,9 @@ npm run dev
 Open the Local URL printed by the server. Create a session, then join from separate browser profiles or devices. A browser profile holds one session identity; the Storyteller and players need separate profiles/devices. The local development URL is not a remotely accessible production server.
 
 ```sh
-node --experimental-strip-types --test tests/engine.test.ts tests/accounts.test.ts tests/social.test.ts tests/polls.test.ts
+node --experimental-strip-types --test tests/engine.test.ts tests/accounts.test.ts tests/social.test.ts tests/polls.test.ts tests/assignment.test.ts
 node tests/integration.mjs
+node tests/session-rejoin-integration.mjs
 node tests/accounts-integration.mjs
 node tests/social-integration.mjs
 npx tsc --noEmit
@@ -29,8 +30,11 @@ Integration tests require the development server and create test sessions and fi
 
 ## Session behavior
 
+- **Rules & roles** is available publicly at `/rules`, linked from the entry page. Players and Storytellers can also open the **Rules** tab inside a lobby or active game. Both use the same rules summary, Fearville instructions, and all 22 Trouble Brewing character descriptions, grouped by team; the reference never reveals assigned roles. Links back to the table preserve the browser’s session.
 - Create a room; 5–15 players join using its six-letter code. Names are unique within the room. Joining locks when the game starts; existing players reconnect using the device session or a private recovery key.
 - Storytellers edit seats and assign roles, configure timers, three Demon bluffs (7+ players), and the Fortune Teller red herring. Setup checks include the Baron and the Drunk’s shown role.
+- In the lobby, Storytellers can use **Randomly assign roles** to preview and apply a balanced setup, or **Manually assign roles** to edit each seat. Random setup handles the Baron, the Drunk’s shown character, three out-of-play good bluffs, and a good red herring. Confirmation applies exactly the previewed assignments. Randomizing again replaces the setup; manual edits and undo remain available before starting. No role information is delivered to players until the game starts.
+- The entry page detects an existing browser session and offers **Rejoin lobby** or **Return to game** for both players and Storytellers. Re-entering the same session code with a valid device cookie also resumes the original identity without adding a seat, including after play begins. On mobile, returning to the browser or reconnecting immediately refreshes the table. Normal browser storage retains credentials for up to 30 days; clearing data, private browsing, or switching devices requires a saved recovery key (entry page → **Rejoin**) or an account-linked seat. Use **Save recovery key** at the table before leaving if you need a backup. A room code and player name alone never grant access to an existing seat.
 - Actual roles, poisoned/protected status, reminders, history, and night tasks are filtered on the server. A player receives only their shown character and intended messages. Night deaths become public at dawn.
 - The current night action is always the earliest unfinished eligible action. Player choices arrive by private chat; the Storyteller selects those choices in the action form. Structured information goes directly to the recipient after confirmation.
 - Each night has a randomly selected fun poll from a shared question pool, without repeating the preceding question. Players with no night activity can pick a name while others act. All seated players, including dead players and players with abilities, can participate so poll access never signals a role or hidden night death. Abilities still take priority. One private answer per player can be changed until dawn; polls never hold up night resolution. After dawn, Game flow shows the favorite or tied favorites, without vote counts or voter identities. Questions are shared for meaningful results. Rewind restores the saved poll state. Existing sessions first receive a poll when their next night begins.
@@ -74,6 +78,7 @@ Only Trouble Brewing is supported: no Travellers, custom scripts, remote voice c
 
 ## Validation on the authoring host
 
+- Role assignment and rejoin updates: all 42 unit tests passed, including random setup validation across 5–15 players. Session integration checks passed for preview consistency, manual edits, same-device rejoin, cross-browser recovery, preserved Storyteller permissions, and impersonation rejection. Mobile browser automation verified both users returning after browser closure, both recovery forms, and the Storyteller’s random/manual controls at 320px width. Physical iPhone/Safari checks remain outstanding.
 - 18 engine tests, 7 account cryptography tests, and 6 social result-derivation tests passed.
 - Multi-client API integration tests (session, accounts, social) passed against the local D1-backed server.
 - TypeScript checking, app/domain lint, and the production build passed.

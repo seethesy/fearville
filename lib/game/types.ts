@@ -234,6 +234,7 @@ export type Message = {
 };
 export type Log = { id: string; text: string; at: number; public: boolean };
 export type Game = {
+  assignmentSeed?: string;
   nightPoll?: {
     id: string;
     night: number;
@@ -306,6 +307,7 @@ export function newPlayer(name: string, seat: number): Player {
 }
 export function newGame(code: string, name: string): Game {
   return {
+    assignmentSeed: uuid(),
     code,
     hostName: name,
     phase: 'lobby',

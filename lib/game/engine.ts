@@ -12,6 +12,7 @@ import {
   type Phase,
 } from './types.ts';
 import { startNightPoll, closeNightPoll } from './polls.ts';
+import { assignRandomRoles } from './assignment.ts';
 export function requireThat(ok: unknown, message: string): asserts ok {
   if (!ok) throw new Error(message);
 }
@@ -431,6 +432,7 @@ export function execute(
   now: number,
 ): string {
   const hostActions = [
+    'randomAssign',
     'configure',
     'edit',
     'start',
@@ -535,6 +537,16 @@ export function execute(
       now,
     );
   switch (c.action) {
+    case 'randomAssign': {
+      requireThat(
+        g.phase === 'lobby',
+        'Random assignment is only available in the lobby.',
+      );
+      const summary = assignRandomRoles(g);
+      g.assignmentSeed = uuid();
+      log(g, 'Randomly assigned characters and setup reminders.', now);
+      return summary;
+    }
     case 'configure': {
       for (const key of Object.keys(g.timers)) {
         const n = Number(c[key]);
