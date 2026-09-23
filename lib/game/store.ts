@@ -41,11 +41,15 @@ export async function auth(
 }
 export async function read(code: string) {
   const row = await database()
-    .prepare('SELECT state, version FROM sessions WHERE code = ?')
+    .prepare('SELECT state, version, created FROM sessions WHERE code = ?')
     .bind(code)
-    .first<{ state: string; version: number }>();
+    .first<{ state: string; version: number; created: number }>();
   if (!row) throw Error('Session not found.');
-  return { game: JSON.parse(row.state) as Game, version: row.version };
+  return {
+    game: JSON.parse(row.state) as Game,
+    version: row.version,
+    created: row.created,
+  };
 }
 export async function save(g: Game, version: number) {
   const state = JSON.stringify(g);

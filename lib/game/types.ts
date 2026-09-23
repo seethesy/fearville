@@ -234,6 +234,13 @@ export type Message = {
 };
 export type Log = { id: string; text: string; at: number; public: boolean };
 export type Game = {
+  nightPoll?: {
+    id: string;
+    night: number;
+    question: string;
+    answers: Record<string, string>;
+  };
+  previousNightPoll?: { night: number; question: string; winners: string[] };
   code: string;
   hostName: string;
   phase: Phase;

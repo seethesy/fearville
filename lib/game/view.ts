@@ -277,6 +277,30 @@ export function controls(g: Game, a: Actor): Control[] {
       );
   }
   const me = g.players.find((p) => p.id === a.id);
+  if (!a.host && me && g.phase === 'night' && g.nightPoll?.night === g.night) {
+    add(
+      'nightPoll',
+      'Answer tonight’s poll',
+      g.nightPoll.question +
+        ' Just for fun. Answers stay private; the favorite is revealed after dawn.',
+      [
+        select(
+          'poll',
+          'Tonight’s question',
+          [{ value: g.nightPoll.id, label: g.nightPoll.question }],
+          g.nightPoll.id,
+          true,
+        ),
+        select(
+          'target',
+          'Pick a player',
+          ps,
+          g.nightPoll.answers[a.id] ?? '',
+          true,
+        ),
+      ],
+    );
+  }
   if (
     g.phase === 'nomination' &&
     (a.host || (me?.alive && !g.nominators.includes(a.id)))
@@ -482,6 +506,19 @@ export function view(g: Game, a: Actor, version: number, now: number) {
     deadline: g.deadline,
     remaining: g.remaining,
     winner: g.winner,
+    nightPoll:
+      !a.host && me && g.phase === 'night' && g.nightPoll?.night === g.night
+        ? {
+            id: g.nightPoll.id,
+            question: g.nightPoll.question,
+            answer: g.nightPoll.answers[a.id] ?? null,
+          }
+        : null,
+    previousNightPoll:
+      g.previousNightPoll &&
+      (g.phase !== 'night' || g.previousNightPoll.night < g.night)
+        ? g.previousNightPoll
+        : null,
     players: g.players
       .slice()
       .sort((a, b) => a.seat - b.seat)

@@ -15,6 +15,13 @@
       "when": 1788898243970,
       "tag": "0001_fine_komodo",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1789052742279,
+      "tag": "0002_smiling_northstar",
+      "breakpoints": true
     }
   ]
 }

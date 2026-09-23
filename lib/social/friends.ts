@@ -1,0 +1,203 @@
+import { database } from '@/db';
+import { normalizeHandle } from './derive';
+
+export type PublicAccount = { id: string; name: string; handle: string | null };
+type Relation = { requester: string; addressee: string; status: string };
+
+export async function accountByHandle(handle: string) {
+  return database()
+    .prepare('SELECT id,name,handle FROM accounts WHERE handle=?')
+    .bind(handle)
+    .first<PublicAccount>();
+}
+export async function accountByID(id: string) {
+  return database()
+    .prepare('SELECT id,name,handle FROM accounts WHERE id=?')
+    .bind(id)
+    .first<PublicAccount>();
+}
+
+// Every friendship row between two accounts, in either direction.
+export async function relations(a: string, b: string) {
+  const rows = await database()
+    .prepare(
+      'SELECT requester,addressee,status FROM friendships WHERE (requester=? AND addressee=?) OR (requester=? AND addressee=?)',
+    )
+    .bind(a, b, b, a)
+    .all<Relation>();
+  return rows.results;
+}
+
+// The relationship from `me` looking at `other`.
+export function relationStatus(me: string, rows: Relation[]) {
+  if (rows.some((r) => r.status === 'blocked' && r.requester === me))
+    return 'blocked' as const;
+  if (rows.some((r) => r.status === 'blocked')) return 'unavailable' as const;
+  if (rows.some((r) => r.status === 'accepted')) return 'friends' as const;
+  if (rows.some((r) => r.status === 'pending' && r.requester === me))
+    return 'requested' as const;
+  if (rows.some((r) => r.status === 'pending')) return 'incoming' as const;
+  return 'none' as const;
+}
+export type RelationStatus = ReturnType<typeof relationStatus>;
+
+export async function areFriends(a: string, b: string) {
+  return relationStatus(a, await relations(a, b)) === 'friends';
+}
+
+export async function setHandle(account: string, value: unknown) {
+  const handle = normalizeHandle(value);
+  const db = database();
+  const taken = await db
+    .prepare('SELECT id FROM accounts WHERE handle=? AND id<>?')
+    .bind(handle, account)
+    .first();
+  if (taken) throw Error('That handle is already taken.');
+  await db
+    .prepare('UPDATE accounts SET handle=? WHERE id=?')
+    .bind(handle, account)
+    .run();
+  return handle;
+}
+
+export async function sendRequest(
+  me: string,
+  handleValue: unknown,
+  now: number,
+) {
+  const handle = normalizeHandle(handleValue);
+  const target = await accountByHandle(handle);
+  if (!target) throw Error('No player has that handle.');
+  if (target.id === me) throw Error('That is your own handle.');
+  const status = relationStatus(me, await relations(me, target.id));
+  if (status === 'blocked')
+    throw Error('Unblock this player before sending a request.');
+  if (status === 'unavailable')
+    throw Error('A friend request cannot be sent to this player.');
+  if (status === 'friends') throw Error('You are already friends.');
+  if (status === 'requested') throw Error('Your request is already waiting.');
+  const db = database();
+  if (status === 'incoming') {
+    await db
+      .prepare(
+        "UPDATE friendships SET status='accepted',updated=? WHERE requester=? AND addressee=? AND status='pending'",
+      )
+      .bind(now, target.id, me)
+      .run();
+    return { account: target, status: 'friends' as const };
+  }
+  const outgoing = await db
+    .prepare(
+      "SELECT COUNT(*) AS n FROM friendships WHERE requester=? AND status='pending'",
+    )
+    .bind(me)
+    .first<{ n: number }>();
+  if ((outgoing?.n || 0) >= 50)
+    throw Error('You have too many waiting requests. Cancel some first.');
+  await db
+    .prepare(
+      "INSERT INTO friendships (requester,addressee,status,created,updated) VALUES (?,?,'pending',?,?) ON CONFLICT(requester,addressee) DO NOTHING",
+    )
+    .bind(me, target.id, now, now)
+    .run();
+  return { account: target, status: 'requested' as const };
+}
+
+export async function acceptRequest(me: string, other: string, now: number) {
+  const r = await database()
+    .prepare(
+      "UPDATE friendships SET status='accepted',updated=? WHERE requester=? AND addressee=? AND status='pending'",
+    )
+    .bind(now, other, me)
+    .run();
+  if (r.meta.changes !== 1) throw Error('That request is no longer waiting.');
+}
+
+// Declines an incoming request or cancels an outgoing one.
+export async function dismissRequest(me: string, other: string) {
+  await database()
+    .prepare(
+      "DELETE FROM friendships WHERE status='pending' AND ((requester=? AND addressee=?) OR (requester=? AND addressee=?))",
+    )
+    .bind(other, me, me, other)
+    .run();
+}
+
+export async function removeFriend(me: string, other: string) {
+  const r = await database()
+    .prepare(
+      "DELETE FROM friendships WHERE status='accepted' AND ((requester=? AND addressee=?) OR (requester=? AND addressee=?))",
+    )
+    .bind(me, other, other, me)
+    .run();
+  if (r.meta.changes === 0)
+    throw Error('You are not friends with this player.');
+}
+
+// Blocking removes any friendship or waiting request, withdraws waiting
+// invitations in both directions, and hides you from that player's searches.
+export async function blockAccount(me: string, other: string, now: number) {
+  if (me === other) throw Error('You cannot block yourself.');
+  if (!(await accountByID(other))) throw Error('Player not found.');
+  const db = database();
+  await db.batch([
+    db
+      .prepare(
+        "DELETE FROM friendships WHERE status<>'blocked' AND ((requester=? AND addressee=?) OR (requester=? AND addressee=?))",
+      )
+      .bind(me, other, other, me),
+    db
+      .prepare(
+        "INSERT INTO friendships (requester,addressee,status,created,updated) VALUES (?,?,'blocked',?,?) ON CONFLICT(requester,addressee) DO UPDATE SET status='blocked',updated=excluded.updated",
+      )
+      .bind(me, other, now, now),
+    db
+      .prepare(
+        "UPDATE session_invites SET status='revoked' WHERE status='pending' AND ((sender=? AND recipient=?) OR (sender=? AND recipient=?))",
+      )
+      .bind(me, other, other, me),
+  ]);
+}
+
+export async function unblockAccount(me: string, other: string) {
+  await database()
+    .prepare(
+      "DELETE FROM friendships WHERE requester=? AND addressee=? AND status='blocked'",
+    )
+    .bind(me, other)
+    .run();
+}
+
+export async function friendLists(me: string) {
+  const db = database();
+  const friends = await db
+    .prepare(
+      "SELECT a.id,a.name,a.handle,f.updated AS since FROM friendships f JOIN accounts a ON a.id=CASE WHEN f.requester=? THEN f.addressee ELSE f.requester END WHERE f.status='accepted' AND (f.requester=? OR f.addressee=?) ORDER BY a.name COLLATE NOCASE",
+    )
+    .bind(me, me, me)
+    .all<PublicAccount & { since: number }>();
+  const incoming = await db
+    .prepare(
+      "SELECT a.id,a.name,a.handle,f.created FROM friendships f JOIN accounts a ON a.id=f.requester WHERE f.addressee=? AND f.status='pending' ORDER BY f.created DESC",
+    )
+    .bind(me)
+    .all<PublicAccount & { created: number }>();
+  const outgoing = await db
+    .prepare(
+      "SELECT a.id,a.name,a.handle,f.created FROM friendships f JOIN accounts a ON a.id=f.addressee WHERE f.requester=? AND f.status='pending' ORDER BY f.created DESC",
+    )
+    .bind(me)
+    .all<PublicAccount & { created: number }>();
+  const blocked = await db
+    .prepare(
+      "SELECT a.id,a.name,a.handle FROM friendships f JOIN accounts a ON a.id=f.addressee WHERE f.requester=? AND f.status='blocked' ORDER BY a.name COLLATE NOCASE",
+    )
+    .bind(me)
+    .all<PublicAccount>();
+  return {
+    friends: friends.results,
+    incoming: incoming.results,
+    outgoing: outgoing.results,
+    blocked: blocked.results,
+  };
+}

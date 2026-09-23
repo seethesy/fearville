@@ -11,6 +11,7 @@ import {
   type Player,
   type Phase,
 } from './types.ts';
+import { startNightPoll, closeNightPoll } from './polls.ts';
 export function requireThat(ok: unknown, message: string): asserts ok {
   if (!ok) throw new Error(message);
 }
@@ -43,6 +44,7 @@ export function snapshot(g: Game, text: string, at: number) {
   g.history.push({ id: uuid(), text, at, before: JSON.stringify(state) });
 }
 export function setPhase(g: Game, phase: Phase, at: number, seconds?: number) {
+  if (g.phase === 'night' && phase !== 'night') closeNightPoll(g);
   g.phase = phase;
   if (phase === 'ended') g.players.forEach((p) => (p.publicAlive = p.alive));
   g.remaining = seconds ?? g.timers[phase] ?? 0;
@@ -51,6 +53,7 @@ export function setPhase(g: Game, phase: Phase, at: number, seconds?: number) {
 }
 export function beginNight(g: Game, at: number) {
   g.night++;
+  startNightPoll(g);
   g.done = [];
   g.active = null;
   g.players.forEach((p) => {
@@ -449,6 +452,26 @@ export function execute(
   ];
   if (hostActions.includes(c.action))
     requireThat(actor.host, 'Only the Storyteller can do that.');
+  if (c.action === 'nightPoll') {
+    requireThat(!actor.host, 'Only seated players can answer the poll.');
+    person(g, actor.id);
+    const poll = g.nightPoll;
+    requireThat(
+      g.phase === 'night' && poll && poll.night === g.night,
+      'This night poll is closed.',
+    );
+    requireThat(
+      c.poll === poll.id,
+      'The night poll changed. Review the new question.',
+    );
+    const target = person(g, c.target);
+    poll.answers[actor.id] = target.id;
+    return (
+      'Save your private poll answer: ' +
+      target.name +
+      '. You can change it until dawn.'
+    );
+  }
   if (c.action === 'chat') {
     const to = actor.host ? clean(c.to) : 'host';
     requireThat(
@@ -479,6 +502,8 @@ export function execute(
       g.players.every((p) => state.players.some((q: Player) => q.id === p.id)),
       'Cannot rewind before a player joined. Correct seats manually.',
     );
+    delete g.nightPoll;
+    delete g.previousNightPoll;
     Object.assign(g, state);
     g.history = g.history.slice(0, index);
     if (g.deadline !== null) {

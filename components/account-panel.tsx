@@ -2,7 +2,12 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 export type AccountView = {
-  account: { id: string; name: string; email: string } | null;
+  account: {
+    id: string;
+    name: string;
+    email: string;
+    handle: string | null;
+  } | null;
   providers: { google: boolean; apple: boolean };
   connections: string[];
   seats: {
@@ -13,6 +18,7 @@ export type AccountView = {
     phase: string;
     hostName: string;
   }[];
+  pending: { requests: number; invites: number };
 };
 export function AccountPanel({ compact = false }: { compact?: boolean }) {
   const [state, setState] = useState<AccountView | null>(null),
@@ -61,10 +67,37 @@ export function AccountPanel({ compact = false }: { compact?: boolean }) {
         <>
           <p>
             Signed in as <strong>{state.account.name}</strong>
+            {state.account.handle && (
+              <span className="muted"> · @{state.account.handle}</span>
+            )}
           </p>
-          <Link href="/account" className="quiet-link">
-            Manage account & saved games →
-          </Link>
+          <div className="social-links">
+            <Link href="/account" className="quiet-link">
+              Account & saved games →
+            </Link>
+            <Link href="/friends" className="quiet-link">
+              Friends
+              {state.pending.invites + state.pending.requests > 0 && (
+                <span className="count">
+                  {state.pending.invites + state.pending.requests}
+                </span>
+              )}{' '}
+              →
+            </Link>
+            <Link href="/stats" className="quiet-link">
+              Your record →
+            </Link>
+          </div>
+          {state.pending.invites > 0 && (
+            <p className="invite-callout">
+              <Link href="/friends">
+                {state.pending.invites === 1
+                  ? 'A friend invited you to a table.'
+                  : `${state.pending.invites} friends invited you to tables.`}{' '}
+                Join →
+              </Link>
+            </p>
+          )}
         </>
       ) : (
         <>

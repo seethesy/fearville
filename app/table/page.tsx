@@ -28,6 +28,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
+import { InviteFriends } from '@/components/social/invite-friends';
+import { RateStoryteller } from '@/components/social/rate-storyteller';
 import {
   AlertDialog,
   AlertDialogContent,
@@ -443,6 +445,22 @@ export default function Table() {
           )}
         </TabsList>
         <TabsContent value="flow">
+          {game.previousNightPoll && (
+            <section
+              className="panel poll-result"
+              aria-label="Previous night poll result"
+            >
+              <p className="eyebrow">
+                NIGHT {game.previousNightPoll.night} · TABLE FAVORITES
+              </p>
+              <h2>{game.previousNightPoll.question}</h2>
+              <p>
+                {game.previousNightPoll.winners.length
+                  ? `${game.previousNightPoll.winners.length > 1 ? 'Tied favorites: ' : 'Table favorite: '}${game.previousNightPoll.winners.join(', ')}`
+                  : 'No answers this time.'}
+              </p>
+            </section>
+          )}
           <div className="workspace-grid flow-dashboard">
             <section className="panel flow-panel">
               <p className="eyebrow">
@@ -476,6 +494,7 @@ export default function Table() {
                       )}
                     </div>
                   )}
+                  <InviteFriends code={game.code} />
                 </>
               ) : game.phase === 'night' ? (
                 game.host ? (
@@ -520,6 +539,23 @@ export default function Table() {
                       Check Messages for instructions from your Storyteller.
                       Reply there with your choices.
                     </p>
+                    {game.nightPoll && (
+                      <div className="night-poll">
+                        <p className="eyebrow">TONIGHT’S POLL · JUST FOR FUN</p>
+                        <h3>{game.nightPoll.question}</h3>
+                        <p className="muted">
+                          Everyone can play while waiting. Your night ability
+                          still comes first. Only the favorite is shared after
+                          dawn, never who voted.
+                        </p>
+                        {game.nightPoll.answer && (
+                          <output>
+                            Your answer: {name(game.nightPoll.answer)}. You can
+                            change it until dawn.
+                          </output>
+                        )}
+                      </div>
+                    )}
                   </>
                 )
               ) : (
@@ -581,6 +617,9 @@ export default function Table() {
                     </div>
                   )}
                 </>
+              )}
+              {game.phase === 'ended' && (
+                <RateStoryteller code={game.code} host={game.host} />
               )}
               {game.hints.map((h) => (
                 <p className="error" key={h}>

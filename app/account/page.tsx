@@ -72,7 +72,24 @@ export default function Account() {
           <AccountPanel />
           {state?.account && (
             <>
-              <p className="muted">{state.account.email}</p>
+              <p className="muted">
+                {state.account.email}
+                {state.account.handle ? ' · @' + state.account.handle : ''}
+              </p>
+              <div className="social-links">
+                <Link className="quiet-link" href="/friends">
+                  Friends & invitations
+                  {state.pending.invites + state.pending.requests > 0 && (
+                    <span className="count">
+                      {state.pending.invites + state.pending.requests}
+                    </span>
+                  )}{' '}
+                  →
+                </Link>
+                <Link className="quiet-link" href="/stats">
+                  Your record →
+                </Link>
+              </div>
               <div className="actions">
                 <button
                   className="secondary"
@@ -148,9 +165,10 @@ export default function Account() {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete your account?</AlertDialogTitle>
             <AlertDialogDescription>
-              This removes your profile, sign-in connections, and saved seat
-              access, and ends any games you host. Shared game records in other
-              people’s sessions remain. This cannot be undone.
+              This removes your profile, handle, friendships, ratings you gave
+              or received, sign-in connections, and saved seat access, and ends
+              any games you host. Finished games stay in other players’ records,
+              no longer linked to your account. This cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <label className="field">
@@ -181,4 +199,3 @@ export default function Account() {
     </main>
   );
 }
-

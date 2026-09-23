@@ -2,6 +2,8 @@ import { env } from 'cloudflare:workers';
 import { database } from '@/db';
 import { hash, tokenOf } from '@/lib/game/store';
 import { random, appleSecret, decryptToken, type Provider } from './oidc';
+import { linkSeatRecords } from '@/lib/social/results';
+import { pendingCounts } from '@/lib/social/pending';
 export const accountCookie = 'ct_account';
 export const origin = 'https://fearville.phatsyloaf.chatgpt.site';
 export function config(key: string) {
@@ -48,10 +50,15 @@ export async function accountAuth(r: Request) {
   if (!token || token.length > 200) return null;
   return database()
     .prepare(
-      'SELECT a.id,a.name,a.email FROM accounts a JOIN account_sessions s ON a.id=s.account WHERE s.hash=? AND s.expires>?',
+      'SELECT a.id,a.name,a.email,a.handle FROM accounts a JOIN account_sessions s ON a.id=s.account WHERE s.hash=? AND s.expires>?',
     )
     .bind(await hash(token), Date.now())
-    .first<{ id: string; name: string; email: string }>();
+    .first<{
+      id: string;
+      name: string;
+      email: string;
+      handle: string | null;
+    }>();
 }
 export async function createAccountSession(account: string) {
   const token = random();
@@ -75,11 +82,20 @@ export async function attachMember(memberHash: string, account: string) {
     )
     .bind(account, memberHash, Date.now())
     .run();
+  // A seat attached after its game ended still counts toward the account.
+  await linkSeatRecords(account);
 }
 export async function accountView(r: Request) {
   const account = await accountAuth(r);
   const providers = { google: enabled('google'), apple: enabled('apple') };
-  if (!account) return { account: null, providers, connections: [], seats: [] };
+  if (!account)
+    return {
+      account: null,
+      providers,
+      connections: [],
+      seats: [],
+      pending: { requests: 0, invites: 0 },
+    };
   const connections = await database()
     .prepare('SELECT provider FROM identities WHERE account=?')
     .bind(account.id)
@@ -102,6 +118,7 @@ export async function accountView(r: Request) {
     providers,
     connections: connections.results.map((c) => c.provider),
     seats: seats.results,
+    pending: await pendingCounts(account.id, Date.now()),
   };
 }
 export async function clientSecret(provider: Provider) {
