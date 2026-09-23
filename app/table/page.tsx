@@ -30,6 +30,8 @@ import {
 import { Checkbox } from '@/components/ui/checkbox';
 import { InviteFriends } from '@/components/social/invite-friends';
 import { RateStoryteller } from '@/components/social/rate-storyteller';
+import { TableMessages } from '@/components/table-messages';
+import { TableMembership } from '@/components/table-membership';
 import { RulesReference } from '@/components/rules-reference';
 import {
   AlertDialog,
@@ -187,6 +189,10 @@ export default function Table() {
     return () => document.removeEventListener('visibilitychange', hide);
   }, []);
   function open(control: Control) {
+    if (control.action === 'chat') {
+      setActiveTab('messages');
+      return;
+    }
     setSelected(control);
     setValues(
       Object.fromEntries(control.fields.map((f) => [f.key, f.value ?? ''])),
@@ -334,13 +340,6 @@ export default function Table() {
     >
       {c.title}
     </button>
-  );
-  const msgs = game.messages.filter(
-    (m) =>
-      !game.host ||
-      chatPlayer === 'all' ||
-      m.to === chatPlayer ||
-      m.from === chatPlayer,
   );
   return (
     <main
@@ -760,6 +759,11 @@ export default function Table() {
           </div>
         </TabsContent>
         <TabsContent value="seats">
+          <TableMembership
+            key={game.code + game.me}
+            game={game}
+            refresh={refresh}
+          />
           {game.host && game.phase === 'lobby' && (
             <section className="panel poll-result">
               <h2>Assign the town’s characters.</h2>
@@ -785,7 +789,10 @@ export default function Table() {
                   SEAT {p.seat.toString().padStart(2, '0')} ·{' '}
                   {p.alive ? 'ALIVE' : 'DEAD'}
                 </p>
-                <h2>{p.name}</h2>
+                <h2>
+                  {p.name}
+                  {p.departed ? ' · Left table' : ''}
+                </h2>
                 {game.host && (
                   <p className="role-name">
                     {ROLES.find((r) => r.id === p.role)?.name ||
@@ -810,6 +817,15 @@ export default function Table() {
                       {p.used ? 'ABILITY USED' : ''}
                     </p>
                     {p.notes && <p>{p.notes}</p>}
+                    <button
+                      className="secondary"
+                      onClick={() => {
+                        setChatPlayer(p.id);
+                        setActiveTab('messages');
+                      }}
+                    >
+                      Open conversation
+                    </button>
                     {button(
                       game.controls.find(
                         (c) =>
@@ -822,73 +838,15 @@ export default function Table() {
             ))}
           </div>
         </TabsContent>
-        <TabsContent value="messages">
-          <div className="panel message-panel">
-            <div className="section-heading">
-              <div>
-                <p className="eyebrow">PRIVATE CHANNEL</p>
-                <h2>
-                  {game.host ? 'Player conversations' : 'Your Storyteller'}
-                </h2>
-              </div>
-              {button(chat, true)}
-            </div>
-            {game.host && (
-              <FieldInput
-                field={{
-                  key: 'filter',
-                  label: 'Conversation',
-                  type: 'select',
-                  options: [
-                    { value: 'all', label: 'All conversations' },
-                    ...game.players.map((p) => ({
-                      value: p.id,
-                      label: p.name,
-                    })),
-                  ],
-                }}
-                value={chatPlayer}
-                onChange={(v) => setChatPlayer(String(v))}
-              />
-            )}
-            <div className="message-feed" aria-live="polite">
-              {msgs.length === 0 ? (
-                <p className="muted">No messages yet.</p>
-              ) : (
-                msgs
-                  .slice()
-                  .reverse()
-                  .map((m) => (
-                    <article
-                      className={
-                        'message ' +
-                        (m.kind === 'correction' ? 'correction' : '')
-                      }
-                      key={m.id}
-                    >
-                      <div>
-                        <strong>
-                          {m.from === 'host' ? 'Storyteller' : name(m.from)}
-                        </strong>
-                        <small>
-                          {m.to === 'all'
-                            ? 'Everyone'
-                            : game.host
-                              ? 'To ' + name(m.to)
-                              : 'Private'}{' '}
-                          ·{' '}
-                          {new Date(m.at).toLocaleTimeString([], {
-                            hour: '2-digit',
-                            minute: '2-digit',
-                          })}
-                        </small>
-                      </div>
-                      <p>{m.text}</p>
-                    </article>
-                  ))
-              )}
-            </div>
-          </div>
+        <TabsContent value="messages" keepMounted>
+          <TableMessages
+            game={game}
+            recipient={chatPlayer}
+            onRecipient={setChatPlayer}
+            online={online}
+            refresh={refresh}
+            active={activeTab === 'messages'}
+          />
         </TabsContent>
         <TabsContent value="script">
           <div className="panel">
@@ -958,6 +916,7 @@ export default function Table() {
           Save recovery key
         </button>
         <Link href="/account">Account & saved games</Link>
+        <button onClick={() => setActiveTab('seats')}>Your name & table</button>
         <Link href="/rules">Rules & roles</Link>
         <Link href="/">Switch session</Link>
       </footer>

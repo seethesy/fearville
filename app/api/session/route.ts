@@ -2,6 +2,7 @@ import { database } from '@/db';
 import { accountAuth, attachMember } from '@/lib/accounts/service';
 import { newGame, uuid } from '@/lib/game/types';
 import { requireThat } from '@/lib/game/engine';
+import { renameMember, removeMember } from '@/lib/game/membership';
 import {
   joinSession,
   memberExpiry,
@@ -49,6 +50,75 @@ export async function POST(r: Request) {
     const token = uuid() + uuid();
     const tokenHash = await hash(token);
     const db = database();
+    if (['rename', 'leave', 'remove', 'deleteLobby'].includes(body.action)) {
+      for (let attempt = 0; attempt < 8; attempt++) {
+        const { actor, code } = await auth(r);
+        const { game, version } = await read(code);
+        if (body.action === 'deleteLobby') {
+          requireThat(actor.host, 'Only the Storyteller can delete the lobby.');
+          requireThat(game.phase === 'lobby', 'Only a lobby can be deleted.');
+          const deleted = await db
+            .prepare('DELETE FROM sessions WHERE code = ? AND version = ?')
+            .bind(code, version)
+            .run();
+          if (!deleted.meta.changes) continue;
+          return json({ ok: true }, 200, {
+            'Set-Cookie': `${cookieName}=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0`,
+          });
+        }
+        let removed = '';
+        if (body.action === 'rename')
+          renameMember(game, actor, body.name, Date.now());
+        else {
+          requireThat(
+            body.action !== 'remove' || actor.host,
+            'Only the Storyteller can remove players.',
+          );
+          requireThat(
+            body.action !== 'leave' || !actor.host,
+            'The Storyteller can close the tab to return later, or delete an unstarted lobby.',
+          );
+          removed = removeMember(
+            game,
+            actor,
+            body.action === 'leave' ? actor.id : body.player,
+            Date.now(),
+          );
+        }
+        // Unique operation marker makes credential revocation conditional on
+        // this exact successful update, inside one atomic D1 transaction.
+        const state = JSON.stringify({ ...game, membershipRevision: uuid() });
+        const statements = [
+          db
+            .prepare(
+              'UPDATE sessions SET state = ?, version = version + 1 WHERE code = ? AND version = ?',
+            )
+            .bind(state, code, version),
+        ];
+        if (removed) {
+          for (const table of ['members', 'account_seats'])
+            statements.push(
+              db
+                .prepare(
+                  `DELETE FROM ${table} WHERE code = ? AND player = ? AND EXISTS (SELECT 1 FROM sessions WHERE code = ? AND state = ?)`,
+                )
+                .bind(code, removed, code, state),
+            );
+        }
+        const result = await db.batch(statements);
+        if (!result[0].meta.changes) continue;
+        return json(
+          { ok: true },
+          200,
+          body.action === 'leave'
+            ? {
+                'Set-Cookie': `${cookieName}=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0`,
+              }
+            : {},
+        );
+      }
+      return json({ error: 'The table changed. Please try again.' }, 409);
+    }
     const account = await accountAuth(r);
     if (body.action === 'restore') {
       requireThat(

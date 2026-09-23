@@ -13,7 +13,13 @@ export async function GET(r: Request) {
   try {
     const { actor, code } = await auth(r);
     for (let i = 0; i < 8; i++) {
+      await auth(r);
       const { game, version, created } = await read(code);
+      if (
+        !actor.host &&
+        !game.players.some((p) => p.id === actor.id && !p.departed)
+      )
+        throw Error('AUTH');
       const now = Date.now();
       const changed = tick(game, now);
       if (changed && !(await save(game, version))) continue;
@@ -38,6 +44,7 @@ export async function POST(r: Request) {
     if (c.action === 'vote' && typeof c.yes === 'string')
       c.yes = c.yes === 'true';
     for (let i = 0; i < 8; i++) {
+      await auth(r);
       const { game, version, created } = await read(code);
       const now = Date.now();
       const before = game.phase;

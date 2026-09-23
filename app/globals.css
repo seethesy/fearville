@@ -1720,3 +1720,44 @@ h3,
   .reference-page .panel { padding: 20px; }
   .reference-page h1 { font-size: 2rem; }
 }
+
+.conversation-layout { display: grid; grid-template-columns: minmax(190px, .7fr) minmax(0, 2fr); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; background: var(--card); }
+.single-conversation { grid-template-columns: minmax(0, 1fr); }
+.conversation-list { padding: 16px; border-right: 1px solid var(--border); max-height: 75dvh; overflow-y: auto; }
+.conversation-list h2 { margin-bottom: 16px; }
+.conversation-list button { display: block; width: 100%; min-height: 64px; text-align: left; padding: 12px; border-radius: 6px; margin-bottom: 6px; }
+.conversation-list button.selected { background: #be510326; outline: 1px solid var(--ring); }
+.conversation-list strong, .conversation-list span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.conversation-list span { font-size: .8rem; color: var(--muted-foreground); margin-top: 6px; }
+.conversation { min-width: 0; }
+.conversation header, .message-composer { padding: 20px; }
+.conversation header { border-bottom: 1px solid var(--border); overflow-wrap: anywhere; }
+.conversation header h2 { font-size: 1.4rem; }
+.conversation-feed { height: min(48dvh, 480px); min-height: 200px; overflow-y: auto; overscroll-behavior: contain; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+.chat-bubble { max-width: 88%; border-radius: 14px; padding: 12px 16px; background: #454545; align-self: flex-start; overflow-wrap: anywhere; flex-shrink: 0; }
+.chat-bubble.outgoing { align-self: flex-end; background: #754224; }
+.chat-bubble.system-message { border: 1px solid #817367; }
+.chat-bubble p { white-space: pre-wrap; margin: 5px 0; }
+.chat-bubble small, .chat-bubble time { font-size: .75rem; color: #ded7d1; }
+.chat-bubble time { display: block; text-align: right; }
+.message-composer { border-top: 1px solid var(--border); }
+.message-composer .field { margin-bottom: 10px; }
+.composer-actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.composer-actions small { color: var(--muted-foreground); font-size: .75rem; }
+.membership-panel { margin-bottom: 24px; }
+.membership-panel form { max-width: 450px; margin: 20px 0; }
+.membership-panel h3 { margin-top: 24px; }
+.membership-panel output { display: block; padding: 12px 0; }
+.membership-row { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 12px 0; border-bottom: 1px solid var(--border); overflow-wrap: anywhere; }
+.membership-row button { max-width: 65%; white-space: normal; }
+.membership-panel > .danger { margin-top: 20px; }
+@media (max-width: 800px) {
+  .conversation-layout { grid-template-columns: minmax(0, 1fr); }
+  .conversation-list { display: flex; gap: 8px; overflow-x: auto; border-right: 0; border-bottom: 1px solid var(--border); padding: 12px; }
+  .conversation-list h2 { display: none; }
+  .conversation-list button { flex: 0 0 155px; width: 155px; margin: 0; }
+  .conversation header, .message-composer { padding: 16px; }
+  .conversation-feed { height: 40dvh; }
+  .chat-bubble { max-width: 95%; }
+}
+.unread-count { display: inline-block; margin-left: 8px; padding: 2px 6px; background: #be5103; color: white; border-radius: 12px; font-size: .7rem; }

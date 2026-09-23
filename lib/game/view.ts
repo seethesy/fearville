@@ -532,6 +532,7 @@ export function view(g: Game, a: Actor, version: number, now: number) {
         id: p.id,
         name: p.name,
         seat: p.seat,
+        departed: !!p.departed,
         alive: a.host ? p.alive : p.publicAlive,
         ghost: g.phase === 'night' && !a.host ? p.ghost : p.ghost,
         ...(a.host

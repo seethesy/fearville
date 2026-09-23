@@ -199,6 +199,7 @@ export const COUNTS: Record<number, number[]> = {
   15: [9, 2, 3, 1],
 };
 export type Player = {
+  departed?: boolean;
   id: string;
   name: string;
   seat: number;

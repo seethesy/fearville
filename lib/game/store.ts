@@ -34,6 +34,12 @@ export async function auth(
     .bind(await hash(token), Date.now())
     .first<{ code: string; player: string; host: number }>();
   if (!member) throw Error('AUTH');
+  const { game } = await read(member.code);
+  if (
+    !member.host &&
+    !game.players.some((p) => p.id === member.player && !p.departed)
+  )
+    throw Error('AUTH');
   return {
     actor: { id: member.player, host: !!member.host },
     code: member.code,

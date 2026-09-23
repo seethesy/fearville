@@ -431,6 +431,10 @@ export function execute(
   c: Command,
   now: number,
 ): string {
+  requireThat(
+    actor.host || g.players.some((p) => p.id === actor.id && !p.departed),
+    'This seat is no longer available.',
+  );
   const hostActions = [
     'randomAssign',
     'configure',
@@ -477,12 +481,32 @@ export function execute(
   if (c.action === 'chat') {
     const to = actor.host ? clean(c.to) : 'host';
     requireThat(
-      to === 'host' || to === 'all' || g.players.some((p) => p.id === to),
+      to === 'host' ||
+        to === 'all' ||
+        g.players.some((p) => p.id === to && !p.departed),
       'Choose a recipient.',
     );
     const text = clean(c.text, 4000);
     requireThat(text, 'Write a message.');
+    if (c.messageId !== undefined) {
+      requireThat(
+        typeof c.messageId === 'string' && /^[a-f0-9-]{36}$/i.test(c.messageId),
+        'Invalid message identifier.',
+      );
+      const previous = g.messages.find((m) => m.id === c.messageId);
+      if (previous) {
+        requireThat(
+          previous.from === actor.id &&
+            previous.to === to &&
+            previous.text === text,
+          'Message identifier already used.',
+        );
+        return 'Message sent.';
+      }
+    }
     message(g, to, text, now, 'chat', actor.id);
+    if (typeof c.messageId === 'string')
+      g.messages[g.messages.length - 1].id = c.messageId;
     return (
       'Send this message ' +
       (to === 'all'

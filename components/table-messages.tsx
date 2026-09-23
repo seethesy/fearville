@@ -1,0 +1,267 @@
+'use client';
+import { useEffect, useRef, useState } from 'react';
+import type { GameView } from '@/lib/game/view';
+
+export function TableMessages({
+  game,
+  recipient,
+  onRecipient,
+  online,
+  refresh,
+  active,
+}: {
+  game: GameView;
+  recipient: string;
+  onRecipient: (id: string) => void;
+  online: boolean;
+  refresh: () => Promise<void>;
+  active: boolean;
+}) {
+  const [drafts, setDrafts] = useState<Record<string, string>>({});
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState('');
+  const [seen, setSeen] = useState<Record<string, number>>({});
+  const retry = useRef<{ to: string; text: string; id: string } | null>(null);
+  const feed = useRef<HTMLDivElement>(null);
+  const nearBottom = useRef(true);
+  const to = game.host ? recipient : 'host';
+  const player = game.players.find((p) => p.id === to);
+  const title =
+    to === 'all'
+      ? 'Announcements to everyone'
+      : game.host
+        ? (player?.name ?? 'Choose a player')
+        : 'Storyteller';
+  const messages = game.messages.filter((m) =>
+    game.host
+      ? to === 'all'
+        ? m.to === 'all'
+        : m.to === to || m.from === to
+      : true,
+  );
+  const last = messages.at(-1)?.id;
+  const lastAt = messages.at(-1)?.at ?? 0;
+  useEffect(() => {
+    if (!active) return;
+    const frame = requestAnimationFrame(() => {
+      setSeen((old) => (old[to] === lastAt ? old : { ...old, [to]: lastAt }));
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [active, to, lastAt]);
+  useEffect(() => {
+    nearBottom.current = true;
+    if (feed.current) feed.current.scrollTop = feed.current.scrollHeight;
+  }, [to, active]);
+  useEffect(() => {
+    if (nearBottom.current && feed.current)
+      feed.current.scrollTop = feed.current.scrollHeight;
+  }, [last]);
+  async function send() {
+    const text = (drafts[to] ?? '').trim();
+    if (!text || sending || !online) return;
+    setSending(true);
+    setError('');
+    const pending =
+      retry.current?.to === to && retry.current.text === text
+        ? retry.current
+        : { to, text, id: crypto.randomUUID() };
+    retry.current = pending;
+    try {
+      const r = await fetch('/api/game', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'chat',
+          to,
+          text,
+          messageId: pending.id,
+        }),
+      });
+      const data = (await r.json()) as { error?: string };
+      if (!r.ok) throw Error(data.error || 'Message was not sent. Try again.');
+      retry.current = null;
+      setDrafts((old) => ({ ...old, [to]: '' }));
+      nearBottom.current = true;
+      await refresh();
+    } catch (e) {
+      setError(
+        e instanceof Error
+          ? e.message
+          : 'Could not send. Your draft is saved; try again.',
+      );
+    } finally {
+      setSending(false);
+    }
+  }
+  return (
+    <div
+      className={`conversation-layout ${game.host ? '' : 'single-conversation'}`}
+    >
+      {game.host && (
+        <nav className="conversation-list" aria-label="Player conversations">
+          <h2>Messages</h2>
+          {[
+            { id: 'all', name: 'Everyone', departed: false },
+            ...game.players,
+          ].map((p) => {
+            const latest = game.messages
+              .filter((m) =>
+                p.id === 'all'
+                  ? m.to === 'all'
+                  : m.to === p.id || m.from === p.id,
+              )
+              .at(-1);
+            const unread = game.messages.filter(
+              (m) => m.from === p.id && m.at > (seen[p.id] ?? 0),
+            ).length;
+            return (
+              <button
+                key={p.id}
+                className={to === p.id ? 'selected' : ''}
+                aria-current={to === p.id ? 'true' : undefined}
+                onClick={() => {
+                  onRecipient(p.id);
+                  setError('');
+                }}
+              >
+                <strong>
+                  {p.name}
+                  {p.departed ? ' · Left' : ''}
+                  {unread > 0 && (
+                    <small className="unread-count">{unread} new</small>
+                  )}
+                </strong>
+                <span>
+                  {latest?.text ??
+                    (p.id === 'all'
+                      ? 'Public announcements'
+                      : 'Start a private conversation')}
+                </span>
+              </button>
+            );
+          })}
+        </nav>
+      )}
+      <section className="conversation" aria-label={title}>
+        <header>
+          <h2>{title}</h2>
+          <p className="muted">
+            {to === 'all'
+              ? 'Messages here are visible to every player.'
+              : 'Private conversation · updates automatically'}
+          </p>
+        </header>
+        <div
+          className="conversation-feed"
+          ref={feed}
+          role="log"
+          aria-label="Conversation messages"
+          aria-live={active ? 'polite' : 'off'}
+          onScroll={() => {
+            const el = feed.current;
+            if (el)
+              nearBottom.current =
+                el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+          }}
+        >
+          {!messages.length && (
+            <p className="muted">
+              No messages yet. Say hello or send instructions below.
+            </p>
+          )}
+          {messages.map((m) => (
+            <article
+              key={m.id}
+              className={`chat-bubble ${m.from === game.me ? 'outgoing' : 'incoming'} ${m.kind !== 'chat' ? 'system-message' : ''}`}
+            >
+              <small>
+                {m.to === 'all'
+                  ? 'Announcement'
+                  : m.kind === 'correction'
+                    ? 'Correction'
+                    : m.kind === 'info'
+                      ? 'Character information'
+                      : m.from === game.me
+                        ? 'You'
+                        : game.host
+                          ? player?.name
+                          : 'Storyteller'}
+              </small>
+              <p>{m.text}</p>
+              <time dateTime={new Date(m.at).toISOString()}>
+                {new Date(m.at).toLocaleTimeString([], {
+                  hour: '2-digit',
+                  minute: '2-digit',
+                })}
+              </time>
+            </article>
+          ))}
+        </div>
+        <form
+          className="message-composer"
+          onSubmit={(e) => {
+            e.preventDefault();
+            void send();
+          }}
+        >
+          {error && (
+            <p className="error" role="alert">
+              {error}
+            </p>
+          )}
+          {player?.departed ? (
+            <p className="muted">
+              This player has left. Their conversation is kept for reference.
+            </p>
+          ) : (
+            <>
+              <label className="field">
+                {to === 'all' ? 'Announcement' : `Message ${title}`}
+                <textarea
+                  aria-label={
+                    to === 'all' ? 'Announcement' : `Message ${title}`
+                  }
+                  rows={3}
+                  maxLength={4000}
+                  value={drafts[to] ?? ''}
+                  disabled={sending}
+                  placeholder="Write a message…"
+                  onChange={(e) =>
+                    setDrafts((old) => ({ ...old, [to]: e.target.value }))
+                  }
+                  onKeyDown={(e) => {
+                    if (
+                      e.key === 'Enter' &&
+                      !e.shiftKey &&
+                      !e.nativeEvent.isComposing
+                    ) {
+                      e.preventDefault();
+                      void send();
+                    }
+                  }}
+                />
+              </label>
+              <div className="composer-actions">
+                <small>
+                  {online
+                    ? 'Enter to send · Shift+Enter for a new line'
+                    : 'Reconnecting — your draft is kept.'}
+                </small>
+                <button
+                  className="primary"
+                  disabled={sending || !online || !(drafts[to] ?? '').trim()}
+                >
+                  {sending
+                    ? 'Sending…'
+                    : to === 'all'
+                      ? 'Send to everyone'
+                      : 'Send'}
+                </button>
+              </div>
+            </>
+          )}
+        </form>
+      </section>
+    </div>
+  );
+}

@@ -110,7 +110,7 @@ void test('host, unseated users and invalid targets cannot answer; empty polls c
   assert.throws(() => execute(g, host, c, 200), /seated/);
   assert.throws(
     () => execute(g, { id: 'stranger', host: false }, c, 200),
-    /not found/,
+    /no longer available/,
   );
   assert.throws(
     () =>
