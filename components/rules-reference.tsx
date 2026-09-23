@@ -122,10 +122,12 @@ export function RulesReference() {
             abilities.
           </li>
           <li>
-            <strong>Vote before the timer ends.</strong> Submit Yes or No in
-            Game flow. You can change your ballot before it closes. A counted
-            Yes spends a dead player’s remaining vote; No does not. The
-            Storyteller confirms the day’s outcome.
+            <strong>Vote openly.</strong> Submit Yes or No in Game flow;
+            everyone can see your answer. At this table, the nominee does not
+            vote. Voting closes when all eligible players answer or the timer
+            ends, whichever comes first. You can change your ballot until then.
+            A counted Yes spends a dead player’s remaining vote; No does not.
+            The Storyteller confirms the day’s outcome.
           </li>
           <li>
             <strong>Answer a night poll.</strong> Everyone can pick a name for

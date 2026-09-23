@@ -154,10 +154,12 @@ assert.equal(nomination.status, 200);
 assert.equal(nomination.data.game.phase, 'defense');
 await action({ action: 'advance' });
 const voteResults = await Promise.all(
-  tokens.map((t, i) => call('/api/game', t, { action: 'vote', yes: i < 4 })),
+  tokens
+    .filter((_, i) => i !== 1)
+    .map((t, i) => call('/api/game', t, { action: 'vote', yes: i < 4 })),
 );
 assert.ok(voteResults.every((r) => r.status === 200));
-await action({ action: 'advance' });
+state = (await call('/api/game', host)).data;
 assert.equal(state.ballots[0].count, 4);
 assert.equal(state.leader.target, b);
 const expired = await call('/api/game', 'invalid');

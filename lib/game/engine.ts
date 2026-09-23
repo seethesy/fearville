@@ -222,6 +222,21 @@ export function death(
     }
   }
 }
+export function eligibleVoters(g: Game) {
+  return g.players.filter(
+    (p) => p.id !== g.active?.target && !p.departed && (p.alive || p.ghost),
+  );
+}
+export function finishVotingIfReady(g: Game, at: number) {
+  if (g.phase !== 'voting' || !g.active) return false;
+  if (
+    !eligibleVoters(g).every((p) => typeof g.active!.votes[p.id] === 'boolean')
+  )
+    return false;
+  snapshot(g, 'All eligible votes received', at);
+  tally(g, at);
+  return true;
+}
 export function tally(g: Game, at: number) {
   const b = g.active;
   requireThat(b, 'No active ballot.');
@@ -229,7 +244,13 @@ export function tally(g: Game, at: number) {
   b.threshold = Math.ceil(g.players.filter((p) => p.alive).length / 2);
   const valid = new Set(
     g.players
-      .filter((p) => b.votes[p.id] === true && (p.alive || p.ghost))
+      .filter(
+        (p) =>
+          p.id !== b.target &&
+          !p.departed &&
+          b.votes[p.id] === true &&
+          (p.alive || p.ghost),
+      )
       .map((p) => p.id),
   );
   for (const p of g.players) {
@@ -260,7 +281,8 @@ export function tally(g: Game, at: number) {
   if (g.nominationRemaining <= 0) setPhase(g, 'dayReview', at);
 }
 export function tick(g: Game, now: number) {
-  let changed = false;
+  let changed =
+    g.deadline !== null && g.deadline > now && finishVotingIfReady(g, now);
   for (let n = 0; n < 8 && g.deadline !== null && g.deadline <= now; n++) {
     const at = g.deadline;
     snapshot(g, `${phaseName[g.phase]} timer ended`, at);
@@ -919,10 +941,21 @@ export function execute(
     }
     case 'vote': {
       requireThat(g.phase === 'voting' && g.active, 'Voting is not open.');
+      if (c.ballot !== undefined)
+        requireThat(
+          c.ballot === g.active.id,
+          'The ballot changed. Reopen voting.',
+        );
       const p = person(g, actor.host ? c.player : actor.id);
       requireThat(p.alive || p.ghost, 'Your dead vote has already been spent.');
+      requireThat(
+        p.id !== g.active.target && !p.departed,
+        'This player is not eligible to vote on this nomination.',
+      );
       requireThat(typeof c.yes === 'boolean', 'Choose yes or no.');
       g.active.votes[p.id] = c.yes;
+      if (finishVotingIfReady(g, now))
+        return 'Vote recorded. Everyone eligible has answered; voting is complete.';
       return c.yes
         ? 'Record a yes vote. If dead, this spends your remaining vote when the ballot closes.'
         : 'Record no. A no vote does not spend a dead vote.';

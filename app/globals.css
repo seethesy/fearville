@@ -1761,3 +1761,4 @@ h3,
   .chat-bubble { max-width: 95%; }
 }
 .unread-count { display: inline-block; margin-left: 8px; padding: 2px 6px; background: #be5103; color: white; border-radius: 12px; font-size: .7rem; }
+.ballots > div { flex-wrap: wrap; } .ballot-vote-details { flex-basis: 100%; width: 100%; } .ballot-vote-details summary { cursor: pointer; min-height: 44px; padding: 10px 0; }

@@ -185,9 +185,10 @@ export default function Table() {
       return;
     }
     setSelected(control);
-    setValues(
-      Object.fromEntries(control.fields.map((f) => [f.key, f.value ?? ''])),
-    );
+    setValues({
+      ...Object.fromEntries(control.fields.map((f) => [f.key, f.value ?? ''])),
+      ...(control.action === 'vote' ? { ballot: game?.active?.id ?? '' } : {}),
+    });
 
     setError('');
   }
@@ -592,12 +593,49 @@ export default function Table() {
                     <p className="ballot-callout">
                       {game.phase === 'defense'
                         ? 'Defense is in progress.'
-                        : game.active.myVote === null
-                          ? 'Your vote has not been submitted.'
-                          : game.active.myVote
-                            ? 'Your vote: YES'
-                            : 'Your vote: NO'}
+                        : game.host
+                          ? 'Votes are visible to everyone.'
+                          : !game.active.eligible.includes(game.me)
+                            ? 'You do not vote on this nomination.'
+                            : game.active.myVote === null
+                              ? 'Your vote has not been submitted.'
+                              : game.active.myVote
+                                ? 'Your vote: YES'
+                                : 'Your vote: NO'}
                     </p>
+                  )}
+                  {game.active && game.phase === 'voting' && (
+                    <section className="public-votes" aria-label="Live votes">
+                      <h3>
+                        Live votes ·{' '}
+                        {
+                          game.active.eligible.filter(
+                            (id) => typeof game.active!.votes[id] === 'boolean',
+                          ).length
+                        }
+                        /{game.active.eligible.length} answered
+                      </h3>
+                      <p className="muted">
+                        Voting ends as soon as all eligible players answer. The
+                        nominee does not vote.
+                      </p>
+                      {game.players.map((p) => (
+                        <div className="membership-row" key={p.id}>
+                          <span>{p.name}</span>
+                          <strong>
+                            {p.id === game.active!.target
+                              ? 'Nominee'
+                              : !game.active!.eligible.includes(p.id)
+                                ? 'Not voting'
+                                : game.active!.votes[p.id] === true
+                                  ? 'Yes'
+                                  : game.active!.votes[p.id] === false
+                                    ? 'No'
+                                    : 'Waiting'}
+                          </strong>
+                        </div>
+                      ))}
+                    </section>
                   )}
                   {game.ballots.length > 0 && (
                     <div className="ballots">
@@ -607,6 +645,22 @@ export default function Table() {
                           <strong>
                             {b.count} <small>yes</small>
                           </strong>
+                          <details className="ballot-vote-details">
+                            <summary>View submitted votes</summary>
+                            <p className="muted">
+                              Character rules may affect the counted total.
+                            </p>
+                            {Object.entries(b.votes).map(([id, yes]) => (
+                              <p key={id}>
+                                {name(id)}:{' '}
+                                {id === b.target
+                                  ? 'Nominee · not counted'
+                                  : yes
+                                    ? 'Yes'
+                                    : 'No'}
+                              </p>
+                            ))}
+                          </details>
                         </div>
                       ))}
                       <p>

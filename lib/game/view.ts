@@ -15,6 +15,7 @@ import {
   candidate,
   nameOf,
   healthy,
+  eligibleVoters,
 } from './engine.ts';
 const select = (
   key: string,
@@ -327,13 +328,27 @@ export function controls(g: Game, a: Actor): Control[] {
         ...(a.host ? overrideFields : []),
       ],
     );
-  if (g.phase === 'voting' && (a.host || me?.alive || me?.ghost))
+  const voters = eligibleVoters(g);
+  if (
+    g.phase === 'voting' &&
+    voters.length &&
+    (a.host || voters.some((p) => p.id === a.id))
+  )
     add(
       'vote',
       'Cast your vote',
-      'Yes votes count at the end of the timer. A dead player spends their token only on a counted yes vote.',
+      'Votes are public. Voting closes when everyone eligible answers or the timer ends. The nominee cannot vote. A dead player spends their token only on a counted yes.',
       [
-        ...(a.host ? [select('player', 'Player', ps, ps[0]?.value)] : []),
+        ...(a.host
+          ? [
+              select(
+                'player',
+                'Player',
+                ps.filter((o) => voters.some((p) => p.id === o.value)),
+                voters[0]?.id,
+              ),
+            ]
+          : []),
         select(
           'yes',
           'Vote',
@@ -570,7 +585,8 @@ export function view(g: Game, a: Actor, version: number, now: number) {
           target: g.active.target,
           threshold: g.active.threshold,
           myVote: g.active.votes[a.id] ?? null,
-          ...(a.host ? { votes: g.active.votes } : {}),
+          votes: g.active.votes,
+          eligible: eligibleVoters(g).map((p) => p.id),
         }
       : null,
     ballots: g.ballots.map((b) => ({
@@ -579,6 +595,7 @@ export function view(g: Game, a: Actor, version: number, now: number) {
       target: b.target,
       count: b.count,
       threshold: b.threshold,
+      votes: b.votes,
       ...(a.host ? { invalid: b.invalid } : {}),
     })),
     leader: { ...leader, name: leader.target ? nameOf(g, leader.target) : '' },

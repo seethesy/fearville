@@ -138,7 +138,9 @@ void test('nomination restrictions, self nomination, threshold and tie', () => {
   );
   assert.equal(g.active?.threshold, 4);
   g.phase = 'voting';
-  for (const p of g.players.slice(0, 4))
+  for (const p of g.players
+    .filter((p) => p.id !== g.active?.target)
+    .slice(0, 4))
     execute(g, { id: p.id, host: false }, { action: 'vote', yes: true }, 110);
   execute(g, host, { action: 'advance' }, 120);
   assert.equal(candidate(g).target, a.id);
@@ -159,7 +161,9 @@ void test('nomination restrictions, self nomination, threshold and tie', () => {
     130,
   );
   g.phase = 'voting';
-  for (const p of g.players.slice(0, 4))
+  for (const p of g.players
+    .filter((p) => p.id !== g.active?.target)
+    .slice(0, 4))
     execute(g, { id: p.id, host: false }, { action: 'vote', yes: true }, 140);
   execute(g, host, { action: 'advance' }, 150);
   assert.equal(candidate(g).tied, true);
@@ -185,7 +189,7 @@ void test('dead players cannot nominate and have one counted yes vote', () => {
   execute(
     g,
     { id: b.id, host: false },
-    { action: 'nominate', target: a.id },
+    { action: 'nominate', target: b.id },
     2,
   );
   g.phase = 'voting';
@@ -202,7 +206,12 @@ void test('Butler yes requires master yes; a dead Butler is unrestricted', () =>
   g.remaining = 100;
   const [butler, master] = g.players;
   butler.master = master.id;
-  execute(g, host, { action: 'nominate', by: master.id, target: butler.id }, 1);
+  execute(
+    g,
+    host,
+    { action: 'nominate', by: master.id, target: g.players[2].id },
+    1,
+  );
   g.phase = 'voting';
   execute(g, { id: butler.id, host: false }, { action: 'vote', yes: true }, 2);
   execute(g, host, { action: 'advance' }, 3);

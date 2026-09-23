@@ -1,5 +1,5 @@
 import type { Actor, Game } from './types.ts';
-import { requireThat, log } from './engine.ts';
+import { requireThat, log, finishVotingIfReady } from './engine.ts';
 
 export function renameMember(
   g: Game,
@@ -60,6 +60,7 @@ export function removeMember(
     });
     if (g.redHerring === p.id) g.redHerring = '';
   } else p.departed = true;
+  finishVotingIfReady(g, now);
   g.history = [];
   log(
     g,
