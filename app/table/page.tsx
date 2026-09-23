@@ -1,6 +1,7 @@
 'use client';
 import Link from 'next/link';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { newestView } from '@/lib/game/live';
 import {
   Play,
   Users,
@@ -106,6 +107,7 @@ function FieldInput({
 export default function Table() {
   const [game, setGame] = useState<GameView | null>(null),
     [error, setError] = useState(''),
+    [connectionError, setConnectionError] = useState(''),
     [authError, setAuthError] = useState(false),
     [online, setOnline] = useState(true),
     [now, setNow] = useState(() => Date.now()),
@@ -120,6 +122,19 @@ export default function Table() {
     [chatPlayer, setChatPlayer] = useState('all'),
     [activeTab, setActiveTab] = useState('flow'),
     [compact, setCompact] = useState(false);
+  const requestNumber = useRef(0);
+  const inFlight = useRef<{
+    controller: AbortController;
+    promise: Promise<void>;
+  } | null>(null);
+  const cancelRefresh = useCallback(() => {
+    ++requestNumber.current;
+    inFlight.current?.controller.abort();
+    inFlight.current = null;
+  }, []);
+  const applyGame = useCallback((incoming: GameView) => {
+    setGame((current) => newestView(current, incoming));
+  }, []);
   useEffect(() => {
     const media = window.matchMedia('(max-width: 800px)');
     const update = () => setCompact(media.matches);
@@ -127,43 +142,77 @@ export default function Table() {
     media.addEventListener('change', update);
     return () => media.removeEventListener('change', update);
   }, []);
-  const refresh = useCallback(async () => {
-    try {
-      const r = await fetch('/api/game', { cache: 'no-store' });
-      const d = (await r.json()) as GameView & {
-        error: string;
-        recoveryKey: string;
-      };
-      if (!r.ok) {
-        if (r.status === 401) setAuthError(true);
-        throw Error(d.error);
-      }
-      setGame(d);
-      setOffset(d.serverNow - Date.now());
-      setOnline(true);
-      setAuthError(false);
-    } catch (e) {
-      setOnline(false);
-      setError(e instanceof Error ? e.message : 'Cannot connect.');
-    }
-  }, []);
+  const refresh = useCallback(
+    (force = true): Promise<void> => {
+      if (inFlight.current && !force) return inFlight.current.promise;
+      inFlight.current?.controller.abort();
+      const number = ++requestNumber.current;
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 10000);
+      const promise = (async () => {
+        try {
+          const r = await fetch('/api/game', {
+            cache: 'no-store',
+            credentials: 'same-origin',
+            signal: controller.signal,
+          });
+          const d = (await r.json()) as GameView & { error?: string };
+          if (number !== requestNumber.current) return;
+          if (!r.ok) {
+            if (r.status === 401) setAuthError(true);
+            throw Error(d.error || 'Cannot connect to the table.');
+          }
+          applyGame(d);
+          setOffset(d.serverNow - Date.now());
+          setOnline(true);
+          setAuthError(false);
+          setConnectionError('');
+        } catch (e) {
+          if (number !== requestNumber.current) return;
+          setOnline(false);
+          setConnectionError(
+            controller.signal.aborted
+              ? 'The connection timed out. Retrying automatically…'
+              : e instanceof Error
+                ? e.message
+                : 'Cannot connect. Retrying automatically…',
+          );
+        } finally {
+          clearTimeout(timeout);
+          if (number === requestNumber.current) inFlight.current = null;
+        }
+      })();
+      inFlight.current = { controller, promise };
+      return promise;
+    },
+    [applyGame],
+  );
   useEffect(() => {
-    const initial = setTimeout(() => void refresh(), 0);
-    const id = setInterval(() => void refresh(), 2000);
+    let stopped = false;
+    let timer: ReturnType<typeof setTimeout>;
+    const poll = async () => {
+      await refresh(false);
+      if (!stopped)
+        timer = setTimeout(() => void poll(), document.hidden ? 5000 : 1000);
+    };
+    timer = setTimeout(() => void poll(), 0);
     const resume = () => {
       if (!document.hidden) void refresh();
     };
     window.addEventListener('online', resume);
+    window.addEventListener('focus', resume);
     window.addEventListener('pageshow', resume);
     document.addEventListener('visibilitychange', resume);
     return () => {
-      clearTimeout(initial);
-      clearInterval(id);
+      stopped = true;
+      clearTimeout(timer);
+      cancelRefresh();
       window.removeEventListener('online', resume);
+      window.removeEventListener('focus', resume);
       window.removeEventListener('pageshow', resume);
       document.removeEventListener('visibilitychange', resume);
     };
-  }, [refresh]);
+  }, [refresh, cancelRefresh]);
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 250);
     return () => clearInterval(id);
@@ -219,7 +268,7 @@ export default function Table() {
         }
         throw Error(data.error);
       }
-      setGame(data.game);
+      applyGame(data.game);
       setSelected(null);
       setNotice(data.summary);
       await refresh();
@@ -264,9 +313,9 @@ export default function Table() {
           <h1>
             {authError ? 'Return to your seat' : 'Connecting to your table…'}
           </h1>
-          {error && (
+          {(error || connectionError) && (
             <p className="error" role="alert">
-              {error}
+              {error || connectionError}
             </p>
           )}
           <Link className="quiet-link" href="/">
@@ -346,7 +395,7 @@ export default function Table() {
         </span>
         <span className="connection">
           <Radio size={14} aria-hidden="true" />{' '}
-          {online ? 'Connected' : 'Reconnecting…'}
+          {online ? 'Live updates' : 'Reconnecting…'}
         </span>
         <span className="table-population">
           {game.players.length} players ·{' '}
@@ -355,8 +404,9 @@ export default function Table() {
       </header>
       {!online && (
         <p className="error" aria-live="polite">
-          Connection interrupted. Actions are disabled until your table
-          reconnects. Timers continue on the server.
+          {connectionError || 'Connection interrupted.'} Your table reconnects
+          automatically. Actions are disabled until then. Timers continue on the
+          server.
         </p>
       )}
       <div className="table-title">
