@@ -33,15 +33,6 @@ import { RateStoryteller } from '@/components/social/rate-storyteller';
 import { TableMessages } from '@/components/table-messages';
 import { TableMembership } from '@/components/table-membership';
 import { RulesReference } from '@/components/rules-reference';
-import {
-  AlertDialog,
-  AlertDialogContent,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogCancel,
-} from '@/components/ui/alert-dialog';
 
 type Values = Record<string, string | number | boolean>;
 function FieldInput({
@@ -121,10 +112,6 @@ export default function Table() {
     [offset, setOffset] = useState(0),
     [selected, setSelected] = useState<Control | null>(null),
     [values, setValues] = useState<Values>({}),
-    [preview, setPreview] = useState<{
-      summary: string;
-      version: number;
-    } | null>(null),
     [busy, setBusy] = useState(false),
     [notice, setNotice] = useState(''),
     [recovery, setRecovery] = useState(''),
@@ -193,15 +180,19 @@ export default function Table() {
       setActiveTab('messages');
       return;
     }
+    if (control.fields.length === 0) {
+      void submit(control, {});
+      return;
+    }
     setSelected(control);
     setValues(
       Object.fromEntries(control.fields.map((f) => [f.key, f.value ?? ''])),
     );
-    setPreview(null);
+
     setError('');
   }
-  async function submit(confirm = false) {
-    if (!selected) return;
+  async function submit(control = selected, payload = values) {
+    if (!control || busy) return;
     setBusy(true);
     setError('');
     try {
@@ -209,10 +200,10 @@ export default function Table() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          ...values,
-          action: selected.action,
-          preview: !confirm,
-          version: confirm ? preview?.version : game?.version,
+          ...payload,
+          action: control.action,
+
+          version: game?.version,
         }),
       });
       const data = (await r.json()) as {
@@ -223,18 +214,14 @@ export default function Table() {
       };
       if (!r.ok) {
         if (r.status === 409) {
-          setPreview(null);
           await refresh();
         }
         throw Error(data.error);
       }
-      if (confirm) {
-        setGame(data.game);
-        setSelected(null);
-        setPreview(null);
-        setNotice(data.summary);
-        await refresh();
-      } else setPreview(data);
+      setGame(data.game);
+      setSelected(null);
+      setNotice(data.summary);
+      await refresh();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Action failed.');
     } finally {
@@ -336,7 +323,7 @@ export default function Table() {
       key={c.action + c.title}
       className={primary ? 'primary' : c.danger ? 'danger' : 'secondary'}
       onClick={() => open(c)}
-      disabled={!online}
+      disabled={!online || busy}
     >
       {c.title}
     </button>
@@ -517,7 +504,7 @@ export default function Table() {
                     <h2>{first?.name || 'The night is complete.'}</h2>
                     <p className="muted">
                       {first
-                        ? 'Speak privately with the acting player, record their choice, then preview and confirm the result.'
+                        ? 'Speak privately with the acting player, record their choice, then resolve the action.'
                         : 'Review the town, then announce dawn.'}
                     </p>
                     <ol className="night-list">
@@ -921,7 +908,7 @@ export default function Table() {
         <Link href="/">Switch session</Link>
       </footer>
       <Dialog
-        open={!!selected && !preview}
+        open={!!selected}
         onOpenChange={(v) => {
           if (!v && !busy) setSelected(null);
         }}
@@ -951,43 +938,11 @@ export default function Table() {
               </p>
             )}
             <button className="primary full" disabled={busy || !online}>
-              {busy ? 'Checking…' : 'Preview action'}
+              {busy ? 'Applying…' : selected?.title || 'Apply'}
             </button>
           </form>
         </DialogContent>
       </Dialog>
-      <AlertDialog
-        open={!!preview}
-        onOpenChange={(v) => {
-          if (!v && !busy) setPreview(null);
-        }}
-      >
-        <AlertDialogContent className="action-dialog">
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              Confirm {selected?.title.toLowerCase()}
-            </AlertDialogTitle>
-            <AlertDialogDescription className="preview-text">
-              {preview?.summary}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          {error && (
-            <p role="alert" className="error">
-              {error}
-            </p>
-          )}
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={busy}>Back</AlertDialogCancel>
-            <button
-              className={selected?.danger ? 'danger' : 'primary'}
-              disabled={busy || !online}
-              onClick={() => void submit(true)}
-            >
-              {busy ? 'Applying…' : 'Confirm action'}
-            </button>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
       <Dialog
         open={!!recovery}
         onOpenChange={(v) => {

@@ -69,7 +69,7 @@ export function controls(g: Game, a: Actor): Control[] {
       add(
         'randomAssign',
         'Randomly assign roles',
-        'Preview a balanced Trouble Brewing setup for 5–15 players. Replaces all assigned characters, Demon bluffs, and the red herring. You can edit individual roles in Seats afterward.',
+        'Apply a balanced Trouble Brewing setup for 5–15 players. Replaces all assigned characters, Demon bluffs, and the red herring. You can edit individual roles in Seats afterward.',
       );
       add(
         'start',
@@ -161,7 +161,7 @@ export function controls(g: Game, a: Actor): Control[] {
               '',
               'textarea',
             ),
-            hint: 'The preview shows what will be sent. Use an override reason for registration changes.',
+            hint: 'Leave blank to use calculated information. Use an override reason for registration changes.',
           });
         if (r === 'imp')
           fields.push(
