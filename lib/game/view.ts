@@ -1,5 +1,6 @@
 import {
   ROLES,
+  COUNTS,
   role,
   phaseName,
   type Game,
@@ -110,7 +111,17 @@ export function controls(g: Game, a: Actor): Control[] {
             'investigator',
           ].includes(r)
         )
-          fields.push(select('target', 'Chosen player', optional.concat(ps)));
+          fields.push(
+            select(
+              'target',
+              'Chosen player',
+              optional.concat(
+                ps.filter(
+                  (o) => !['monk', 'butler'].includes(r) || o.value !== p?.id,
+                ),
+              ),
+            ),
+          );
         if (
           [
             'fortuneteller',
@@ -317,11 +328,29 @@ export function controls(g: Game, a: Actor): Control[] {
       'Make a nomination',
       'Each living player may nominate once per day; each player may be nominated once per day.',
       [
-        ...(a.host ? [select('by', 'Nominator', ps, ps[0]?.value)] : []),
+        ...(a.host
+          ? [
+              select(
+                'by',
+                'Nominator',
+                ps.filter((o) =>
+                  g.players.some(
+                    (p) =>
+                      p.id === o.value &&
+                      p.alive &&
+                      !p.departed &&
+                      !g.nominators.includes(p.id),
+                  ),
+                ),
+                '',
+                true,
+              ),
+            ]
+          : []),
         select(
           'target',
           'Nominee',
-          ps.filter((o) => a.host || !g.nominees.includes(o.value)),
+          ps.filter((o) => !g.nominees.includes(o.value)),
           '',
           true,
         ),
@@ -423,8 +452,14 @@ export function controls(g: Game, a: Actor): Control[] {
             key,
             `Demon bluff ${i + 1}`,
             optional.concat(
-              ROLES.filter((r) =>
-                ['townsfolk', 'outsider'].includes(r.team),
+              ROLES.filter(
+                (r) =>
+                  ['townsfolk', 'outsider'].includes(r.team) &&
+                  !g.players.some(
+                    (p) =>
+                      p.role === r.id ||
+                      (p.role === 'drunk' && p.shown === r.id),
+                  ),
               ).map((r) => ({ value: r.id, label: r.name })),
             ),
             g.bluffs[i] || '',
@@ -433,7 +468,15 @@ export function controls(g: Game, a: Actor): Control[] {
         select(
           'redHerring',
           'Fortune Teller red herring',
-          optional.concat(ps),
+          optional.concat(
+            ps.filter((o) =>
+              g.players.some(
+                (p) =>
+                  p.id === o.value &&
+                  ['townsfolk', 'outsider'].includes(role(p.role)?.team ?? ''),
+              ),
+            ),
+          ),
           g.redHerring,
         ),
       ],
@@ -515,6 +558,11 @@ export function view(g: Game, a: Actor, version: number, now: number) {
   const leader = candidate(g);
   return {
     code: g.code,
+    standardCounts: COUNTS[g.players.length] ?? null,
+    dawnAnnouncement:
+      g.phase !== 'night' && g.phase !== 'lobby'
+        ? (g.dawnAnnouncement ?? null)
+        : null,
     hostName: g.hostName,
     host: a.host,
     me: a.id,
@@ -527,6 +575,7 @@ export function view(g: Game, a: Actor, version: number, now: number) {
     deadline: g.deadline,
     remaining: g.remaining,
     winner: g.winner,
+    execution: g.execution,
     nightPoll:
       !a.host && me && g.phase === 'night' && g.nightPoll?.night === g.night
         ? {

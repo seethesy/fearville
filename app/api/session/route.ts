@@ -50,7 +50,13 @@ export async function POST(r: Request) {
     const token = uuid() + uuid();
     const tokenHash = await hash(token);
     const db = database();
-    if (['rename', 'leave', 'remove', 'deleteLobby'].includes(body.action)) {
+    if (body.action === 'leave') {
+      // Leaving the screen is reversible. Keep the seat, account association,
+      // and recovery credential; only Storyteller removal revokes membership.
+      await auth(r);
+      return json({ ok: true }, 200, { 'Set-Cookie': cookie(r, tokenOf(r)) });
+    }
+    if (['rename', 'remove', 'deleteLobby'].includes(body.action)) {
       for (let attempt = 0; attempt < 8; attempt++) {
         const { actor, code } = await auth(r);
         const { game, version } = await read(code);
@@ -74,16 +80,7 @@ export async function POST(r: Request) {
             body.action !== 'remove' || actor.host,
             'Only the Storyteller can remove players.',
           );
-          requireThat(
-            body.action !== 'leave' || !actor.host,
-            'The Storyteller can close the tab to return later, or delete an unstarted lobby.',
-          );
-          removed = removeMember(
-            game,
-            actor,
-            body.action === 'leave' ? actor.id : body.player,
-            Date.now(),
-          );
+          removed = removeMember(game, actor, body.player, Date.now());
         }
         // Unique operation marker makes credential revocation conditional on
         // this exact successful update, inside one atomic D1 transaction.
@@ -107,15 +104,7 @@ export async function POST(r: Request) {
         }
         const result = await db.batch(statements);
         if (!result[0].meta.changes) continue;
-        return json(
-          { ok: true },
-          200,
-          body.action === 'leave'
-            ? {
-                'Set-Cookie': `${cookieName}=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0`,
-              }
-            : {},
-        );
+        return json({ ok: true });
       }
       return json({ error: 'The table changed. Please try again.' }, 409);
     }

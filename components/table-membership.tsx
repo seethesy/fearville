@@ -131,15 +131,16 @@ export function TableMembership({
           disabled={busy}
           onClick={() => {
             setError('');
-            setPending({ action: 'leave' });
+            void act('leave');
           }}
         >
           Leave table
         </button>
       )}
       <p className="hint">
-        To come back later, just close the tab. Leaving or being removed ends
-        access to this seat, including its recovery key.
+        Leaving saves your seat. Return from the home page on this device, your
+        saved account, or with your recovery key. Only Storyteller removal ends
+        access.
       </p>
       <AlertDialog
         open={!!pending}

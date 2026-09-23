@@ -235,6 +235,7 @@ export type Message = {
 };
 export type Log = { id: string; text: string; at: number; public: boolean };
 export type Game = {
+  dawnAnnouncement?: { id: string; night: number; names: string[] };
   assignmentSeed?: string;
   nightPoll?: {
     id: string;

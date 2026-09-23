@@ -1762,3 +1762,26 @@ h3,
 }
 .unread-count { display: inline-block; margin-left: 8px; padding: 2px 6px; background: #be5103; color: white; border-radius: 12px; font-size: .7rem; }
 .ballots > div { flex-wrap: wrap; } .ballot-vote-details { flex-basis: 100%; width: 100%; } .ballot-vote-details summary { cursor: pointer; min-height: 44px; padding: 10px 0; }
+
+.composition-panel,
+.seating-panel {
+  margin-bottom: 1rem;
+}
+.seating-panel .actions {
+  margin: 0;
+  flex-wrap: nowrap;
+  gap: 0.4rem;
+}
+.seating-panel select {
+  min-height: 44px;
+  font-size: 16px;
+  max-width: 105px;
+  background: var(--background);
+  color: inherit;
+  border: 1px solid currentColor;
+  border-radius: 6px;
+}
+.seating-panel .membership-row {
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}

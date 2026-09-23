@@ -112,10 +112,16 @@ ok(
 );
 assert.equal((await call('/api/game', players[3].token)).status, 401);
 ok(await call('/api/session', players[2].token, { action: 'leave' }));
-assert.equal((await call('/api/game', players[2].token)).status, 401);
+assert.equal((await call('/api/game', players[2].token)).status, 200);
+ok(
+  await call('/api/session', '', {
+    action: 'restore',
+    recoveryKey: players[2].token,
+  }),
+);
 g = ok(await call('/api/game', host.token));
 assert.equal(g.players.length, 5);
-assert.equal(g.players.filter((p) => p.departed).length, 2);
+assert.equal(g.players.filter((p) => p.departed).length, 1);
 assert.equal(
   (await call('/api/game', host.token, { action: 'undo', version: g.version }))
     .status,
@@ -139,5 +145,5 @@ ok(await call('/api/session', lobby.token, { action: 'deleteLobby' }));
 assert.equal((await call('/api/game', lobby.token)).status, 401);
 assert.equal((await call('/api/game', guest.token)).status, 401);
 console.log(
-  'PASS: direct private messaging, retry deduplication, rename, removal/leave credential revocation, active seat preservation, authorization, and lobby deletion.',
+  'PASS: direct private messaging, retry deduplication, rename, removal revocation and reversible leave, active seat preservation, authorization, and lobby deletion.',
 );

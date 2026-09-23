@@ -1,6 +1,9 @@
 'use client';
 import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { TableDawn } from '@/components/table-dawn';
+import { TableSeating } from '@/components/table-seating';
+import { eligibleField } from '@/lib/game/choices';
 import { newestView } from '@/lib/game/live';
 import {
   Play,
@@ -459,6 +462,24 @@ export default function Table() {
           {error}
         </p>
       )}
+      <TableDawn key={game.code + game.me} game={game} />
+      {game.standardCounts && (
+        <section
+          className="panel composition-panel"
+          aria-label="Standard character counts"
+        >
+          <strong>Standard setup · {game.players.length} players</strong>
+          <p>
+            {game.standardCounts[0]} Townsfolk · {game.standardCounts[1]}{' '}
+            Outsiders · {game.standardCounts[2]} Minions ·{' '}
+            {game.standardCounts[3]} Demon
+          </p>
+          <p className="hint">
+            Starting counts before character abilities. Actual changes stay
+            secret.
+          </p>
+        </section>
+      )}
       <Tabs
         className="game-tabs"
         value={activeTab}
@@ -850,6 +871,7 @@ export default function Table() {
           </div>
         </TabsContent>
         <TabsContent value="seats">
+          {game.host && <TableSeating game={game} refresh={refresh} />}
           <TableMembership
             key={game.code + game.me}
             game={game}
@@ -1031,9 +1053,26 @@ export default function Table() {
             {selected?.fields.map((f) => (
               <FieldInput
                 key={f.key}
-                field={f}
+                field={eligibleField(f, selected, values, game)}
                 value={values[f.key]}
-                onChange={(v) => setValues({ ...values, [f.key]: v })}
+                onChange={(v) => {
+                  const next = { ...values, [f.key]: v };
+                  for (const field of selected.fields) {
+                    const options = eligibleField(
+                      field,
+                      selected,
+                      next,
+                      game,
+                    ).options;
+                    if (
+                      options &&
+                      next[field.key] &&
+                      !options.some((o) => o.value === String(next[field.key]))
+                    )
+                      next[field.key] = '';
+                  }
+                  setValues(next);
+                }}
               />
             ))}
             {error && (

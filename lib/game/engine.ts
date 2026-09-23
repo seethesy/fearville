@@ -458,6 +458,7 @@ export function execute(
     'This seat is no longer available.',
   );
   const hostActions = [
+    'moveSeat',
     'randomAssign',
     'configure',
     'edit',
@@ -551,6 +552,7 @@ export function execute(
       'Cannot rewind before a player joined. Correct seats manually.',
     );
     delete g.nightPoll;
+    delete g.dawnAnnouncement;
     delete g.previousNightPoll;
     Object.assign(g, state);
     g.history = g.history.slice(0, index);
@@ -583,6 +585,24 @@ export function execute(
       now,
     );
   switch (c.action) {
+    case 'moveSeat': {
+      const p = person(g, c.player);
+      const seat = Number(c.seat);
+      requireThat(
+        Number.isInteger(seat) && seat >= 1 && seat <= g.players.length,
+        'Choose a valid seat.',
+      );
+      const ordered = g.players
+        .slice()
+        .sort((a, b) => a.seat - b.seat)
+        .filter((q) => q.id !== p.id);
+      ordered.splice(seat - 1, 0, p);
+      ordered.forEach((q, i) => {
+        q.seat = i + 1;
+      });
+      log(g, `${p.name} moved to seat ${seat}.`, now, true);
+      return `Moved ${p.name} to seat ${seat}.`;
+    }
     case 'randomAssign': {
       requireThat(
         g.phase === 'lobby',
@@ -740,6 +760,13 @@ export function execute(
         'Night tasks remain.',
         c,
       );
+      g.dawnAnnouncement = {
+        id: uuid(),
+        night: g.night,
+        names: g.players
+          .filter((p) => !p.alive && p.nightDeath === g.night)
+          .map((p) => p.name),
+      };
       g.players.forEach((p) => {
         p.publicAlive = p.alive;
         p.protected = false;
