@@ -1,6 +1,7 @@
 'use client';
 import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { StorytellerVote } from '@/components/storyteller-vote';
 import { TableNightChoice } from '@/components/table-night-choice';
 import { TableDawn } from '@/components/table-dawn';
 import { TableSeating } from '@/components/table-seating';
@@ -698,11 +699,13 @@ export default function Table() {
                           ? 'Votes are visible to everyone.'
                           : !game.active.eligible.includes(game.me)
                             ? 'You do not vote on this nomination.'
-                            : game.active.myVote === null
+                            : !game.active.myVoteSubmitted
                               ? 'Your vote has not been submitted.'
-                              : game.active.myVote
-                                ? 'Your vote: YES'
-                                : 'Your vote: NO'}
+                              : game.active.myVote === null
+                                ? 'Your vote: ABSTAIN'
+                                : game.active.myVote
+                                  ? 'Your vote: YES'
+                                  : 'Your vote: NO'}
                     </p>
                   )}
                   {game.active && game.phase === 'voting' && (
@@ -710,15 +713,16 @@ export default function Table() {
                       <h3>
                         Live votes ·{' '}
                         {
-                          game.active.eligible.filter(
-                            (id) => typeof game.active!.votes[id] === 'boolean',
+                          game.active.eligible.filter((id) =>
+                            Object.hasOwn(game.active!.votes, id),
                           ).length
                         }
                         /{game.active.eligible.length} answered
                       </h3>
                       <p className="muted">
                         Voting ends as soon as all eligible players answer. The
-                        nominee does not vote.
+                        nominee does not vote. After voting, nominations resume
+                        with 30 extra seconds.
                       </p>
                       {game.players.map((p) => (
                         <div className="membership-row" key={p.id}>
@@ -732,8 +736,22 @@ export default function Table() {
                                   ? 'Yes'
                                   : game.active!.votes[p.id] === false
                                     ? 'No'
-                                    : 'Waiting'}
+                                    : game.active!.votes[p.id] === null
+                                      ? 'Abstained'
+                                      : 'Waiting'}
                           </strong>
+                          {game.host &&
+                            game.active!.eligible.includes(p.id) && (
+                              <StorytellerVote
+                                player={p.id}
+                                name={p.name}
+                                ballot={game.active!.id}
+                                vote={game.active!.votes[p.id]}
+                                version={game.version}
+                                completed={false}
+                                refresh={refresh}
+                              />
+                            )}
                         </div>
                       ))}
                     </section>
@@ -750,15 +768,36 @@ export default function Table() {
                             <summary>View submitted votes</summary>
                             <p className="muted">
                               Character rules may affect the counted total.
+                              Unanswered votes are recorded as abstentions when
+                              voting closes.
                             </p>
+                            {b.correctable && (
+                              <p className="hint">
+                                Storyteller: change a vote below before the next
+                                nomination. Totals update immediately.
+                              </p>
+                            )}
                             {Object.entries(b.votes).map(([id, yes]) => (
                               <p key={id}>
                                 {name(id)}:{' '}
                                 {id === b.target
                                   ? 'Nominee · not counted'
-                                  : yes
-                                    ? 'Yes'
-                                    : 'No'}
+                                  : yes === null
+                                    ? 'Abstained'
+                                    : yes
+                                      ? 'Yes'
+                                      : 'No'}
+                                {b.correctable && b.eligible.includes(id) && (
+                                  <StorytellerVote
+                                    player={id}
+                                    name={name(id)}
+                                    ballot={b.id}
+                                    vote={yes}
+                                    version={game.version}
+                                    completed={true}
+                                    refresh={refresh}
+                                  />
+                                )}
                               </p>
                             ))}
                           </details>

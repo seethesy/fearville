@@ -1789,3 +1789,5 @@ h3,
 .night-choice-panel { margin-bottom: 1rem; }
 .night-player-choices { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .6rem; }
 .night-player-choices button { min-height: 52px; white-space: normal; overflow-wrap: anywhere; }
+
+.public-votes select, .ballot-vote-details select { min-height: 44px; font-size: 16px; padding: .4rem; margin-left: .5rem; background: #181c22; color: #fff; border: 1px solid #888; border-radius: 6px; }

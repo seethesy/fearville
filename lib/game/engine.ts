@@ -257,9 +257,7 @@ export function eligibleVoters(g: Game) {
 }
 export function finishVotingIfReady(g: Game, at: number) {
   if (g.phase !== 'voting' || !g.active) return false;
-  if (
-    !eligibleVoters(g).every((p) => typeof g.active!.votes[p.id] === 'boolean')
-  )
+  if (!eligibleVoters(g).every((p) => Object.hasOwn(g.active!.votes, p.id)))
     return false;
   snapshot(g, 'All eligible votes received', at);
   tally(g, at);
@@ -268,7 +266,21 @@ export function finishVotingIfReady(g: Game, at: number) {
 export function tally(g: Game, at: number) {
   const b = g.active;
   requireThat(b, 'No active ballot.');
+  b.voterState = g.players.map(
+    ({ id, alive, ghost, departed, role, poisoned, master }) => ({
+      id,
+      alive,
+      ghost,
+      departed,
+      role,
+      poisoned,
+      master,
+    }),
+  );
+  for (const p of eligibleVoters(g))
+    if (!Object.hasOwn(b.votes, p.id)) b.votes[p.id] = null;
   b.invalid = [];
+  b.spentGhosts = [];
   b.threshold = Math.ceil(g.players.filter((p) => p.alive).length / 2);
   const valid = new Set(
     g.players
@@ -295,7 +307,10 @@ export function tally(g: Game, at: number) {
   }
   b.count = valid.size;
   for (const p of g.players) {
-    if (!p.alive && valid.has(p.id)) p.ghost = false;
+    if (!p.alive && valid.has(p.id)) {
+      p.ghost = false;
+      b.spentGhosts.push(p.id);
+    }
   }
   g.ballots.push(b);
   g.active = null;
@@ -305,6 +320,7 @@ export function tally(g: Game, at: number) {
     at,
     true,
   );
+  g.nominationRemaining += 30;
   setPhase(g, 'nomination', at, g.nominationRemaining);
   if (g.nominationRemaining <= 0) setPhase(g, 'dayReview', at);
 }
@@ -486,6 +502,7 @@ export function execute(
     'This seat is no longer available.',
   );
   const hostActions = [
+    'correctVote',
     'moveSeat',
     'randomAssign',
     'configure',
@@ -988,10 +1005,72 @@ export function execute(
       );
       return result;
     }
+    case 'correctVote': {
+      const b = g.ballots.at(-1);
+      requireThat(
+        !g.active &&
+          ['nomination', 'dayReview'].includes(g.phase) &&
+          b &&
+          b.id === c.ballot &&
+          b.voterState &&
+          b.spentGhosts,
+        'Only the latest completed ballot can be corrected before the next nomination or execution.',
+      );
+      const p = b.voterState.find((p) => p.id === c.player);
+      requireThat(
+        p && p.id !== b.target && !p.departed && (p.alive || p.ghost),
+        'This player was not eligible for that ballot.',
+      );
+      requireThat(
+        typeof c.yes === 'boolean' || c.yes === null,
+        'Choose yes, no, or abstain.',
+      );
+      b.votes[p.id] = c.yes;
+      for (const id of b.spentGhosts) person(g, id).ghost = true;
+      const valid = new Set(
+        b.voterState
+          .filter(
+            (p) =>
+              p.id !== b.target &&
+              !p.departed &&
+              (p.alive || p.ghost) &&
+              b.votes[p.id] === true,
+          )
+          .map((p) => p.id),
+      );
+      b.invalid = [];
+      for (const p of b.voterState)
+        if (
+          valid.has(p.id) &&
+          p.alive &&
+          p.role === 'butler' &&
+          !p.poisoned &&
+          !valid.has(p.master)
+        ) {
+          valid.delete(p.id);
+          b.invalid.push(p.id);
+        }
+      b.count = valid.size;
+      b.spentGhosts = b.voterState
+        .filter((p) => !p.alive && valid.has(p.id))
+        .map((p) => p.id);
+      for (const id of b.spentGhosts) person(g, id).ghost = false;
+      log(
+        g,
+        `Storyteller changed ${nameOf(g, p.id)}'s vote to ${c.yes === null ? 'abstain' : c.yes ? 'yes' : 'no'}. ${nameOf(g, b.target)} now has ${b.count} yes votes.`,
+        now,
+        true,
+      );
+      return 'Vote corrected and ballot total updated.';
+    }
     case 'nominate': {
       requireThat(g.phase === 'nomination', 'Nominations are not open.');
       const by = person(g, actor.host ? c.by : actor.id),
         target = person(g, c.target);
+      requireThat(
+        target.alive && !target.departed,
+        'Only living players at the table can be nominated.',
+      );
       enforce(
         by.alive,
         'Dead players cannot nominate.',
@@ -1044,7 +1123,10 @@ export function execute(
         p.id !== g.active.target && !p.departed,
         'This player is not eligible to vote on this nomination.',
       );
-      requireThat(typeof c.yes === 'boolean', 'Choose yes or no.');
+      requireThat(
+        typeof c.yes === 'boolean' || c.yes === null,
+        'Choose yes, no, or abstain.',
+      );
       g.active.votes[p.id] = c.yes;
       if (finishVotingIfReady(g, now))
         return 'Vote recorded. Everyone eligible has answered; voting is complete.';

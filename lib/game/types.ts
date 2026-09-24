@@ -219,7 +219,12 @@ export type Nomination = {
   id: string;
   by: string;
   target: string;
-  votes: Record<string, boolean>;
+  votes: Record<string, boolean | null>;
+  voterState?: Pick<
+    Player,
+    'id' | 'alive' | 'ghost' | 'departed' | 'role' | 'poisoned' | 'master'
+  >[];
+  spentGhosts?: string[];
   threshold: number;
   count?: number;
   invalid?: string[];

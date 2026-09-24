@@ -366,7 +366,11 @@ export function controls(g: Game, a: Actor): Control[] {
         select(
           'target',
           'Nominee',
-          ps.filter((o) => !g.nominees.includes(o.value)),
+          ps.filter(
+            (o) =>
+              !g.nominees.includes(o.value) &&
+              g.players.some((p) => p.id === o.value && p.alive && !p.departed),
+          ),
           '',
           true,
         ),
@@ -400,8 +404,13 @@ export function controls(g: Game, a: Actor): Control[] {
           [
             { value: 'true', label: 'Yes' },
             { value: 'false', label: 'No' },
+            { value: 'null', label: 'Abstain' },
           ],
-          String(g.active?.votes[a.id] ?? false),
+          String(
+            g.active && Object.hasOwn(g.active.votes, a.id)
+              ? g.active.votes[a.id]
+              : false,
+          ),
         ),
       ],
     );
@@ -673,6 +682,7 @@ export function view(g: Game, a: Actor, version: number, now: number) {
           target: g.active.target,
           threshold: g.active.threshold,
           myVote: g.active.votes[a.id] ?? null,
+          myVoteSubmitted: Object.hasOwn(g.active.votes, a.id),
           votes: g.active.votes,
           eligible: eligibleVoters(g).map((p) => p.id),
         }
@@ -684,6 +694,18 @@ export function view(g: Game, a: Actor, version: number, now: number) {
       count: b.count,
       threshold: b.threshold,
       votes: b.votes,
+      correctable:
+        a.host &&
+        !g.active &&
+        ['nomination', 'dayReview'].includes(g.phase) &&
+        b.id === g.ballots.at(-1)?.id &&
+        !!b.voterState,
+      eligible:
+        b.voterState
+          ?.filter(
+            (p) => p.id !== b.target && !p.departed && (p.alive || p.ghost),
+          )
+          .map((p) => p.id) ?? [],
       ...(a.host ? { invalid: b.invalid } : {}),
     })),
     leader: { ...leader, name: leader.target ? nameOf(g, leader.target) : '' },

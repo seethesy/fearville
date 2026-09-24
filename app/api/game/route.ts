@@ -41,8 +41,16 @@ export async function POST(r: Request) {
     requireThat(raw.length < 20000, 'Request is too large.');
     const c = JSON.parse(raw);
     requireThat(typeof c.action === 'string', 'Choose an action.');
-    if (c.action === 'vote' && typeof c.yes === 'string')
-      c.yes = c.yes === 'true';
+    if (
+      ['vote', 'correctVote'].includes(c.action) &&
+      typeof c.yes === 'string'
+    ) {
+      requireThat(
+        ['true', 'false', 'null'].includes(c.yes),
+        'Choose yes, no, or abstain.',
+      );
+      c.yes = c.yes === 'null' ? null : c.yes === 'true';
+    }
     for (let i = 0; i < 8; i++) {
       await auth(r);
       const { game, version, created } = await read(code);
