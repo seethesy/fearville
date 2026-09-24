@@ -17,6 +17,7 @@ import {
   nameOf,
   healthy,
   eligibleVoters,
+  nightChoiceTask,
 } from './engine.ts';
 const select = (
   key: string,
@@ -208,6 +209,21 @@ export function controls(g: Game, a: Actor): Control[] {
             ),
           );
         fields.push(...overrideFields);
+        if (p?.poisoned)
+          fields.push(
+            check(
+              'poisonAcknowledged',
+              'I understand this player is poisoned; resolve their ability as impaired',
+            ),
+          );
+        const choice = g.nightChoices?.[t.key];
+        if (choice) {
+          for (const field of fields) {
+            if (field.key === 'target') field.value = choice.target;
+            if (field.key === 'target2') field.value = choice.target2;
+          }
+          description += ` Player selected ${nameOf(g, choice.target)}${choice.target2 ? ' and ' + nameOf(g, choice.target2) : ''}. Confirm to resolve.`;
+        }
         add('night', 'Resolve ' + t.name, description, fields);
         add(
           'nightSkip',
@@ -556,8 +572,31 @@ export function controls(g: Game, a: Actor): Control[] {
 export function view(g: Game, a: Actor, version: number, now: number) {
   const me = g.players.find((p) => p.id === a.id);
   const leader = candidate(g);
+  const choiceTask = nightChoiceTask(g);
+  const currentTask =
+    g.phase === 'night' ? tasks(g).find((t) => !t.done) : null;
+  const actingPlayer = g.players.find((p) => p.id === currentTask?.player);
   return {
     code: g.code,
+    nightChoice:
+      !a.host && choiceTask?.player === a.id
+        ? {
+            task: choiceTask.key,
+            round: choiceTask.round,
+            count: choiceTask.count,
+            options: choiceTask.options,
+            choice: g.nightChoices?.[choiceTask.key] ?? null,
+          }
+        : null,
+    nightConfirmation:
+      a.host && currentTask
+        ? {
+            task: currentTask.key,
+            playerName: actingPlayer?.name ?? '',
+            poisoned: !!actingPlayer?.poisoned,
+            choice: g.nightChoices?.[currentTask.key] ?? null,
+          }
+        : null,
     standardCounts: COUNTS[g.players.length] ?? null,
     dawnAnnouncement:
       g.phase !== 'night' && g.phase !== 'lobby'

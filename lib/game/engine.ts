@@ -54,6 +54,7 @@ export function setPhase(g: Game, phase: Phase, at: number, seconds?: number) {
 }
 export function beginNight(g: Game, at: number) {
   g.night++;
+  g.nightChoices = {};
   startNightPoll(g);
   g.done = [];
   g.active = null;
@@ -98,6 +99,33 @@ export function tasks(g: Game) {
         done: g.done.includes(r + ':' + p.id),
       }));
   });
+}
+export function nightChoiceTask(g: Game) {
+  if (g.phase !== 'night') return null;
+  const task = tasks(g).find((t) => !t.done);
+  if (
+    !task ||
+    ![
+      'poisoner',
+      'monk',
+      'imp',
+      'butler',
+      'fortuneteller',
+      'ravenkeeper',
+    ].includes(task.role)
+  )
+    return null;
+  return {
+    ...task,
+    round: g.nightPoll?.id ?? String(g.night),
+    count: task.role === 'fortuneteller' ? 2 : 1,
+    options: g.players
+      .filter(
+        (p) => !['monk', 'butler'].includes(task.role) || p.id !== task.player,
+      )
+      .sort((a, b) => a.seat - b.seat)
+      .map((p) => ({ id: p.id, name: p.name, seat: p.seat })),
+  };
 }
 export function setupIssues(g: Game) {
   const issues: string[] = [];
@@ -481,6 +509,33 @@ export function execute(
   ];
   if (hostActions.includes(c.action))
     requireThat(actor.host, 'Only the Storyteller can do that.');
+  if (c.action === 'nightChoice') {
+    const task = nightChoiceTask(g);
+    requireThat(
+      !actor.host &&
+        task &&
+        task.player === actor.id &&
+        task.key === c.task &&
+        task.round === c.round,
+      'This night choice is no longer available.',
+    );
+    requireThat(
+      task.options.some((p) => p.id === c.target),
+      'Choose an eligible player.',
+    );
+    if (task.count === 2)
+      requireThat(
+        c.target !== c.target2 && task.options.some((p) => p.id === c.target2),
+        'Choose two different eligible players.',
+      );
+    g.nightChoices ??= {};
+    g.nightChoices[task.key] = {
+      id: uuid(),
+      target: String(c.target),
+      target2: task.count === 2 ? String(c.target2) : '',
+    };
+    return 'Choice sent. Waiting for the Storyteller to confirm.';
+  }
   if (c.action === 'nightPoll') {
     requireThat(!actor.host, 'Only seated players can answer the poll.');
     person(g, actor.id);
@@ -552,6 +607,7 @@ export function execute(
       'Cannot rewind before a player joined. Correct seats manually.',
     );
     delete g.nightPoll;
+    delete g.nightChoices;
     delete g.dawnAnnouncement;
     delete g.previousNightPoll;
     Object.assign(g, state);
@@ -834,6 +890,15 @@ export function execute(
         return text + ' Send privately to the Demon.';
       }
       const p = person(g, t.player);
+      const choice = g.nightChoices?.[t.key];
+      requireThat(
+        (c.choiceId || '') === (choice?.id || ''),
+        'The player changed their choice. Review it before confirming.',
+      );
+      requireThat(
+        !p.poisoned || c.poisonAcknowledged === true,
+        'This player is poisoned. Acknowledge the warning before confirming.',
+      );
       let result = '';
       if (['poisoner', 'monk', 'imp', 'butler'].includes(r)) {
         const target = person(g, c.target);

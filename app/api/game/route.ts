@@ -56,7 +56,7 @@ export async function POST(r: Request) {
         );
       }
       if (
-        !['vote', 'chat', 'nightPoll'].includes(c.action) &&
+        !['vote', 'chat', 'nightPoll', 'nightChoice'].includes(c.action) &&
         c.version !== version
       )
         return json(

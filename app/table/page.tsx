@@ -1,6 +1,7 @@
 'use client';
 import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { TableNightChoice } from '@/components/table-night-choice';
 import { TableDawn } from '@/components/table-dawn';
 import { TableSeating } from '@/components/table-seating';
 import { eligibleField } from '@/lib/game/choices';
@@ -125,6 +126,25 @@ export default function Table() {
     [chatPlayer, setChatPlayer] = useState('all'),
     [activeTab, setActiveTab] = useState('flow'),
     [compact, setCompact] = useState(false);
+  const [followChoice, setFollowChoice] = useState(true);
+  const confirmation =
+    selected?.action === 'night' &&
+    game?.nightConfirmation?.task === values.task
+      ? game.nightConfirmation
+      : null;
+  const actionControl = confirmation
+    ? (game?.controls.find((c) => c.action === 'night') ?? selected)
+    : selected;
+  const effectiveValues: Values = {
+    ...values,
+    ...(confirmation ? { choiceId: confirmation.choice?.id ?? '' } : {}),
+    ...(confirmation?.choice && followChoice
+      ? {
+          target: confirmation.choice.target,
+          target2: confirmation.choice.target2,
+        }
+      : {}),
+  };
   const requestNumber = useRef(0);
   const inFlight = useRef<{
     controller: AbortController;
@@ -237,6 +257,7 @@ export default function Table() {
       return;
     }
     setSelected(control);
+    setFollowChoice(true);
     setValues({
       ...Object.fromEntries(control.fields.map((f) => [f.key, f.value ?? ''])),
       ...(control.action === 'vote' ? { ballot: game?.active?.id ?? '' } : {}),
@@ -244,7 +265,7 @@ export default function Table() {
 
     setError('');
   }
-  async function submit(control = selected, payload = values) {
+  async function submit(control = actionControl, payload = effectiveValues) {
     if (!control || busy) return;
     setBusy(true);
     setError('');
@@ -462,6 +483,13 @@ export default function Table() {
           {error}
         </p>
       )}
+      {game.nightChoice && (
+        <TableNightChoice
+          key={game.nightChoice.round + game.nightChoice.task}
+          prompt={game.nightChoice}
+          refresh={refresh}
+        />
+      )}
       <TableDawn key={game.code + game.me} game={game} />
       {game.standardCounts && (
         <section
@@ -576,7 +604,9 @@ export default function Table() {
                     <h2>{first?.name || 'The night is complete.'}</h2>
                     <p className="muted">
                       {first
-                        ? 'Speak privately with the acting player, record their choice, then resolve the action.'
+                        ? game.nightConfirmation?.choice
+                          ? 'The player sent their choice. Open the action to review and confirm it.'
+                          : 'Waiting for the player’s choice, or open the action to enter it yourself.'
                         : 'Review the town, then announce dawn.'}
                     </p>
                     <ol className="night-list">
@@ -1041,8 +1071,8 @@ export default function Table() {
       >
         <DialogContent className="action-dialog">
           <DialogHeader>
-            <DialogTitle>{selected?.title}</DialogTitle>
-            <DialogDescription>{selected?.description}</DialogDescription>
+            <DialogTitle>{actionControl?.title}</DialogTitle>
+            <DialogDescription>{actionControl?.description}</DialogDescription>
           </DialogHeader>
           <form
             onSubmit={(e) => {
@@ -1050,17 +1080,46 @@ export default function Table() {
               void submit();
             }}
           >
-            {selected?.fields.map((f) => (
+            {confirmation?.poisoned && (
+              <p className="error" role="alert">
+                <strong>{confirmation.playerName} is poisoned.</strong> Treat
+                this ability as impaired. Information may be false, and the
+                ability must not have its normal effect.
+              </p>
+            )}
+            {confirmation?.choice && (
+              <div className="ballot-callout">
+                <p>
+                  Player selected: {name(confirmation.choice.target)}
+                  {confirmation.choice.target2
+                    ? ' and ' + name(confirmation.choice.target2)
+                    : ''}
+                  .
+                </p>
+                {!followChoice && (
+                  <button
+                    type="button"
+                    className="secondary"
+                    onClick={() => setFollowChoice(true)}
+                  >
+                    Use player’s choice
+                  </button>
+                )}
+              </div>
+            )}
+            {actionControl?.fields.map((f) => (
               <FieldInput
                 key={f.key}
-                field={eligibleField(f, selected, values, game)}
-                value={values[f.key]}
+                field={eligibleField(f, actionControl, effectiveValues, game)}
+                value={effectiveValues[f.key]}
                 onChange={(v) => {
-                  const next = { ...values, [f.key]: v };
-                  for (const field of selected.fields) {
+                  const next = { ...effectiveValues, [f.key]: v };
+                  if (f.key === 'target' || f.key === 'target2')
+                    setFollowChoice(false);
+                  for (const field of actionControl.fields) {
                     const options = eligibleField(
                       field,
-                      selected,
+                      actionControl,
                       next,
                       game,
                     ).options;
@@ -1080,7 +1139,14 @@ export default function Table() {
                 {error}
               </p>
             )}
-            <button className="primary full" disabled={busy || !online}>
+            <button
+              className="primary full"
+              disabled={
+                busy ||
+                !online ||
+                (selected?.action === 'night' && !confirmation)
+              }
+            >
               {busy ? 'Applying…' : selected?.title || 'Apply'}
             </button>
           </form>
