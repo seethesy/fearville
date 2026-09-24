@@ -681,7 +681,7 @@ export function execute(
         g.phase === 'lobby',
         'Random assignment is only available in the lobby.',
       );
-      const summary = assignRandomRoles(g);
+      const summary = assignRandomRoles(g, c.roles);
       g.assignmentSeed = uuid();
       log(g, 'Randomly assigned characters and setup reminders.', now);
       return summary;

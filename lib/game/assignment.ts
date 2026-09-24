@@ -2,7 +2,7 @@ import { COUNTS, ROLES, role, type Game } from './types.ts';
 
 // A saved seed makes previews and confirmation deal exactly the same roles.
 // The engine rotates it only when a deal is committed to the saved game.
-export function assignRandomRoles(g: Game): string {
+export function assignRandomRoles(g: Game, requested?: unknown): string {
   const counts = COUNTS[g.players.length];
   if (!counts) throw Error('Join 5–15 players before assigning roles.');
   let seed = 2166136261;
@@ -32,6 +32,33 @@ export function assignRandomRoles(g: Game): string {
     ...minions,
     'imp',
   ];
+  if (requested !== undefined) {
+    if (
+      !Array.isArray(requested) ||
+      requested.length !== g.players.length ||
+      new Set(requested).size !== requested.length ||
+      !requested.every((id) => typeof id === 'string' && role(id))
+    )
+      throw Error('Choose one unique character per player.');
+    const extraOutsiders = requested.includes('baron') ? 2 : 0;
+    const expected = [
+      counts[0] - extraOutsiders,
+      counts[1] + extraOutsiders,
+      counts[2],
+      counts[3],
+    ];
+    if (
+      ['townsfolk', 'outsider', 'minion', 'demon'].some(
+        (team, i) =>
+          requested.filter((id) => role(id)?.team === team).length !==
+          expected[i],
+      )
+    )
+      throw Error(
+        `Choose ${expected[0]} Townsfolk, ${expected[1]} Outsiders, ${expected[2]} Minions and ${expected[3]} Demon for this setup.`,
+      );
+    selected.splice(0, selected.length, ...(requested as string[]));
+  }
   const deal = shuffle(selected);
   const drunkShown = pool('townsfolk').find((r) => !selected.includes(r))!;
   g.players

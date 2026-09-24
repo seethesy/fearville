@@ -1,3 +1,4 @@
+import { RoleIcon } from './role-icon';
 import { ROLES } from '@/lib/game/types';
 
 const teams = [
@@ -171,7 +172,9 @@ export function RulesReference() {
             <div className="reference-role-grid">
               {ROLES.filter((r) => r.team === team.id).map((r) => (
                 <article key={r.id} id={`role-${r.id}`}>
-                  <h4>{r.name}</h4>
+                  <h4>
+                    <RoleIcon role={r.id} /> {r.name}
+                  </h4>
                   <p>{r.description}</p>
                 </article>
               ))}

@@ -4,6 +4,70 @@ import { newGame, newPlayer } from '../lib/game/types.ts';
 import { execute, setupIssues } from '../lib/game/engine.ts';
 import { view } from '../lib/game/view.ts';
 const host = { id: 'host', host: true };
+void test('selected role roster is dealt exactly and validates Baron counts', () => {
+  const g = lobby(5);
+  const roles = ['empath', 'butler', 'drunk', 'baron', 'imp'];
+  execute(g, host, { action: 'randomAssign', roles }, 100);
+  assert.deepEqual(g.players.map((p) => p.role).sort(), roles.slice().sort());
+  assert.deepEqual(setupIssues(g), []);
+  const original = g.players.map((p) => p.role);
+  assert.throws(
+    () =>
+      execute(
+        g,
+        host,
+        {
+          action: 'randomAssign',
+          roles: ['empath', 'chef', 'monk', 'baron', 'imp'],
+        },
+        101,
+      ),
+    /Choose 1 Townsfolk/,
+  );
+  assert.deepEqual(
+    g.players.map((p) => p.role),
+    original,
+  );
+  assert.throws(
+    () =>
+      execute(
+        g,
+        host,
+        {
+          action: 'randomAssign',
+          roles: ['empath', 'empath', 'monk', 'poisoner', 'imp'],
+        },
+        102,
+      ),
+    /unique/,
+  );
+  assert.throws(
+    () =>
+      execute(
+        g,
+        { id: g.players[0].id, host: false },
+        { action: 'randomAssign', roles },
+        103,
+      ),
+    /Storyteller/,
+  );
+});
+void test('new tables use requested default phase times and 30-second Add Time', () => {
+  const g = lobby();
+  assert.deepEqual(g.timers, {
+    discovery: 180,
+    discussion: 120,
+    nomination: 60,
+    defense: 60,
+    voting: 60,
+  });
+  g.phase = 'discussion';
+  assert.equal(
+    view(g, host, 1, 1).controls.find((c) => c.action === 'extend')?.fields[0]
+      .value,
+    30,
+  );
+});
 function lobby(count = 7) {
   const g = newGame('ASSIGN', 'Host');
   g.players = Array.from({ length: count }, (_, i) =>

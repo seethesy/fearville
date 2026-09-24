@@ -58,7 +58,10 @@ export function controls(g: Game, a: Actor): Control[] {
   const ps = g.players
     .slice()
     .sort((a, b) => a.seat - b.seat)
-    .map((p) => ({ value: p.id, label: `${p.seat}. ${p.name}` }));
+    .map((p) => ({
+      value: p.id,
+      label: `${p.seat}. ${p.name}${a.host && p.role ? ` (${role(p.role)?.name ?? p.role})` : ''}`,
+    }));
   const result: Control[] = [];
   const add = (
     action: string,
@@ -246,7 +249,7 @@ export function controls(g: Game, a: Actor): Control[] {
       add('resume', 'Resume timer', 'Continue the shared countdown.');
     if (g.timers[g.phase]) {
       add('extend', 'Add time', 'Extend this timer.', [
-        num('seconds', 'Seconds to add', 60),
+        num('seconds', 'Seconds to add', 30),
       ]);
       add(
         'advance',

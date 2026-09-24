@@ -1,6 +1,10 @@
 'use client';
 import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { RolePicker } from '@/components/role-picker';
+import { RoleIcon } from '@/components/role-icon';
+import { MessageBadge } from '@/components/message-badge';
+import { NightChoiceNotice } from '@/components/night-choice-notice';
 import { StorytellerVote } from '@/components/storyteller-vote';
 import { TableNightChoice } from '@/components/table-night-choice';
 import { TableDawn } from '@/components/table-dawn';
@@ -484,6 +488,15 @@ export default function Table() {
           {error}
         </p>
       )}
+      {game.host && (
+        <NightChoiceNotice
+          game={game}
+          onReview={() => {
+            const c = game.controls.find((c) => c.action === 'night');
+            if (c) open(c);
+          }}
+        />
+      )}
       {game.nightChoice && (
         <TableNightChoice
           key={game.nightChoice.round + game.nightChoice.task}
@@ -528,7 +541,7 @@ export default function Table() {
           <TabsTrigger value="messages">
             <MessageSquare aria-hidden="true" />
             <span>Messages</span>{' '}
-            <span className="count">{game.messages.length}</span>
+            <MessageBadge key={game.code + game.me} game={game} />
           </TabsTrigger>
           <TabsTrigger value="script" aria-label="Rules & roles">
             <BookOpen aria-hidden="true" />
@@ -880,8 +893,7 @@ export default function Table() {
                       </strong>
                       <small>
                         {game.host
-                          ? ROLES.find((r) => r.id === p.role)?.name ||
-                            'Unassigned'
+                          ? `(${ROLES.find((r) => r.id === p.role)?.name || 'Unassigned'})`
                           : p.alive
                             ? 'Alive'
                             : p.ghost
@@ -940,6 +952,13 @@ export default function Table() {
           </div>
         </TabsContent>
         <TabsContent value="seats">
+          {game.host && game.phase === 'lobby' && (
+            <RolePicker
+              key={game.players.map((p) => p.role).join(',')}
+              game={game}
+              refresh={refresh}
+            />
+          )}
           {game.host && <TableSeating game={game} refresh={refresh} />}
           <TableMembership
             key={game.code + game.me}
@@ -977,8 +996,10 @@ export default function Table() {
                 </h2>
                 {game.host && (
                   <p className="role-name">
+                    <RoleIcon role={p.role ?? ''} /> (
                     {ROLES.find((r) => r.id === p.role)?.name ||
                       'Assign a character'}
+                    )
                     {p.role === 'drunk' && (
                       <small>
                         Shown {ROLES.find((r) => r.id === p.shown)?.name || '—'}

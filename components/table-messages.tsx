@@ -1,5 +1,7 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
+import { useMessagePreferences } from './message-preferences';
+import { ROLES } from '@/lib/game/types';
 import type { GameView } from '@/lib/game/view';
 
 export function TableMessages({
@@ -20,7 +22,7 @@ export function TableMessages({
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [sending, setSending] = useState(false);
   const [error, setError] = useState('');
-  const [seen, setSeen] = useState<Record<string, number>>({});
+  const { prefs, update } = useMessagePreferences(game.code, game.me);
   const retry = useRef<{ to: string; text: string; id: string } | null>(null);
   const feed = useRef<HTMLDivElement>(null);
   const nearBottom = useRef(true);
@@ -40,14 +42,26 @@ export function TableMessages({
       : true,
   );
   const last = messages.at(-1)?.id;
-  const lastAt = messages.at(-1)?.at ?? 0;
   useEffect(() => {
     if (!active) return;
-    const frame = requestAnimationFrame(() => {
-      setSeen((old) => (old[to] === lastAt ? old : { ...old, [to]: lastAt }));
-    });
-    return () => cancelAnimationFrame(frame);
-  }, [active, to, lastAt]);
+    const mark = () => {
+      if (document.hidden) return;
+      const unread = messages
+        .filter((m) => m.from !== game.me && !prefs.read.includes(m.id))
+        .map((m) => m.id);
+      if (unread.length)
+        update((old) => ({
+          ...old,
+          read: [...new Set([...old.read, ...unread])],
+        }));
+    };
+    const frame = requestAnimationFrame(mark);
+    document.addEventListener('visibilitychange', mark);
+    return () => {
+      cancelAnimationFrame(frame);
+      document.removeEventListener('visibilitychange', mark);
+    };
+  }, [active, to, last, messages, game.me, prefs.read, update]);
   useEffect(() => {
     nearBottom.current = true;
     if (feed.current) feed.current.scrollTop = feed.current.scrollHeight;
@@ -101,45 +115,82 @@ export function TableMessages({
         <nav className="conversation-list" aria-label="Player conversations">
           <h2>Messages</h2>
           {[
-            { id: 'all', name: 'Everyone', departed: false },
+            { id: 'all', name: 'Everyone', departed: false, role: '' },
             ...game.players,
-          ].map((p) => {
-            const latest = game.messages
-              .filter((m) =>
-                p.id === 'all'
-                  ? m.to === 'all'
-                  : m.to === p.id || m.from === p.id,
-              )
-              .at(-1);
-            const unread = game.messages.filter(
-              (m) => m.from === p.id && m.at > (seen[p.id] ?? 0),
-            ).length;
-            return (
-              <button
-                key={p.id}
-                className={to === p.id ? 'selected' : ''}
-                aria-current={to === p.id ? 'true' : undefined}
-                onClick={() => {
-                  onRecipient(p.id);
-                  setError('');
-                }}
-              >
-                <strong>
-                  {p.name}
-                  {p.departed ? ' · Left' : ''}
-                  {unread > 0 && (
-                    <small className="unread-count">{unread} new</small>
-                  )}
-                </strong>
-                <span>
-                  {latest?.text ??
-                    (p.id === 'all'
-                      ? 'Public announcements'
-                      : 'Start a private conversation')}
-                </span>
-              </button>
-            );
-          })}
+          ]
+            .sort((a, b) => {
+              const pin =
+                Number(prefs.pins.includes(b.id)) -
+                Number(prefs.pins.includes(a.id));
+              if (pin) return pin;
+              const recent = (id: string) =>
+                game.messages
+                  .filter((m) =>
+                    id === 'all'
+                      ? m.to === 'all'
+                      : m.to === id || m.from === id,
+                  )
+                  .at(-1)?.at ?? 0;
+              return recent(b.id) - recent(a.id);
+            })
+            .map((p) => {
+              const latest = game.messages
+                .filter((m) =>
+                  p.id === 'all'
+                    ? m.to === 'all'
+                    : m.to === p.id || m.from === p.id,
+                )
+                .at(-1);
+              const unread = game.messages.filter(
+                (m) => m.from === p.id && !prefs.read.includes(m.id),
+              ).length;
+              return (
+                <div className="conversation-row" key={p.id}>
+                  <button
+                    className={to === p.id ? 'selected' : ''}
+                    aria-current={to === p.id ? 'true' : undefined}
+                    onClick={() => {
+                      onRecipient(p.id);
+                      setError('');
+                    }}
+                  >
+                    <strong>
+                      {p.name}
+                      {p.role && (
+                        <small className="conversation-role">
+                          ({ROLES.find((r) => r.id === p.role)?.name})
+                        </small>
+                      )}
+                      {p.departed ? ' · Left' : ''}
+                      {unread > 0 && (
+                        <small className="unread-count">{unread} new</small>
+                      )}
+                    </strong>
+                    <span>
+                      {latest?.text ??
+                        (p.id === 'all'
+                          ? 'Public announcements'
+                          : 'Start a private conversation')}
+                    </span>
+                  </button>
+                  <button
+                    className="pin-conversation"
+                    aria-label={`${prefs.pins.includes(p.id) ? 'Unpin' : 'Pin'} conversation with ${p.name}`}
+                    aria-pressed={prefs.pins.includes(p.id)}
+                    onClick={() =>
+                      update((old) => ({
+                        ...old,
+                        pins: old.pins.includes(p.id)
+                          ? old.pins.filter((id) => id !== p.id)
+                          : [...old.pins, p.id],
+                      }))
+                    }
+                  >
+                    {prefs.pins.includes(p.id) ? 'Unpin' : 'Pin'}
+                  </button>
+                </div>
+              );
+            })}
         </nav>
       )}
       <section className="conversation" aria-label={title}>

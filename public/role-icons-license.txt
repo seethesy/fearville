@@ -1,0 +1,6 @@
+Fearville role icons
+
+The original geometric SVG drawings in components/role-icon.tsx were created
+for Fearville. To the extent possible under law, their author dedicates them
+to the public domain under CC0 1.0 Universal. No attribution is required.
+These are not official Blood on the Clocktower character artwork.
