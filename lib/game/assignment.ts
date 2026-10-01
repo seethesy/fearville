@@ -55,7 +55,7 @@ export function assignRandomRoles(g: Game, requested?: unknown): string {
       )
     )
       throw Error(
-        `Choose ${expected[0]} Townsfolk, ${expected[1]} Outsiders, ${expected[2]} Minions and ${expected[3]} Demon for this setup.`,
+        `Choose ${expected[0]} Villagers, ${expected[1]} Fools, ${expected[2]} Haunts and ${expected[3]} Horror for this setup.`,
       );
     selected.splice(0, selected.length, ...(requested as string[]));
   }

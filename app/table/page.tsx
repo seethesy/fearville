@@ -1,6 +1,8 @@
 'use client';
 import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { PlayerNotes } from '@/components/player-notes';
+import { VoteChoices } from '@/components/vote-choices';
 import { RolePicker } from '@/components/role-picker';
 import { RoleIcon } from '@/components/role-icon';
 import { MessageBadge } from '@/components/message-badge';
@@ -54,6 +56,40 @@ function FieldInput({
   value: string | number | boolean;
   onChange: (value: string | number | boolean) => void;
 }) {
+  if (field.key === 'yes' && field.label === 'Vote')
+    return (
+      <div className="field">
+        {field.label}
+        <VoteChoices value={String(value)} onChange={onChange} />
+      </div>
+    );
+  if (
+    field.type === 'select' &&
+    field.options &&
+    (['outcome', 'winner'].includes(field.key) ||
+      (field.options.length === 2 &&
+        field.options.every((o) =>
+          ['true', 'false', 'good', 'evil', 'yes', 'no'].includes(o.value),
+        )))
+  )
+    return (
+      <fieldset className="field">
+        <legend>{field.label}</legend>
+        <div className="short-choices">
+          {field.options.map((o) => (
+            <button
+              type="button"
+              className="secondary"
+              key={o.value}
+              aria-pressed={String(value) === o.value}
+              onClick={() => onChange(o.value)}
+            >
+              {o.label}
+            </button>
+          ))}
+        </div>
+      </fieldset>
+    );
   if (field.type === 'checkbox')
     return (
       <label className="check-field">
@@ -369,10 +405,18 @@ export default function Table() {
         </section>
       </main>
     );
+  const nightWindowActive =
+    game.nightChoiceDeadline !== null &&
+    game.nightChoiceDeadline > now + offset;
+  const displayDeadline = nightWindowActive
+    ? game.nightChoiceDeadline
+    : game.deadline;
   const seconds = Math.max(
     0,
     Math.ceil(
-      game.deadline ? (game.deadline - now - offset) / 1000 : game.remaining,
+      displayDeadline
+        ? (displayDeadline - now - offset) / 1000
+        : game.remaining,
     ),
   );
   const clock = `${Math.floor(seconds / 60)
@@ -402,7 +446,11 @@ export default function Table() {
       key={c.action + c.title}
       className={primary ? 'primary' : c.danger ? 'danger' : 'secondary'}
       onClick={() => open(c)}
-      disabled={!online || busy}
+      disabled={
+        !online ||
+        busy ||
+        (nightWindowActive && ['night', 'nightSkip', 'dawn'].includes(c.action))
+      }
     >
       {c.title}
     </button>
@@ -418,7 +466,7 @@ export default function Table() {
         <span className="table-identity">
           {game.host ? 'STORYTELLER' : name(game.me)}
         </span>
-        <span className="table-script">Trouble Brewing</span>
+        <span className="table-script">{game.scriptName}</span>
         <span className="session-code">
           <span>Session</span> {game.code}
         </span>
@@ -441,7 +489,7 @@ export default function Table() {
       <div className="table-title">
         <div>
           <p className="eyebrow">
-            TROUBLE BREWING · {game.host ? 'STORYTELLER' : name(game.me)}
+            {game.scriptName.toUpperCase()} · {game.host ? 'STORYTELLER' : name(game.me)}
           </p>
           <h1>
             {game.phase === 'lobby'
@@ -452,16 +500,20 @@ export default function Table() {
           </h1>
         </div>
         <div className="timer-toolbar">
-          <div className="clock-box">
+          <div
+            className={`clock-box ${(displayDeadline || game.remaining) && seconds <= 20 ? 'timer-urgent' : ''}`}
+          >
             <span>
-              {game.deadline
-                ? 'TIME REMAINING'
-                : game.remaining
-                  ? 'PAUSED'
-                  : 'AT THE TABLE'}
+              {nightWindowActive
+                ? 'NIGHT CHOICES'
+                : game.deadline
+                  ? 'TIME REMAINING'
+                  : game.remaining
+                    ? 'PAUSED'
+                    : 'AT THE TABLE'}
             </span>
             <strong>
-              {game.remaining || game.deadline
+              {game.remaining || displayDeadline
                 ? clock
                 : game.players.length.toString().padStart(2, '0')}
             </strong>
@@ -500,6 +552,8 @@ export default function Table() {
       {game.nightChoice && (
         <TableNightChoice
           key={game.nightChoice.round + game.nightChoice.task}
+          game={game}
+          now={now + offset}
           prompt={game.nightChoice}
           refresh={refresh}
         />
@@ -512,9 +566,8 @@ export default function Table() {
         >
           <strong>Standard setup · {game.players.length} players</strong>
           <p>
-            {game.standardCounts[0]} Townsfolk · {game.standardCounts[1]}{' '}
-            Outsiders · {game.standardCounts[2]} Minions ·{' '}
-            {game.standardCounts[3]} Demon
+            {game.standardCounts[0]} Villagers · {game.standardCounts[1]} Fools
+            · {game.standardCounts[2]} Haunts · {game.standardCounts[3]} Horror
           </p>
           <p className="hint">
             Starting counts before character abilities. Actual changes stay
@@ -526,7 +579,7 @@ export default function Table() {
         className="game-tabs"
         value={activeTab}
         onValueChange={(value) => setActiveTab(String(value))}
-        orientation={compact ? 'horizontal' : 'vertical'}
+        orientation={compact || !game.host ? 'horizontal' : 'vertical'}
       >
         <TabsList className="table-tabs" aria-label="Game navigation">
           <TabsTrigger value="flow">
@@ -535,7 +588,7 @@ export default function Table() {
           </TabsTrigger>
           <TabsTrigger value="seats">
             <Users aria-hidden="true" />
-            <span>Seats</span>{' '}
+            <span>{game.host ? 'Seats' : 'Notes'}</span>{' '}
             <span className="count">{game.players.length}</span>
           </TabsTrigger>
           <TabsTrigger value="messages">
@@ -951,95 +1004,126 @@ export default function Table() {
             </section>
           </div>
         </TabsContent>
-        <TabsContent value="seats">
-          {game.host && game.phase === 'lobby' && (
-            <RolePicker
-              key={game.players.map((p) => p.role).join(',')}
-              game={game}
-              refresh={refresh}
-            />
+        <TabsContent value="seats" keepMounted>
+          {!game.host && (
+            <>
+              <PlayerNotes key={'notes:' + game.code + game.me} game={game} />
+              <TableMembership
+                key={game.code + game.me}
+                game={game}
+                refresh={refresh}
+              />
+            </>
           )}
-          {game.host && <TableSeating game={game} refresh={refresh} />}
-          <TableMembership
-            key={game.code + game.me}
-            game={game}
-            refresh={refresh}
-          />
-          {game.host && game.phase === 'lobby' && (
-            <section className="panel poll-result">
-              <h2>Assign the town’s characters.</h2>
-              <p className="muted">
-                Edit each seat to choose its character manually, or start with a
-                random setup and adjust it. Roles are revealed only when you
-                begin the game.
-              </p>
-              <div className="actions">
-                {game.controls
-                  .filter((c) => c.action === 'randomAssign')
-                  .map((c) => button(c, true))}
-                {game.controls
-                  .filter((c) => c.action === 'configure')
-                  .map((c) => button(c))}
-              </div>
-            </section>
-          )}
-          <div className="seat-grid">
-            {game.players.map((p) => (
-              <section className="panel seat-card" key={p.id}>
-                <p className="eyebrow">
-                  SEAT {p.seat.toString().padStart(2, '0')} ·{' '}
-                  {p.alive ? 'ALIVE' : 'DEAD'}
-                </p>
-                <h2>
-                  {p.name}
-                  {p.departed ? ' · Left table' : ''}
-                </h2>
-                {game.host && (
-                  <p className="role-name">
-                    <RoleIcon role={p.role ?? ''} /> (
-                    {ROLES.find((r) => r.id === p.role)?.name ||
-                      'Assign a character'}
-                    )
-                    {p.role === 'drunk' && (
-                      <small>
-                        Shown {ROLES.find((r) => r.id === p.shown)?.name || '—'}
-                      </small>
-                    )}
-                  </p>
-                )}
-                <p className="muted">
-                  {p.ghost ? 'Dead vote available' : 'Dead vote spent'}
-                  {p.nominated ? ' · Nominated today' : ''}
-                  {p.hasNominated ? ' · Nomination used' : ''}
-                </p>
-                {game.host && (
-                  <>
-                    <p className="tags">
-                      {p.poisoned ? 'POISONED ' : ''}
-                      {p.protected ? 'PROTECTED ' : ''}
-                      {p.used ? 'ABILITY USED' : ''}
+          {game.host && (
+            <>
+              {game.phase === 'lobby' && (
+                <section className="panel">
+                  <h2>{game.scriptName}</h2>
+                  {game.script === 'holyMoonStars' && (
+                    <p>
+                      Coming soon. Roles for this script have not been defined
+                      yet.
                     </p>
-                    {p.notes && <p>{p.notes}</p>}
-                    <button
-                      className="secondary"
-                      onClick={() => {
-                        setChatPlayer(p.id);
-                        setActiveTab('messages');
-                      }}
-                    >
-                      Open conversation
-                    </button>
-                    {button(
-                      game.controls.find(
-                        (c) =>
-                          c.action === 'edit' && c.fields[0].value === p.id,
-                      )!,
-                    )}
-                  </>
+                  )}
+                  {game.controls
+                    .filter((c) => c.action === 'setScript')
+                    .map((c) => button(c))}
+                </section>
+              )}
+              {game.host &&
+                game.phase === 'lobby' &&
+                game.script === 'classic' && (
+                  <RolePicker
+                    key={game.players.map((p) => p.role).join(',')}
+                    game={game}
+                    refresh={refresh}
+                  />
                 )}
-              </section>
-            ))}
-          </div>
+              {game.host && <TableSeating game={game} refresh={refresh} />}
+              <TableMembership
+                key={game.code + game.me}
+                game={game}
+                refresh={refresh}
+              />
+              {game.host && game.phase === 'lobby' && (
+                <section className="panel poll-result">
+                  <h2>Assign the town’s characters.</h2>
+                  <p className="muted">
+                    Edit each seat to choose its character manually, or start
+                    with a random setup and adjust it. Roles are revealed only
+                    when you begin the game.
+                  </p>
+                  <div className="actions">
+                    {game.controls
+                      .filter((c) => c.action === 'randomAssign')
+                      .map((c) => button(c, true))}
+                    {game.controls
+                      .filter((c) => c.action === 'configure')
+                      .map((c) => button(c))}
+                  </div>
+                </section>
+              )}
+              <div className="seat-grid">
+                {game.players.map((p) => (
+                  <section className="panel seat-card" key={p.id}>
+                    <p className="eyebrow">
+                      SEAT {p.seat.toString().padStart(2, '0')} ·{' '}
+                      {p.alive ? 'ALIVE' : 'DEAD'}
+                    </p>
+                    <h2>
+                      {p.name}
+                      {p.departed ? ' · Left table' : ''}
+                    </h2>
+                    {game.host && (
+                      <p className="role-name">
+                        <RoleIcon role={p.role ?? ''} /> (
+                        {ROLES.find((r) => r.id === p.role)?.name ||
+                          'Assign a character'}
+                        )
+                        {p.role === 'drunk' && (
+                          <small>
+                            Shown{' '}
+                            {ROLES.find((r) => r.id === p.shown)?.name || '—'}
+                          </small>
+                        )}
+                      </p>
+                    )}
+                    <p className="muted">
+                      {p.ghost ? 'Dead vote available' : 'Dead vote spent'}
+                      {p.nominated ? ' · Nominated today' : ''}
+                      {p.hasNominated ? ' · Nomination used' : ''}
+                    </p>
+                    {game.host && (
+                      <>
+                        <p className="tags">
+                          {p.poisoned ? 'POISONED ' : ''}
+                          {p.protected ? 'PROTECTED ' : ''}
+                          {p.used ? 'ABILITY USED' : ''}
+                        </p>
+                        {p.notes && <p>{p.notes}</p>}
+                        <button
+                          className="secondary"
+                          onClick={() => {
+                            setChatPlayer(p.id);
+                            setActiveTab('messages');
+                          }}
+                        >
+                          Open conversation
+                        </button>
+                        {button(
+                          game.controls.find(
+                            (c) =>
+                              c.action === 'edit' && c.fields[0].value === p.id,
+                          )!,
+                        )}
+                      </>
+                    )}
+                  </section>
+                ))}
+              </div>
+            </>
+          )}
         </TabsContent>
         <TabsContent value="messages" keepMounted>
           <TableMessages
@@ -1057,7 +1141,14 @@ export default function Table() {
             <Link className="quiet-link" href="/rules">
               Open the full reference page →
             </Link>
-            <RulesReference />
+            {game.script === 'holyMoonStars' ? (
+              <p>
+                Holy Moon and Stars is coming soon. Its roles have not been
+                defined yet.
+              </p>
+            ) : (
+              <RulesReference />
+            )}
           </div>
         </TabsContent>
         {game.host && (

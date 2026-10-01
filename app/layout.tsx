@@ -9,7 +9,7 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   title: 'Fearville',
   description:
-    'An in-person Trouble Brewing companion for Storytellers and players.',
+    'An in-person Fearville Classic companion for Storytellers and players.',
 };
 export default function RootLayout({
   children,

@@ -1,5 +1,6 @@
 'use client';
 import { useState } from 'react';
+import { VoteChoices } from './vote-choices';
 export function StorytellerVote({
   player,
   name,
@@ -21,12 +22,11 @@ export function StorytellerVote({
   const [error, setError] = useState('');
   return (
     <span>
-      <select
-        aria-label={`Change vote for ${name}`}
+      <VoteChoices
+        label={`Change vote for ${name}`}
         disabled={busy}
         value={vote === undefined ? '' : String(vote)}
-        onChange={async (e) => {
-          const yes = e.target.value;
+        onChange={async (yes) => {
           setBusy(true);
           setError('');
           try {
@@ -50,14 +50,7 @@ export function StorytellerVote({
             setBusy(false);
           }
         }}
-      >
-        <option value="" disabled>
-          Waiting
-        </option>
-        <option value="true">Yes</option>
-        <option value="false">No</option>
-        <option value="null">Abstain</option>
-      </select>
+      />
       {error && (
         <span role="alert" className="error">
           {error}

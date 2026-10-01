@@ -45,7 +45,8 @@ void test('first-night choice is private, prefills host, and has no effect befor
     g.players[1].id,
   );
   const other = view(g, { id: g.players[1].id, host: false }, 1, 1);
-  assert.equal(other.nightChoice, null);
+  assert.equal(other.nightChoice?.count, 2);
+  assert.equal(other.nightChoice?.choice, null);
   assert.equal(other.nightConfirmation, null);
   assert.equal(
     view(g, { id: t.player, host: false }, 1, 1).nightChoice?.choice?.id,
@@ -60,7 +61,7 @@ void test('first-night choice is private, prefills host, and has no effect befor
       choiceId: choice.id,
       target: choice.target,
     },
-    3,
+    60002,
   );
   assert.equal(g.players[1].poisoned, true);
 });
@@ -106,7 +107,7 @@ void test('changed choices cannot be confirmed with an outdated choice id', () =
         g,
         host,
         { action: 'night', task: t.key, choiceId: old.id, target: old.target },
-        3,
+        60002,
       ),
     /changed their choice/,
   );
@@ -131,8 +132,8 @@ void test('poison warning is host-only and requires acknowledgement to confirm',
     choiceId: choice.id,
     target: choice.target,
   };
-  assert.throws(() => execute(g, host, c, 3), /poisoned/);
-  execute(g, host, { ...c, poisonAcknowledged: true }, 4);
+  assert.throws(() => execute(g, host, c, 60003), /poisoned/);
+  execute(g, host, { ...c, poisonAcknowledged: true }, 60004);
   assert.equal(g.players[1].protected, false);
   assert.equal(
     view(g, { id: g.players[0].id, host: false }, 2, 4).nightConfirmation,
@@ -162,4 +163,113 @@ void test('information-only roles have no target prompt; Ravenkeeper activates a
     .map((t) => t.key);
   assert.equal(nightChoiceTask(g)?.player, g.players[2].id);
   assert.ok(view(g, { id: g.players[2].id, host: false }, 1, 1).nightChoice);
+});
+
+void test('night windows prompt all eligible players together and enforce the server deadline', () => {
+  const g = setup();
+  for (const index of [0, 1, 3])
+    assert.ok(
+      view(g, { id: g.players[index].id, host: false }, 1, 2).nightChoice,
+    );
+  assert.equal(
+    view(g, { id: g.players[2].id, host: false }, 1, 2).nightChoice,
+    null,
+  ); // Monk does not act first night.
+  const p = g.players[1];
+  const prompt = view(g, { id: p.id, host: false }, 1, 2).nightChoice!;
+  const command = {
+    action: 'nightChoice',
+    task: prompt.task,
+    round: prompt.round,
+    target: g.players[0].id,
+    target2: g.players[2].id,
+  };
+  execute(g, { id: p.id, host: false }, command, 60000);
+  assert.throws(
+    () => execute(g, { id: p.id, host: false }, command, 60001),
+    /timer has ended/,
+  );
+  assert.equal(view(g, { id: p.id, host: false }, 1, 60001).nightChoice, null);
+  assert.throws(
+    () => execute(g, host, { action: 'nightSkip' }, 60000),
+    /timer to finish/,
+  );
+  assert.ok(g.nightChoices?.[prompt.task]);
+});
+void test('only the Horror receives exact Haunt roles in the target list', () => {
+  const g = setup();
+  beginNight(g, 100);
+  const horror = view(
+    g,
+    { id: g.players[4].id, host: false },
+    1,
+    101,
+  ).nightChoice!;
+  assert.equal(
+    horror.options.find((p) => p.id === g.players[0].id)?.knownRole,
+    'Poisoner',
+  );
+  assert.ok(
+    horror.options
+      .filter((p) => p.id !== g.players[0].id)
+      .every((p) => !p.knownRole),
+  );
+  const good = view(
+    g,
+    { id: g.players[1].id, host: false },
+    1,
+    101,
+  ).nightChoice!;
+  assert.ok(good.options.every((p) => !p.knownRole));
+  assert.ok(
+    view(g, { id: g.players[4].id, host: false }, 1, 101).players.every(
+      (p) => !('role' in p),
+    ),
+  );
+});
+void test('Ravenkeeper preselects conditionally without announcing death, and custom durations apply next night', () => {
+  const g = setup(['poisoner', 'ravenkeeper', 'monk', 'butler', 'imp']);
+  g.timers.nightChoice = 90;
+  beginNight(g, 100);
+  assert.equal(g.nightChoiceDeadline, 90100);
+  const player = { id: g.players[1].id, host: false };
+  assert.equal(view(g, player, 1, 101).nightChoice?.conditional, true);
+  g.players[1].alive = false;
+  g.players[1].nightDeath = g.night;
+  assert.equal(view(g, player, 1, 101).players[1].alive, true);
+  assert.equal(view(g, player, 1, 101).nightChoice?.conditional, true);
+});
+
+void test('night target lists and submissions exclude ineligible seats', () => {
+  const g = setup();
+  g.players[2].alive = false;
+  g.players[2].publicAlive = false;
+  beginNight(g, 100);
+  for (const index of [0, 4]) {
+    const actor = { id: g.players[index].id, host: false };
+    const prompt = view(g, actor, 1, 101).nightChoice!;
+    assert.ok(!prompt.options.some((p) => p.id === g.players[2].id));
+    assert.throws(
+      () =>
+        execute(
+          g,
+          actor,
+          {
+            action: 'nightChoice',
+            task: prompt.task,
+            round: prompt.round,
+            target: g.players[2].id,
+          },
+          101,
+        ),
+      /eligible/,
+    );
+  }
+  const butler = view(
+    g,
+    { id: g.players[3].id, host: false },
+    1,
+    101,
+  ).nightChoice!;
+  assert.ok(!butler.options.some((p) => p.id === g.players[3].id));
 });

@@ -64,6 +64,22 @@ export function beginNight(g: Game, at: number) {
     p.master = '';
   });
   setPhase(g, 'night', at);
+  g.nightChoiceDeadline = at + (g.timers.nightChoice ?? 60) * 1000;
+  g.nightChoiceTasks = tasks(g);
+  // Preselect conditional Ravenkeeper targets without revealing night deaths.
+  if (g.night > 1)
+    for (const p of g.players.filter(
+      (p) =>
+        p.alive && (p.role === 'drunk' ? p.shown : p.role) === 'ravenkeeper',
+    )) {
+      g.nightChoiceTasks.push({
+        key: 'ravenkeeper:' + p.id,
+        role: 'ravenkeeper',
+        player: p.id,
+        name: 'Ravenkeeper · ' + p.name,
+        done: false,
+      });
+    }
 }
 export function tasks(g: Game) {
   const order = g.night === 1 ? FIRST : OTHER;
@@ -76,7 +92,7 @@ export function tasks(g: Game) {
           role: r,
           player: '',
           name:
-            r === 'minioninfo' ? 'Minion introductions' : 'Demon introductions',
+            r === 'minioninfo' ? 'Haunt introductions' : 'Horror introductions',
           done: g.done.includes(r),
         },
       ];
@@ -100,9 +116,13 @@ export function tasks(g: Game) {
       }));
   });
 }
-export function nightChoiceTask(g: Game) {
+export function nightChoiceTask(g: Game, player?: string) {
   if (g.phase !== 'night') return null;
-  const task = tasks(g).find((t) => !t.done);
+  const task = player
+    ? (g.nightChoiceTasks ?? tasks(g)).find(
+        (t) => t.player === player && !g.done.includes(t.key),
+      )
+    : tasks(g).find((t) => !t.done);
   if (
     !task ||
     ![
@@ -121,16 +141,25 @@ export function nightChoiceTask(g: Game) {
     count: task.role === 'fortuneteller' ? 2 : 1,
     options: g.players
       .filter(
-        (p) => !['monk', 'butler'].includes(task.role) || p.id !== task.player,
+        (p) =>
+          !p.departed &&
+          (!['imp', 'poisoner'].includes(task.role) || p.publicAlive) &&
+          (!['monk', 'butler'].includes(task.role) || p.id !== task.player),
       )
       .sort((a, b) => a.seat - b.seat)
-      .map((p) => ({ id: p.id, name: p.name, seat: p.seat })),
+      .map((p) => ({
+        id: p.id,
+        name: p.name,
+        seat: p.seat,
+        eligible:
+          !['monk', 'butler'].includes(task.role) || p.id !== task.player,
+      })),
   };
 }
 export function setupIssues(g: Game) {
   const issues: string[] = [];
   const expected = COUNTS[g.players.length]?.slice();
-  if (!expected) return ['Trouble Brewing requires 5–15 players.'];
+  if (!expected) return ['Fearville Classic requires 5–15 players.'];
   if (g.players.some((p) => p.role === 'baron')) {
     expected[0] -= 2;
     expected[1] += 2;
@@ -140,7 +169,7 @@ export function setupIssues(g: Game) {
   );
   if (actual.some((v, i) => v !== expected[i]))
     issues.push(
-      `Expected ${expected[0]} Townsfolk, ${expected[1]} Outsiders, ${expected[2]} Minions and 1 Demon.`,
+      `Expected ${expected[0]} Villagers, ${expected[1]} Fools, ${expected[2]} Haunts and 1 Horror.`,
     );
   if (g.players.some((p) => !role(p.role)))
     issues.push('Assign a character to every seat.');
@@ -153,7 +182,7 @@ export function setupIssues(g: Game) {
       role(drunk.shown)?.team !== 'townsfolk' ||
       g.players.some((p) => p.role === drunk.shown))
   )
-    issues.push('Give the Drunk a Townsfolk character that is not in play.');
+    issues.push('Give the Drunk a Villager character that is not in play.');
   if (
     g.players.some(
       (p) => p.role === 'fortuneteller' || p.shown === 'fortuneteller',
@@ -173,7 +202,7 @@ export function setupIssues(g: Game) {
       ))
   )
     issues.push(
-      'Choose three distinct, out-of-play good characters as Demon bluffs.',
+      'Choose three distinct, out-of-play good characters as Horror bluffs.',
     );
   return issues;
 }
@@ -194,10 +223,10 @@ export function winHints(g: Game) {
   const hints: string[] = [];
   if (!alive.some((p) => p.role === 'imp'))
     hints.push(
-      'No living Demon: good wins unless a succession must be resolved.',
+      'No living Horror: good wins unless a succession must be resolved.',
     );
   if (alive.length <= 2 && alive.some((p) => p.role === 'imp'))
-    hints.push('Two or fewer living players with a living Demon: evil wins.');
+    hints.push('Two or fewer living players with a living Horror: evil wins.');
   if (
     g.phase === 'dayReview' &&
     !candidate(g).target &&
@@ -235,7 +264,7 @@ export function death(
     if (next) {
       requireThat(
         next.alive && role(next.role)?.team === 'minion',
-        'The successor must be a living Minion.',
+        'The successor must be a living Haunt.',
       );
       next.role = 'imp';
       next.shown = 'imp';
@@ -380,10 +409,10 @@ function infoResult(g: Game, r: string, p: Player, c: Command) {
       enforce(
         !g.players.some((q) => role(q.role)?.team === 'outsider') ||
           !healthy(p),
-        'Outsiders are in play.',
+        'Fools are in play.',
         c,
       );
-      return 'You learn that there are no Outsiders in play.';
+      return 'You learn that there are no Fools in play.';
     }
     requireThat(a && b && a.id !== b.id, 'Choose two different players.');
     const t =
@@ -445,7 +474,7 @@ function infoResult(g: Game, r: string, p: Player, c: Command) {
     requireThat(['Yes', 'No'].includes(info), 'Answer Yes or No.');
     enforce(
       !healthy(p) || info === actual,
-      'This differs from the Demon/red herring check. Review Recluse registration.',
+      'This differs from the Horror/red herring check. Review Recluse registration.',
       c,
     );
     return `${a.name} and ${b.name}: ${info}.`;
@@ -502,6 +531,7 @@ export function execute(
     'This seat is no longer available.',
   );
   const hostActions = [
+    'setScript',
     'correctVote',
     'moveSeat',
     'randomAssign',
@@ -527,7 +557,11 @@ export function execute(
   if (hostActions.includes(c.action))
     requireThat(actor.host, 'Only the Storyteller can do that.');
   if (c.action === 'nightChoice') {
-    const task = nightChoiceTask(g);
+    requireThat(
+      g.nightChoiceDeadline === undefined || now < g.nightChoiceDeadline,
+      'The night choice timer has ended. The Storyteller will decide.',
+    );
+    const task = nightChoiceTask(g, actor.id);
     requireThat(
       !actor.host &&
         task &&
@@ -537,12 +571,13 @@ export function execute(
       'This night choice is no longer available.',
     );
     requireThat(
-      task.options.some((p) => p.id === c.target),
+      task.options.some((p) => p.eligible && p.id === c.target),
       'Choose an eligible player.',
     );
     if (task.count === 2)
       requireThat(
-        c.target !== c.target2 && task.options.some((p) => p.id === c.target2),
+        c.target !== c.target2 &&
+          task.options.some((p) => p.eligible && p.id === c.target2),
         'Choose two different eligible players.',
       );
     g.nightChoices ??= {};
@@ -625,6 +660,9 @@ export function execute(
     );
     delete g.nightPoll;
     delete g.nightChoices;
+    delete g.nightChoiceDeadline;
+    delete g.nightChoiceTasks;
+    delete g.script;
     delete g.dawnAnnouncement;
     delete g.previousNightPoll;
     Object.assign(g, state);
@@ -657,7 +695,29 @@ export function execute(
           : c.action,
       now,
     );
+  if (
+    g.phase === 'night' &&
+    ['night', 'nightSkip', 'dawn'].includes(c.action)
+  ) {
+    requireThat(
+      g.nightChoiceDeadline === undefined || now >= g.nightChoiceDeadline,
+      'Wait for the night choice timer to finish.',
+    );
+  }
   switch (c.action) {
+    case 'setScript': {
+      requireThat(
+        g.phase === 'lobby',
+        'Change the role script before starting the game.',
+      );
+      requireThat(
+        c.script === 'classic' || c.script === 'holyMoonStars',
+        'Choose a valid role script.',
+      );
+      g.script = c.script as 'classic' | 'holyMoonStars';
+      log(g, 'Updated role script.', now, true);
+      return 'Role script updated.';
+    }
     case 'moveSeat': {
       const p = person(g, c.player);
       const seat = Number(c.seat);
@@ -678,6 +738,10 @@ export function execute(
     }
     case 'randomAssign': {
       requireThat(
+        g.script !== 'holyMoonStars',
+        'Holy Moon and Stars is not ready to play yet.',
+      );
+      requireThat(
         g.phase === 'lobby',
         'Random assignment is only available in the lobby.',
       );
@@ -687,8 +751,11 @@ export function execute(
       return summary;
     }
     case 'configure': {
-      for (const key of Object.keys(g.timers)) {
-        const n = Number(c[key]);
+      for (const key of Object.keys({ nightChoice: 60, ...g.timers })) {
+        const n = Number(
+          c[key] ??
+            (key === 'nightChoice' ? (g.timers.nightChoice ?? 60) : undefined),
+        );
         requireThat(
           Number.isInteger(n) && n >= 5 && n <= 3600,
           'Each timer must be 5–3600 seconds.',
@@ -700,7 +767,7 @@ export function execute(
         .filter(Boolean);
       g.redHerring = clean(c.redHerring);
       log(g, 'Updated timers and setup reminders.', now);
-      return 'Save timers, Demon bluffs, and red herring. Active timers keep their current time.';
+      return 'Save timers, Horror bluffs, and red herring. Active timers keep their current time.';
     }
     case 'edit': {
       const p = person(g, c.player);
@@ -726,7 +793,7 @@ export function execute(
       p.shown = p.role === 'drunk' ? clean(c.shown) : p.role;
       requireThat(
         p.role !== 'drunk' || role(p.shown)?.team === 'townsfolk',
-        'The Drunk must be shown a Townsfolk.',
+        'The Drunk must be shown a Villager.',
       );
       p.poisoned = !!c.poisoned;
       p.protected = !!c.protected;
@@ -755,6 +822,10 @@ export function execute(
       return `Update ${p.name} at seat ${p.seat}. Actual: ${role(p.role)?.name}; shown: ${role(p.shown)?.name}. ${g.phase !== 'lobby' ? 'Send their current character privately.' : ''}`;
     }
     case 'start': {
+      requireThat(
+        g.script !== 'holyMoonStars',
+        'Holy Moon and Stars is not ready to play yet.',
+      );
       requireThat(g.phase === 'lobby', 'The game has already started.');
       requireThat(
         g.players.length >= 5 && g.players.length <= 15,
@@ -768,7 +839,7 @@ export function execute(
         !g.players.some(
           (p) => p.role === 'drunk' && role(p.shown)?.team !== 'townsfolk',
         ),
-        'Choose the Drunk’s shown Townsfolk.',
+        'Choose the Drunk’s shown Villager.',
       );
       enforce(setupIssues(g).length === 0, setupIssues(g).join(' '), c);
       g.players.forEach((p) =>
@@ -873,12 +944,12 @@ export function execute(
       const r = t.role;
       if (r === 'minioninfo') {
         const text =
-          'The Demon is ' +
+          'The Horror is ' +
           g.players
             .filter((p) => p.role === 'imp')
             .map((p) => p.name)
             .join(', ') +
-          '. Minions: ' +
+          '. Haunts: ' +
           g.players
             .filter((p) => role(p.role)?.team === 'minion')
             .map((p) => p.name)
@@ -888,11 +959,11 @@ export function execute(
           .filter((p) => role(p.role)?.team === 'minion')
           .forEach((p) => message(g, p.id, text, now));
         g.done.push(t.key);
-        return text + ' Send privately to Minions.';
+        return text + ' Send privately to Haunts.';
       }
       if (r === 'demoninfo') {
         const text =
-          'Your Minions: ' +
+          'Your Haunts: ' +
           g.players
             .filter((p) => role(p.role)?.team === 'minion')
             .map((p) => p.name)
@@ -904,7 +975,7 @@ export function execute(
           .filter((p) => p.role === 'imp')
           .forEach((p) => message(g, p.id, text, now));
         g.done.push(t.key);
-        return text + ' Send privately to the Demon.';
+        return text + ' Send privately to the Horror.';
       }
       const p = person(g, t.player);
       const choice = g.nightChoices?.[t.key];
@@ -931,7 +1002,7 @@ export function execute(
         }
         if (r === 'monk') {
           if (healthy(p)) target.protected = true;
-          result = `Record ${target.name} as the Monk’s choice. ${healthy(p) ? 'Demon protection is applied for tonight.' : 'The acting player is impaired; no protection is applied.'}`;
+          result = `Record ${target.name} as the Monk’s choice. ${healthy(p) ? 'Horror protection is applied for tonight.' : 'The acting player is impaired; no protection is applied.'}`;
         }
         if (r === 'butler') {
           p.master = target.id;
@@ -970,7 +1041,7 @@ export function execute(
             )
               requireThat(
                 c.successor,
-                'Choose a living Minion to receive the Imp.',
+                'Choose a living Haunt to receive the Imp.',
               );
             death(
               g,
@@ -1103,7 +1174,7 @@ export function execute(
         g.active.virginFirst = true;
         log(
           g,
-          `Virgin review: ${by.name} nominated ${target.name}. Healthy: ${healthy(target)}. Nominator type: ${role(by.role)?.team}. Confirm Virgin ruling before voting.`,
+          `Virgin review: ${by.name} nominated ${target.name}. Healthy: ${healthy(target)}. Nominator type: ${{ townsfolk: 'Villager', outsider: 'Fool', minion: 'Haunt', demon: 'Horror' }[role(by.role)?.team ?? 'townsfolk']}. Confirm Virgin ruling before voting.`,
           now,
         );
       }

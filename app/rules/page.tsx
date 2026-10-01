@@ -5,7 +5,7 @@ import { RulesReference } from '@/components/rules-reference';
 export const metadata: Metadata = {
   title: 'Rules & roles · Fearville',
   description:
-    'Learn how to play and browse all 22 Trouble Brewing roles. No account or lobby required.',
+    'Learn how to play and browse all 22 Fearville Classic roles. No account or lobby required.',
 };
 
 export default function Rules() {
@@ -22,7 +22,7 @@ export default function Rules() {
         <p className="eyebrow">READ BEFORE YOU PLAY · REVISIT ANYTIME</p>
         <h1>Rules & roles</h1>
         <p className="lead">
-          Your guide to Trouble Brewing and playing at a Fearville table. No
+          Your guide to Fearville Classic and playing at a Fearville table. No
           sign-in or session required.
         </p>
         <RulesReference />

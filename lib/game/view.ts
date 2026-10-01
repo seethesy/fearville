@@ -1,5 +1,6 @@
 import {
   ROLES,
+  SCRIPTS,
   COUNTS,
   role,
   phaseName,
@@ -73,9 +74,25 @@ export function controls(g: Game, a: Actor): Control[] {
   if (a.host) {
     if (g.phase === 'lobby') {
       add(
+        'setScript',
+        'Change role script',
+        'Choose the script before starting. Holy Moon and Stars is a stub; its roles are not available yet.',
+        [
+          select(
+            'script',
+            'Role script',
+            Object.entries(SCRIPTS).map(([value, label]) => ({ value, label })),
+            g.script ?? 'classic',
+            true,
+          ),
+        ],
+      );
+    }
+    if (g.phase === 'lobby' && (g.script ?? 'classic') === 'classic') {
+      add(
         'randomAssign',
         'Randomly assign roles',
-        'Apply a balanced Trouble Brewing setup for 5–15 players. Replaces all assigned characters, Demon bluffs, and the red herring. You can edit individual roles in Seats afterward.',
+        'Apply a balanced Fearville Classic setup for 5–15 players. Replaces all assigned characters, Horror bluffs, and the red herring. You can edit individual roles in Seats afterward.',
       );
       add(
         'start',
@@ -166,7 +183,7 @@ export function controls(g: Game, a: Actor): Control[] {
           );
         }
         if (r === 'librarian')
-          fields.push(check('zero', 'Notify that zero Outsiders are in play'));
+          fields.push(check('zero', 'Notify that zero Fools are in play'));
         if (['chef', 'empath', 'fortuneteller', 'spy'].includes(r))
           fields.push({
             ...input(
@@ -287,7 +304,7 @@ export function controls(g: Game, a: Actor): Control[] {
       add(
         'virgin',
         'Resolve Virgin execution',
-        'Only for the Virgin’s first nomination while alive. Review whether the nominator registers as a Townsfolk.',
+        'Only for the Virgin’s first nomination while alive. Review whether the nominator registers as a Villager.',
         overrideFields,
         true,
       );
@@ -450,7 +467,7 @@ export function controls(g: Game, a: Actor): Control[] {
           select('role', 'Actual character', roleOptions, p.role),
           select(
             'shown',
-            'Shown Townsfolk (Drunk only)',
+            'Shown Villager (Drunk only)',
             optional.concat(
               ROLES.filter((r) => r.team === 'townsfolk').map((r) => ({
                 value: r.id,
@@ -472,13 +489,22 @@ export function controls(g: Game, a: Actor): Control[] {
       'Timers & script setup',
       'Timer values are in seconds. New values apply when the next phase begins.',
       [
-        ...Object.entries(g.timers).map(([key, value]) =>
-          num(key, key[0].toUpperCase() + key.slice(1), value, 5, 3600),
+        ...Object.entries({ nightChoice: 60, ...g.timers }).map(
+          ([key, value]) =>
+            num(
+              key,
+              key === 'nightChoice'
+                ? 'Night choices'
+                : key[0].toUpperCase() + key.slice(1),
+              value,
+              5,
+              3600,
+            ),
         ),
         ...['bluff1', 'bluff2', 'bluff3'].map((key, i) =>
           select(
             key,
-            `Demon bluff ${i + 1}`,
+            `Horror bluff ${i + 1}`,
             optional.concat(
               ROLES.filter(
                 (r) =>
@@ -584,19 +610,33 @@ export function controls(g: Game, a: Actor): Control[] {
 export function view(g: Game, a: Actor, version: number, now: number) {
   const me = g.players.find((p) => p.id === a.id);
   const leader = candidate(g);
-  const choiceTask = nightChoiceTask(g);
+  const choiceTask = nightChoiceTask(g, a.id);
   const currentTask =
     g.phase === 'night' ? tasks(g).find((t) => !t.done) : null;
   const actingPlayer = g.players.find((p) => p.id === currentTask?.player);
   return {
     code: g.code,
+    script: g.script ?? 'classic',
+    scriptName: SCRIPTS[g.script ?? 'classic'],
     nightChoice:
-      !a.host && choiceTask?.player === a.id
+      !a.host &&
+      choiceTask?.player === a.id &&
+      (g.nightChoiceDeadline === undefined || now < g.nightChoiceDeadline)
         ? {
             task: choiceTask.key,
+            deadline: g.nightChoiceDeadline ?? null,
+            conditional: choiceTask.role === 'ravenkeeper',
             round: choiceTask.round,
             count: choiceTask.count,
-            options: choiceTask.options,
+            options: choiceTask.options.map((p) => ({
+              ...p,
+              knownRole:
+                me?.role === 'imp' &&
+                role(g.players.find((q) => q.id === p.id)?.role ?? '')?.team ===
+                  'minion'
+                  ? role(g.players.find((q) => q.id === p.id)!.role)?.name
+                  : undefined,
+            })),
             choice: g.nightChoices?.[choiceTask.key] ?? null,
           }
         : null,
@@ -609,7 +649,8 @@ export function view(g: Game, a: Actor, version: number, now: number) {
             choice: g.nightChoices?.[currentTask.key] ?? null,
           }
         : null,
-    standardCounts: COUNTS[g.players.length] ?? null,
+    standardCounts:
+      g.script === 'holyMoonStars' ? null : (COUNTS[g.players.length] ?? null),
     dawnAnnouncement:
       g.phase !== 'night' && g.phase !== 'lobby'
         ? (g.dawnAnnouncement ?? null)
@@ -623,6 +664,8 @@ export function view(g: Game, a: Actor, version: number, now: number) {
     night: g.night,
     version,
     serverNow: now,
+    nightChoiceDeadline:
+      g.phase === 'night' ? (g.nightChoiceDeadline ?? null) : null,
     deadline: g.deadline,
     remaining: g.remaining,
     winner: g.winner,

@@ -4,19 +4,19 @@ export const ROLES = [
     'washerwoman',
     'Washerwoman',
     'townsfolk',
-    'On the first night, learn a Townsfolk character held by one of two players.',
+    'On the first night, learn a Villager character held by one of two players.',
   ],
   [
     'librarian',
     'Librarian',
     'townsfolk',
-    'On the first night, learn an Outsider character held by one of two players, or learn that no Outsiders are in play.',
+    'On the first night, learn an Fool character held by one of two players, or learn that no Fools are in play.',
   ],
   [
     'investigator',
     'Investigator',
     'townsfolk',
-    'On the first night, learn a Minion character held by one of two players.',
+    'On the first night, learn a Haunt character held by one of two players.',
   ],
   [
     'chef',
@@ -34,7 +34,7 @@ export const ROLES = [
     'fortuneteller',
     'Fortune Teller',
     'townsfolk',
-    'Each night, check two players for a Demon. One good player is a permanent false positive.',
+    'Each night, check two players for a Horror. One good player is a permanent false positive.',
   ],
   [
     'undertaker',
@@ -46,7 +46,7 @@ export const ROLES = [
     'monk',
     'Monk',
     'townsfolk',
-    'After the first night, choose someone other than yourself to protect from the Demon that night.',
+    'After the first night, choose someone other than yourself to protect from the Horror that night.',
   ],
   [
     'ravenkeeper',
@@ -58,19 +58,19 @@ export const ROLES = [
     'virgin',
     'Virgin',
     'townsfolk',
-    'Your first nomination consumes your ability. If the nominator is a Townsfolk, they are executed immediately.',
+    'Your first nomination consumes your ability. If the nominator is a Villager, they are executed immediately.',
   ],
   [
     'slayer',
     'Slayer',
     'townsfolk',
-    'Once, during the day, publicly choose someone. If they register as the Demon, they die.',
+    'Once, during the day, publicly choose someone. If they register as the Horror, they die.',
   ],
   [
     'soldier',
     'Soldier',
     'townsfolk',
-    'While healthy, you are safe from the Demon.',
+    'While healthy, you are safe from the Horror.',
   ],
   [
     'mayor',
@@ -88,13 +88,13 @@ export const ROLES = [
     'drunk',
     'Drunk',
     'outsider',
-    'You are shown an out-of-play Townsfolk character and act as that character, but its ability has no effect.',
+    'You are shown an out-of-play Villager character and act as that character, but its ability has no effect.',
   ],
   [
     'recluse',
     'Recluse',
     'outsider',
-    'You may register as evil or as a Minion or Demon, even while dead.',
+    'You may register as evil or as a Haunt or Horror, even while dead.',
   ],
   [
     'saint',
@@ -112,25 +112,25 @@ export const ROLES = [
     'spy',
     'Spy',
     'minion',
-    'Each night, inspect the full game state. You may register as good or as a Townsfolk or Outsider.',
+    'Each night, inspect the full game state. You may register as good or as a Villager or Fool.',
   ],
   [
     'scarletwoman',
     'Scarlet Woman',
     'minion',
-    'If the Demon dies with at least five players alive just before death, you become the Demon.',
+    'If the Horror dies with at least five players alive just before death, you become the Horror.',
   ],
   [
     'baron',
     'Baron',
     'minion',
-    'During setup, replace two Townsfolk with two additional Outsiders.',
+    'During setup, replace two Villagers with two additional Fools.',
   ],
   [
     'imp',
     'Imp',
     'demon',
-    'After the first night, choose someone to kill. Killing yourself passes the Imp to a living Minion.',
+    'After the first night, choose someone to kill. Killing yourself passes the Imp to a living Haunt.',
   ],
 ].map(([id, name, team, description]) => ({
   id,
@@ -139,7 +139,7 @@ export const ROLES = [
   description,
 }));
 export const role = (id: string) => ROLES.find((r) => r.id === id);
-// Official TPI nightsheet, filtered to Trouble Brewing (verified 2026-09-08).
+// Official TPI nightsheet, filtered to Fearville Classic (verified 2026-09-08).
 export const FIRST = [
   'minioninfo',
   'demoninfo',
@@ -239,7 +239,21 @@ export type Message = {
   kind: 'chat' | 'info' | 'correction';
 };
 export type Log = { id: string; text: string; at: number; public: boolean };
+export const SCRIPTS = {
+  classic: 'Fearville Classic',
+  holyMoonStars: 'Holy Moon and Stars',
+} as const;
+export type RoleScript = keyof typeof SCRIPTS;
 export type Game = {
+  nightChoiceDeadline?: number;
+  nightChoiceTasks?: {
+    key: string;
+    role: string;
+    player: string;
+    name: string;
+    done: boolean;
+  }[];
+  script?: RoleScript;
   nightChoices?: Record<
     string,
     { id: string; target: string; target2: string }
@@ -326,6 +340,7 @@ export function newGame(code: string, name: string): Game {
     night: 0,
     players: [],
     timers: {
+      nightChoice: 60,
       discovery: 180,
       discussion: 120,
       nomination: 60,

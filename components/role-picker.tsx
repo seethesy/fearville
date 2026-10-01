@@ -41,7 +41,7 @@ export function RolePicker({
           {selected.length} / {game.players.length} selected
         </strong>
         {extra > 0
-          ? ' · Baron: two Townsfolk become Outsiders (private setup)'
+          ? ' · Baron: two Villagers become Fools (private setup)'
           : ''}
       </p>
       {!counts && <p>Join 5–15 players to deal a balanced setup.</p>}
@@ -49,12 +49,12 @@ export function RolePicker({
         <section key={team}>
           <h3>
             {team === 'townsfolk'
-              ? 'Townsfolk'
+              ? 'Villagers'
               : team === 'outsider'
-                ? 'Outsiders'
+                ? 'Fools'
                 : team === 'minion'
-                  ? 'Minions'
-                  : 'Demon'}{' '}
+                  ? 'Haunts'
+                  : 'Horrors'}{' '}
             ·{' '}
             {
               selected.filter(

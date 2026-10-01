@@ -108,3 +108,48 @@ void test('nomination lists exclude dead and used nominators and previously nomi
       ?.options?.some((o) => o.value === g.players[2].id),
   );
 });
+
+void test('role scripts are public, host-only, lobby-only, and stubs cannot start even with overrides', () => {
+  const g = setup();
+  const player = { id: g.players[0].id, host: false };
+  assert.equal(view(g, player, 1, 1).scriptName, 'Fearville Classic');
+  assert.throws(
+    () =>
+      execute(g, player, { action: 'setScript', script: 'holyMoonStars' }, 2),
+    /Storyteller/,
+  );
+  assert.throws(
+    () => execute(g, host, { action: 'setScript', script: 'invalid' }, 2),
+    /valid role script/,
+  );
+  execute(g, host, { action: 'setScript', script: 'holyMoonStars' }, 3);
+  const v = view(g, player, 2, 3);
+  assert.equal(v.scriptName, 'Holy Moon and Stars');
+  assert.equal(v.standardCounts, null);
+  assert.ok(
+    !view(g, host, 2, 3).controls.some((c) =>
+      ['start', 'randomAssign'].includes(c.action),
+    ),
+  );
+  for (const action of ['start', 'randomAssign'])
+    assert.throws(
+      () =>
+        execute(
+          g,
+          host,
+          { action, override: true, reason: 'Test override' },
+          4,
+        ),
+      /not ready/,
+    );
+  execute(g, host, { action: 'setScript', script: 'classic' }, 5);
+  assert.equal(
+    view(g, host, 3, 5).controls.filter((c) => c.action === 'setScript').length,
+    1,
+  );
+  g.phase = 'night';
+  assert.throws(
+    () => execute(g, host, { action: 'setScript', script: 'holyMoonStars' }, 6),
+    /before starting/,
+  );
+});

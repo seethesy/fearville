@@ -4,25 +4,25 @@ import { ROLES } from '@/lib/game/types';
 const teams = [
   {
     id: 'townsfolk',
-    name: 'Townsfolk',
+    name: 'Villagers',
     alignment: 'Good',
     description: 'Abilities that help the town find evil.',
   },
   {
     id: 'outsider',
-    name: 'Outsiders',
+    name: 'Fools',
     alignment: 'Good',
     description: 'Good players whose abilities complicate the town’s work.',
   },
   {
     id: 'minion',
-    name: 'Minions',
+    name: 'Haunts',
     alignment: 'Evil',
-    description: 'Support the Demon and mislead the town.',
+    description: 'Support the Horror and mislead the town.',
   },
   {
     id: 'demon',
-    name: 'Demon',
+    name: 'Horrors',
     alignment: 'Evil',
     description: 'The town’s hidden enemy.',
   },
@@ -46,9 +46,9 @@ export function RulesReference() {
         <h2>How to play</h2>
         <div className="rules-grid">
           <article>
-            <h3>Two teams, one hidden Demon</h3>
+            <h3>Two teams, one hidden Horror</h3>
             <p>
-              Good aims to kill the Demon. Evil usually wins when only two
+              Good aims to kill the Horror. Evil usually wins when only two
               players remain alive. Character abilities can change these
               outcomes; the Storyteller resolves them.
             </p>
@@ -145,7 +145,7 @@ export function RulesReference() {
         </ol>
       </section>
       <section className="reference-section" aria-labelledby="all-roles">
-        <p className="eyebrow">TROUBLE BREWING</p>
+        <p className="eyebrow">FEARVILLE CLASSIC</p>
         <h2 id="all-roles">All 22 roles</h2>
         <p className="muted">
           This is the full script, including characters that may not be in your

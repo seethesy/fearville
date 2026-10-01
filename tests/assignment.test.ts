@@ -22,7 +22,7 @@ void test('selected role roster is dealt exactly and validates Baron counts', ()
         },
         101,
       ),
-    /Choose 1 Townsfolk/,
+    /Choose 1 Villagers/,
   );
   assert.deepEqual(
     g.players.map((p) => p.role),
@@ -55,6 +55,7 @@ void test('selected role roster is dealt exactly and validates Baron counts', ()
 void test('new tables use requested default phase times and 30-second Add Time', () => {
   const g = lobby();
   assert.deepEqual(g.timers, {
+    nightChoice: 60,
     discovery: 180,
     discussion: 120,
     nomination: 60,
