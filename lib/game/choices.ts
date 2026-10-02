@@ -36,7 +36,10 @@ export function eligibleField(
       }
     }
   }
-  if (control.action === 'configure' && field.key.startsWith('bluff'))
+  if (
+    ['configure', 'start'].includes(control.action) &&
+    field.key.startsWith('bluff')
+  )
     options = options.filter(
       (o) =>
         !o.value ||

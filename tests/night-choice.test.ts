@@ -113,7 +113,7 @@ void test('changed choices cannot be confirmed with an outdated choice id', () =
   );
   assert.equal(g.players[1].poisoned, false);
 });
-void test('poison warning is host-only and requires acknowledgement to confirm', () => {
+void test('poison status is host-only and does not require an acknowledgement field', () => {
   const g = setup(['monk', 'chef', 'soldier', 'baron', 'imp']);
   beginNight(g, 2);
   g.players[0].poisoned = true;
@@ -122,7 +122,12 @@ void test('poison warning is host-only and requires acknowledgement to confirm',
   const v = view(g, host, 1, 1);
   assert.equal(v.nightConfirmation?.poisoned, true);
   assert.ok(
-    v.controls
+    v.nightConfirmation?.statuses.some(
+      (s) => s.name === 'Poisoned' && s.active,
+    ),
+  );
+  assert.ok(
+    !v.controls
       .find((c) => c.action === 'night')
       ?.fields.some((f) => f.key === 'poisonAcknowledged'),
   );
@@ -132,8 +137,7 @@ void test('poison warning is host-only and requires acknowledgement to confirm',
     choiceId: choice.id,
     target: choice.target,
   };
-  assert.throws(() => execute(g, host, c, 60003), /poisoned/);
-  execute(g, host, { ...c, poisonAcknowledged: true }, 60004);
+  execute(g, host, c, 60003);
   assert.equal(g.players[1].protected, false);
   assert.equal(
     view(g, { id: g.players[0].id, host: false }, 2, 4).nightConfirmation,

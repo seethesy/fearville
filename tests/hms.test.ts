@@ -758,23 +758,23 @@ void test('an executed Nightmare haunts a player and redirects them once, after 
     targetDeadline - 1 + 60000,
   );
   choose(g, 7, { target: P(g, 6).id });
+  assert.equal(tasks(g).find((t) => !t.done)!.role, 'nightmareRuling');
+  const ruling = view(g, host, 1, clock).controls.find(
+    (c) => c.action === 'night',
+  )!;
+  assert.equal(
+    ruling.fields.find((f) => f.key === 'target')?.value,
+    P(g, 6).id,
+  );
+  resolve(g);
   while (tasks(g).find((t) => !t.done)!.role !== 'spirit') resolve(g);
   const form = view(g, host, 1, clock).controls.find(
     (c) => c.action === 'night',
   )!;
   assert.match(form.description, /Dazed/);
-  assert.equal(form.fields.find((f) => f.key === 'final1')?.value, P(g, 6).id);
-  // Moving a target who is not Dazed needs the Nightmare (or an override).
-  assert.throws(
-    () =>
-      resolve(g, {
-        target: P(g, 2).id,
-        final1: P(g, 6).id,
-        nightmareUsed: false,
-      }),
-    /not Dazed/,
-  );
-  resolve(g, { final1: P(g, 6).id, nightmareUsed: true });
+  assert.equal(form.fields.find((f) => f.key === 'target')?.value, P(g, 6).id);
+  assert.ok(!form.fields.some((f) => f.key.startsWith('final')));
+  resolve(g);
   assert.equal(g.hms!.nightmare!.used, true);
   assert.ok(
     g.hms!.visits.some((v) => v.from === P(g, 4).id && v.to === P(g, 6).id),

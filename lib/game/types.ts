@@ -461,6 +461,7 @@ export type HmsState = {
   stNight?: number; // the granted ability acts from the night after this one
   stUsed?: boolean;
   nightmare?: { player: string; bound: string; used: boolean };
+  nightmareRedirectTarget?: string;
   prophetReveal?: string[]; // players queued by a Prophet reveal tonight
   questions: Record<string, string>; // Diviner questions this night
 };
@@ -513,6 +514,7 @@ export const HMS_OTHER = [
   'deaths',
 ];
 export type Game = {
+  deferredNightTasks?: string[];
   sandbox?: boolean;
   gameStartedAt?: number;
   decisions?: { id: string; at: number; actor: string; text: string }[];
@@ -575,7 +577,7 @@ export type Option = { value: string; label: string };
 export type Field = {
   key: string;
   label: string;
-  type: 'text' | 'number' | 'select' | 'textarea' | 'checkbox';
+  type: 'text' | 'number' | 'select' | 'textarea' | 'checkbox' | 'hidden';
   value?: string | number | boolean;
   options?: Option[];
   required?: boolean;

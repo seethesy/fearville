@@ -22,6 +22,8 @@ import {
   BookOpen,
   Settings,
   Radio,
+  Check,
+  X,
 } from 'lucide-react';
 import type { GameView } from '@/lib/game/view';
 import type { Control, Field } from '@/lib/game/types';
@@ -58,6 +60,7 @@ function FieldInput({
   value: string | number | boolean;
   onChange: (value: string | number | boolean) => void;
 }) {
+  if (field.type === 'hidden') return null;
   if (field.key === 'yes' && field.label === 'Vote')
     return (
       <div className="field">
@@ -192,6 +195,9 @@ export default function Table() {
         }
       : {}),
   };
+  const checkConfirmation = ['start', 'dawn', 'finishDay'].includes(
+    selected?.action ?? '',
+  );
   const requestNumber = useRef(0);
   const inFlight = useRef<{
     controller: AbortController;
@@ -1310,12 +1316,31 @@ export default function Table() {
               void submit();
             }}
           >
-            {confirmation?.poisoned && (
-              <p className="error" role="alert">
-                <strong>{confirmation.playerName} is poisoned.</strong> Treat
-                this ability as impaired. Information may be false, and the
-                ability must not have its normal effect.
-              </p>
+            {confirmation && (
+              <>
+                {confirmation.ability && (
+                  <div className="ability-reminder">
+                    <strong>
+                      {confirmation.playerName || 'Night task'} ability
+                    </strong>
+                    <p>{confirmation.ability}</p>
+                  </div>
+                )}
+                <div className="status-bubbles" aria-label="Player status">
+                  {confirmation.statuses.map((status) => (
+                    <span
+                      key={status.name}
+                      className={
+                        status.active ? 'status-active' : 'status-inactive'
+                      }
+                    >
+                      {status.active
+                        ? status.name
+                        : `Not ${status.name.toLowerCase()}`}
+                    </span>
+                  ))}
+                </div>
+              </>
             )}
             {confirmation?.choice && (
               <div className="ballot-callout">
@@ -1399,16 +1424,37 @@ export default function Table() {
                 {error}
               </p>
             )}
-            <button
-              className="primary full"
-              disabled={
-                busy ||
-                !online ||
-                (selected?.action === 'night' && !confirmation)
-              }
-            >
-              {busy ? 'Applying…' : selected?.title || 'Apply'}
-            </button>
+            {checkConfirmation ? (
+              <div className="confirmation-actions">
+                <button
+                  type="button"
+                  className="confirmation-no"
+                  aria-label="Cancel"
+                  disabled={busy}
+                  onClick={() => setSelected(null)}
+                >
+                  <X aria-hidden="true" />
+                </button>
+                <button
+                  className="confirmation-yes"
+                  aria-label="Confirm"
+                  disabled={busy || !online}
+                >
+                  <Check aria-hidden="true" />
+                </button>
+              </div>
+            ) : (
+              <button
+                className="primary full"
+                disabled={
+                  busy ||
+                  !online ||
+                  (selected?.action === 'night' && !confirmation)
+                }
+              >
+                {busy ? 'Applying…' : selected?.title || 'Apply'}
+              </button>
+            )}
           </form>
         </DialogContent>
       </Dialog>

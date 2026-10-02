@@ -8,7 +8,7 @@ import {
   type Control,
   type Option,
 } from './types.ts';
-import { nameOf, healthy, candidate } from './engine.ts';
+import { nameOf, healthy } from './engine.ts';
 import {
   hms,
   actorOf,
@@ -63,6 +63,19 @@ export function hmsNightFields(g: Game, t: Task, ps: Option[]) {
   const fields: Field[] = [];
   const notes: string[] = [];
   const r = t.role;
+  if (r === 'nightmareRuling') {
+    const nightmare = s.nightmare;
+    const plan = nightmare
+      ? g.nightChoices?.['nightmareRedirect:' + nightmare.player]
+      : undefined;
+    return {
+      fields: [
+        select('target', 'Redirected target', ps, plan?.target ?? '', true),
+      ],
+      description:
+        'The Nightmare chose a redirect. Confirm or privately change where the haunted player’s ability lands; the haunted player is not notified.',
+    };
+  }
   const p = t.player ? actorOf(g, t.player) : null;
   if (p && p.id !== ST)
     notes.push(
@@ -79,6 +92,14 @@ export function hmsNightFields(g: Game, t: Task, ps: Option[]) {
     0,
     count,
   );
+  const submitted = chosen.slice();
+  if (
+    count &&
+    s.nightmare?.bound === p?.id &&
+    s.nightmareRedirectTarget &&
+    s.nightmare?.used
+  )
+    chosen[0] = s.nightmareRedirectTarget;
   if (count) {
     const once = ['gravedigger', 'priest', 'necromancer'].includes(r);
     for (let i = 0; i < count; i++)
@@ -98,7 +119,7 @@ export function hmsNightFields(g: Game, t: Task, ps: Option[]) {
       const plan = bound
         ? g.nightChoices?.['nightmareRedirect:' + n!.player]
         : undefined;
-      chosen.forEach((id) => {
+      submitted.forEach((id) => {
         const q = g.players.find((x) => x.id === id);
         if (q?.role === 'dazed')
           notes.push(
@@ -114,23 +135,8 @@ export function hmsNightFields(g: Game, t: Task, ps: Option[]) {
         notes.push(
           `The Nightmare (${nameOf(g, n!.player)}) haunts this player and may redirect once${plan && !plan.pass ? `; they asked for ${nameOf(g, plan.target)}` : plan?.pass ? '; they passed tonight' : ''}. Apply Dazed redirects first, then the Nightmare’s.`,
         );
-      for (let i = 0; i < count; i++)
-        fields.push(
-          select(
-            'final' + (i + 1),
-            `Actually hits${count > 1 ? ' ' + (i + 1) : ''} (only if redirected)`,
-            none.concat(ps),
-            i === 0 && plan && !plan.pass ? plan.target : '',
-          ),
-        );
-      if (bound)
-        fields.push(
-          check(
-            'nightmareUsed',
-            'The Nightmare uses its redirect on this ability',
-            !!plan && !plan.pass,
-          ),
-        );
+      if (bound && plan && !plan.pass)
+        notes.push('Resolve the Nightmare redirect task before this ability.');
     }
   }
   if (choice?.pass) notes.push('The player passed.');
@@ -448,48 +454,6 @@ export function hmsControls(
     { ...check('confirm', label), required: true },
   ];
   if (a.host) {
-    if (g.phase === 'dayReview' && !g.execution) {
-      const leader = candidate(g).target;
-      add(
-        'execute',
-        'Execute the ballot leader',
-        leader
-          ? `Ballot leader: ${nameOf(g, leader)}. The death goes through prevention, the Fateweaver and death triggers.`
-          : 'No qualifying nominee. Choose a player only to override.',
-        [
-          select(
-            'target',
-            'Player to execute',
-            none
-              .concat(
-                g.nominees.includes(ST)
-                  ? [{ value: ST, label: 'The Storyteller' }]
-                  : [],
-              )
-              .concat(
-                ps.filter((o) =>
-                  g.players.some((p) => p.id === o.value && p.alive),
-                ),
-              ),
-            leader,
-            true,
-          ),
-          select(
-            'atheistRuling',
-            'If the Storyteller is executed without an Atheist',
-            [
-              { value: '', label: '—' },
-              {
-                value: 'nominator',
-                label: 'The nominator is executed instead',
-              },
-              { value: 'none', label: 'Nothing happens' },
-            ],
-          ),
-        ],
-        true,
-      );
-    }
     if (running) {
       const prophets = g.players.filter((p) => p.role === 'prophet' && p.alive);
       if (prophets.length)

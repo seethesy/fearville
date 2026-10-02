@@ -56,13 +56,7 @@ const num = (
   max = 3600,
 ): Field => ({ key, label, type: 'number', value, min, max, required: true });
 const optional = [{ value: '', label: 'None' }];
-const overrideFields: Field[] = [
-  check('override', 'Override standard rules'),
-  {
-    ...input('reason', 'Override reason'),
-    hint: 'Required when changing a rules-based suggestion. Explain registration or the correction.',
-  },
-];
+const overrideFields: Field[] = [check('override', 'Override standard rules')];
 export function controls(g: Game, a: Actor): Control[] {
   const SR = scriptRoles(g.script);
   const roleOptions = SR.map((r) => ({ value: r.id, label: r.name }));
@@ -129,6 +123,134 @@ export function controls(g: Game, a: Actor): Control[] {
       );
     }
     if (g.phase === 'lobby') {
+      const outOfPlayGood = SR.filter(
+        (r) =>
+          ['townsfolk', 'outsider'].includes(r.team) &&
+          !g.players.some((p) => p.role === r.id),
+      ).map((r) => ({ value: r.id, label: r.name }));
+      const outOfPlayVillagers = SR.filter(
+        (r) =>
+          r.team === 'townsfolk' && !g.players.some((p) => p.role === r.id),
+      ).map((r) => ({ value: r.id, label: r.name }));
+      const setupFields: Field[] = [
+        { key: 'confirmSetup', label: '', type: 'hidden', value: true },
+      ];
+      const reservedHidden = new Set<string>();
+      const hiddenDefault = (current?: string) => {
+        const validCurrent = outOfPlayVillagers.some(
+          (option) => option.value === current,
+        );
+        const value =
+          validCurrent && !reservedHidden.has(current!)
+            ? current!
+            : (outOfPlayVillagers.find(
+                (option) => !reservedHidden.has(option.value),
+              )?.value ?? '');
+        if (value) reservedHidden.add(value);
+        return value;
+      };
+      const hiddenDefaults = new Map<string, string>();
+      for (const p of g.players) {
+        if (p.role === 'drunk')
+          hiddenDefaults.set('shown_' + p.id, hiddenDefault(p.shown));
+        if (
+          isHms(g) &&
+          (p.role === 'dazed' ||
+            (g.players.some((q) => q.role === 'moonshiner') &&
+              role(p.role)?.team === 'outsider'))
+        )
+          hiddenDefaults.set('shown_' + p.id, hiddenDefault(p.shown));
+        if (isHms(g) && p.role === 'lostsoul')
+          hiddenDefaults.set('acts_' + p.id, hiddenDefault(p.acts));
+      }
+      const bluffPool = outOfPlayGood.filter(
+        (option) => !reservedHidden.has(option.value),
+      );
+      const bluffDefaults: string[] = [];
+      for (let i = 0; i < 3; i++) {
+        const current = g.bluffs[i];
+        const value = bluffPool.some(
+          (option) =>
+            option.value === current && !bluffDefaults.includes(current),
+        )
+          ? current
+          : (bluffPool.find((option) => !bluffDefaults.includes(option.value))
+              ?.value ?? '');
+        bluffDefaults.push(value);
+      }
+      if (!g.players.some((p) => p.role === 'atheist'))
+        for (let i = 0; i < 3; i++)
+          setupFields.push(
+            select(
+              `bluff${i + 1}`,
+              `Horror bluff ${i + 1}`,
+              outOfPlayGood,
+              bluffDefaults[i],
+              g.players.length >= 7,
+            ),
+          );
+      for (const p of g.players) {
+        if (p.role === 'drunk')
+          setupFields.push(
+            select(
+              'shown_' + p.id,
+              `${p.name} · Drunk’s shown Villager`,
+              outOfPlayVillagers,
+              hiddenDefaults.get('shown_' + p.id) ?? '',
+              true,
+            ),
+          );
+        if (
+          isHms(g) &&
+          (p.role === 'dazed' ||
+            (g.players.some((q) => q.role === 'moonshiner') &&
+              role(p.role)?.team === 'outsider'))
+        )
+          setupFields.push(
+            select(
+              'shown_' + p.id,
+              `${p.name} · shown Villager`,
+              outOfPlayVillagers,
+              hiddenDefaults.get('shown_' + p.id) ?? '',
+              true,
+            ),
+          );
+        if (isHms(g) && p.role === 'lostsoul')
+          setupFields.push(
+            select(
+              'acts_' + p.id,
+              `${p.name} · Lost Soul’s hidden Villager`,
+              outOfPlayVillagers,
+              hiddenDefaults.get('acts_' + p.id) ?? '',
+              true,
+            ),
+          );
+      }
+      if (
+        !isHms(g) &&
+        g.players.some(
+          (p) => p.role === 'fortuneteller' || p.shown === 'fortuneteller',
+        )
+      )
+        setupFields.push(
+          select(
+            'redHerring',
+            'Fortune Teller red herring',
+            ps.filter((option) =>
+              g.players.some(
+                (p) =>
+                  p.id === option.value &&
+                  ['townsfolk', 'outsider'].includes(role(p.role)?.team ?? ''),
+              ),
+            ),
+            g.redHerring ||
+              g.players.find((p) =>
+                ['townsfolk', 'outsider'].includes(role(p.role)?.team ?? ''),
+              )?.id ||
+              '',
+            true,
+          ),
+        );
       add(
         'randomAssign',
         'Randomly assign roles',
@@ -139,9 +261,9 @@ export function controls(g: Game, a: Actor): Control[] {
       add(
         'start',
         'Deal roles & begin night',
-        'Private characters are sent to each player. ' +
+        'Review the script-specific setup decisions below. Defaults are ready, but you can change them before private characters are sent. ' +
           (setupIssues(g).join(' ') || 'Setup is ready.'),
-        overrideFields,
+        setupFields,
       );
     }
     const death = isHms(g) ? deathControl(g, ps) : null;
@@ -149,37 +271,28 @@ export function controls(g: Game, a: Actor): Control[] {
     if (g.phase === 'night' && isHms(g) && !death) {
       const t = tasks(g).find((t) => !t.done);
       if (t) {
-        const p = t.player ? g.players.find((p) => p.id === t.player) : null;
         const { fields, description } = hmsNightFields(g, t, ps);
         add(
           'night',
           'Resolve ' + t.name,
           description || 'Review and confirm this step before continuing.',
           [
-            {
-              key: 'task',
-              label: 'Night task',
-              type: 'select',
-              options: [{ value: t.key, label: t.name }],
-              value: t.key,
-            },
+            { key: 'task', label: '', type: 'hidden', value: t.key },
             ...fields,
             ...overrideFields,
-            ...(p?.poisoned
-              ? [
-                  check(
-                    'poisonAcknowledged',
-                    'I understand this player is poisoned; resolve their ability as impaired',
-                  ),
-                ]
-              : []),
           ],
         );
         add(
+          'nightDefer',
+          'Do this task later',
+          'Move this task behind the other unresolved night tasks. Nothing is announced to players.',
+          [],
+        );
+        add(
           'nightSkip',
-          'Skip this night task',
-          'Send no information and apply no effect.',
-          [input('reason', 'Reason for skipping')],
+          'Skip this task entirely',
+          'Complete this task without sending information or applying its effect. Nothing is announced to players.',
+          [],
           true,
         );
       } else
@@ -188,7 +301,7 @@ export function controls(g: Game, a: Actor): Control[] {
           'Announce dawn',
           'Publish night deaths, apply revivals and character changes, close the Medium’s channel, and start Discovery. ' +
             winHints(g).join(' '),
-          overrideFields,
+          [],
         );
     }
     if (g.phase === 'night' && !isHms(g)) {
@@ -197,13 +310,7 @@ export function controls(g: Game, a: Actor): Control[] {
         const p = g.players.find((p) => p.id === t.player),
           r = t.role;
         const fields: Field[] = [
-          {
-            key: 'task',
-            label: 'Night task',
-            type: 'select',
-            options: [{ value: t.key, label: t.name }],
-            value: t.key,
-          },
+          { key: 'task', label: '', type: 'hidden', value: t.key },
         ];
         let description = 'Review and confirm this step before continuing.';
         if (p)
@@ -283,7 +390,7 @@ export function controls(g: Game, a: Actor): Control[] {
               '',
               'textarea',
             ),
-            hint: 'Leave blank to use calculated information. Use an override reason for registration changes.',
+            hint: 'Leave blank to use the calculated information.',
           });
         if (r === 'imp')
           fields.push(
@@ -318,13 +425,6 @@ export function controls(g: Game, a: Actor): Control[] {
             ),
           );
         fields.push(...overrideFields);
-        if (p?.poisoned)
-          fields.push(
-            check(
-              'poisonAcknowledged',
-              'I understand this player is poisoned; resolve their ability as impaired',
-            ),
-          );
         const choice = g.nightChoices?.[t.key];
         if (choice) {
           for (const field of fields) {
@@ -335,10 +435,16 @@ export function controls(g: Game, a: Actor): Control[] {
         }
         add('night', 'Resolve ' + t.name, description, fields);
         add(
+          'nightDefer',
+          'Do this task later',
+          'Move this task behind the other unresolved night tasks. Nothing is announced to players.',
+          [],
+        );
+        add(
           'nightSkip',
-          'Skip this night task',
-          'Send no information and apply no effect.',
-          [input('reason', 'Reason for skipping')],
+          'Skip this task entirely',
+          'Complete this task without sending information or applying its effect. Nothing is announced to players.',
+          [],
           true,
         );
       } else
@@ -347,7 +453,7 @@ export function controls(g: Game, a: Actor): Control[] {
           'Announce dawn',
           'Publish night deaths and start the Discovery timer. ' +
             winHints(g).join(' '),
-          overrideFields,
+          [],
         );
     }
     if (!g.sandbox && g.deadline !== null)
@@ -386,38 +492,17 @@ export function controls(g: Game, a: Actor): Control[] {
         (g.execution
           ? `Executed today: ${nameOf(g, g.execution)}.`
           : candidate(g).target
-            ? 'Execute the ballot leader first, or override to skip the execution.'
+            ? `Ballot leader: ${nameOf(g, candidate(g).target)}. Their execution and all win conditions will be calculated automatically.`
             : 'No execution today.') +
-          ' Review win conditions before the next night.',
-        [
-          select('ruling', 'If a win condition applies', [
-            { value: '', label: 'Prompt me if needed' },
-            { value: 'good', label: 'Good wins' },
-            { value: 'evil', label: 'Evil wins' },
-            { value: 'continue', label: 'Continue (override)' },
-          ]),
-          ...overrideFields,
-        ],
+          ' Confirm to apply the automatic result.',
+        [],
       );
     if (g.phase === 'dayReview' && !isHms(g))
       add(
         'finishDay',
         'Confirm day outcome',
-        'Review the ballot leader, character effects, and win conditions before the next night.',
-        [
-          select(
-            'target',
-            'Execution override',
-            [{ value: '', label: 'Use ballot result' }].concat(ps),
-          ),
-          select('ruling', 'If a win condition applies', [
-            { value: '', label: 'Prompt me if needed' },
-            { value: 'good', label: 'Good wins' },
-            { value: 'evil', label: 'Evil wins' },
-            { value: 'continue', label: 'Continue (override)' },
-          ]),
-          ...overrideFields,
-        ],
+        `${candidate(g).target ? `${nameOf(g, candidate(g).target)} is the ballot leader and will be executed.` : candidate(g).tied ? 'The vote is tied, so nobody will be executed.' : 'Nobody qualified for execution.'} Character effects and win conditions will be calculated automatically.`,
+        [],
       );
     if (
       !isHms(g) &&
@@ -750,7 +835,6 @@ export function controls(g: Game, a: Actor): Control[] {
             ),
             'night',
           ),
-          input('reason', 'Reason'),
         ],
         true,
       );
@@ -844,6 +928,42 @@ export function view(
             task: currentTask.key,
             playerName: actingPlayer?.name ?? '',
             poisoned: !!actingPlayer?.poisoned,
+            ability:
+              role(currentTask.role)?.description ??
+              (currentTask.role === 'nightmareRuling'
+                ? 'Privately resolve the Nightmare’s requested redirect before the haunted ability lands.'
+                : ''),
+            statuses: [
+              { name: 'Poisoned', active: !!actingPlayer?.poisoned },
+              {
+                name: 'Drunk',
+                active: !!actingPlayer?.drunk || actingPlayer?.role === 'drunk',
+              },
+              {
+                name: 'Redirected',
+                active:
+                  !!actingPlayer &&
+                  g.hms?.nightmare?.bound === actingPlayer.id &&
+                  !!g.hms.nightmareRedirectTarget,
+              },
+              {
+                name: 'Protected',
+                active: !!actingPlayer?.protected,
+              },
+              {
+                name: 'Infected',
+                active: g.hms?.infected?.target === actingPlayer?.id,
+              },
+              {
+                name: 'Marked',
+                active: !!actingPlayer?.marked,
+              },
+              {
+                name: 'Haunted',
+                active:
+                  !!actingPlayer && g.hms?.nightmare?.bound === actingPlayer.id,
+              },
+            ],
             choice: g.nightChoices?.[currentTask.key] ?? null,
           }
         : null,

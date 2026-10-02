@@ -34,7 +34,7 @@ import {
   hmsWinHints,
   hmsAction,
   applyStartState,
-  actorOf,
+  pendingDeath,
   requireNoPendingDeath,
   ST,
 } from './hms.ts';
@@ -87,6 +87,7 @@ export function beginNight(g: Game, at: number) {
   g.nightIntroductions = {};
   startNightPoll(g);
   g.done = [];
+  g.deferredNightTasks = [];
   g.active = null;
   g.players.forEach((p) => {
     p.poisoned = false;
@@ -119,40 +120,50 @@ export function beginNight(g: Game, at: number) {
     }
 }
 export function tasks(g: Game) {
-  if (isHms(g)) return hmsTasks(g);
+  const defer = <T extends { key: string; done: boolean }>(items: T[]) => {
+    const later = new Set(g.deferredNightTasks ?? []);
+    return items.sort(
+      (a, b) => Number(later.has(a.key)) - Number(later.has(b.key)),
+    );
+  };
+  if (isHms(g)) return defer(hmsTasks(g));
   const order = g.night === 1 ? FIRST : OTHER;
-  return order.flatMap((r) => {
-    if (r === 'minioninfo' || r === 'demoninfo') {
-      if (g.players.length < 7) return [];
-      return [
-        {
-          key: r,
+  return defer(
+    order.flatMap((r) => {
+      if (r === 'minioninfo' || r === 'demoninfo') {
+        if (g.players.length < 7) return [];
+        return [
+          {
+            key: r,
+            role: r,
+            player: '',
+            name:
+              r === 'minioninfo'
+                ? 'Haunt introductions'
+                : 'Horror introductions',
+            done: g.done.includes(r),
+          },
+        ];
+      }
+      return g.players
+        .filter((p) => {
+          const shown = p.role === 'drunk' ? p.shown : p.role;
+          return (
+            shown === r &&
+            (r === 'ravenkeeper' ? p.nightDeath === g.night : p.alive) &&
+            (r !== 'undertaker' || !!g.execution)
+          );
+        })
+        .sort((a, b) => a.seat - b.seat)
+        .map((p) => ({
+          key: r + ':' + p.id,
           role: r,
-          player: '',
-          name:
-            r === 'minioninfo' ? 'Haunt introductions' : 'Horror introductions',
-          done: g.done.includes(r),
-        },
-      ];
-    }
-    return g.players
-      .filter((p) => {
-        const shown = p.role === 'drunk' ? p.shown : p.role;
-        return (
-          shown === r &&
-          (r === 'ravenkeeper' ? p.nightDeath === g.night : p.alive) &&
-          (r !== 'undertaker' || !!g.execution)
-        );
-      })
-      .sort((a, b) => a.seat - b.seat)
-      .map((p) => ({
-        key: r + ':' + p.id,
-        role: r,
-        player: p.id,
-        name: role(r)!.name + ' · ' + p.name,
-        done: g.done.includes(r + ':' + p.id),
-      }));
-  });
+          player: p.id,
+          name: role(r)!.name + ' · ' + p.name,
+          done: g.done.includes(r + ':' + p.id),
+        }));
+    }),
+  );
 }
 export function nightChoiceTask(g: Game, player?: string) {
   if (g.phase !== 'night') return null;
@@ -304,6 +315,27 @@ export function winHints(g: Game) {
       'Three living players, a healthy Mayor, and no execution: good wins at the end of today.',
     );
   return hints;
+}
+function automaticWinner(g: Game, noExecution = false) {
+  const alive = g.players.filter((p) => p.alive);
+  if (isHms(g)) {
+    if (g.players.some((p) => p.role === 'atheist'))
+      return alive.length <= 2 ? 'Evil' : '';
+    const horror = alive.some((p) => role(p.role)?.team === 'demon');
+    if (!horror) return 'Good';
+    if (alive.length <= 2) return 'Evil';
+    return '';
+  }
+  const horror = alive.some((p) => p.role === 'imp');
+  if (!horror) return 'Good';
+  if (alive.length <= 2) return 'Evil';
+  if (
+    noExecution &&
+    alive.length === 3 &&
+    alive.some((p) => p.role === 'mayor' && healthy(p))
+  )
+    return 'Good';
+  return '';
 }
 export function death(
   g: Game,
@@ -460,12 +492,12 @@ function clean(x: unknown, max = 500) {
     .slice(0, max);
 }
 function override(c: Command) {
-  return !!c.override && clean(c.reason).length >= 5;
+  return !!c.override;
 }
 function enforce(condition: unknown, message: string, c: Command) {
   requireThat(
     condition || override(c),
-    message + ' Use a Storyteller override with a reason if needed.',
+    message + ' Use a Storyteller override if needed.',
   );
 }
 function infoResult(g: Game, r: string, p: Player, c: Command) {
@@ -615,6 +647,7 @@ export function execute(
     'dawn',
     'night',
     'nightSkip',
+    'nightDefer',
     'finishDay',
     'undo',
     'rewind',
@@ -636,6 +669,18 @@ export function execute(
       'The game must end before returning to the lobby.',
     );
     return returnToLobby(g, now);
+  }
+  if (c.action === 'nightDefer') {
+    requireThat(g.phase === 'night', 'It is not night.');
+    const task = tasks(g).find((t) => !t.done);
+    requireThat(task, 'No night task remains.');
+    g.deferredNightTasks ??= [];
+    requireThat(
+      !g.deferredNightTasks.includes(task.key),
+      'This is the last deferred task. Resolve or skip it before dawn.',
+    );
+    g.deferredNightTasks.push(task.key);
+    return `Set ${task.name} aside. It will return after the other night tasks.`;
   }
   if (c.action === 'nightChoice') {
     const task = nightChoiceTask(g, actor.id);
@@ -1011,6 +1056,32 @@ export function execute(
         ),
         'Assign characters from this script.',
       );
+      const goodRoles = scriptRoles(g.script).filter((r) =>
+        ['townsfolk', 'outsider'].includes(r.team),
+      );
+      const suppliedBluffs = [c.bluff1, c.bluff2, c.bluff3]
+        .map((value) => clean(value))
+        .filter(Boolean);
+      if (suppliedBluffs.length) g.bluffs = suppliedBluffs;
+      if (c.redHerring) g.redHerring = clean(c.redHerring);
+      for (const p of g.players) {
+        const shown = clean(c['shown_' + p.id]);
+        const acts = clean(c['acts_' + p.id]);
+        if (shown) {
+          requireThat(
+            goodRoles.some((r) => r.id === shown),
+            'Choose a valid shown character.',
+          );
+          p.shown = shown;
+        }
+        if (acts) {
+          requireThat(
+            goodRoles.some((r) => r.id === acts && r.team === 'townsfolk'),
+            'Choose a valid hidden Villager.',
+          );
+          p.acts = acts;
+        }
+      }
       requireThat(
         !g.players.some(
           (p) => p.role === 'drunk' && role(p.shown)?.team !== 'townsfolk',
@@ -1108,7 +1179,6 @@ export function execute(
       requireThat(g.phase === 'night', 'It is not night.');
       const task = tasks(g).find((t) => !t.done);
       requireThat(task, 'All night tasks are complete.');
-      requireThat(clean(c.reason).length >= 5, 'Give a reason for skipping.');
       if (isHms(g)) {
         requireNoPendingDeath(g);
         if (task.key === 'deaths')
@@ -1116,7 +1186,10 @@ export function execute(
         if (task.key === 'plague') delete hms(g).infected;
       }
       g.done.push(task.key);
-      log(g, 'Skipped ' + task.name + ': ' + clean(c.reason), now);
+      g.deferredNightTasks = (g.deferredNightTasks ?? []).filter(
+        (key) => key !== task.key,
+      );
+      log(g, 'Skipped ' + task.name + '.', now);
       return (
         'Skip ' +
         task.name +
@@ -1134,11 +1207,6 @@ export function execute(
           (c.choiceId || '') === (choice?.id || ''),
           'The player changed their choice. Review it before confirming.',
         );
-        const acting = t.player ? actorOf(g, t.player) : null;
-        requireThat(
-          !acting?.poisoned || c.poisonAcknowledged === true,
-          'This player is poisoned. Acknowledge the warning before confirming.',
-        );
         return hmsResolve(g, t, c, now);
       }
       if (r === 'minioninfo' || r === 'demoninfo') {
@@ -1151,10 +1219,6 @@ export function execute(
       requireThat(
         (c.choiceId || '') === (choice?.id || ''),
         'The player changed their choice. Review it before confirming.',
-      );
-      requireThat(
-        !p.poisoned || c.poisonAcknowledged === true,
-        'This player is poisoned. Acknowledge the warning before confirming.',
       );
       let result = '';
       if (['poisoner', 'monk', 'imp', 'butler'].includes(r)) {
@@ -1194,7 +1258,7 @@ export function execute(
           if (kill === blocked)
             requireThat(
               override(c),
-              'Changing the suggested death outcome requires an override reason.',
+              'Changing the suggested death outcome requires a Storyteller override.',
             );
           if (kill && victim.alive) {
             if (
@@ -1237,10 +1301,7 @@ export function execute(
       g.done.push(t.key);
       log(
         g,
-        t.name +
-          ': ' +
-          result +
-          (override(c) ? ' Override: ' + clean(c.reason) : ''),
+        t.name + ': ' + result + (override(c) ? ' Storyteller override.' : ''),
         now,
       );
       return result;
@@ -1467,26 +1528,29 @@ export function execute(
       if (isHms(g)) {
         requireNoPendingDeath(g);
         const leader = candidate(g).target;
-        enforce(
-          !leader || !!g.execution,
-          `Execute ${nameOf(g, leader)} first, or skip the execution.`,
-          c,
-        );
-        const hints = winHints(g);
-        if (hints.length) {
-          requireThat(
-            ['good', 'evil', 'continue'].includes(clean(c.ruling)),
-            'Choose the end-of-day ruling: ' + hints.join(' '),
+        if (leader && !g.execution) {
+          const result = hmsAction(
+            g,
+            { id: 'host', host: true },
+            {
+              action: 'execute',
+              target: leader,
+              atheistRuling: 'none',
+            },
+            now,
           );
-          if (c.ruling !== 'continue') {
-            g.winner = clean(c.ruling) === 'good' ? 'Good' : 'Evil';
+          if (result === 'END_GAME') {
             setPhase(g, 'ended', now);
-            return 'Confirm ' + g.winner + ' victory. ' + hints.join(' ');
+            return 'The Storyteller is executed with the Atheist in play: good wins.';
           }
-          requireThat(
-            override(c),
-            'Continuing despite a win condition requires an override reason.',
-          );
+          if (pendingDeath(g))
+            return `${result ?? `Execute ${nameOf(g, leader)}.`} Resolve the execution death, then confirm the day outcome again.`;
+        }
+        const winner = automaticWinner(g, !g.execution);
+        if (winner) {
+          g.winner = winner;
+          setPhase(g, 'ended', now);
+          return `${winner} wins. The day outcome and win conditions were calculated automatically.`;
         }
         beginNight(g, now);
         return (
@@ -1494,12 +1558,7 @@ export function execute(
         );
       }
       const result = candidate(g);
-      const target = c.target ? clean(c.target) : result.target;
-      enforce(
-        !c.target || target === result.target,
-        'The selected execution differs from the ballot leader.',
-        c,
-      );
+      const target = result.target;
       const previousExecution = !!g.execution;
       requireThat(
         !previousExecution || !c.target,
@@ -1520,21 +1579,11 @@ export function execute(
           );
         }
       }
-      const hints = winHints(g);
-      if (hints.length) {
-        requireThat(
-          ['good', 'evil', 'continue'].includes(clean(c.ruling)),
-          'Choose the end-of-day ruling: ' + hints.join(' '),
-        );
-        if (c.ruling !== 'continue') {
-          g.winner = clean(c.ruling) === 'good' ? 'Good' : 'Evil';
-          setPhase(g, 'ended', now);
-          return 'Confirm ' + g.winner + ' victory. ' + hints.join(' ');
-        }
-        requireThat(
-          override(c),
-          'Continuing despite a win condition requires an override reason.',
-        );
+      const winner = automaticWinner(g, !target && !previousExecution);
+      if (winner) {
+        g.winner = winner;
+        setPhase(g, 'ended', now);
+        return `${winner} wins. The execution and win conditions were calculated automatically.`;
       }
       beginNight(g, now);
       return (
@@ -1558,7 +1607,6 @@ export function execute(
       return 'End the game. ' + g.winner + ' wins.';
     }
     case 'overridePhase': {
-      requireThat(clean(c.reason).length >= 5, 'Explain the phase override.');
       const phases: Phase[] = [
         'night',
         'discovery',
@@ -1572,7 +1620,7 @@ export function execute(
       );
       if (g.active) g.active = null;
       setPhase(g, c.phase as Phase, now);
-      log(g, 'Phase override: ' + clean(c.reason), now);
+      log(g, 'Phase changed manually.', now);
       return (
         'Jump to ' +
         phaseName[g.phase] +

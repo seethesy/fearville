@@ -227,6 +227,16 @@ export function hmsTasks(g: Game): Task[] {
       name,
       done: g.done.includes(key),
     });
+  const nightmare = s.nightmare;
+  const nightmarePlan = nightmare
+    ? g.nightChoices?.['nightmareRedirect:' + nightmare.player]
+    : undefined;
+  if (nightmare && nightmarePlan && !nightmarePlan.pass && !nightmare.used)
+    special(
+      'nightmareRuling:' + nightmare.player,
+      'Resolve Nightmare redirect',
+      nightmare.player,
+    );
   for (const r of order) {
     if (r === 'minioninfo' || r === 'demoninfo') {
       if (g.players.length >= 7 && !atheistInPlay(g))
@@ -687,11 +697,11 @@ function clean(x: unknown, max = 500) {
     .trim()
     .slice(0, max);
 }
-const overridden = (c: Command) => !!c.override && clean(c.reason).length >= 5;
+const overridden = (c: Command) => !!c.override;
 function enforce(condition: unknown, text: string, c: Command) {
   requireThat(
     condition || overridden(c),
-    text + ' Use a Storyteller override with a reason if needed.',
+    text + ' Use a Storyteller override if needed.',
   );
 }
 
@@ -818,13 +828,28 @@ export function hmsResolve(g: Game, t: Task, c: Command, now: number): string {
     log(g, summary, now);
     return summary;
   }
+  if (r === 'nightmareRuling') {
+    const nightmare = s.nightmare;
+    const plan = nightmare
+      ? g.nightChoices?.['nightmareRedirect:' + nightmare.player]
+      : undefined;
+    requireThat(
+      nightmare && plan && !plan.pass,
+      'No Nightmare redirect remains.',
+    );
+    const target = person(g, clean(c.target) || plan.target);
+    s.nightmareRedirectTarget = target.id;
+    nightmare.used = true;
+    g.done.push(t.key);
+    const summary = `Nightmare redirects the haunted ability to ${target.name}.`;
+    log(g, summary, now);
+    return summary;
+  }
   const p = actorOf(g, t.player);
   const choice = g.nightChoices?.[t.key];
   const fine = ok(p);
   const isST = p.id === ST;
   const lost = p.role === 'lostsoul';
-  const n = s.nightmare;
-  const bound = !!n && !n.used && n.bound === p.id;
   // Targets as chosen, then where they actually land.
   const count = r === 'guess' ? 0 : targetCount(r, g);
   const chosen = ['target', 'target2', 'target3']
@@ -835,7 +860,7 @@ export function hmsResolve(g: Game, t: Task, c: Command, now: number): string {
     (count > 0 &&
       chosen.every((x) => !x) &&
       ['gravedigger', 'priest', 'necromancer'].includes(r));
-  let hits = chosen;
+  const hits = chosen;
   let redirectNote = '';
   if (count && !pass) {
     requireThat(
@@ -846,28 +871,19 @@ export function hmsResolve(g: Game, t: Task, c: Command, now: number): string {
       new Set(chosen).size === chosen.length,
       'Choose different players.',
     );
-    hits = chosen.map((x, i) => clean(c['final' + (i + 1)]) || x);
-    const moved = hits.map((h, i) => h !== chosen[i]);
-    if (moved.some(Boolean)) {
-      const useNightmare = bound && c.nightmareUsed === true;
-      moved.forEach((m, i) => {
-        if (!m) return;
-        const original = person(g, chosen[i]);
-        enforce(
-          original.role === 'dazed' || useNightmare,
-          `${original.name} is not Dazed and no Nightmare redirect applies.`,
-          c,
-        );
-        person(g, hits[i]);
-      });
-      if (useNightmare) n!.used = true;
-      redirectNote = ` Redirected: ${chosen
-        .map((x, i) =>
-          hits[i] !== x ? `${nameOf(g, x)} → ${nameOf(g, hits[i])}` : '',
+    const original = [choice?.target, choice?.target2, choice?.target3].slice(
+      0,
+      count,
+    );
+    if (original.some((target, i) => target && target !== hits[i]))
+      redirectNote = ` Redirected privately: ${original
+        .map((target, i) =>
+          target && target !== hits[i]
+            ? `${nameOf(g, target)} → ${nameOf(g, hits[i])}`
+            : '',
         )
         .filter(Boolean)
         .join(', ')}.`;
-    }
     if (TARGETING.includes(r)) hits.forEach((h) => visit(g, p.id, h, r));
   }
   const H = hits.map((h) => g.players.find((q) => q.id === h)!);
@@ -1225,9 +1241,7 @@ export function hmsResolve(g: Game, t: Task, c: Command, now: number): string {
   }
   g.done.push(t.key);
   const text =
-    summary +
-    redirectNote +
-    (overridden(c) ? ' Override: ' + clean(c.reason) : '');
+    summary + redirectNote + (overridden(c) ? ' Storyteller override.' : '');
   log(g, t.name + ': ' + text, now);
   return info && !isST
     ? `Send privately to ${p.name}:\n${info}${redirectNote}`
