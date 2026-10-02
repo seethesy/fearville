@@ -2,6 +2,19 @@
 @import 'tw-animate-css';
 @import 'shadcn/tailwind.css';
 
+.night-puzzles { margin-block: 1.5rem; padding-block: 1rem; border-block: 1px solid var(--border); }
+.puzzle-controls, .puzzle-actions { display: flex; flex-wrap: wrap; align-items: end; gap: .65rem; margin-block: .8rem; }
+.puzzle-controls .field { flex: 1 1 120px; min-width: 0; }
+.puzzle-controls select { width: 100%; min-height: 44px; font-size: 16px; }
+.puzzle-actions button { min-height: 44px; flex: 1 1 90px; }
+.puzzle-board { margin-block: 1rem; }
+.puzzle-prompt { font-size: clamp(1.1rem, 4vw, 1.7rem); padding-block: 1rem; overflow-wrap: anywhere; }
+.puzzle-tiles { display: grid; gap: 4px; max-width: 360px; margin-block: 1rem; }
+.puzzle-tiles .puzzle-tile { min-width: 0; min-height: 40px; aspect-ratio: 1; padding: 0; border: 1px solid #71697d; border-radius: 6px; background: #211c2a; color: #d9d0e6; }
+.puzzle-tiles .puzzle-tile:disabled { opacity: 1; }
+.puzzle-tiles .lit, .puzzle-actions .puzzle-flash:disabled { background: #e0b96c; color: #211506; opacity: 1; }
+.puzzle-tiles .miss { background: #662f42; color: #fff; }
+
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {

@@ -9,6 +9,7 @@ import { MessageBadge } from '@/components/message-badge';
 import { NightChoiceNotice } from '@/components/night-choice-notice';
 import { StorytellerVote } from '@/components/storyteller-vote';
 import { TableNightChoice } from '@/components/table-night-choice';
+import { NightPuzzles } from '@/components/night-puzzles';
 import { TableDawn } from '@/components/table-dawn';
 import { TableSeating } from '@/components/table-seating';
 import { eligibleField } from '@/lib/game/choices';
@@ -721,6 +722,7 @@ export default function Table() {
                       Check Messages for instructions from your Storyteller.
                       Reply there with your choices.
                     </p>
+                    <NightPuzzles key={`${game.code}:${game.me}:${game.night}`} />
                     {game.nightPoll && (
                       <div className="night-poll">
                         <p className="eyebrow">TONIGHT’S POLL · JUST FOR FUN</p>

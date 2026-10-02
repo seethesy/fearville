@@ -93,7 +93,19 @@ https://github.com/ThePandemoniumInstitute/botc-release/blob/main/resources/data
 
 Rules reference: https://wiki.bloodontheclocktower.com/Trouble_Brewing and linked character pages. UI descriptions are original brief summaries. No official artwork is included. This is an unofficial companion and is not affiliated with The Pandemonium Institute.
 
-Only Trouble Brewing is supported: no Travellers, custom scripts, remote voice chat, or automated Storyteller. Closed-room internet-connected play is the intended use. Production data is not seeded with sample games.
+Fearville Classic (Trouble Brewing) and Holy Moon and Stars are supported. No Travellers, arbitrary custom scripts, remote voice chat, or automated Storyteller. Closed-room internet-connected play is the intended use. Production data is not seeded with sample games.
+
+## Night puzzles
+
+Every seated web player can open **Game flow → Night puzzles** during the night, in either script, regardless of role or survival status. Existing night-choice dialogs, messages, and polls remain available. Puzzles run locally, never delay dawn, and do not award information or recharge abilities. No database migration or dependency was added. Leaving the Game flow panel, reloading, or reaching dawn clears the current round; there is no persistent leaderboard or cross-device progress. Native iOS puzzle screens and mission-based ability refresh are outside this implementation.
+
+- Tile Memory, Odd One Out, and Rhythm Sequence support levels 1–20; Category Sorting and Pattern Completion support levels 1–10. Seen / New Words has one configurable 20-word mode.
+- `lib/puzzles/config.ts` holds difficulty bands, preview/playback timing, three-mistake limits, word mix/streak settings, pattern families, and rhythm repetition/failure options. Tile grids scale 3×3 to 6×6; rhythm scales from two to four buttons. Sorting scales from two categories/six items to three categories/twelve items. Odd One Out uses four to six choices and increasingly related categories.
+- `lib/puzzles/words.ts` holds editable category metadata, curated disjoint groups, and the word pool. Odd One Out explicitly names the main category to avoid competing interpretations; sorting uses disjoint category sets. Wrong sorting answers leave the current item available for correction.
+- `lib/puzzles/random.ts` provides seeded random sampling without replacement. `generate.ts` derives content from difficulty settings and validates it with a maximum of 20 generation attempts. Pattern families include symbol cycles, grouped cycles, addition/subtraction, alphabet skips, multiplication, increasing differences, alternating operations, and interleaved progressions.
+- `lib/puzzles/session.ts` exposes the common `createPuzzle(kind)` interface: `start(level, seed?)`, `input(state, action)`, and `restart(state, sameContent?)`. Pure transitions handle preview, play, success, failure, actual word history, duplicate tile input, and terminal-state protection. Rhythm defaults to judging the complete sequence.
+- `components/night-puzzles.tsx` renders those states, handles disposable playback timers, and offers new rounds, exact replays, level selection, and next-level progression. Generation and validation stay outside the component.
+- `tests/puzzles.test.ts` adds 27 tests, including all 81 puzzle/level combinations across 100 seeds, independent pattern-rule checks, invalid content, difficulty boundaries, replay, failure behavior, and bounded generation retries. The full 118-test suite, TypeScript, focused lint, production build, Classic HTTP integration, and Holy Moon and Stars HTTP integration passed. Browser checks covered the six puzzle screens, tile success, word/rhythm input, and mobile layout at 390px. Physical mobile-device verification remains outstanding.
 
 ## Validation on the authoring host
 
