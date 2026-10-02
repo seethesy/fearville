@@ -3,132 +3,336 @@
     "id": "washerwoman",
     "name": "Washerwoman",
     "team": "townsfolk",
-    "description": "On the first night, learn a Townsfolk character held by one of two players."
+    "description": "On the first night, learn a Villager character held by one of two players.",
+    "script": "classic"
   },
   {
     "id": "librarian",
     "name": "Librarian",
     "team": "townsfolk",
-    "description": "On the first night, learn an Outsider character held by one of two players, or learn that no Outsiders are in play."
+    "description": "On the first night, learn an Fool character held by one of two players, or learn that no Fools are in play.",
+    "script": "classic"
   },
   {
     "id": "investigator",
     "name": "Investigator",
     "team": "townsfolk",
-    "description": "On the first night, learn a Minion character held by one of two players."
+    "description": "On the first night, learn a Haunt character held by one of two players.",
+    "script": "classic"
   },
   {
     "id": "chef",
     "name": "Chef",
     "team": "townsfolk",
-    "description": "On the first night, learn the number of adjacent evil pairs around the table."
+    "description": "On the first night, learn the number of adjacent evil pairs around the table.",
+    "script": "classic"
   },
   {
     "id": "empath",
     "name": "Empath",
     "team": "townsfolk",
-    "description": "Each night, learn how many of your nearest living neighbors are evil."
+    "description": "Each night, learn how many of your nearest living neighbors are evil.",
+    "script": "classic"
   },
   {
     "id": "fortuneteller",
     "name": "Fortune Teller",
     "team": "townsfolk",
-    "description": "Each night, check two players for a Demon. One good player is a permanent false positive."
+    "description": "Each night, check two players for a Horror. One good player is a permanent false positive.",
+    "script": "classic"
   },
   {
     "id": "undertaker",
     "name": "Undertaker",
     "team": "townsfolk",
-    "description": "After an execution that caused death, learn the executed character that night."
+    "description": "After an execution that caused death, learn the executed character that night.",
+    "script": "classic"
   },
   {
     "id": "monk",
     "name": "Monk",
     "team": "townsfolk",
-    "description": "After the first night, choose someone other than yourself to protect from the Demon that night."
+    "description": "After the first night, choose someone other than yourself to protect from the Horror that night.",
+    "script": "classic"
   },
   {
     "id": "ravenkeeper",
     "name": "Ravenkeeper",
     "team": "townsfolk",
-    "description": "If you die at night, choose someone and learn their character."
+    "description": "If you die at night, choose someone and learn their character.",
+    "script": "classic"
   },
   {
     "id": "virgin",
     "name": "Virgin",
     "team": "townsfolk",
-    "description": "Your first nomination consumes your ability. If the nominator is a Townsfolk, they are executed immediately."
+    "description": "Your first nomination consumes your ability. If the nominator is a Villager, they are executed immediately.",
+    "script": "classic"
   },
   {
     "id": "slayer",
     "name": "Slayer",
     "team": "townsfolk",
-    "description": "Once, during the day, publicly choose someone. If they register as the Demon, they die."
+    "description": "Once, during the day, publicly choose someone. If they register as the Horror, they die.",
+    "script": "classic"
   },
   {
     "id": "soldier",
     "name": "Soldier",
     "team": "townsfolk",
-    "description": "While healthy, you are safe from the Demon."
+    "description": "While healthy, you are safe from the Horror.",
+    "script": "classic"
   },
   {
     "id": "mayor",
     "name": "Mayor",
     "team": "townsfolk",
-    "description": "Good can win with three living players and no execution. A night attack on you may be redirected."
+    "description": "Good can win with three living players and no execution. A night attack on you may be redirected.",
+    "script": "classic"
   },
   {
     "id": "butler",
     "name": "Butler",
     "team": "outsider",
-    "description": "Choose a master each night. While alive, your yes vote requires your master to vote yes."
+    "description": "Choose a master each night. While alive, your yes vote requires your master to vote yes.",
+    "script": "classic"
   },
   {
     "id": "drunk",
     "name": "Drunk",
     "team": "outsider",
-    "description": "You are shown an out-of-play Townsfolk character and act as that character, but its ability has no effect."
+    "description": "You are shown an out-of-play Villager character and act as that character, but its ability has no effect.",
+    "script": "classic"
   },
   {
     "id": "recluse",
     "name": "Recluse",
     "team": "outsider",
-    "description": "You may register as evil or as a Minion or Demon, even while dead."
+    "description": "You may register as evil or as a Haunt or Horror, even while dead.",
+    "script": "classic"
   },
   {
     "id": "saint",
     "name": "Saint",
     "team": "outsider",
-    "description": "If your ability works when you die by execution, evil wins."
+    "description": "If your ability works when you die by execution, evil wins.",
+    "script": "classic"
   },
   {
     "id": "poisoner",
     "name": "Poisoner",
     "team": "minion",
-    "description": "Choose someone each night to disable their ability until the next dusk without telling them."
+    "description": "Choose someone each night to disable their ability until the next dusk without telling them.",
+    "script": "classic"
   },
   {
     "id": "spy",
     "name": "Spy",
     "team": "minion",
-    "description": "Each night, inspect the full game state. You may register as good or as a Townsfolk or Outsider."
+    "description": "Each night, inspect the full game state. You may register as good or as a Villager or Fool.",
+    "script": "classic"
   },
   {
     "id": "scarletwoman",
     "name": "Scarlet Woman",
     "team": "minion",
-    "description": "If the Demon dies with at least five players alive just before death, you become the Demon."
+    "description": "If the Horror dies with at least five players alive just before death, you become the Horror.",
+    "script": "classic"
   },
   {
     "id": "baron",
     "name": "Baron",
     "team": "minion",
-    "description": "During setup, replace two Townsfolk with two additional Outsiders."
+    "description": "During setup, replace two Villagers with two additional Fools.",
+    "script": "classic"
   },
   {
     "id": "imp",
     "name": "Imp",
     "team": "demon",
-    "description": "After the first night, choose someone to kill. Killing yourself passes the Imp to a living Minion."
+    "description": "After the first night, choose someone to kill. Killing yourself passes the Imp to a living Haunt.",
+    "script": "classic"
+  },
+  {
+    "id": "astrologist",
+    "name": "Astrologist",
+    "team": "townsfolk",
+    "description": "At the start of the game, choose 3 players. You are told 3 roles: 1 belongs to one of them and 2 do not belong to anyone.",
+    "script": "holyMoonStars"
+  },
+  {
+    "id": "mystic",
+    "name": "Mystic",
+    "team": "townsfolk",
+    "description": "At the start of the game, choose 1 of your neighbors. You learn up to 3 other players they may be connected to.",
+    "script": "holyMoonStars"
+  },
+  {
+    "id": "astronaut",
+    "name": "Astronaut",
+    "team": "townsfolk",
+    "description": "At the start of the game, learn how far the nearest evil player is from you.",
+    "script": "holyMoonStars"
+  },
+  {
+    "id": "stargazer",
+    "name": "Stargazer",
+    "team": "townsfolk",
+    "description": "At the start of the game, choose a player. Alive or dead, you may ask the Storyteller who they spoke with or what they discussed. Answers are at Storyteller discretion.",
+    "script": "holyMoonStars"
+  },
+  {
+    "id": "prophet",
+    "name": "Prophet",
+    "team": "townsfolk",
+    "description": "At the start of the game, learn which Haunt and Horror characters are in play. If the Storyteller hears you reveal this, you and one of your neighbors may die that night.",
+    "script": "holyMoonStars"
+  },
+  {
+    "id": "insomniac",
+    "name": "Insomniac",
+    "team": "townsfolk",
+    "description": "Each night, learn which players visited you and how many of your neighbors visited another player.",
+    "script": "holyMoonStars"
+  },
+  {
+    "id": "diviner",
+    "name": "Diviner",
+    "team": "townsfolk",
+    "description": "Each night, ask the Storyteller a question. They answer with the name of a player you should speak to the next day.",
+    "script": "holyMoonStars"
+  },
+  {
+    "id": "medium",
+    "name": "Medium",
+    "team": "townsfolk",
+    "description": "Each night after the first, choose a dead player. They may use their night ability tonight (spent once-per-game abilities are not reset), and you share a private channel with them until dawn.",
+    "script": "holyMoonStars"
+  },
+  {
+    "id": "spirit",
+    "name": "Spirit",
+    "team": "townsfolk",
+    "description": "Each night, choose a player. Learn how many players visited them and their alignment. If you die, you keep learning the number but not the alignment.",
+    "script": "holyMoonStars"
+  },
+  {
+    "id": "gravedigger",
+    "name": "Gravedigger",
+    "team": "townsfolk",
+    "description": "Once per game, at night, choose a dead player. You may become their character and alignment at dawn. The Storyteller may refuse setup-changing characters.",
+    "script": "holyMoonStars"
+  },
+  {
+    "id": "fateweaver",
+    "name": "Fateweaver",
+    "team": "townsfolk",
+    "description": "The first time either of your living neighbors dies, you may redirect their death. The Storyteller may or may not follow your choice.",
+    "script": "holyMoonStars"
+  },
+  {
+    "id": "priest",
+    "name": "Priest",
+    "team": "townsfolk",
+    "description": "Once per game, at night, choose a dead player: they return at dawn (Villagers as themselves, Fools as themselves, Haunts as an out-of-play Villager). If you are killed, you return at the next dawn as an out-of-play Villager.",
+    "script": "holyMoonStars"
+  },
+  {
+    "id": "atheist",
+    "name": "Atheist",
+    "team": "townsfolk",
+    "description": "If the Atheist is in play, every player is good. Good wins by executing the Storyteller; evil wins when two players remain. The Storyteller may break any rule.",
+    "script": "holyMoonStars"
+  },
+  {
+    "id": "celestial",
+    "name": "Celestial",
+    "team": "townsfolk",
+    "description": "While you live, other good players cannot die during the day. If you are executed, everyone is poisoned until the next dusk and one Villager becomes drunk for the rest of the game. Evil learns whether a Celestial is in play.",
+    "script": "holyMoonStars"
+  },
+  {
+    "id": "constellation",
+    "name": "Constellation",
+    "team": "outsider",
+    "description": "At the start of the game, choose 3 players to link. If one dies, the others may die too. Once per game, at night, guess all their characters: if correct, revive one or give one an extra life; if wrong, the link breaks and you and another member may die.",
+    "script": "holyMoonStars"
+  },
+  {
+    "id": "lostsoul",
+    "name": "Lost Soul",
+    "team": "outsider",
+    "description": "You secretly act as an out-of-play Villager, but you do not know which. Its ability does not work.",
+    "script": "holyMoonStars"
+  },
+  {
+    "id": "zealot",
+    "name": "Zealot",
+    "team": "outsider",
+    "description": "When you die, the Storyteller gains a character ability from this script of their choice.",
+    "script": "holyMoonStars"
+  },
+  {
+    "id": "dazed",
+    "name": "Dazed",
+    "team": "outsider",
+    "description": "You are drunk and believe you are a Villager. Whenever another player targets you with an ability, the Storyteller may redirect it to one of your living neighbors or to a player of your choice.",
+    "script": "holyMoonStars"
+  },
+  {
+    "id": "necromancer",
+    "name": "Necromancer",
+    "team": "minion",
+    "description": "Once per game, at night, choose a dead player: they return at dawn as evil (Haunts as themselves; others as an out-of-play Haunt). The Horror cannot be revived.",
+    "script": "holyMoonStars"
+  },
+  {
+    "id": "moonshiner",
+    "name": "Moonshiner",
+    "team": "minion",
+    "description": "Adds a Fool to the game. Every Fool is drunk and believes they are a Villager, though their own Fool ability still works. After you die, the Fools may sober up and learn their real characters.",
+    "script": "holyMoonStars"
+  },
+  {
+    "id": "nightmare",
+    "name": "Nightmare",
+    "team": "minion",
+    "description": "If you are executed, at night choose a player with a nighttime targeting ability. Once per game, you may redirect their target without them knowing.",
+    "script": "holyMoonStars"
+  },
+  {
+    "id": "astrophage",
+    "name": "Astrophage",
+    "team": "minion",
+    "description": "Once per game, during the day, you may end the day early. Not available with 4 or fewer living players.",
+    "script": "holyMoonStars"
+  },
+  {
+    "id": "grimreaper",
+    "name": "Grim Reaper",
+    "team": "demon",
+    "description": "Each night, mark a player for death. At any time you may reap: every marked player dies.",
+    "script": "holyMoonStars"
+  },
+  {
+    "id": "werewolf",
+    "name": "Werewolf",
+    "team": "demon",
+    "description": "Each night, prepare for the full moon. After two nights of preparation, choose 3 players to die (Nights 3, 6, 9…).",
+    "script": "holyMoonStars"
+  },
+  {
+    "id": "dreameater",
+    "name": "Dreameater",
+    "team": "demon",
+    "description": "Each night, guess any number of players’ characters. Correct guesses die. At 3 total wrong guesses you die instead, and that night’s correct guesses do not count.",
+    "script": "holyMoonStars"
+  },
+  {
+    "id": "miasma",
+    "name": "Miasma",
+    "team": "demon",
+    "description": "Each night, infect a player with the plague. The next night they die and both of their living neighbors are poisoned that night.",
+    "script": "holyMoonStars"
   }
 ]

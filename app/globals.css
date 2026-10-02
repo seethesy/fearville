@@ -1974,3 +1974,12 @@ h3,
   font-weight: 700;
   font-size: 1.25rem;
 }
+
+/* Holy Moon and Stars night choices */
+.night-guesses { display: grid; gap: .5rem; margin-bottom: .75rem; }
+.night-guess-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; gap: .5rem; align-items: center; }
+.night-guess-row [data-slot='native-select-wrapper'] { width: 100%; }
+.night-guess-row select { min-height: 44px; font-size: 16px; }
+@media (max-width: 520px) {
+  .night-guess-row { grid-template-columns: 1fr; }
+}

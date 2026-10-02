@@ -23,7 +23,7 @@ import {
 } from 'lucide-react';
 import type { GameView } from '@/lib/game/view';
 import type { Control, Field } from '@/lib/game/types';
-import { ROLES } from '@/lib/game/types';
+import { role } from '@/lib/game/types';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import {
   Dialog,
@@ -183,6 +183,9 @@ export default function Table() {
       ? {
           target: confirmation.choice.target,
           target2: confirmation.choice.target2,
+          ...(confirmation.choice.target3
+            ? { target3: confirmation.choice.target3 }
+            : {}),
         }
       : {}),
   };
@@ -441,6 +444,7 @@ export default function Table() {
       ].includes(c.action),
   );
   const chat = game.controls.find((c) => c.action === 'chat')!;
+  const pendingDeath = game.controls.find((c) => c.action === 'resolveDeath');
   const button = (c: Control, primary = false) => (
     <button
       key={c.action + c.title}
@@ -489,7 +493,8 @@ export default function Table() {
       <div className="table-title">
         <div>
           <p className="eyebrow">
-            {game.scriptName.toUpperCase()} · {game.host ? 'STORYTELLER' : name(game.me)}
+            {game.scriptName.toUpperCase()} ·{' '}
+            {game.host ? 'STORYTELLER' : name(game.me)}
           </p>
           <h1>
             {game.phase === 'lobby'
@@ -668,13 +673,19 @@ export default function Table() {
               ) : game.phase === 'night' ? (
                 game.host ? (
                   <>
-                    <h2>{first?.name || 'The night is complete.'}</h2>
+                    <h2>
+                      {pendingDeath
+                        ? pendingDeath.title
+                        : first?.name || 'The night is complete.'}
+                    </h2>
                     <p className="muted">
-                      {first
-                        ? game.nightConfirmation?.choice
-                          ? 'The player sent their choice. Open the action to review and confirm it.'
-                          : 'Waiting for the player’s choice, or open the action to enter it yourself.'
-                        : 'Review the town, then announce dawn.'}
+                      {pendingDeath
+                        ? 'Resolve this death before the next night task: prevention, the Fateweaver, then any triggered abilities.'
+                        : first
+                          ? game.nightConfirmation?.choice
+                            ? 'The player sent their choice. Open the action to review and confirm it.'
+                            : 'Waiting for the player’s choice, or open the action to enter it yourself.'
+                          : 'Review the town, then announce dawn.'}
                     </p>
                     <ol className="night-list">
                       {game.tasks.map((t, i) => (
@@ -931,6 +942,11 @@ export default function Table() {
                       ? 'Actual roles and reminders are visible only to you.'
                       : 'Your character will appear here when the game starts.'}
                   </p>
+                  {game.storytellerAbility && (
+                    <p className="alignment">
+                      Your Zealot ability: {game.storytellerAbility}
+                    </p>
+                  )}
                 </>
               )}
               <div className="seat-mini-list">
@@ -946,7 +962,7 @@ export default function Table() {
                       </strong>
                       <small>
                         {game.host
-                          ? `(${ROLES.find((r) => r.id === p.role)?.name || 'Unassigned'})`
+                          ? `(${role(p.role ?? '')?.name || 'Unassigned'})`
                           : p.alive
                             ? 'Alive'
                             : p.ghost
@@ -1078,13 +1094,10 @@ export default function Table() {
                     {game.host && (
                       <p className="role-name">
                         <RoleIcon role={p.role ?? ''} /> (
-                        {ROLES.find((r) => r.id === p.role)?.name ||
-                          'Assign a character'}
-                        )
+                        {role(p.role ?? '')?.name || 'Assign a character'})
                         {p.role === 'drunk' && (
                           <small>
-                            Shown{' '}
-                            {ROLES.find((r) => r.id === p.shown)?.name || '—'}
+                            Shown {role(p.shown ?? '')?.name || '—'}
                           </small>
                         )}
                       </p>
@@ -1147,7 +1160,7 @@ export default function Table() {
                 defined yet.
               </p>
             ) : (
-              <RulesReference />
+              <RulesReference script={game.script} />
             )}
           </div>
         </TabsContent>
@@ -1241,11 +1254,41 @@ export default function Table() {
             {confirmation?.choice && (
               <div className="ballot-callout">
                 <p>
-                  Player selected: {name(confirmation.choice.target)}
-                  {confirmation.choice.target2
-                    ? ' and ' + name(confirmation.choice.target2)
-                    : ''}
-                  .
+                  {confirmation.choice.pass
+                    ? 'The player passed.'
+                    : [
+                        [
+                          confirmation.choice.target,
+                          confirmation.choice.target2,
+                          confirmation.choice.target3 ?? '',
+                        ].filter(Boolean).length
+                          ? 'Player selected: ' +
+                            [
+                              confirmation.choice.target,
+                              confirmation.choice.target2,
+                              confirmation.choice.target3 ?? '',
+                            ]
+                              .filter(Boolean)
+                              .map(name)
+                              .join(', ') +
+                            '.'
+                          : '',
+                        confirmation.choice.text
+                          ? `Question: “${confirmation.choice.text}”`
+                          : '',
+                        confirmation.choice.guesses?.length
+                          ? 'Guesses: ' +
+                            confirmation.choice.guesses
+                              .map(
+                                (g) =>
+                                  `${name(g.player)} as ${role(g.role)?.name ?? g.role}`,
+                              )
+                              .join(', ') +
+                            '.'
+                          : '',
+                      ]
+                        .filter(Boolean)
+                        .join(' ')}
                 </p>
                 {!followChoice && (
                   <button
@@ -1265,7 +1308,7 @@ export default function Table() {
                 value={effectiveValues[f.key]}
                 onChange={(v) => {
                   const next = { ...effectiveValues, [f.key]: v };
-                  if (f.key === 'target' || f.key === 'target2')
+                  if (['target', 'target2', 'target3'].includes(f.key))
                     setFollowChoice(false);
                   for (const field of actionControl.fields) {
                     const options = eligibleField(

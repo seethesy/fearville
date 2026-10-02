@@ -107,7 +107,14 @@ export const targetCount = (r: string, g: Game) =>
       ? g.night % 3 === 0
         ? 3
         : 0
-      : ['diviner', 'insomniac', 'astronaut', 'prophet', 'dreameater', 'guess'].includes(r)
+      : [
+            'diviner',
+            'insomniac',
+            'astronaut',
+            'prophet',
+            'dreameater',
+            'guess',
+          ].includes(r)
         ? 0
         : TARGETING.includes(r) || r === 'nightmareRedirect'
           ? 1
@@ -164,7 +171,9 @@ export function seatNeighbors(g: Game, p: Player) {
   const s = seats(g);
   const at = s.findIndex((q) => q.id === p.id);
   if (at < 0 || s.length < 2) return [];
-  return [...new Set([s[(at + 1) % s.length], s[(at - 1 + s.length) % s.length]])];
+  return [
+    ...new Set([s[(at + 1) % s.length], s[(at - 1 + s.length) % s.length]]),
+  ];
 }
 export function evilDistance(g: Game, p: Player) {
   const s = seats(g);
@@ -186,9 +195,7 @@ function taskFor(r: string, p: Player, done: string[]): Task {
     role: r,
     player: p.id,
     name:
-      (p.id === ST
-        ? 'Storyteller (Zealot)'
-        : role(r)?.name + ' · ' + p.name) +
+      (p.id === ST ? 'Storyteller (Zealot)' : role(r)?.name + ' · ' + p.name) +
       (p.role === 'lostsoul' && p.acts === r ? ' (Lost Soul)' : ''),
     done: done.includes(r + ':' + p.id),
   };
@@ -196,7 +203,8 @@ function taskFor(r: string, p: Player, done: string[]): Task {
 function canAct(g: Game, p: Player, r: string) {
   const s = hms(g);
   if (ONCE.includes(r) && p.used) return false;
-  if ((ONCE.includes(r) || r === 'medium') && !s.nightStartDead.length) return false;
+  if ((ONCE.includes(r) || r === 'medium') && !s.nightStartDead.length)
+    return false;
   if (r === 'werewolf' || r === 'spirit') return p.alive || r === 'spirit';
   if (p.alive) return true;
   return (
@@ -211,11 +219,20 @@ export function hmsTasks(g: Game): Task[] {
   const st = stActor(g);
   const out: Task[] = [];
   const special = (key: string, name: string, player = '') =>
-    out.push({ key, role: key.split(':')[0], player, name, done: g.done.includes(key) });
+    out.push({
+      key,
+      role: key.split(':')[0],
+      player,
+      name,
+      done: g.done.includes(key),
+    });
   for (const r of order) {
     if (r === 'minioninfo' || r === 'demoninfo') {
       if (g.players.length >= 7 && !atheistInPlay(g))
-        special(r, r === 'minioninfo' ? 'Haunt introductions' : 'Horror introductions');
+        special(
+          r,
+          r === 'minioninfo' ? 'Haunt introductions' : 'Horror introductions',
+        );
       continue;
     }
     if (r === 'plague') {
@@ -225,14 +242,28 @@ export function hmsTasks(g: Game): Task[] {
     }
     if (r === 'nightmare') {
       const n = s.nightmare;
-      if (n && !n.bound) special('nightmare:' + n.player, 'Nightmare · ' + nameOf(g, n.player), n.player);
+      if (n && !n.bound)
+        special(
+          'nightmare:' + n.player,
+          'Nightmare · ' + nameOf(g, n.player),
+          n.player,
+        );
       continue;
     }
     if (r === 'guess') {
       const c = s.constellation;
       const owner = c && g.players.find((p) => p.id === c.owner);
-      if (c?.linked && owner?.alive && !owner.used && actsAs(owner) === 'constellation')
-        special('guess:' + owner.id, 'Constellation guess · ' + owner.name, owner.id);
+      if (
+        c?.linked &&
+        owner?.alive &&
+        !owner.used &&
+        actsAs(owner) === 'constellation'
+      )
+        special(
+          'guess:' + owner.id,
+          'Constellation guess · ' + owner.name,
+          owner.id,
+        );
       continue;
     }
     if (r === 'deaths') {
@@ -242,7 +273,12 @@ export function hmsTasks(g: Game): Task[] {
     }
     for (const p of seats(g))
       if (actsAs(p) === r && canAct(g, p, r)) out.push(taskFor(r, p, g.done));
-    if (st && st.role === r && g.night > (s.stNight ?? 0) && (!ONCE.includes(r) || !s.stUsed))
+    if (
+      st &&
+      st.role === r &&
+      g.night > (s.stNight ?? 0) &&
+      (!ONCE.includes(r) || !s.stUsed)
+    )
       out.push(taskFor(r, st, g.done));
   }
   return out;
@@ -279,19 +315,47 @@ export function choiceSpec(g: Game, t: Task): ChoiceSpec | null {
     `Choose ${n === 1 ? 'a player' : n + ' different players'}`;
   switch (r) {
     case 'constellation':
-      return { ...base, label: lost ? pick(3) : 'Choose 3 players to form your Constellation (you may include yourself).', eligible: living };
+      return {
+        ...base,
+        label: lost
+          ? pick(3)
+          : 'Choose 3 players to form your Constellation (you may include yourself).',
+        eligible: living,
+      };
     case 'astrologist':
-      return { ...base, label: lost ? pick(3) : 'Choose 3 players to read in the stars.', eligible: (q) => living(q) && notMe(q) };
+      return {
+        ...base,
+        label: lost ? pick(3) : 'Choose 3 players to read in the stars.',
+        eligible: (q) => living(q) && notMe(q),
+      };
     case 'stargazer':
-      return { ...base, label: lost ? pick(1) : 'Choose a player to watch for the rest of the game.', eligible: (q) => living(q) && notMe(q) };
+      return {
+        ...base,
+        label: lost
+          ? pick(1)
+          : 'Choose a player to watch for the rest of the game.',
+        eligible: (q) => living(q) && notMe(q),
+      };
     case 'mystic': {
       const near = seatNeighbors(g, me).map((q) => q.id);
-      return { ...base, label: lost ? pick(1) : 'Choose one of your neighbors.', eligible: (q) => near.includes(q.id) };
+      return {
+        ...base,
+        label: lost ? pick(1) : 'Choose one of your neighbors.',
+        eligible: (q) => near.includes(q.id),
+      };
     }
     case 'spirit':
-      return { ...base, label: lost ? pick(1) : 'Choose a player to watch tonight.', eligible: (q) => !q.departed && notMe(q) };
+      return {
+        ...base,
+        label: lost ? pick(1) : 'Choose a player to watch tonight.',
+        eligible: (q) => !q.departed && notMe(q),
+      };
     case 'medium':
-      return { ...base, label: lost ? pick(1) : 'Choose a dead player to reach tonight.', eligible: dead };
+      return {
+        ...base,
+        label: lost ? pick(1) : 'Choose a dead player to reach tonight.',
+        eligible: dead,
+      };
     case 'gravedigger':
     case 'priest':
     case 'necromancer':
@@ -305,29 +369,65 @@ export function choiceSpec(g: Game, t: Task): ChoiceSpec | null {
         eligible: dead,
       };
     case 'diviner':
-      return { ...base, text: true, label: lost ? 'Ask the Storyteller a question.' : 'Ask the Storyteller a question. They will name a player to speak to.', eligible: () => false };
+      return {
+        ...base,
+        text: true,
+        label: lost
+          ? 'Ask the Storyteller a question.'
+          : 'Ask the Storyteller a question. They will name a player to speak to.',
+        eligible: () => false,
+      };
     case 'guess':
       return {
         ...base,
         guesses: 'members',
         members: s.constellation?.members ?? [],
         optional: true,
-        label: 'Once per game: guess every member’s character, or pass to wait.',
+        label:
+          'Once per game: guess every member’s character, or pass to wait.',
         eligible: () => false,
       };
     case 'miasma':
-      return { ...base, label: 'Choose a player to infect with the plague.', eligible: (q) => living(q) && notMe(q) };
+      return {
+        ...base,
+        label: 'Choose a player to infect with the plague.',
+        eligible: (q) => living(q) && notMe(q),
+      };
     case 'grimreaper':
-      return { ...base, label: 'Choose a player to mark for death.', eligible: (q) => living(q) && notMe(q) && !q.marked };
+      return {
+        ...base,
+        label: 'Choose a player to mark for death.',
+        eligible: (q) => living(q) && notMe(q) && !q.marked,
+      };
     case 'werewolf':
       if (!base.count) return null;
-      return { ...base, label: 'The full moon rises: choose 3 players to die.', eligible: (q) => living(q) && notMe(q) };
+      return {
+        ...base,
+        label: 'The full moon rises: choose 3 players to die.',
+        eligible: (q) => living(q) && notMe(q),
+      };
     case 'dreameater':
-      return { ...base, guesses: 'free', optional: true, label: 'Guess any number of players’ characters. Three wrong guesses in total kill you.', eligible: (q) => living(q) && notMe(q) };
+      return {
+        ...base,
+        guesses: 'free',
+        optional: true,
+        label:
+          'Guess any number of players’ characters. Three wrong guesses in total kill you.',
+        eligible: (q) => living(q) && notMe(q),
+      };
     case 'nightmare':
-      return { ...base, label: 'Choose a player with a nighttime targeting ability to haunt.', eligible: (q) => living(q) };
+      return {
+        ...base,
+        label: 'Choose a player with a nighttime targeting ability to haunt.',
+        eligible: (q) => living(q),
+      };
     case 'nightmareRedirect':
-      return { ...base, optional: true, label: `If ${nameOf(g, s.nightmare?.bound ?? '')} targets anyone tonight, redirect it to (once per game), or pass:`, eligible: living };
+      return {
+        ...base,
+        optional: true,
+        label: `If ${nameOf(g, s.nightmare?.bound ?? '')} targets anyone tonight, redirect it to (once per game), or pass:`,
+        eligible: living,
+      };
   }
   return null;
 }
@@ -339,11 +439,19 @@ export function choiceTasks(g: Game) {
   if (n?.bound && !n.used) {
     const p = g.players.find((q) => q.id === n.player);
     if (p && !p.departed)
-      list.push({ key: 'nightmareRedirect:' + p.id, role: 'nightmareRedirect', player: p.id, name: 'Nightmare redirect · ' + p.name, done: false });
+      list.push({
+        key: 'nightmareRedirect:' + p.id,
+        role: 'nightmareRedirect',
+        player: p.id,
+        name: 'Nightmare redirect · ' + p.name,
+        done: false,
+      });
   }
   return list.filter((t) => {
     const p = g.players.find((q) => q.id === t.player)!;
-    return p.alive || ['spirit', 'nightmare', 'nightmareRedirect'].includes(t.role);
+    return (
+      p.alive || ['spirit', 'nightmare', 'nightmareRedirect'].includes(t.role)
+    );
   });
 }
 export function validateChoice(g: Game, t: Task, c: Command): NightChoice {
@@ -354,14 +462,24 @@ export function validateChoice(g: Game, t: Task, c: Command): NightChoice {
     requireThat(spec.optional, 'This choice cannot be skipped.');
     return { ...choice, pass: true };
   }
-  const ids = [c.target, c.target2, c.target3].slice(0, spec.count).map((v) => clean(v));
+  const ids = [c.target, c.target2, c.target3]
+    .slice(0, spec.count)
+    .map((v) => clean(v));
   if (spec.count) {
     requireThat(
       new Set(ids).size === spec.count &&
-        ids.every((id) => g.players.some((p) => p.id === id && spec.eligible(p))),
-      spec.count === 1 ? 'Choose an eligible player.' : `Choose ${spec.count} different eligible players.`,
+        ids.every((id) =>
+          g.players.some((p) => p.id === id && spec.eligible(p)),
+        ),
+      spec.count === 1
+        ? 'Choose an eligible player.'
+        : `Choose ${spec.count} different eligible players.`,
     );
-    [choice.target, choice.target2, choice.target3 = ''] = [ids[0], ids[1] ?? '', ids[2] ?? ''];
+    [choice.target, choice.target2, choice.target3 = ''] = [
+      ids[0],
+      ids[1] ?? '',
+      ids[2] ?? '',
+    ];
   }
   if (spec.text) {
     const text = clean(c.text, 500);
@@ -385,7 +503,10 @@ export function validateChoice(g: Game, t: Task, c: Command): NightChoice {
       'Guess one character per player.',
     );
     if (spec.guesses === 'members')
-      requireThat(guesses.length === spec.members.length, 'Guess a character for every member.');
+      requireThat(
+        guesses.length === spec.members.length,
+        'Guess a character for every member.',
+      );
     else requireThat(guesses.length > 0, 'Make at least one guess, or pass.');
     choice.guesses = guesses;
   }
@@ -418,26 +539,37 @@ export function hmsSetupIssues(g: Game) {
         ? `With an Atheist every player is good: expected ${expected[0]} Villagers and ${expected[1]} Fools.`
         : `Expected ${expected[0]} Villagers, ${expected[1]} Fools, ${expected[2]} Haunts and 1 Horror.`,
     );
-  if (new Set(ids).size !== ids.length) issues.push('Characters must be unique at setup.');
+  if (new Set(ids).size !== ids.length)
+    issues.push('Characters must be unique at setup.');
   const outOfPlayVillager = (id: string | undefined) =>
-    !!id && team(id) === 'townsfolk' && HMS_ROLES.some((r) => r.id === id) && !ids.includes(id);
+    !!id &&
+    team(id) === 'townsfolk' &&
+    HMS_ROLES.some((r) => r.id === id) &&
+    !ids.includes(id);
   const hidden: string[] = [];
   const moon = ids.includes('moonshiner');
   for (const p of g.players) {
     if (p.role === 'lostsoul') {
-      if (!outOfPlayVillager(p.acts)) issues.push(`Give ${p.name} (Lost Soul) a hidden out-of-play Villager.`);
+      if (!outOfPlayVillager(p.acts))
+        issues.push(
+          `Give ${p.name} (Lost Soul) a hidden out-of-play Villager.`,
+        );
       else hidden.push(p.acts!);
       if (p.shown !== 'lostsoul' && !(moon && outOfPlayVillager(p.shown)))
         issues.push(`${p.name} (Lost Soul) should be shown the Lost Soul.`);
     } else if (p.role === 'dazed' || (moon && team(p.role) === 'outsider')) {
       if (!outOfPlayVillager(p.shown))
-        issues.push(`Show ${p.name} (${roleName(p.role)}) an out-of-play Villager.`);
+        issues.push(
+          `Show ${p.name} (${roleName(p.role)}) an out-of-play Villager.`,
+        );
       else hidden.push(p.shown);
     } else if (p.shown && p.shown !== p.role)
       issues.push(`${p.name} should be shown their own character.`);
   }
   if (new Set(hidden).size !== hidden.length)
-    issues.push('Each drunk or Lost Soul player needs a different out-of-play Villager.');
+    issues.push(
+      'Each drunk or Lost Soul player needs a different out-of-play Villager.',
+    );
   if (
     g.players.length >= 7 &&
     !atheist &&
@@ -450,14 +582,19 @@ export function hmsSetupIssues(g: Game) {
           g.players.some((p) => p.role === r || p.shown === r),
       ))
   )
-    issues.push('Choose three distinct, out-of-play good characters as Horror bluffs.');
+    issues.push(
+      'Choose three distinct, out-of-play good characters as Horror bluffs.',
+    );
   return issues;
 }
 // Fill in hidden characters after any (random or manual) deal.
 export function applyStartState(g: Game) {
   const moon = g.players.some((p) => p.role === 'moonshiner');
   for (const p of g.players) {
-    p.drunk = p.role === 'dazed' || p.role === 'lostsoul' || (moon && team(p.role) === 'outsider');
+    p.drunk =
+      p.role === 'dazed' ||
+      p.role === 'lostsoul' ||
+      (moon && team(p.role) === 'outsider');
     if (p.role !== 'lostsoul') delete p.acts;
   }
   g.hms = undefined;
@@ -508,11 +645,16 @@ export function requireNoPendingDeath(g: Game) {
 }
 
 function clean(x: unknown, max = 500) {
-  return (typeof x === 'string' || typeof x === 'number' ? String(x) : '').trim().slice(0, max);
+  return (typeof x === 'string' || typeof x === 'number' ? String(x) : '')
+    .trim()
+    .slice(0, max);
 }
 const overridden = (c: Command) => !!c.override && clean(c.reason).length >= 5;
 function enforce(condition: unknown, text: string, c: Command) {
-  requireThat(condition || overridden(c), text + ' Use a Storyteller override with a reason if needed.');
+  requireThat(
+    condition || overridden(c),
+    text + ' Use a Storyteller override with a reason if needed.',
+  );
 }
 
 // Infer what a player is connected to, for the Mystic's suggestion.
@@ -522,10 +664,16 @@ export function connections(g: Game, p: Player) {
   const r = p.role;
   if (s.astrologist[p.id]) s.astrologist[p.id].forEach((id) => ids.add(id));
   if (s.stargazer[p.id]) ids.add(s.stargazer[p.id]);
-  if (s.constellation?.owner === p.id) s.constellation.members.forEach((id) => ids.add(id));
-  if (s.constellation?.members.includes(p.id)) s.constellation.members.forEach((id) => ids.add(id));
-  if (team(r) === 'demon') g.players.filter((q) => team(q.role) === 'minion').forEach((q) => ids.add(q.id));
-  if (team(r) === 'minion') g.players.filter((q) => evil(q)).forEach((q) => ids.add(q.id));
+  if (s.constellation?.owner === p.id)
+    s.constellation.members.forEach((id) => ids.add(id));
+  if (s.constellation?.members.includes(p.id))
+    s.constellation.members.forEach((id) => ids.add(id));
+  if (team(r) === 'demon')
+    g.players
+      .filter((q) => team(q.role) === 'minion')
+      .forEach((q) => ids.add(q.id));
+  if (team(r) === 'minion')
+    g.players.filter((q) => evil(q)).forEach((q) => ids.add(q.id));
   if (s.infected?.by === p.id) ids.add(s.infected.target);
   ids.delete(p.id);
   return [...ids];
@@ -533,33 +681,52 @@ export function connections(g: Game, p: Player) {
 export function suggestions(g: Game, t: Task, choice?: NightChoice | null) {
   const s = hms(g);
   const p = actorOf(g, t.player);
-  const target = choice?.target ? g.players.find((q) => q.id === choice.target) : null;
+  const target = choice?.target
+    ? g.players.find((q) => q.id === choice.target)
+    : null;
   switch (t.role) {
     case 'astronaut': {
       const d = evilDistance(g, p);
       return d === Infinity ? 'none' : String(d);
     }
     case 'prophet':
-      return g.players
-        .filter((q) => ['minion', 'demon'].includes(team(q.role)))
-        .map((q) => roleName(q.role))
-        .join(', ') || 'none';
+      return (
+        g.players
+          .filter((q) => ['minion', 'demon'].includes(team(q.role)))
+          .map((q) => roleName(q.role))
+          .join(', ') || 'none'
+      );
     case 'insomniac': {
       const visitors = s.visits.filter((v) => v.to === p.id && v.from !== p.id);
-      const names = [...new Set(visitors.map((v) => (v.from === ST ? 'an unseen visitor' : nameOf(g, v.from))))];
+      const names = [
+        ...new Set(
+          visitors.map((v) =>
+            v.from === ST ? 'an unseen visitor' : nameOf(g, v.from),
+          ),
+        ),
+      ];
       const near = livingNeighbors(g, p);
-      const out = near.filter((n) => s.visits.some((v) => v.from === n.id && v.to !== n.id)).length;
+      const out = near.filter((n) =>
+        s.visits.some((v) => v.from === n.id && v.to !== n.id),
+      ).length;
       return `Visited by: ${names.join(', ') || 'nobody'}. Neighbors who visited someone: ${out}.`;
     }
     case 'spirit': {
       if (!target) return '';
-      const n = s.visits.filter((v) => v.to === target.id && v.from !== p.id).length;
+      const n = s.visits.filter(
+        (v) => v.to === target.id && v.from !== p.id,
+      ).length;
       return p.alive
         ? `${target.name} was visited by ${n} player${n === 1 ? '' : 's'} and is ${evil(target) ? 'evil' : 'good'}.`
         : `${target.name} was visited by ${n} player${n === 1 ? '' : 's'}.`;
     }
     case 'mystic':
-      return target ? connections(g, target).slice(0, 3).map((id) => nameOf(g, id)).join(', ') : '';
+      return target
+        ? connections(g, target)
+            .slice(0, 3)
+            .map((id) => nameOf(g, id))
+            .join(', ')
+        : '';
   }
   return '';
 }
@@ -578,14 +745,21 @@ export function hmsResolve(g: Game, t: Task, c: Command, now: number): string {
   if (r === 'minioninfo' || r === 'demoninfo') {
     const minions = g.players.filter((p) => team(p.role) === 'minion');
     const horror = g.players.filter((p) => team(p.role) === 'demon');
-    const celestial = g.players.some((p) => p.role === 'celestial') ? 'A Celestial is in play.' : 'No Celestial is in play.';
+    const celestial = g.players.some((p) => p.role === 'celestial')
+      ? 'A Celestial is in play.'
+      : 'No Celestial is in play.';
     const text =
       r === 'minioninfo'
         ? `The Horror is ${horror.map((p) => p.name).join(', ')} (${horror.map((p) => roleName(p.role)).join(', ')}). Haunts: ${minions.map((p) => p.name).join(', ')}. ${celestial}`
         : `Your Haunts: ${minions.map((p) => `${p.name} (${roleName(p.role)})`).join(', ')}. Out-of-play bluffs: ${g.bluffs.map(roleName).join(', ')}. ${celestial}`;
-    (r === 'minioninfo' ? minions : horror).forEach((p) => message(g, p.id, text, now));
+    (r === 'minioninfo' ? minions : horror).forEach((p) =>
+      message(g, p.id, text, now),
+    );
     g.done.push(t.key);
-    return text + ` Send privately to ${r === 'minioninfo' ? 'Haunts' : 'the Horror'}.`;
+    return (
+      text +
+      ` Send privately to ${r === 'minioninfo' ? 'Haunts' : 'the Horror'}.`
+    );
   }
   if (r === 'plague') {
     const inf = s.infected!;
@@ -622,12 +796,22 @@ export function hmsResolve(g: Game, t: Task, c: Command, now: number): string {
   const chosen = ['target', 'target2', 'target3']
     .slice(0, count)
     .map((k) => clean(c[k]));
-  const pass = c.pass === true || (count > 0 && chosen.every((x) => !x) && ['gravedigger', 'priest', 'necromancer'].includes(r));
+  const pass =
+    c.pass === true ||
+    (count > 0 &&
+      chosen.every((x) => !x) &&
+      ['gravedigger', 'priest', 'necromancer'].includes(r));
   let hits = chosen;
   let redirectNote = '';
   if (count && !pass) {
-    requireThat(chosen.every((x) => g.players.some((q) => q.id === x)), `Choose ${count === 1 ? 'the target' : count + ' targets'}.`);
-    requireThat(new Set(chosen).size === chosen.length, 'Choose different players.');
+    requireThat(
+      chosen.every((x) => g.players.some((q) => q.id === x)),
+      `Choose ${count === 1 ? 'the target' : count + ' targets'}.`,
+    );
+    requireThat(
+      new Set(chosen).size === chosen.length,
+      'Choose different players.',
+    );
     hits = chosen.map((x, i) => clean(c['final' + (i + 1)]) || x);
     const moved = hits.map((h, i) => h !== chosen[i]);
     if (moved.some(Boolean)) {
@@ -635,14 +819,22 @@ export function hmsResolve(g: Game, t: Task, c: Command, now: number): string {
       moved.forEach((m, i) => {
         if (!m) return;
         const original = person(g, chosen[i]);
-        enforce(original.role === 'dazed' || useNightmare, `${original.name} is not Dazed and no Nightmare redirect applies.`, c);
+        enforce(
+          original.role === 'dazed' || useNightmare,
+          `${original.name} is not Dazed and no Nightmare redirect applies.`,
+          c,
+        );
         person(g, hits[i]);
       });
       if (useNightmare) n!.used = true;
-      redirectNote = ` Redirected: ${chosen.map((x, i) => (hits[i] !== x ? `${nameOf(g, x)} → ${nameOf(g, hits[i])}` : '')).filter(Boolean).join(', ')}.`;
+      redirectNote = ` Redirected: ${chosen
+        .map((x, i) =>
+          hits[i] !== x ? `${nameOf(g, x)} → ${nameOf(g, hits[i])}` : '',
+        )
+        .filter(Boolean)
+        .join(', ')}.`;
     }
-    if (TARGETING.includes(r))
-      hits.forEach((h) => visit(g, p.id, h, r));
+    if (TARGETING.includes(r)) hits.forEach((h) => visit(g, p.id, h, r));
   }
   const H = hits.map((h) => g.players.find((q) => q.id === h)!);
   let info = '';
@@ -665,26 +857,51 @@ export function hmsResolve(g: Game, t: Task, c: Command, now: number): string {
     }
     case 'stargazer':
       s.stargazer[p.id] = hits[0];
-      send(`You are watching ${H[0].name}. Ask the Storyteller about them at any time.`);
+      send(
+        `You are watching ${H[0].name}. Ask the Storyteller about them at any time.`,
+      );
       summary = `Stargazer watches ${H[0].name}.`;
       break;
     case 'astrologist': {
       s.astrologist[p.id] = hits;
       const shown = ['reveal1', 'reveal2', 'reveal3'].map((k) => clean(c[k]));
-      requireThat(shown.every((x) => role(x)) && new Set(shown).size === 3, 'Choose three different characters.');
+      requireThat(
+        shown.every((x) => role(x)) && new Set(shown).size === 3,
+        'Choose three different characters.',
+      );
       const inPlay = new Set(g.players.map((q) => q.role));
       const owned = shown.filter((x) => H.some((q) => q.role === x)).length;
       const absent = shown.filter((x) => !inPlay.has(x)).length;
-      enforce(!fine || (owned === 1 && absent === 2), 'Exactly one character must belong to a chosen player and two must be out of play.', c);
-      send(`One of these characters belongs to one of ${H.map((q) => q.name).join(', ')}: ${shown.map(roleName).join(', ')}.`);
+      enforce(
+        !fine || (owned === 1 && absent === 2),
+        'Exactly one character must belong to a chosen player and two must be out of play.',
+        c,
+      );
+      send(
+        `One of these characters belongs to one of ${H.map((q) => q.name).join(', ')}: ${shown.map(roleName).join(', ')}.`,
+      );
       summary = info;
       break;
     }
     case 'mystic': {
-      enforce(seatNeighbors(g, p).some((q) => q.id === hits[0]), 'The Mystic must choose a neighbor.', c);
-      const links = ['link1', 'link2', 'link3'].map((k) => clean(c[k])).filter(Boolean);
-      requireThat(links.every((id) => g.players.some((q) => q.id === id)) && new Set(links).size === links.length, 'Choose different players.');
-      send(links.length ? `${H[0].name} may be connected to ${links.map((id) => nameOf(g, id)).join(', ')}.` : `You sense no connections around ${H[0].name}.`);
+      enforce(
+        seatNeighbors(g, p).some((q) => q.id === hits[0]),
+        'The Mystic must choose a neighbor.',
+        c,
+      );
+      const links = ['link1', 'link2', 'link3']
+        .map((k) => clean(c[k]))
+        .filter(Boolean);
+      requireThat(
+        links.every((id) => g.players.some((q) => q.id === id)) &&
+          new Set(links).size === links.length,
+        'Choose different players.',
+      );
+      send(
+        links.length
+          ? `${H[0].name} may be connected to ${links.map((id) => nameOf(g, id)).join(', ')}.`
+          : `You sense no connections around ${H[0].name}.`,
+      );
       summary = info;
       break;
     }
@@ -692,9 +909,17 @@ export function hmsResolve(g: Game, t: Task, c: Command, now: number): string {
     case 'prophet':
     case 'insomniac':
     case 'spirit': {
-      const suggested = suggestions(g, t, { id: '', target: hits[0] ?? '', target2: '' });
+      const suggested = suggestions(g, t, {
+        id: '',
+        target: hits[0] ?? '',
+        target2: '',
+      });
       const given = clean(c.info, 2000) || suggested;
-      enforce(!fine || !clean(c.info, 2000) || given === suggested, 'This differs from the calculated information.', c);
+      enforce(
+        !fine || !clean(c.info, 2000) || given === suggested,
+        'This differs from the calculated information.',
+        c,
+      );
       const text =
         r === 'astronaut'
           ? given === 'none'
@@ -711,20 +936,39 @@ export function hmsResolve(g: Game, t: Task, c: Command, now: number): string {
       const q = choice?.text || clean(c.question, 500) || 'your question';
       s.questions[p.id] = q;
       const answer = clean(c.target);
-      requireThat(g.players.some((x) => x.id === answer), 'Choose the player to suggest.');
-      send(`You asked: “${q}”. The Storyteller suggests you speak to ${nameOf(g, answer)}.`);
+      requireThat(
+        g.players.some((x) => x.id === answer),
+        'Choose the player to suggest.',
+      );
+      send(
+        `You asked: “${q}”. The Storyteller suggests you speak to ${nameOf(g, answer)}.`,
+      );
       summary = info;
       break;
     }
     case 'medium': {
       const target = H[0];
-      enforce(s.nightStartDead.includes(target.id), 'The Medium must choose a player who was dead at the start of the night.', c);
+      enforce(
+        s.nightStartDead.includes(target.id),
+        'The Medium must choose a player who was dead at the start of the night.',
+        c,
+      );
       if (fine) {
         s.medium = { medium: p.id, target: target.id, night: g.night };
-        if (!isST) s.channel = { id: uuid(), a: p.id, b: target.id, night: g.night };
-        const can = GRANTABLE.includes(actsAs(target)) && !(ONCE.includes(actsAs(target)) && target.used);
-        message(g, target.id, `The Medium has reached you. ${can ? 'You may use your night ability tonight.' : 'Your ability cannot be used again.'} You can talk privately with them until dawn.`, now);
-        send(`You have reached ${target.name}. You can talk privately until dawn.`);
+        if (!isST)
+          s.channel = { id: uuid(), a: p.id, b: target.id, night: g.night };
+        const can =
+          GRANTABLE.includes(actsAs(target)) &&
+          !(ONCE.includes(actsAs(target)) && target.used);
+        message(
+          g,
+          target.id,
+          `The Medium has reached you. ${can ? 'You may use your night ability tonight.' : 'Your ability cannot be used again.'} You can talk privately with them until dawn.`,
+          now,
+        );
+        send(
+          `You have reached ${target.name}. You can talk privately until dawn.`,
+        );
       } else send(`You reach out to ${target.name}…`);
       summary = `Medium chose ${target.name}.${fine ? '' : ' Impaired: no channel or ability.'}`;
       break;
@@ -738,15 +982,31 @@ export function hmsResolve(g: Game, t: Task, c: Command, now: number): string {
         break;
       }
       const target = H[0];
-      enforce(s.nightStartDead.includes(target.id), 'Choose a player who was dead at the start of the night.', c);
-      requireThat(r === 'gravedigger' || team(target.role) !== 'demon', 'The Horror cannot be revived.');
+      enforce(
+        s.nightStartDead.includes(target.id),
+        'Choose a player who was dead at the start of the night.',
+        c,
+      );
+      requireThat(
+        r === 'gravedigger' || team(target.role) !== 'demon',
+        'The Horror cannot be revived.',
+      );
       let newRole = target.role;
-      if (r === 'priest' && team(target.role) === 'minion') newRole = clean(c.newRole);
-      if (r === 'necromancer' && team(target.role) !== 'minion') newRole = clean(c.newRole);
+      if (r === 'priest' && team(target.role) === 'minion')
+        newRole = clean(c.newRole);
+      if (r === 'necromancer' && team(target.role) !== 'minion')
+        newRole = clean(c.newRole);
       if (newRole !== target.role) {
         const want = r === 'priest' ? 'townsfolk' : 'minion';
-        requireThat(team(newRole) === want && HMS_ROLES.some((x) => x.id === newRole), `Choose an out-of-play ${want === 'townsfolk' ? 'Villager' : 'Haunt'} for the revived player.`);
-        enforce(!g.players.some((q) => q.role === newRole), 'That character is already in play.', c);
+        requireThat(
+          team(newRole) === want && HMS_ROLES.some((x) => x.id === newRole),
+          `Choose an out-of-play ${want === 'townsfolk' ? 'Villager' : 'Haunt'} for the revived player.`,
+        );
+        enforce(
+          !g.players.some((q) => q.role === newRole),
+          'That character is already in play.',
+          c,
+        );
       }
       once();
       const allowed = r !== 'gravedigger' || c.refuse !== true;
@@ -758,42 +1018,76 @@ export function hmsResolve(g: Game, t: Task, c: Command, now: number): string {
           role: newRole,
           by: p.id,
         });
-        summary = r === 'gravedigger'
-          ? `At dawn ${p.name} becomes the ${roleName(newRole)}.`
-          : `At dawn ${target.name} returns as the ${roleName(newRole)}.`;
-      } else summary = `${role(r)?.name} chose ${target.name}. ${fine ? 'The Storyteller refused the change.' : 'Impaired: nothing happens.'}`;
+        summary =
+          r === 'gravedigger'
+            ? `At dawn ${p.name} becomes the ${roleName(newRole)}.`
+            : `At dawn ${target.name} returns as the ${roleName(newRole)}.`;
+      } else
+        summary = `${role(r)?.name} chose ${target.name}. ${fine ? 'The Storyteller refused the change.' : 'Impaired: nothing happens.'}`;
       send(`You chose ${target.name}.`);
       break;
     }
     case 'guess': {
       const con = s.constellation!;
-      const pairs = con.members.map((m, i) => ({ player: m, role: clean(c['guess' + (i + 1)]) || choice?.guesses?.find((x) => x.player === m)?.role || '' }));
+      const pairs = con.members.map((m, i) => ({
+        player: m,
+        role:
+          clean(c['guess' + (i + 1)]) ||
+          choice?.guesses?.find((x) => x.player === m)?.role ||
+          '',
+      }));
       if (c.pass === true || (choice?.pass && !pairs.some((x) => x.role))) {
         send('You keep your guess for another night.');
         summary = 'Constellation passed.';
         break;
       }
-      requireThat(pairs.every((x) => role(x.role)), 'Choose a character for each member.');
-      const correct = pairs.every((x) => (person(g, x.player).shown || person(g, x.player).role) === x.role);
-      const outcome = clean(c.outcome) || (fine && correct ? 'correct' : 'wrong');
-      enforce(outcome === (fine && correct ? 'correct' : 'wrong'), 'This differs from the actual characters.', c);
+      requireThat(
+        pairs.every((x) => role(x.role)),
+        'Choose a character for each member.',
+      );
+      const correct = pairs.every(
+        (x) =>
+          (person(g, x.player).shown || person(g, x.player).role) === x.role,
+      );
+      const outcome =
+        clean(c.outcome) || (fine && correct ? 'correct' : 'wrong');
+      enforce(
+        outcome === (fine && correct ? 'correct' : 'wrong'),
+        'This differs from the actual characters.',
+        c,
+      );
       const member = clean(c.rewardPlayer);
       const other = clean(c.killMember);
       if (outcome === 'correct') {
         requireThat(con.members.includes(member), 'Choose a member to reward.');
-        requireThat(clean(c.reward) !== 'revive' || !person(g, member).alive, 'Only a dead member can be revived.');
-      } else requireThat(!other || (con.members.includes(other) && other !== p.id), 'Choose another Constellation member.');
+        requireThat(
+          clean(c.reward) !== 'revive' || !person(g, member).alive,
+          'Only a dead member can be revived.',
+        );
+      } else
+        requireThat(
+          !other || (con.members.includes(other) && other !== p.id),
+          'Choose another Constellation member.',
+        );
       once();
       if (outcome === 'correct') {
         const kind = clean(c.reward);
         if (kind === 'revive') {
-          s.dawnChanges.push({ id: uuid(), kind: 'revive', player: member, role: person(g, member).role, by: p.id });
-        } else person(g, member).extraLife = (person(g, member).extraLife ?? 0) + 1;
+          s.dawnChanges.push({
+            id: uuid(),
+            kind: 'revive',
+            player: member,
+            role: person(g, member).role,
+            by: p.id,
+          });
+        } else
+          person(g, member).extraLife = (person(g, member).extraLife ?? 0) + 1;
         send('Your guess was correct.');
         summary = `Constellation guessed correctly: ${kind === 'revive' ? nameOf(g, member) + ' returns at dawn' : nameOf(g, member) + ' gains an extra life'}.`;
       } else {
         con.linked = false;
-        if (c.killSelf === true && p.alive) enqueueDeath(g, p.id, 'Constellation guess');
+        if (c.killSelf === true && p.alive)
+          enqueueDeath(g, p.id, 'Constellation guess');
         if (other) enqueueDeath(g, other, 'Constellation guess');
         send('Your guess was wrong. The link is broken.');
         summary = `Constellation guessed wrong; link broken.${c.killSelf === true ? ' ' + p.name + ' may die.' : ''}${other ? ' ' + nameOf(g, other) + ' may die.' : ''}`;
@@ -829,13 +1123,21 @@ export function hmsResolve(g: Game, t: Task, c: Command, now: number): string {
         const ro = clean(c[`g${i}role`]);
         if (pl && ro) guesses.push({ player: pl, role: ro });
       }
-      requireThat(guesses.every((x) => g.players.some((q) => q.id === x.player) && role(x.role)), 'Each guess needs a player and a character.');
+      requireThat(
+        guesses.every(
+          (x) => g.players.some((q) => q.id === x.player) && role(x.role),
+        ),
+        'Each guess needs a player and a character.',
+      );
       if (!guesses.length) {
         send('You make no guesses tonight.');
         summary = 'Dreameater made no guesses.';
         break;
       }
-      const right = guesses.filter((x) => { const q = person(g, x.player); return (q.shown || q.role) === x.role; });
+      const right = guesses.filter((x) => {
+        const q = person(g, x.player);
+        return (q.shown || q.role) === x.role;
+      });
       const wrong = guesses.length - right.length;
       if (fine) {
         const holder = isST ? null : p;
@@ -854,9 +1156,15 @@ export function hmsResolve(g: Game, t: Task, c: Command, now: number): string {
     }
     case 'nightmare': {
       const target = H[0];
-      enforce(TARGETING.includes(actsAs(target)) && target.alive, 'Choose a living player with a nighttime targeting ability.', c);
+      enforce(
+        TARGETING.includes(actsAs(target)) && target.alive,
+        'Choose a living player with a nighttime targeting ability.',
+        c,
+      );
       s.nightmare!.bound = target.id;
-      send(`You now haunt ${target.name}. Once, you may redirect their ability.`);
+      send(
+        `You now haunt ${target.name}. Once, you may redirect their ability.`,
+      );
       summary = `Nightmare haunts ${target.name}.`;
       break;
     }
@@ -865,9 +1173,14 @@ export function hmsResolve(g: Game, t: Task, c: Command, now: number): string {
       if (clean(c.info, 2000)) send(summary);
   }
   g.done.push(t.key);
-  const text = summary + redirectNote + (overridden(c) ? ' Override: ' + clean(c.reason) : '');
+  const text =
+    summary +
+    redirectNote +
+    (overridden(c) ? ' Override: ' + clean(c.reason) : '');
   log(g, t.name + ': ' + text, now);
-  return info && !isST ? `Send privately to ${p.name}:\n${info}${redirectNote}` : text;
+  return info && !isST
+    ? `Send privately to ${p.name}:\n${info}${redirectNote}`
+    : text;
 }
 
 // ---------------------------------------------------------------- deaths
@@ -893,34 +1206,59 @@ export function preventedBy(g: Game, d: DeathItem) {
 export function resolveDeath(g: Game, c: Command, now: number): string {
   const s = hms(g);
   const d = pendingDeath(g);
-  requireThat(d && d.id === c.death, 'The pending death changed. Review it again.');
+  requireThat(
+    d && d.id === c.death,
+    'The pending death changed. Review it again.',
+  );
   const v = person(g, d.player);
-  const remove = () => (s.deathQueue = s.deathQueue.filter((x) => x.id !== d.id));
+  const remove = () =>
+    (s.deathQueue = s.deathQueue.filter((x) => x.id !== d.id));
   if (!v.alive) {
     remove();
     return `${v.name} is already dead.`;
   }
   const reason = preventedBy(g, d);
   const outcome = clean(c.outcome) || (reason ? 'spare' : 'kill');
-  enforce(outcome === (reason ? 'spare' : 'kill'), 'This differs from the suggested outcome.', c);
+  enforce(
+    outcome === (reason ? 'spare' : 'kill'),
+    'This differs from the suggested outcome.',
+    c,
+  );
   if (outcome === 'spare') {
     if (reason === 'an extra life') v.extraLife = (v.extraLife ?? 1) - 1;
     remove();
-    log(g, `${v.name} survives (${d.cause}; ${reason || 'Storyteller ruling'}).`, now);
+    log(
+      g,
+      `${v.name} survives (${d.cause}; ${reason || 'Storyteller ruling'}).`,
+      now,
+    );
     return `${v.name} does not die.`;
   }
   const weaver = !d.redirected ? fateweaverFor(g, v) : undefined;
   const to = weaver ? clean(c.fateweaver) : '';
   if (to) {
     const next = person(g, to);
-    requireThat(next.alive && next.id !== v.id, 'Choose a different living player.');
+    requireThat(
+      next.alive && next.id !== v.id,
+      'Choose a different living player.',
+    );
   } else validateTriggers(g, v, d, c);
   if (weaver && to) {
     const next = person(g, to);
     weaver.used = true;
     remove();
-    enqueueDeath(g, next.id, d.cause + ', redirected by the Fateweaver', { ready: true, night: d.night, redirected: true }, true);
-    log(g, `Fateweaver ${weaver.name} redirects ${v.name}’s death to ${next.name}.`, now);
+    enqueueDeath(
+      g,
+      next.id,
+      d.cause + ', redirected by the Fateweaver',
+      { ready: true, night: d.night, redirected: true },
+      true,
+    );
+    log(
+      g,
+      `Fateweaver ${weaver.name} redirects ${v.name}’s death to ${next.name}.`,
+      now,
+    );
     return `The Fateweaver redirects the death to ${next.name}. Resolve it next.`;
   }
   if (weaver) weaver.used = true;
@@ -930,13 +1268,24 @@ export function resolveDeath(g: Game, c: Command, now: number): string {
 }
 function validateTriggers(g: Game, v: Player, d: DeathItem, c: Command) {
   if (v.role === 'zealot')
-    requireThat(HMS_ROLES.some((r) => r.id === clean(c.zealotRole)), 'Choose the ability the Zealot grants the Storyteller.');
+    requireThat(
+      HMS_ROLES.some((r) => r.id === clean(c.zealotRole)),
+      'Choose the ability the Zealot grants the Storyteller.',
+    );
   const next = clean(c.priestRole);
   if (v.role === 'priest' && !v.revived && healthy(v) && next)
-    requireThat(team(next) === 'townsfolk' && HMS_ROLES.some((r) => r.id === next) && !g.players.some((q) => q.role === next), 'Choose an out-of-play Villager.');
+    requireThat(
+      team(next) === 'townsfolk' &&
+        HMS_ROLES.some((r) => r.id === next) &&
+        !g.players.some((q) => q.role === next),
+      'Choose an out-of-play Villager.',
+    );
   const drunk = clean(c.celestialDrunk);
   if (v.role === 'celestial' && d.cause === 'execution' && drunk)
-    requireThat(team(person(g, drunk).role) === 'townsfolk', 'Choose a Villager to become drunk.');
+    requireThat(
+      team(person(g, drunk).role) === 'townsfolk',
+      'Choose a Villager to become drunk.',
+    );
 }
 function kill(g: Game, v: Player, d: DeathItem, c: Command, now: number) {
   const s = hms(g);
@@ -955,19 +1304,41 @@ function kill(g: Game, v: Player, d: DeathItem, c: Command, now: number) {
   // The Zealot's death always grants the Storyteller an ability, even drunk.
   if (v.role === 'zealot') {
     const granted = clean(c.zealotRole);
-    requireThat(HMS_ROLES.some((r) => r.id === granted), 'Choose the ability the Zealot grants the Storyteller.');
+    requireThat(
+      HMS_ROLES.some((r) => r.id === granted),
+      'Choose the ability the Zealot grants the Storyteller.',
+    );
     s.stRole = granted;
     s.stUsed = false;
     s.stNight = g.night;
-    log(g, `The Storyteller gains the ${roleName(granted)} ability (Zealot).`, now);
+    log(
+      g,
+      `The Storyteller gains the ${roleName(granted)} ability (Zealot).`,
+      now,
+    );
   }
   if (v.role === 'priest' && !v.revived && healthy(v)) {
     const next = clean(c.priestRole);
     if (next) {
-      requireThat(team(next) === 'townsfolk' && HMS_ROLES.some((r) => r.id === next) && !g.players.some((q) => q.role === next), 'Choose an out-of-play Villager.');
+      requireThat(
+        team(next) === 'townsfolk' &&
+          HMS_ROLES.some((r) => r.id === next) &&
+          !g.players.some((q) => q.role === next),
+        'Choose an out-of-play Villager.',
+      );
       v.revived = true;
-      s.dawnChanges.push({ id: uuid(), kind: 'revive', player: v.id, role: next, by: v.id });
-      log(g, `${v.name} (Priest) returns at the next dawn as the ${roleName(next)}.`, now);
+      s.dawnChanges.push({
+        id: uuid(),
+        kind: 'revive',
+        player: v.id,
+        role: next,
+        by: v.id,
+      });
+      log(
+        g,
+        `${v.name} (Priest) returns at the next dawn as the ${roleName(next)}.`,
+        now,
+      );
     }
   }
   if (v.role === 'celestial' && d.cause === 'execution' && healthy(v)) {
@@ -977,10 +1348,17 @@ function kill(g: Game, v: Player, d: DeathItem, c: Command, now: number) {
     }
     const drunk = clean(c.celestialDrunk);
     if (drunk) {
-      requireThat(team(person(g, drunk).role) === 'townsfolk', 'Choose a Villager to become drunk.');
+      requireThat(
+        team(person(g, drunk).role) === 'townsfolk',
+        'Choose a Villager to become drunk.',
+      );
       person(g, drunk).drunk = true;
     }
-    log(g, `Celestial executed: everyone is poisoned until the next dusk${drunk ? '; ' + nameOf(g, drunk) + ' is drunk for the rest of the game' : ''}.`, now);
+    log(
+      g,
+      `Celestial executed: everyone is poisoned until the next dusk${drunk ? '; ' + nameOf(g, drunk) + ' is drunk for the rest of the game' : ''}.`,
+      now,
+    );
   }
   if (v.role === 'nightmare' && d.cause === 'execution')
     s.nightmare = { player: v.id, bound: '', used: false };
@@ -1009,69 +1387,146 @@ export function hmsDawn(g: Game, now: number) {
       p.marked = false;
       p.executed = false;
     }
-    message(g, p.id, `${ch.kind === 'revive' ? 'You have returned to life. ' : ''}Your character is now ${roleName(ch.role)}. Your alignment is ${evil(p) ? 'evil' : 'good'}.\n${role(ch.role)?.description}`, now);
-    log(g, `${p.name}: ${roleName(old)} → ${roleName(ch.role)} (${ch.kind === 'revive' ? 'revived' : 'Gravedigger'}).`, now);
+    message(
+      g,
+      p.id,
+      `${ch.kind === 'revive' ? 'You have returned to life. ' : ''}Your character is now ${roleName(ch.role)}. Your alignment is ${evil(p) ? 'evil' : 'good'}.\n${role(ch.role)?.description}`,
+      now,
+    );
+    log(
+      g,
+      `${p.name}: ${roleName(old)} → ${roleName(ch.role)} (${ch.kind === 'revive' ? 'revived' : 'Gravedigger'}).`,
+      now,
+    );
   }
   s.dawnChanges = [];
   if (s.channel) {
     const id = 'channel:' + s.channel.id;
-    const lines = g.messages.filter((m) => m.to === id).map((m) => `${nameOf(g, m.from)}: ${m.text}`);
-    log(g, `Medium channel (${nameOf(g, s.channel.a)} ↔ ${nameOf(g, s.channel.b)}) closed.${lines.length ? '\n' + lines.join('\n') : ' No messages.'}`, now);
+    const lines = g.messages
+      .filter((m) => m.to === id)
+      .map((m) => `${nameOf(g, m.from)}: ${m.text}`);
+    log(
+      g,
+      `Medium channel (${nameOf(g, s.channel.a)} ↔ ${nameOf(g, s.channel.b)}) closed.${lines.length ? '\n' + lines.join('\n') : ' No messages.'}`,
+      now,
+    );
     delete s.channel;
   }
 }
 export function hmsWinHints(g: Game) {
   const alive = g.players.filter((p) => p.alive);
   if (atheistInPlay(g))
-    return alive.length <= 2 ? ['Two players remain with an Atheist in play: evil (the Storyteller) wins.'] : [];
+    return alive.length <= 2
+      ? [
+          'Two players remain with an Atheist in play: evil (the Storyteller) wins.',
+        ]
+      : [];
   const horror = alive.some((p) => team(p.role) === 'demon');
   const hints: string[] = [];
   if (!horror) hints.push('No living Horror: good wins.');
-  if (alive.length <= 2 && horror) hints.push('Two or fewer living players with a living Horror: evil wins.');
+  if (alive.length <= 2 && horror)
+    hints.push('Two or fewer living players with a living Horror: evil wins.');
   return hints;
 }
 
 // Day and anytime actions. Returns null when the action is not an HMS one.
-export function hmsAction(g: Game, actor: { id: string; host: boolean }, c: Command, now: number): string | null {
+export function hmsAction(
+  g: Game,
+  actor: { id: string; host: boolean },
+  c: Command,
+  now: number,
+): string | null {
   const s = hms(g);
   const me = actor.host ? null : person(g, actor.id);
-  const day = ['discovery', 'discussion', 'nomination', 'defense', 'voting', 'dayReview'].includes(g.phase);
+  const day = [
+    'discovery',
+    'discussion',
+    'nomination',
+    'defense',
+    'voting',
+    'dayReview',
+  ].includes(g.phase);
   switch (c.action) {
     case 'resolveDeath':
       requireThat(actor.host, 'Only the Storyteller can do that.');
       return resolveDeath(g, c, now);
     case 'prophetReveal': {
       requireThat(actor.host, 'Only the Storyteller can do that.');
-      requireThat(g.phase !== 'lobby' && g.phase !== 'ended', 'The game is not running.');
+      requireThat(
+        g.phase !== 'lobby' && g.phase !== 'ended',
+        'The game is not running.',
+      );
       const p = person(g, c.player);
-      requireThat(p.role === 'prophet' && p.alive, 'Choose the living Prophet.');
+      requireThat(
+        p.role === 'prophet' && p.alive,
+        'Choose the living Prophet.',
+      );
       const near = clean(c.neighbor);
-      requireThat(!near || livingNeighbors(g, p).some((q) => q.id === near), 'Choose one of the Prophet’s living neighbors.');
+      requireThat(
+        !near || livingNeighbors(g, p).some((q) => q.id === near),
+        'Choose one of the Prophet’s living neighbors.',
+      );
       const night = g.phase === 'night';
       const ready = night && g.done.includes('deaths');
       for (const id of [p.id, near].filter(Boolean))
         enqueueDeath(g, id, 'Prophet reveal', { ready, night: true });
-      log(g, `Prophet reveal: ${[p.id, near].filter(Boolean).map((id) => nameOf(g, id)).join(' and ')} may die tonight.`, now);
-      return 'The Prophet' + (near ? ' and ' + nameOf(g, near) : '') + ' are queued to die at night.';
+      log(
+        g,
+        `Prophet reveal: ${[p.id, near]
+          .filter(Boolean)
+          .map((id) => nameOf(g, id))
+          .join(' and ')} may die tonight.`,
+        now,
+      );
+      return (
+        'The Prophet' +
+        (near ? ' and ' + nameOf(g, near) : '') +
+        ' are queued to die at night.'
+      );
     }
     case 'soberFools': {
       requireThat(actor.host, 'Only the Storyteller can do that.');
-      const fools = g.players.filter((p) => team(p.role) === 'outsider' && p.shown !== p.role && p.role !== 'lostsoul');
-      const lost = g.players.filter((p) => p.role === 'lostsoul' && p.shown !== 'lostsoul');
+      const fools = g.players.filter(
+        (p) =>
+          team(p.role) === 'outsider' &&
+          p.shown !== p.role &&
+          p.role !== 'lostsoul',
+      );
+      const lost = g.players.filter(
+        (p) => p.role === 'lostsoul' && p.shown !== 'lostsoul',
+      );
       for (const p of [...fools, ...lost]) {
         p.shown = p.role;
         p.drunk = p.role === 'dazed' || p.role === 'lostsoul';
-        message(g, p.id, `You have sobered up. Your real character is ${roleName(p.role)}.\n${role(p.role)?.description}`, now);
+        message(
+          g,
+          p.id,
+          `You have sobered up. Your real character is ${roleName(p.role)}.\n${role(p.role)?.description}`,
+          now,
+        );
       }
-      log(g, `Fools sobered up: ${[...fools, ...lost].map((p) => p.name).join(', ') || 'none'}.`, now);
+      log(
+        g,
+        `Fools sobered up: ${[...fools, ...lost].map((p) => p.name).join(', ') || 'none'}.`,
+        now,
+      );
       return 'The Fools learn their real characters.';
     }
     case 'astrophage': {
       const p = actor.host ? stActor(g) : me;
-      requireThat(p && (actor.host ? p.role === 'astrophage' && !s.stUsed : p.role === 'astrophage' && p.alive && !p.used), 'You cannot end the day.');
+      requireThat(
+        p &&
+          (actor.host
+            ? p.role === 'astrophage' && !s.stUsed
+            : p.role === 'astrophage' && p.alive && !p.used),
+        'You cannot end the day.',
+      );
       requireThat(day, 'You can only end the day during the day.');
       requireThat(c.confirm === true, 'Confirm that you want to end the day.');
-      requireThat(g.players.filter((q) => q.alive).length > 4, 'Not available with 4 or fewer living players.');
+      requireThat(
+        g.players.filter((q) => q.alive).length > 4,
+        'Not available with 4 or fewer living players.',
+      );
       requireNoPendingDeath(g);
       if (actor.host) s.stUsed = true;
       else p.used = true;
@@ -1088,8 +1543,14 @@ export function hmsAction(g: Game, actor: { id: string; host: boolean }, c: Comm
     case 'reap': {
       const p = actor.host ? stActor(g) : me;
       requireThat(p && p.role === 'grimreaper' && p.alive, 'You cannot reap.');
-      requireThat(c.confirm === true, 'Confirm that you want to kill every marked player.');
-      requireThat(g.phase !== 'lobby' && g.phase !== 'ended', 'The game is not running.');
+      requireThat(
+        c.confirm === true,
+        'Confirm that you want to kill every marked player.',
+      );
+      requireThat(
+        g.phase !== 'lobby' && g.phase !== 'ended',
+        'The game is not running.',
+      );
       const marked = g.players.filter((q) => q.marked && q.alive);
       requireThat(marked.length, 'No living player is marked.');
       for (const q of marked) {
@@ -1097,18 +1558,28 @@ export function hmsAction(g: Game, actor: { id: string; host: boolean }, c: Comm
         enqueueDeath(g, q.id, 'Grim Reaper', { ready: true, impaired: !ok(p) });
       }
       log(g, `${p.name} reaps: ${marked.map((q) => q.name).join(', ')}.`, now);
-      return actor.host ? `Reaping ${marked.map((q) => q.name).join(', ')}. Resolve the deaths now.` : 'You reap your marks.';
+      return actor.host
+        ? `Reaping ${marked.map((q) => q.name).join(', ')}. Resolve the deaths now.`
+        : 'You reap your marks.';
     }
     case 'fateweaverPref': {
-      requireThat(me && actsAs(me) === 'fateweaver', 'Only the Fateweaver can do that.');
+      requireThat(
+        me && actsAs(me) === 'fateweaver',
+        'Only the Fateweaver can do that.',
+      );
       const t = clean(c.target);
       requireThat(!t || g.players.some((q) => q.id === t), 'Choose a player.');
       me.pref = t;
-      return t ? `If a neighbor dies, you ask to redirect it to ${nameOf(g, t)}.` : 'Preference cleared.';
+      return t
+        ? `If a neighbor dies, you ask to redirect it to ${nameOf(g, t)}.`
+        : 'Preference cleared.';
     }
     case 'execute': {
       requireThat(actor.host, 'Only the Storyteller can do that.');
-      requireThat(g.phase === 'dayReview' && !g.execution, 'Execution is decided once, in the day review.');
+      requireThat(
+        g.phase === 'dayReview' && !g.execution,
+        'Execution is decided once, in the day review.',
+      );
       requireNoPendingDeath(g);
       const target = clean(c.target);
       if (target === ST) {
@@ -1117,14 +1588,24 @@ export function hmsAction(g: Game, actor: { id: string; host: boolean }, c: Comm
           return 'END_GAME';
         }
         const ruling = clean(c.atheistRuling);
-        requireThat(['nominator', 'none'].includes(ruling), 'No Atheist is in play: choose what happens.');
+        requireThat(
+          ['nominator', 'none'].includes(ruling),
+          'No Atheist is in play: choose what happens.',
+        );
         g.execution = ST;
         if (ruling === 'nominator') {
           const by = g.ballots.find((b) => b.target === ST)?.by;
           if (by) enqueueDeath(g, by, 'execution');
         }
-        log(g, 'The Storyteller was executed with no Atheist in play.', now, true);
-        return ruling === 'nominator' ? 'No Atheist: the nominator is executed. Resolve the death.' : 'No Atheist: nothing happens.';
+        log(
+          g,
+          'The Storyteller was executed with no Atheist in play.',
+          now,
+          true,
+        );
+        return ruling === 'nominator'
+          ? 'No Atheist: the nominator is executed. Resolve the death.'
+          : 'No Atheist: nothing happens.';
       }
       const p = person(g, target);
       requireThat(p.alive, 'Choose a living player.');
@@ -1137,5 +1618,7 @@ export function hmsAction(g: Game, actor: { id: string; host: boolean }, c: Comm
   return null;
 }
 export function scriptRoleOptions(g: Game, t?: string) {
-  return scriptRoles(g.script).filter((r) => !t || r.team === t).map((r) => ({ value: r.id, label: r.name }));
+  return scriptRoles(g.script)
+    .filter((r) => !t || r.team === t)
+    .map((r) => ({ value: r.id, label: r.name }));
 }

@@ -585,7 +585,9 @@ export function controls(g: Game, a: Actor): Control[] {
           check('alive', 'Alive', p.alive),
           check('ghost', 'Dead vote available', p.ghost),
           check('poisoned', 'Poisoned', p.poisoned),
-          ...(isHms(g) ? [] : [check('protected', 'Monk protection', p.protected)]),
+          ...(isHms(g)
+            ? []
+            : [check('protected', 'Monk protection', p.protected)]),
           check('used', 'Once-per-game ability used', p.used),
           input('notes', 'Private reminders', p.notes, 'textarea'),
         ],
@@ -627,20 +629,24 @@ export function controls(g: Game, a: Actor): Control[] {
         ),
         ...(isHms(g)
           ? []
-          : [select(
-          'redHerring',
-          'Fortune Teller red herring',
-          optional.concat(
-            ps.filter((o) =>
-              g.players.some(
-                (p) =>
-                  p.id === o.value &&
-                  ['townsfolk', 'outsider'].includes(role(p.role)?.team ?? ''),
+          : [
+              select(
+                'redHerring',
+                'Fortune Teller red herring',
+                optional.concat(
+                  ps.filter((o) =>
+                    g.players.some(
+                      (p) =>
+                        p.id === o.value &&
+                        ['townsfolk', 'outsider'].includes(
+                          role(p.role)?.team ?? '',
+                        ),
+                    ),
+                  ),
+                ),
+                g.redHerring,
               ),
-            ),
-          ),
-          g.redHerring,
-        )]),
+            ]),
       ],
     );
     if (g.history.length) {
@@ -737,7 +743,8 @@ export function view(g: Game, a: Actor, version: number, now: number) {
             round: choiceTask.round,
             count: choiceTask.count,
             text: 'text' in choiceTask ? !!choiceTask.text : false,
-            guesses: 'guesses' in choiceTask ? (choiceTask.guesses ?? null) : null,
+            guesses:
+              'guesses' in choiceTask ? (choiceTask.guesses ?? null) : null,
             members:
               'members' in choiceTask
                 ? (choiceTask.members ?? []).map((id) => ({

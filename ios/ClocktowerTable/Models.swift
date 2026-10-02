@@ -35,7 +35,7 @@ struct Ballot: Decodable, Identifiable { let id: String; let by: String; let tar
 struct ActiveBallot: Decodable { let id: String; let by: String; let target: String; let threshold: Int; let myVote: Bool? }
 struct Leader: Decodable { let target: String; let name: String; let count: Int; let tied: Bool }
 struct GameState: Decodable {
-    let code: String; let hostName: String; let host: Bool; let me: String; let phase: String; let phaseLabel: String; let day: Int; let night: Int; let version: Int; let serverNow: Double; let deadline: Double?; let remaining: Double; let winner: String
+    let code: String; let scriptName: String?; let hostName: String; let host: Bool; let me: String; let phase: String; let phaseLabel: String; let day: Int; let night: Int; let version: Int; let serverNow: Double; let deadline: Double?; let remaining: Double; let winner: String
     let players: [Seat]; let character: Character?; let tasks: [NightTask]; let issues: [String]; let hints: [String]; let active: ActiveBallot?; let ballots: [Ballot]; let leader: Leader; let messages: [GameMessage]; let log: [LogEntry]; let controls: [GameAction]
     func name(_ id: String) -> String { id == "host" ? "Storyteller" : players.first(where: { $0.id == id })?.name ?? "Everyone" }
 }

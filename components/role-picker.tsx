@@ -1,6 +1,6 @@
 'use client';
 import { useState } from 'react';
-import { ROLES, COUNTS } from '@/lib/game/types';
+import { COUNTS, scriptRoles, role } from '@/lib/game/types';
 import type { GameView } from '@/lib/game/view';
 import { RoleIcon } from './role-icon';
 export function RolePicker({
@@ -16,18 +16,28 @@ export function RolePicker({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const counts = COUNTS[game.players.length];
-  const extra = selected.includes('baron') ? 2 : 0;
-  const expected = counts
-    ? [counts[0] - extra, counts[1] + extra, counts[2], counts[3]]
-    : null;
+  const ROLES = scriptRoles(game.script);
+  const hms = game.script === 'holyMoonStars';
+  const atheist = hms && selected.includes('atheist');
+  const extra = hms
+    ? selected.includes('moonshiner')
+      ? 1
+      : 0
+    : selected.includes('baron')
+      ? 2
+      : 0;
+  const expected = !counts
+    ? null
+    : atheist
+      ? [game.players.length - counts[1], counts[1], 0, 0]
+      : [counts[0] - extra, counts[1] + extra, counts[2], counts[3]];
   const teams = ['townsfolk', 'outsider', 'minion', 'demon'];
   const valid =
     expected &&
     selected.length === game.players.length &&
     teams.every(
       (team, i) =>
-        selected.filter((id) => ROLES.find((r) => r.id === id)?.team === team)
-          .length === expected[i],
+        selected.filter((id) => role(id)?.team === team).length === expected[i],
     );
   return (
     <section className="panel role-picker">
@@ -40,9 +50,13 @@ export function RolePicker({
         <strong>
           {selected.length} / {game.players.length} selected
         </strong>
-        {extra > 0
-          ? ' · Baron: two Villagers become Fools (private setup)'
-          : ''}
+        {atheist
+          ? ' · Atheist: every player is good'
+          : extra > 0
+            ? hms
+              ? ' · Moonshiner: one Villager becomes a Fool, and every Fool is drunk'
+              : ' · Baron: two Villagers become Fools (private setup)'
+            : ''}
       </p>
       {!counts && <p>Join 5–15 players to deal a balanced setup.</p>}
       {teams.map((team, i) => (
@@ -55,12 +69,7 @@ export function RolePicker({
                 : team === 'minion'
                   ? 'Haunts'
                   : 'Horrors'}{' '}
-            ·{' '}
-            {
-              selected.filter(
-                (id) => ROLES.find((r) => r.id === id)?.team === team,
-              ).length
-            }
+            · {selected.filter((id) => role(id)?.team === team).length}
             {expected ? ` / ${expected[i]}` : ''}
           </h3>
           <div className="role-pick-grid">

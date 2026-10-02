@@ -110,7 +110,7 @@ struct FlowView: View {
         List {
             Section {
                 HStack(alignment: .top) {
-                    VStack(alignment: .leading, spacing: 6) { Text(game.phase == "night" ? "Night \(game.night)" : game.day > 0 ? "Day \(game.day)" : "Gather your town.").font(.largeTitle.weight(.regular)); Text("TROUBLE BREWING").font(.caption).tracking(2).foregroundStyle(Color.tableHighlight) }
+                    VStack(alignment: .leading, spacing: 6) { Text(game.phase == "night" ? "Night \(game.night)" : game.day > 0 ? "Day \(game.day)" : "Gather your town.").font(.largeTitle.weight(.regular)); Text((game.scriptName ?? "Fearville Classic").uppercased()).font(.caption).tracking(2).foregroundStyle(Color.tableHighlight) }
                     Spacer()
                     TimelineView(.periodic(from: .now, by: 1)) { context in
                         let seconds = max(0, Int(ceil(game.deadline.map { $0 / 1000 - context.date.timeIntervalSince1970 - store.offset } ?? game.remaining)))

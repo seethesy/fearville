@@ -17,12 +17,13 @@ npm run dev
 Open the Local URL printed by the server. Create a session, then join from separate browser profiles or devices. A browser profile holds one session identity; the Storyteller and players need separate profiles/devices. The local development URL is not a remotely accessible production server.
 
 ```sh
-node --experimental-strip-types --test tests/engine.test.ts tests/accounts.test.ts tests/social.test.ts tests/polls.test.ts tests/assignment.test.ts tests/membership.test.ts
+node --experimental-strip-types --test tests/*.test.ts
 node tests/integration.mjs
 node tests/session-rejoin-integration.mjs
 node tests/membership-integration.mjs
 node tests/accounts-integration.mjs
 node tests/social-integration.mjs
+node tests/hms-integration.mjs
 npx tsc --noEmit
 npm run build
 ```
@@ -50,6 +51,21 @@ Integration tests require the development server and create test sessions and fi
 - Poison, Monk protection, Imp attacks, Mayor redirection, Imp succession, conditional Ravenkeeper/Undertaker wakes, first-night information, recurring information, Spy information, Virgin execution, Slayer claims (including bluffs), Saint loss, and win-condition prompts are supported. Registration is a human ruling, not randomly automated.
 - Storytellers may pause, extend, advance, edit, override, or rewind. Rewinding restores the selected decision and later game changes while retaining messages; it sends a correction and pauses the restored timer. Information already read cannot be erased from a person’s knowledge. Rewinding across player joins is refused to avoid orphaning a device identity.
 - Recovery credentials are stored as hashes on the backend, HttpOnly cookies on web, and Keychain items on iOS. They expire after 30 days. Do not share the Storyteller recovery key. Optional Google and Apple accounts can save seats across devices. Explicit provider linking, sign-out, and account deletion are included. See ACCOUNT-SETUP.md to activate providers.
+
+## Holy Moon and Stars
+
+Choose the script in the lobby (**Change role script**). Classic games are unchanged. Characters must come from the selected script; random assignment supports both (it never deals the Atheist, though the Storyteller may request one in the role picker).
+
+- **Night order.** Night 1: evil introductions (7+ players; never with an Atheist) → Constellation → Stargazer → Astrologist → Mystic → Astronaut → Prophet → Diviner → Miasma → Grim Reaper → Werewolf → Dreameater → Spirit → Insomniac → queued deaths. Later nights: last night’s plague (the victim dies and their living neighbors are poisoned before anyone acts) → an executed Nightmare chooses whom to haunt → Medium → Gravedigger → Priest → Necromancer → Constellation guess (never Night 1) → Diviner → Miasma → Grim Reaper → Werewolf (kills on Nights 3, 6, 9…) → Dreameater → Spirit → Insomniac → queued deaths. A dead player reached by the Medium acts in their own slot. Dead players act only through the Medium, as the Spirit, or as an executed Nightmare.
+- **Player choices.** Players submit choices during the night-choice timer: up to three players, the Diviner’s question, the Dreameater’s guesses, the Constellation’s guesses, or a pass for once-per-game abilities. The Storyteller confirms each task with calculated suggestions (Astronaut distance, Prophet roles, Astrologist characters, Mystic connections, Spirit and Insomniac visits).
+- **Visits.** Any ability that chooses a player visits them (Constellation, Stargazer, Astrologist, Mystic, Medium, Gravedigger, Priest, Necromancer, Spirit, Miasma, Grim Reaper, Werewolf, Nightmare). Redirects land the visit on the final target.
+- **Deaths.** Every death goes through one queue, one at a time: redirects first (Dazed, then the Nightmare, resolved on the targeting ability), then prevention (Extra Life; the Celestial protects good players by day), then the Fateweaver may move the death once (the new target is checked again), then the death and its triggers (Constellation link deaths at the Storyteller’s choice, the Zealot’s granted ability, the Priest’s self-revival, Celestial execution, Nightmare execution, Moonshiner). Horror and other night deaths wait until after the Spirit and Insomniac. Day deaths (executions, reaping) resolve immediately; the day cannot end while one is pending.
+- **Dawn.** Priest and Necromancer revivals, the Gravedigger’s new character and the Priest’s self-revival apply at dawn with the new alignment. The Medium’s private channel closes at dawn; its transcript stays in the Storyteller log.
+- **Hidden and drunk characters.** The Dazed and Moonshiner Fools are shown an out-of-play Villager and are drunk; a Lost Soul is shown the Lost Soul but acts as a hidden Villager. The Zealot’s death still grants the Storyteller an ability while drunk. **Sober up the Fools** reveals real characters at any time. An executed Celestial poisons everyone until the following dusk and makes one Villager drunk for the rest of the game.
+- **Zealot.** The Storyteller chooses any script ability and acts with it from the next night, in that character’s slot after any player with the same character. The Storyteller cannot be targeted.
+- **Day buttons.** The Astrophage ends the day early (once; not with 4 or fewer living), the Grim Reaper reaps all marks (with confirmation), the Fateweaver sets a preferred redirect, and the Storyteller can record a **Prophet reveal**, which queues the Prophet and a neighbor to die that night.
+- **Atheist.** Every player is good. Players may nominate the Storyteller; executing the Storyteller with an Atheist in play wins for good, and two players remaining wins for evil (the Storyteller). Without an Atheist, the Storyteller chooses whether the nominator is executed instead.
+- **iPhone.** The native client shows the script name and all Storyteller and day controls. Players on iPhone send night choices to the Storyteller by message.
 
 ## Social system
 

@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
 import { useMessagePreferences } from './message-preferences';
-import { ROLES } from '@/lib/game/types';
+import { role } from '@/lib/game/types';
 import type { GameView } from '@/lib/game/view';
 
 export function TableMessages({
@@ -26,21 +26,27 @@ export function TableMessages({
   const retry = useRef<{ to: string; text: string; id: string } | null>(null);
   const feed = useRef<HTMLDivElement>(null);
   const nearBottom = useRef(true);
-  const to = game.host ? recipient : 'host';
+  const [thread, setThread] = useState<'host' | 'channel'>('host');
+  const inChannel = !game.host && thread === 'channel' && !!game.channel;
+  const to = game.host ? recipient : inChannel ? 'channel' : 'host';
   const player = game.players.find((p) => p.id === to);
   const title =
     to === 'all'
       ? 'Announcements to everyone'
       : game.host
         ? (player?.name ?? 'Choose a player')
-        : 'Storyteller';
+        : inChannel
+          ? `Channel with ${game.channel!.with}`
+          : 'Storyteller';
   const messages = game.messages.filter((m) =>
     game.host
       ? to === 'all'
         ? m.to === 'all'
         : m.to === to || m.from === to
-      : true,
+      : inChannel === m.to.startsWith('channel:'),
   );
+  const sender = (id: string) =>
+    game.players.find((p) => p.id === id)?.name ?? 'Storyteller';
   const last = messages.at(-1)?.id;
   useEffect(() => {
     if (!active) return;
@@ -158,7 +164,7 @@ export function TableMessages({
                       {p.name}
                       {p.role && (
                         <small className="conversation-role">
-                          ({ROLES.find((r) => r.id === p.role)?.name})
+                          ({role(p.role)?.name})
                         </small>
                       )}
                       {p.departed ? ' · Left' : ''}
@@ -199,8 +205,30 @@ export function TableMessages({
           <p className="muted">
             {to === 'all'
               ? 'Messages here are visible to every player.'
-              : 'Private conversation · updates automatically'}
+              : inChannel
+                ? 'The Medium’s channel · closes at dawn'
+                : 'Private conversation · updates automatically'}
           </p>
+          {!game.host && game.channel && (
+            <fieldset className="short-choices" aria-label="Conversation">
+              <button
+                type="button"
+                className="secondary"
+                aria-pressed={!inChannel}
+                onClick={() => setThread('host')}
+              >
+                Storyteller
+              </button>
+              <button
+                type="button"
+                className="secondary"
+                aria-pressed={inChannel}
+                onClick={() => setThread('channel')}
+              >
+                Channel with {game.channel.with}
+              </button>
+            </fieldset>
+          )}
         </header>
         <div
           className="conversation-feed"
@@ -226,17 +254,21 @@ export function TableMessages({
               className={`chat-bubble ${m.from === game.me ? 'outgoing' : 'incoming'} ${m.kind !== 'chat' ? 'system-message' : ''}`}
             >
               <small>
-                {m.to === 'all'
-                  ? 'Announcement'
-                  : m.kind === 'correction'
-                    ? 'Correction'
-                    : m.kind === 'info'
-                      ? 'Character information'
-                      : m.from === game.me
-                        ? 'You'
-                        : game.host
-                          ? player?.name
-                          : 'Storyteller'}
+                {m.to.startsWith('channel:')
+                  ? m.from === game.me
+                    ? 'You · Medium channel'
+                    : sender(m.from) + ' · Medium channel'
+                  : m.to === 'all'
+                    ? 'Announcement'
+                    : m.kind === 'correction'
+                      ? 'Correction'
+                      : m.kind === 'info'
+                        ? 'Character information'
+                        : m.from === game.me
+                          ? 'You'
+                          : game.host
+                            ? player?.name
+                            : 'Storyteller'}
               </small>
               <p>{m.text}</p>
               <time dateTime={new Date(m.at).toISOString()}>

@@ -65,6 +65,7 @@ for (let i = 0; i < 7; i++) {
 }
 await action({
   action: 'configure',
+  nightChoice: 5,
   discovery: 5,
   discussion: 5,
   nomination: 60,
@@ -125,6 +126,8 @@ assert.equal(
   ).length,
   1,
 );
+// Storyteller night actions wait for the players' night-choice window.
+await new Promise((r) => setTimeout(r, 5500));
 const before = (await call('/api/game', host)).data;
 const preview = await call('/api/game', host, {
   action: 'night',

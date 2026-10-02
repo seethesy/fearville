@@ -1,6 +1,6 @@
 'use client';
 import { useRef, useState } from 'react';
-import { ROLES } from '@/lib/game/types';
+import { role } from '@/lib/game/types';
 import { RoleIcon } from './role-icon';
 import type { GameView } from '@/lib/game/view';
 
@@ -132,7 +132,7 @@ export function TableSeating({
                 </span>
                 <small>
                   <RoleIcon role={p.role ?? ''} /> (
-                  {ROLES.find((r) => r.id === p.role)?.name ?? 'Unassigned'})
+                  {role(p.role ?? '')?.name ?? 'Unassigned'})
                 </small>
               </button>
             );

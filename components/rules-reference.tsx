@@ -1,5 +1,5 @@
 import { RoleIcon } from './role-icon';
-import { ROLES } from '@/lib/game/types';
+import { ROLES, HMS_ROLES, HMS_FIRST, HMS_OTHER, role } from '@/lib/game/types';
 
 const teams = [
   {
@@ -28,15 +28,126 @@ const teams = [
   },
 ];
 
+const STEP_NAMES: Record<string, string> = {
+  minioninfo: 'Haunts learn the Horror (7+ players)',
+  demoninfo: 'Horror learns Haunts and bluffs (7+ players)',
+  plague: 'Last night’s plague victim dies; their neighbors are poisoned',
+  nightmare: 'An executed Nightmare chooses a player to haunt',
+  guess: 'Constellation’s once-per-game guess',
+  deaths: 'Queued deaths resolve',
+};
+function RoleTeams({ script }: { script: 'classic' | 'holyMoonStars' }) {
+  const list = script === 'classic' ? ROLES : HMS_ROLES;
+  return (
+    <>
+      {teams.map((team) => (
+        <section
+          id={`roles-${script}-${team.id}`}
+          key={team.id}
+          className="reference-section"
+        >
+          <h3>
+            {team.name} · {team.alignment}
+          </h3>
+          <p className="muted">{team.description}</p>
+          <div className="reference-role-grid">
+            {list
+              .filter((r) => r.team === team.id)
+              .map((r) => (
+                <article key={r.id} id={`role-${r.id}`}>
+                  <h4>
+                    <RoleIcon role={r.id} /> {r.name}
+                  </h4>
+                  <p>{r.description}</p>
+                </article>
+              ))}
+          </div>
+        </section>
+      ))}
+    </>
+  );
+}
+function MoonAndStars() {
+  const step = (id: string) => STEP_NAMES[id] ?? role(id)?.name ?? id;
+  return (
+    <section className="reference-section" aria-labelledby="hms-roles">
+      <p className="eyebrow">HOLY MOON AND STARS</p>
+      <h2 id="hms-roles">All {HMS_ROLES.length} roles</h2>
+      <div className="rules-grid">
+        <article>
+          <h3>Four Horrors</h3>
+          <p>
+            The Grim Reaper marks and reaps, the Werewolf strikes three at a
+            time on Nights 3, 6, 9…, the Dreameater guesses characters, and the
+            Miasma spreads a plague. There is no Horror succession.
+          </p>
+        </article>
+        <article>
+          <h3>How a death resolves</h3>
+          <p>
+            Redirects first (Dazed, then the Nightmare), then prevention (Extra
+            Life; the Celestial by day), then the Fateweaver may move the death
+            once, and only then do death triggers happen (Constellation, Zealot,
+            Priest, Moonshiner).
+          </p>
+        </article>
+        <article>
+          <h3>Visits</h3>
+          <p>
+            Choosing a player with a night ability visits them. The Spirit and
+            Insomniac act after nearly every visit, and before the night’s
+            Horror deaths resolve.
+          </p>
+        </article>
+        <article>
+          <h3>Dawn</h3>
+          <p>
+            Revivals from the Priest and Necromancer, the Gravedigger’s new
+            character and the Priest’s self-revival happen at dawn. The Medium’s
+            channel closes.
+          </p>
+        </article>
+      </div>
+      <div className="rules-grid">
+        <article>
+          <h3>First night</h3>
+          <ol>
+            {HMS_FIRST.map((id) => (
+              <li key={id}>{step(id)}</li>
+            ))}
+          </ol>
+        </article>
+        <article>
+          <h3>Other nights</h3>
+          <ol>
+            {HMS_OTHER.map((id) => (
+              <li key={id}>{step(id)}</li>
+            ))}
+          </ol>
+          <p className="muted">
+            A dead player reached by the Medium acts in their own slot.
+          </p>
+        </article>
+      </div>
+      <RoleTeams script="holyMoonStars" />
+    </section>
+  );
+}
+
 // Shared public reference: never accepts a game state or exposes assigned roles.
-export function RulesReference() {
+// Inside a game, only that game's script is shown; the public page shows both.
+export function RulesReference({
+  script,
+}: {
+  script?: 'classic' | 'holyMoonStars';
+}) {
   return (
     <div className="rules-reference">
       <nav className="reference-nav" aria-label="Rules and role sections">
         <a href="#how-to-play">How to play</a>
         <a href="#using-fearville">Using Fearville</a>
         {teams.map((team) => (
-          <a key={team.id} href={`#roles-${team.id}`}>
+          <a key={team.id} href={`#roles-${script ?? 'classic'}-${team.id}`}>
             {team.name}
           </a>
         ))}
@@ -144,44 +255,27 @@ export function RulesReference() {
           </li>
         </ol>
       </section>
-      <section className="reference-section" aria-labelledby="all-roles">
-        <p className="eyebrow">FEARVILLE CLASSIC</p>
-        <h2 id="all-roles">All 22 roles</h2>
-        <p className="muted">
-          This is the full script, including characters that may not be in your
-          game. These summaries never reveal which roles are assigned. See the{' '}
-          <a
-            href="https://wiki.bloodontheclocktower.com/Trouble_Brewing"
-            target="_blank"
-            rel="noreferrer"
-          >
-            official script and character rulings
-          </a>{' '}
-          for details.
-        </p>
-        {teams.map((team) => (
-          <section
-            id={`roles-${team.id}`}
-            key={team.id}
-            className="reference-section"
-          >
-            <h3>
-              {team.name} · {team.alignment}
-            </h3>
-            <p className="muted">{team.description}</p>
-            <div className="reference-role-grid">
-              {ROLES.filter((r) => r.team === team.id).map((r) => (
-                <article key={r.id} id={`role-${r.id}`}>
-                  <h4>
-                    <RoleIcon role={r.id} /> {r.name}
-                  </h4>
-                  <p>{r.description}</p>
-                </article>
-              ))}
-            </div>
-          </section>
-        ))}
-      </section>
+      {script !== 'holyMoonStars' && (
+        <section className="reference-section" aria-labelledby="all-roles">
+          <p className="eyebrow">FEARVILLE CLASSIC</p>
+          <h2 id="all-roles">All 22 roles</h2>
+          <p className="muted">
+            This is the full script, including characters that may not be in
+            your game. These summaries never reveal which roles are assigned.
+            See the{' '}
+            <a
+              href="https://wiki.bloodontheclocktower.com/Trouble_Brewing"
+              target="_blank"
+              rel="noreferrer"
+            >
+              official script and character rulings
+            </a>{' '}
+            for details.
+          </p>
+          <RoleTeams script="classic" />
+        </section>
+      )}
+      {script !== 'classic' && <MoonAndStars />}
     </div>
   );
 }

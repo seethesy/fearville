@@ -1,7 +1,11 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { Check, X } from 'lucide-react';
-import { ROLES } from '@/lib/game/types';
+import { role, scriptRoles } from '@/lib/game/types';
+import {
+  NativeSelect,
+  NativeSelectOption,
+} from '@/components/ui/native-select';
 import type { GameView } from '@/lib/game/view';
 import {
   Dialog,
@@ -46,14 +50,40 @@ export function TableNightChoice({
     });
     return () => cancelAnimationFrame(frame);
   }, [open, game.code, game.me]);
-  const [picked, setPicked] = useState<string[]>(() =>
-    [prompt.choice?.target, prompt.choice?.target2].filter(
-      (s): s is string => !!s,
-    ),
+  const initial = () =>
+    [prompt.choice?.target, prompt.choice?.target2, prompt.choice?.target3]
+      .filter((s): s is string => !!s)
+      .slice(0, prompt.count);
+  const [picked, setPicked] = useState<string[]>(initial);
+  const [question, setQuestion] = useState(prompt.choice?.text ?? '');
+  const [guessRows, setGuessRows] = useState<
+    { player: string; role: string }[]
+  >(() =>
+    prompt.guesses === 'members'
+      ? prompt.members.map((m) => ({
+          player: m.id,
+          role:
+            prompt.choice?.guesses?.find((g) => g.player === m.id)?.role ?? '',
+        }))
+      : (prompt.choice?.guesses ?? [{ player: '', role: '' }]),
   );
+  const roleChoices = scriptRoles(game.script);
+  const filledGuesses = guessRows.filter((g) => g.player && g.role);
+  const ready =
+    picked.length === prompt.count &&
+    (!prompt.text || question.trim().length > 0) &&
+    (!prompt.guesses ||
+      (prompt.guesses === 'members'
+        ? filledGuesses.length === prompt.members.length
+        : filledGuesses.length > 0 &&
+          new Set(filledGuesses.map((g) => g.player)).size ===
+            filledGuesses.length));
+  const what =
+    prompt.label ||
+    `Choose ${prompt.count === 2 ? 'two different players' : 'a player'}.`;
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  async function send(ids: string[]) {
+  async function send(ids: string[], pass = false) {
     if (expired) return;
     setBusy(true);
     setError('');
@@ -65,8 +95,15 @@ export function TableNightChoice({
           action: 'nightChoice',
           task: prompt.task,
           round: prompt.round,
-          target: ids[0],
-          target2: ids[1],
+          ...(pass
+            ? { pass: true }
+            : {
+                target: ids[0],
+                target2: ids[1],
+                target3: ids[2],
+                ...(prompt.text ? { text: question.trim() } : {}),
+                ...(prompt.guesses ? { guesses: filledGuesses } : {}),
+              }),
         }),
       });
       const d = (await r.json()) as { error?: string };
@@ -81,28 +118,34 @@ export function TableNightChoice({
   }
   const sent =
     !!prompt.choice &&
-    picked[0] === prompt.choice.target &&
-    (picked[1] ?? '') === prompt.choice.target2;
+    !prompt.choice.pass &&
+    picked[0] === (prompt.choice.target || undefined) &&
+    (picked[1] ?? '') === prompt.choice.target2 &&
+    (picked[2] ?? '') === (prompt.choice.target3 ?? '') &&
+    (!prompt.text || question.trim() === prompt.choice.text) &&
+    (!prompt.guesses ||
+      JSON.stringify(filledGuesses) === JSON.stringify(prompt.choice.guesses));
   if (expired) return null;
   return (
     <section className="panel night-choice-panel">
       <h2>Your night choice</h2>
       <p>
-        {prompt.choice
-          ? 'Choice sent. The Storyteller will confirm your action.'
-          : `Choose ${prompt.count === 2 ? 'two different players' : 'a player'}.`}
+        {prompt.choice?.pass
+          ? 'You passed. You can change this until the timer ends.'
+          : prompt.choice
+            ? 'Choice sent. The Storyteller will confirm your action.'
+            : what}
       </p>
       <button className="primary" onClick={() => setOpen(true)}>
-        {prompt.choice ? 'View or change choice' : 'Choose a player'}
+        {prompt.choice ? 'View or change choice' : 'Make your choice'}
       </button>
       <Dialog open={open && !expired} onOpenChange={setOpen}>
         <DialogContent className="action-dialog">
           <DialogHeader>
             <DialogTitle>Your night choice</DialogTitle>
             <DialogDescription>
-              Tap {prompt.count === 2 ? 'two different players' : 'a player'}.
-              Your choice is sent privately to the Storyteller, who confirms the
-              action.
+              {what} Your choice is sent privately to the Storyteller, who
+              confirms the action.
             </DialogDescription>
           </DialogHeader>
           {seconds !== null && (
@@ -117,64 +160,164 @@ export function TableNightChoice({
           {prompt.conditional && (
             <p>This choice is used only if your ability activates tonight.</p>
           )}
-          <div className="night-player-choices">
-            {prompt.options.map((p) => (
-              <button
-                key={p.id}
-                className={picked.includes(p.id) ? 'primary' : 'secondary'}
-                aria-pressed={picked.includes(p.id)}
-                disabled={busy || !p.eligible}
-                onClick={() => {
-                  const next =
-                    prompt.count === 1
-                      ? [p.id]
-                      : picked.includes(p.id)
-                        ? picked.filter((id) => id !== p.id)
-                        : picked.length < 2
-                          ? [...picked, p.id]
-                          : [p.id];
-                  setPicked(next);
+          {prompt.text && (
+            <label className="field">
+              Your question
+              <textarea
+                rows={3}
+                maxLength={500}
+                value={question}
+                disabled={busy}
+                onChange={(e) => {
+                  setQuestion(e.target.value);
                   setError('');
                 }}
-              >
-                <span>
-                  {p.seat}. {p.name}
-                  {!p.eligible ? ' (cannot choose yourself)' : ''}
-                </span>
-                {(p.knownRole || guesses[p.id]?.role) && (
-                  <small
-                    className={
-                      p.knownRole || guesses[p.id]?.confidence === 'confirmed'
-                        ? 'guess-confirmed'
-                        : guesses[p.id]?.confidence === 'suspected'
-                          ? 'guess-suspected'
-                          : ''
+              />
+            </label>
+          )}
+          {prompt.guesses && (
+            <div className="night-guesses">
+              {guessRows.map((row, i) => (
+                <div className="night-guess-row" key={i}>
+                  {prompt.guesses === 'members' ? (
+                    <strong>
+                      {prompt.members.find((m) => m.id === row.player)?.name}
+                    </strong>
+                  ) : (
+                    <NativeSelect
+                      aria-label={`Guess ${i + 1}: player`}
+                      value={row.player}
+                      disabled={busy}
+                      onChange={(e) =>
+                        setGuessRows(
+                          guessRows.map((r, j) =>
+                            j === i ? { ...r, player: e.target.value } : r,
+                          ),
+                        )
+                      }
+                    >
+                      <NativeSelectOption value="">Player…</NativeSelectOption>
+                      {prompt.options
+                        .filter((p) => p.eligible)
+                        .map((p) => (
+                          <NativeSelectOption key={p.id} value={p.id}>
+                            {p.seat}. {p.name}
+                          </NativeSelectOption>
+                        ))}
+                    </NativeSelect>
+                  )}
+                  <NativeSelect
+                    aria-label={`Guess ${i + 1}: character`}
+                    value={row.role}
+                    disabled={busy}
+                    onChange={(e) =>
+                      setGuessRows(
+                        guessRows.map((r, j) =>
+                          j === i ? { ...r, role: e.target.value } : r,
+                        ),
+                      )
                     }
                   >
-                    {p.knownRole ??
-                      ROLES.find((r) => r.id === guesses[p.id]?.role)
-                        ?.name}{' '}
-                    ·{' '}
-                    {p.knownRole
-                      ? 'Known Haunt'
-                      : guesses[p.id]?.confidence === 'confirmed'
-                        ? 'Confirmed'
-                        : guesses[p.id]?.confidence === 'suspected'
-                          ? 'Suspected'
-                          : 'Unmarked'}
-                  </small>
-                )}
-              </button>
-            ))}
-          </div>
+                    <NativeSelectOption value="">Character…</NativeSelectOption>
+                    {roleChoices.map((r) => (
+                      <NativeSelectOption key={r.id} value={r.id}>
+                        {r.name}
+                      </NativeSelectOption>
+                    ))}
+                  </NativeSelect>
+                  {prompt.guesses === 'free' && guessRows.length > 1 && (
+                    <button
+                      type="button"
+                      className="text-action"
+                      disabled={busy}
+                      onClick={() =>
+                        setGuessRows(guessRows.filter((_, j) => j !== i))
+                      }
+                    >
+                      Remove
+                    </button>
+                  )}
+                </div>
+              ))}
+              {prompt.guesses === 'free' && guessRows.length < 15 && (
+                <button
+                  type="button"
+                  className="secondary"
+                  disabled={busy}
+                  onClick={() =>
+                    setGuessRows([...guessRows, { player: '', role: '' }])
+                  }
+                >
+                  Add a guess
+                </button>
+              )}
+            </div>
+          )}
+          {prompt.count > 0 && (
+            <div className="night-player-choices">
+              {prompt.options.map((p) => (
+                <button
+                  key={p.id}
+                  className={picked.includes(p.id) ? 'primary' : 'secondary'}
+                  aria-pressed={picked.includes(p.id)}
+                  disabled={busy || !p.eligible}
+                  onClick={() => {
+                    const next =
+                      prompt.count === 1
+                        ? [p.id]
+                        : picked.includes(p.id)
+                          ? picked.filter((id) => id !== p.id)
+                          : picked.length < prompt.count
+                            ? [...picked, p.id]
+                            : [p.id];
+                    setPicked(next);
+                    setError('');
+                  }}
+                >
+                  <span>
+                    {p.seat}. {p.name}
+                    {!p.eligible
+                      ? p.id === game.me
+                        ? ' (cannot choose yourself)'
+                        : ' (not eligible)'
+                      : ''}
+                  </span>
+                  {(p.knownRole || guesses[p.id]?.role) && (
+                    <small
+                      className={
+                        p.knownRole || guesses[p.id]?.confidence === 'confirmed'
+                          ? 'guess-confirmed'
+                          : guesses[p.id]?.confidence === 'suspected'
+                            ? 'guess-suspected'
+                            : ''
+                      }
+                    >
+                      {p.knownRole ?? role(guesses[p.id]?.role ?? '')?.name} ·{' '}
+                      {p.knownRole
+                        ? 'Known Haunt'
+                        : guesses[p.id]?.confidence === 'confirmed'
+                          ? 'Confirmed'
+                          : guesses[p.id]?.confidence === 'suspected'
+                            ? 'Suspected'
+                            : 'Unmarked'}
+                    </small>
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
           <output>
             {busy
               ? 'Sending…'
               : sent
                 ? 'Sent. Waiting for Storyteller confirmation.'
-                : picked.length === prompt.count
+                : ready
                   ? 'Ready. Confirm your choice below.'
-                  : `Select ${prompt.count - picked.length} more player${prompt.count - picked.length === 1 ? '' : 's'}.`}
+                  : picked.length < prompt.count
+                    ? `Select ${prompt.count - picked.length} more player${prompt.count - picked.length === 1 ? '' : 's'}.`
+                    : prompt.text && !question.trim()
+                      ? 'Write your question.'
+                      : 'Complete your guesses.'}
           </output>
           {error && (
             <>
@@ -183,7 +326,7 @@ export function TableNightChoice({
               </p>
               <button
                 className="secondary"
-                disabled={busy || picked.length !== prompt.count}
+                disabled={busy || !ready}
                 onClick={() => void send(picked)}
               >
                 Retry sending
@@ -194,22 +337,28 @@ export function TableNightChoice({
             <button
               type="button"
               className="vote-choice vote-true"
-              disabled={busy || picked.length !== prompt.count}
+              disabled={busy || !ready}
               onClick={() => void send(picked)}
             >
               <Check aria-hidden="true" />
               Confirm
             </button>
+            {prompt.optional && (
+              <button
+                type="button"
+                className="vote-choice"
+                disabled={busy}
+                onClick={() => void send([], true)}
+              >
+                Pass
+              </button>
+            )}
             <button
               type="button"
               className="vote-choice vote-false"
               disabled={busy}
               onClick={() => {
-                setPicked(
-                  [prompt.choice?.target, prompt.choice?.target2].filter(
-                    (id): id is string => !!id,
-                  ),
-                );
+                setPicked(initial());
                 setOpen(false);
               }}
             >

@@ -713,7 +713,8 @@ export function execute(
       }
     }
     message(g, to, text, now, 'chat', actor.id);
-    if (to.startsWith('channel:')) return 'Message sent through the Medium’s channel.';
+    if (to.startsWith('channel:'))
+      return 'Message sent through the Medium’s channel.';
     if (typeof c.messageId === 'string')
       g.messages[g.messages.length - 1].id = c.messageId;
     return (

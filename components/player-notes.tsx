@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { Check, CircleHelp } from 'lucide-react';
-import { ROLES } from '@/lib/game/types';
+import { scriptRoles } from '@/lib/game/types';
 import type { GameView } from '@/lib/game/view';
 import { RoleIcon } from './role-icon';
 type Notebook = {
@@ -49,7 +49,7 @@ export function PlayerNotes({ game }: { game: GameView }) {
       );
     }
   }
-  const roles = game.script === 'classic' ? ROLES : [];
+  const roles = scriptRoles(game.script);
   return (
     <div className="player-notebook">
       <section className="panel">
