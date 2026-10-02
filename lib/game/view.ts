@@ -1,5 +1,6 @@
 import {
   ROLES,
+  scriptRoles,
   SCRIPTS,
   COUNTS,
   role,
@@ -20,6 +21,8 @@ import {
   eligibleVoters,
   nightChoiceTask,
 } from './engine.ts';
+import { isHms, ST } from './hms.ts';
+import { hmsNightFields, deathControl, hmsControls } from './hms-view.ts';
 const select = (
   key: string,
   label: string,
@@ -47,7 +50,6 @@ const num = (
   max = 3600,
 ): Field => ({ key, label, type: 'number', value, min, max, required: true });
 const optional = [{ value: '', label: 'None' }];
-const roleOptions = ROLES.map((r) => ({ value: r.id, label: r.name }));
 const overrideFields: Field[] = [
   check('override', 'Override standard rules'),
   {
@@ -56,6 +58,8 @@ const overrideFields: Field[] = [
   },
 ];
 export function controls(g: Game, a: Actor): Control[] {
+  const SR = scriptRoles(g.script);
+  const roleOptions = SR.map((r) => ({ value: r.id, label: r.name }));
   const ps = g.players
     .slice()
     .sort((a, b) => a.seat - b.seat)
@@ -76,7 +80,7 @@ export function controls(g: Game, a: Actor): Control[] {
       add(
         'setScript',
         'Change role script',
-        'Choose the script before starting. Holy Moon and Stars is a stub; its roles are not available yet.',
+        'Choose the script before starting. Assigned characters must come from the selected script.',
         [
           select(
             'script',
@@ -88,11 +92,13 @@ export function controls(g: Game, a: Actor): Control[] {
         ],
       );
     }
-    if (g.phase === 'lobby' && (g.script ?? 'classic') === 'classic') {
+    if (g.phase === 'lobby') {
       add(
         'randomAssign',
         'Randomly assign roles',
-        'Apply a balanced Fearville Classic setup for 5–15 players. Replaces all assigned characters, Horror bluffs, and the red herring. You can edit individual roles in Seats afterward.',
+        isHms(g)
+          ? 'Apply a balanced Holy Moon and Stars setup for 5–15 players (never an Atheist). Replaces all assigned characters, hidden Villagers and Horror bluffs. You can edit individual roles in Seats afterward.'
+          : 'Apply a balanced Fearville Classic setup for 5–15 players. Replaces all assigned characters, Horror bluffs, and the red herring. You can edit individual roles in Seats afterward.',
       );
       add(
         'start',
@@ -102,7 +108,54 @@ export function controls(g: Game, a: Actor): Control[] {
         overrideFields,
       );
     }
-    if (g.phase === 'night') {
+    const death = isHms(g) ? deathControl(g, ps) : null;
+    if (death) result.push(death);
+    if (g.phase === 'night' && isHms(g) && !death) {
+      const t = tasks(g).find((t) => !t.done);
+      if (t) {
+        const p = t.player ? g.players.find((p) => p.id === t.player) : null;
+        const { fields, description } = hmsNightFields(g, t, ps);
+        add(
+          'night',
+          'Resolve ' + t.name,
+          description || 'Review and confirm this step before continuing.',
+          [
+            {
+              key: 'task',
+              label: 'Night task',
+              type: 'select',
+              options: [{ value: t.key, label: t.name }],
+              value: t.key,
+            },
+            ...fields,
+            ...overrideFields,
+            ...(p?.poisoned
+              ? [
+                  check(
+                    'poisonAcknowledged',
+                    'I understand this player is poisoned; resolve their ability as impaired',
+                  ),
+                ]
+              : []),
+          ],
+        );
+        add(
+          'nightSkip',
+          'Skip this night task',
+          'Send no information and apply no effect.',
+          [input('reason', 'Reason for skipping')],
+          true,
+        );
+      } else
+        add(
+          'dawn',
+          'Announce dawn',
+          'Publish night deaths, apply revivals and character changes, close the Medium’s channel, and start Discovery. ' +
+            winHints(g).join(' '),
+          overrideFields,
+        );
+    }
+    if (g.phase === 'night' && !isHms(g)) {
       const t = tasks(g).find((t) => !t.done);
       if (t) {
         const p = g.players.find((p) => p.id === t.player),
@@ -276,7 +329,27 @@ export function controls(g: Game, a: Actor): Control[] {
         true,
       );
     }
-    if (g.phase === 'dayReview')
+    if (g.phase === 'dayReview' && isHms(g))
+      add(
+        'finishDay',
+        'Confirm day outcome',
+        (g.execution
+          ? `Executed today: ${nameOf(g, g.execution)}.`
+          : candidate(g).target
+            ? 'Execute the ballot leader first, or override to skip the execution.'
+            : 'No execution today.') +
+          ' Review win conditions before the next night.',
+        [
+          select('ruling', 'If a win condition applies', [
+            { value: '', label: 'Prompt me if needed' },
+            { value: 'good', label: 'Good wins' },
+            { value: 'evil', label: 'Evil wins' },
+            { value: 'continue', label: 'Continue (override)' },
+          ]),
+          ...overrideFields,
+        ],
+      );
+    if (g.phase === 'dayReview' && !isHms(g))
       add(
         'finishDay',
         'Confirm day outcome',
@@ -297,6 +370,7 @@ export function controls(g: Game, a: Actor): Control[] {
         ],
       );
     if (
+      !isHms(g) &&
       g.active &&
       ['defense', 'voting'].includes(g.phase) &&
       g.players.find((p) => p.id === g.active?.target)?.role === 'virgin'
@@ -308,7 +382,7 @@ export function controls(g: Game, a: Actor): Control[] {
         overrideFields,
         true,
       );
-    if (!['night', 'lobby', 'ended'].includes(g.phase))
+    if (!isHms(g) && !['night', 'lobby', 'ended'].includes(g.phase))
       add(
         'slayer',
         'Resolve a Slayer claim',
@@ -330,6 +404,7 @@ export function controls(g: Game, a: Actor): Control[] {
         ],
       );
   }
+  if (isHms(g)) hmsControls(g, a, ps, add);
   const me = g.players.find((p) => p.id === a.id);
   if (!a.host && me && g.phase === 'night' && g.nightPoll?.night === g.night) {
     add(
@@ -386,10 +461,17 @@ export function controls(g: Game, a: Actor): Control[] {
         select(
           'target',
           'Nominee',
-          ps.filter(
-            (o) =>
-              !g.nominees.includes(o.value) &&
-              g.players.some((p) => p.id === o.value && p.alive && !p.departed),
+          (isHms(g) && !g.nominees.includes(ST)
+            ? [{ value: ST, label: 'The Storyteller' }]
+            : []
+          ).concat(
+            ps.filter(
+              (o) =>
+                !g.nominees.includes(o.value) &&
+                g.players.some(
+                  (p) => p.id === o.value && p.alive && !p.departed,
+                ),
+            ),
           ),
           '',
           true,
@@ -467,19 +549,43 @@ export function controls(g: Game, a: Actor): Control[] {
           select('role', 'Actual character', roleOptions, p.role),
           select(
             'shown',
-            'Shown Villager (Drunk only)',
+            isHms(g)
+              ? 'Shown Villager (Dazed, Moonshiner Fools, drunk players)'
+              : 'Shown Villager (Drunk only)',
             optional.concat(
-              ROLES.filter((r) => r.team === 'townsfolk').map((r) => ({
+              SR.filter((r) => r.team === 'townsfolk').map((r) => ({
                 value: r.id,
                 label: r.name,
               })),
             ),
-            p.shown,
+            isHms(g) && p.shown === p.role ? '' : p.shown,
           ),
+          ...(isHms(g)
+            ? [
+                select(
+                  'acts',
+                  'Hidden Villager (Lost Soul only)',
+                  optional.concat(
+                    SR.filter((r) => r.team === 'townsfolk').map((r) => ({
+                      value: r.id,
+                      label: r.name,
+                    })),
+                  ),
+                  p.acts ?? '',
+                ),
+                check(
+                  'drunk',
+                  'Drunk for the rest of the game (set automatically at start)',
+                  !!p.drunk,
+                ),
+                check('marked', 'Marked by the Grim Reaper', !!p.marked),
+                num('extraLife', 'Extra lives', p.extraLife ?? 0, 0, 3),
+              ]
+            : []),
           check('alive', 'Alive', p.alive),
           check('ghost', 'Dead vote available', p.ghost),
           check('poisoned', 'Poisoned', p.poisoned),
-          check('protected', 'Monk protection', p.protected),
+          ...(isHms(g) ? [] : [check('protected', 'Monk protection', p.protected)]),
           check('used', 'Once-per-game ability used', p.used),
           input('notes', 'Private reminders', p.notes, 'textarea'),
         ],
@@ -506,7 +612,7 @@ export function controls(g: Game, a: Actor): Control[] {
             key,
             `Horror bluff ${i + 1}`,
             optional.concat(
-              ROLES.filter(
+              SR.filter(
                 (r) =>
                   ['townsfolk', 'outsider'].includes(r.team) &&
                   !g.players.some(
@@ -519,7 +625,9 @@ export function controls(g: Game, a: Actor): Control[] {
             g.bluffs[i] || '',
           ),
         ),
-        select(
+        ...(isHms(g)
+          ? []
+          : [select(
           'redHerring',
           'Fortune Teller red herring',
           optional.concat(
@@ -532,7 +640,7 @@ export function controls(g: Game, a: Actor): Control[] {
             ),
           ),
           g.redHerring,
-        ),
+        )]),
       ],
     );
     if (g.history.length) {
@@ -628,10 +736,21 @@ export function view(g: Game, a: Actor, version: number, now: number) {
             conditional: choiceTask.role === 'ravenkeeper',
             round: choiceTask.round,
             count: choiceTask.count,
+            text: 'text' in choiceTask ? !!choiceTask.text : false,
+            guesses: 'guesses' in choiceTask ? (choiceTask.guesses ?? null) : null,
+            members:
+              'members' in choiceTask
+                ? (choiceTask.members ?? []).map((id) => ({
+                    id,
+                    name: nameOf(g, id),
+                  }))
+                : [],
+            optional: 'optional' in choiceTask ? !!choiceTask.optional : false,
+            label: 'label' in choiceTask ? (choiceTask.label ?? '') : '',
             options: choiceTask.options.map((p) => ({
               ...p,
               knownRole:
-                me?.role === 'imp' &&
+                role(me?.role ?? '')?.team === 'demon' &&
                 role(g.players.find((q) => q.id === p.id)?.role ?? '')?.team ===
                   'minion'
                   ? role(g.players.find((q) => q.id === p.id)!.role)?.name
@@ -649,8 +768,23 @@ export function view(g: Game, a: Actor, version: number, now: number) {
             choice: g.nightChoices?.[currentTask.key] ?? null,
           }
         : null,
-    standardCounts:
-      g.script === 'holyMoonStars' ? null : (COUNTS[g.players.length] ?? null),
+    standardCounts: COUNTS[g.players.length] ?? null,
+    channel:
+      !a.host &&
+      g.phase === 'night' &&
+      g.hms?.channel &&
+      [g.hms.channel.a, g.hms.channel.b].includes(a.id)
+        ? {
+            with: nameOf(
+              g,
+              g.hms.channel.a === a.id ? g.hms.channel.b : g.hms.channel.a,
+            ),
+            id: g.hms.channel.id,
+          }
+        : null,
+    storytellerAbility:
+      a.host && g.hms?.stRole ? (role(g.hms.stRole)?.name ?? null) : null,
+    pendingDeaths: a.host ? (g.hms?.deathQueue.length ?? 0) : 0,
     dawnAnnouncement:
       g.phase !== 'night' && g.phase !== 'lobby'
         ? (g.dawnAnnouncement ?? null)
@@ -755,8 +889,14 @@ export function view(g: Game, a: Actor, version: number, now: number) {
       ...(a.host ? { invalid: b.invalid } : {}),
     })),
     leader: { ...leader, name: leader.target ? nameOf(g, leader.target) : '' },
-    messages: g.messages.filter(
-      (m) => a.host || m.to === 'all' || m.to === a.id || m.from === a.id,
+    messages: g.messages.filter((m) =>
+      a.host
+        ? true
+        : m.to.startsWith('channel:')
+          ? g.phase === 'night' &&
+            m.to === 'channel:' + g.hms?.channel?.id &&
+            [g.hms?.channel?.a, g.hms?.channel?.b].includes(a.id)
+          : m.to === 'all' || m.to === a.id || m.from === a.id,
     ),
     log: g.log.filter((l) => a.host || l.public).slice(-200),
     controls: controls(g, a),

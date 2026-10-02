@@ -138,7 +138,173 @@ export const ROLES = [
   team: team as Team,
   description,
 }));
-export const role = (id: string) => ROLES.find((r) => r.id === id);
+export type RoleDef = (typeof ROLES)[number];
+// Holy Moon and Stars characters. Wording follows the Fearville script sheet.
+export const HMS_ROLES: RoleDef[] = [
+  [
+    'astrologist',
+    'Astrologist',
+    'townsfolk',
+    'At the start of the game, choose 3 players. You are told 3 roles: 1 belongs to one of them and 2 do not belong to anyone.',
+  ],
+  [
+    'mystic',
+    'Mystic',
+    'townsfolk',
+    'At the start of the game, choose 1 of your neighbors. You learn up to 3 other players they may be connected to.',
+  ],
+  [
+    'astronaut',
+    'Astronaut',
+    'townsfolk',
+    'At the start of the game, learn how far the nearest evil player is from you.',
+  ],
+  [
+    'stargazer',
+    'Stargazer',
+    'townsfolk',
+    'At the start of the game, choose a player. Alive or dead, you may ask the Storyteller who they spoke with or what they discussed. Answers are at Storyteller discretion.',
+  ],
+  [
+    'prophet',
+    'Prophet',
+    'townsfolk',
+    'At the start of the game, learn which Haunt and Horror characters are in play. If the Storyteller hears you reveal this, you and one of your neighbors may die that night.',
+  ],
+  [
+    'insomniac',
+    'Insomniac',
+    'townsfolk',
+    'Each night, learn which players visited you and how many of your neighbors visited another player.',
+  ],
+  [
+    'diviner',
+    'Diviner',
+    'townsfolk',
+    'Each night, ask the Storyteller a question. They answer with the name of a player you should speak to the next day.',
+  ],
+  [
+    'medium',
+    'Medium',
+    'townsfolk',
+    'Each night after the first, choose a dead player. They may use their night ability tonight (spent once-per-game abilities are not reset), and you share a private channel with them until dawn.',
+  ],
+  [
+    'spirit',
+    'Spirit',
+    'townsfolk',
+    'Each night, choose a player. Learn how many players visited them and their alignment. If you die, you keep learning the number but not the alignment.',
+  ],
+  [
+    'gravedigger',
+    'Gravedigger',
+    'townsfolk',
+    'Once per game, at night, choose a dead player. You may become their character and alignment at dawn. The Storyteller may refuse setup-changing characters.',
+  ],
+  [
+    'fateweaver',
+    'Fateweaver',
+    'townsfolk',
+    'The first time either of your living neighbors dies, you may redirect their death. The Storyteller may or may not follow your choice.',
+  ],
+  [
+    'priest',
+    'Priest',
+    'townsfolk',
+    'Once per game, at night, choose a dead player: they return at dawn (Villagers as themselves, Fools as themselves, Haunts as an out-of-play Villager). If you are killed, you return at the next dawn as an out-of-play Villager.',
+  ],
+  [
+    'atheist',
+    'Atheist',
+    'townsfolk',
+    'If the Atheist is in play, every player is good. Good wins by executing the Storyteller; evil wins when two players remain. The Storyteller may break any rule.',
+  ],
+  [
+    'celestial',
+    'Celestial',
+    'townsfolk',
+    'While you live, other good players cannot die during the day. If you are executed, everyone is poisoned until the next dusk and one Villager becomes drunk for the rest of the game. Evil learns whether a Celestial is in play.',
+  ],
+  [
+    'constellation',
+    'Constellation',
+    'outsider',
+    'At the start of the game, choose 3 players to link. If one dies, the others may die too. Once per game, at night, guess all their characters: if correct, revive one or give one an extra life; if wrong, the link breaks and you and another member may die.',
+  ],
+  [
+    'lostsoul',
+    'Lost Soul',
+    'outsider',
+    'You secretly act as an out-of-play Villager, but you do not know which. Its ability does not work.',
+  ],
+  [
+    'zealot',
+    'Zealot',
+    'outsider',
+    'When you die, the Storyteller gains a character ability from this script of their choice.',
+  ],
+  [
+    'dazed',
+    'Dazed',
+    'outsider',
+    'You are drunk and believe you are a Villager. Whenever another player targets you with an ability, the Storyteller may redirect it to one of your living neighbors or to a player of your choice.',
+  ],
+  [
+    'necromancer',
+    'Necromancer',
+    'minion',
+    'Once per game, at night, choose a dead player: they return at dawn as evil (Haunts as themselves; others as an out-of-play Haunt). The Horror cannot be revived.',
+  ],
+  [
+    'moonshiner',
+    'Moonshiner',
+    'minion',
+    'Adds a Fool to the game. Every Fool is drunk and believes they are a Villager, though their own Fool ability still works. After you die, the Fools may sober up and learn their real characters.',
+  ],
+  [
+    'nightmare',
+    'Nightmare',
+    'minion',
+    'If you are executed, at night choose a player with a nighttime targeting ability. Once per game, you may redirect their target without them knowing.',
+  ],
+  [
+    'astrophage',
+    'Astrophage',
+    'minion',
+    'Once per game, during the day, you may end the day early. Not available with 4 or fewer living players.',
+  ],
+  [
+    'grimreaper',
+    'Grim Reaper',
+    'demon',
+    'Each night, mark a player for death. At any time you may reap: every marked player dies.',
+  ],
+  [
+    'werewolf',
+    'Werewolf',
+    'demon',
+    'Each night, prepare for the full moon. After two nights of preparation, choose 3 players to die (Nights 3, 6, 9…).',
+  ],
+  [
+    'dreameater',
+    'Dreameater',
+    'demon',
+    'Each night, guess any number of players’ characters. Correct guesses die. At 3 total wrong guesses you die instead, and that night’s correct guesses do not count.',
+  ],
+  [
+    'miasma',
+    'Miasma',
+    'demon',
+    'Each night, infect a player with the plague. The next night they die and both of their living neighbors are poisoned that night.',
+  ],
+].map(([id, name, team, description]) => ({
+  id,
+  name,
+  team: team as Team,
+  description,
+}));
+export const ALL_ROLES: RoleDef[] = [...ROLES, ...HMS_ROLES];
+export const role = (id: string) => ALL_ROLES.find((r) => r.id === id);
 // Official TPI nightsheet, filtered to Fearville Classic (verified 2026-09-08).
 export const FIRST = [
   'minioninfo',
@@ -214,6 +380,16 @@ export type Player = {
   used: boolean;
   nightDeath: number;
   notes: string;
+  // Holy Moon and Stars status. All optional so saved Classic games load.
+  acts?: string; // character whose night slot this player takes (Lost Soul)
+  drunk?: boolean; // permanent malfunction (Dazed, Lost Soul, Moonshiner, Celestial)
+  poisonUntil?: number; // poison persists until this night begins
+  extraLife?: number;
+  executed?: boolean;
+  revived?: boolean; // Priest self-revival spent
+  misses?: number; // Dreameater wrong guesses
+  marked?: boolean; // Grim Reaper mark
+  pref?: string; // Fateweaver's preferred redirect
 };
 export type Nomination = {
   id: string;
@@ -239,11 +415,102 @@ export type Message = {
   kind: 'chat' | 'info' | 'correction';
 };
 export type Log = { id: string; text: string; at: number; public: boolean };
+export type NightChoice = {
+  id: string;
+  target: string;
+  target2: string;
+  target3?: string;
+  text?: string;
+  guesses?: { player: string; role: string }[];
+  pass?: boolean;
+};
+export type DeathItem = {
+  id: string;
+  player: string;
+  cause: string;
+  // false until the night's death step (Horror kills wait for Spirit/Insomniac)
+  ready: boolean;
+  night: boolean;
+  impaired?: boolean; // the killing ability was drunk or poisoned
+  redirected?: boolean; // already moved by a Fateweaver
+};
+export type DawnChange = {
+  id: string;
+  kind: 'revive' | 'become';
+  player: string;
+  role: string;
+  by: string;
+};
+export type HmsState = {
+  visits: { from: string; to: string; role: string }[];
+  nightStartDead: string[];
+  deathQueue: DeathItem[];
+  dawnChanges: DawnChange[];
+  constellation?: {
+    owner: string;
+    members: string[];
+    linked: boolean;
+  };
+  stargazer: Record<string, string>;
+  astrologist: Record<string, string[]>;
+  infected?: { target: string; by: string; night: number };
+  medium?: { medium: string; target: string; night: number };
+  channel?: { id: string; a: string; b: string; night: number };
+  stRole?: string; // ability granted to the Storyteller by a Zealot
+  stNight?: number; // the granted ability acts from the night after this one
+  stUsed?: boolean;
+  nightmare?: { player: string; bound: string; used: boolean };
+  prophetReveal?: string[]; // players queued by a Prophet reveal tonight
+  questions: Record<string, string>; // Diviner questions this night
+};
 export const SCRIPTS = {
   classic: 'Fearville Classic',
   holyMoonStars: 'Holy Moon and Stars',
 } as const;
 export type RoleScript = keyof typeof SCRIPTS;
+export const scriptRoles = (script?: string) =>
+  script === 'holyMoonStars' ? HMS_ROLES : ROLES;
+// Holy Moon and Stars night orders. Steps that are not characters:
+// minioninfo/demoninfo — evil introductions (7+ players; none with an Atheist)
+// plague — resolve last night's Miasma infection before anyone acts
+// nightmare — an executed Nightmare binds to a player (once)
+// guess — the Constellation's once-per-game guess (never on Night 1)
+// deaths — resolve queued Horror and other night deaths after Spirit/Insomniac
+export const HMS_FIRST = [
+  'minioninfo',
+  'demoninfo',
+  'constellation',
+  'stargazer',
+  'astrologist',
+  'mystic',
+  'astronaut',
+  'prophet',
+  'diviner',
+  'miasma',
+  'grimreaper',
+  'werewolf',
+  'dreameater',
+  'spirit',
+  'insomniac',
+  'deaths',
+];
+export const HMS_OTHER = [
+  'plague',
+  'nightmare',
+  'medium',
+  'gravedigger',
+  'priest',
+  'necromancer',
+  'guess',
+  'diviner',
+  'miasma',
+  'grimreaper',
+  'werewolf',
+  'dreameater',
+  'spirit',
+  'insomniac',
+  'deaths',
+];
 export type Game = {
   nightChoiceDeadline?: number;
   nightChoiceTasks?: {
@@ -254,10 +521,8 @@ export type Game = {
     done: boolean;
   }[];
   script?: RoleScript;
-  nightChoices?: Record<
-    string,
-    { id: string; target: string; target2: string }
-  >;
+  nightChoices?: Record<string, NightChoice>;
+  hms?: HmsState;
   dawnAnnouncement?: { id: string; night: number; names: string[] };
   assignmentSeed?: string;
   nightPoll?: {
