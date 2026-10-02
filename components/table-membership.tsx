@@ -42,7 +42,11 @@ export function TableMembership({
       });
       const d = (await r.json()) as { error?: string };
       if (!r.ok) throw Error(d.error || 'Unable to update the table.');
-      if (action === 'leave' || action === 'deleteLobby') {
+      if (
+        action === 'leave' ||
+        action === 'leaveLobby' ||
+        action === 'deleteLobby'
+      ) {
         location.assign('/');
         return;
       }
@@ -131,10 +135,14 @@ export function TableMembership({
           disabled={busy}
           onClick={() => {
             setError('');
-            void act('leave');
+            if (game.phase === 'lobby' || game.phase === 'ended')
+              setPending({ action: 'leaveLobby' });
+            else void act('leave');
           }}
         >
-          Leave table
+          {game.phase === 'lobby' || game.phase === 'ended'
+            ? 'Leave lobby'
+            : 'Leave table'}
         </button>
       )}
       <p className="hint">
@@ -153,7 +161,8 @@ export function TableMembership({
             <AlertDialogTitle>
               {pending?.action === 'deleteLobby'
                 ? 'Delete this lobby?'
-                : pending?.action === 'leave'
+                : pending?.action === 'leave' ||
+                    pending?.action === 'leaveLobby'
                   ? 'Leave this table?'
                   : `Remove ${pending?.name}?`}
             </AlertDialogTitle>

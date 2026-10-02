@@ -445,6 +445,7 @@ export function choiceTasks(g: Game) {
 
 const NIGHTMARE_DECISION_MS = 60_000;
 export function nightChoiceDeadlineFor(g: Game, t: Pick<Task, 'key'>) {
+  if (g.sandbox) return Number.MAX_SAFE_INTEGER;
   return g.nightChoiceDeadlines?.[t.key] ?? g.nightChoiceDeadline ?? 0;
 }
 function openNightmareDecision(g: Game, now: number) {
@@ -477,6 +478,7 @@ export function afterNightChoice(g: Game, t: Task, now: number) {
   if (nightChoicesReady(g, now)) g.nightChoiceDeadline = now;
 }
 export function nightChoicesReady(g: Game, now: number) {
+  if (g.sandbox) return true;
   if (!isHms(g))
     return g.nightChoiceDeadline === undefined || now >= g.nightChoiceDeadline;
   return (g.nightChoiceTasks ?? []).every((t) => {

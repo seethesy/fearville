@@ -365,6 +365,7 @@ export const COUNTS: Record<number, number[]> = {
   15: [9, 2, 3, 1],
 };
 export type Player = {
+  dummy?: boolean;
   departed?: boolean;
   id: string;
   name: string;
@@ -512,6 +513,17 @@ export const HMS_OTHER = [
   'deaths',
 ];
 export type Game = {
+  sandbox?: boolean;
+  gameStartedAt?: number;
+  decisions?: { id: string; at: number; actor: string; text: string }[];
+  recaps?: {
+    id: string;
+    ended: number;
+    winner: string;
+    script: RoleScript;
+    players: { id: string; name: string; role: string; shown: string }[];
+    decisions: { id: string; at: number; actor: string; text: string }[];
+  }[];
   nightIntroductions?: Record<string, { id: string; text: string }>;
   nightChoiceDeadlines?: Record<string, number>;
   nightChoiceDeadline?: number;
@@ -600,6 +612,8 @@ export function newPlayer(name: string, seat: number): Player {
 export function newGame(code: string, name: string): Game {
   return {
     assignmentSeed: uuid(),
+    decisions: [],
+    recaps: [],
     code,
     hostName: name,
     phase: 'lobby',

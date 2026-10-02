@@ -93,6 +93,7 @@ export function TableNightChoice({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: 'nightChoice',
+          ...(game.sandboxHost ? { pov: game.me } : {}),
           task: prompt.task,
           round: prompt.round,
           ...(pass

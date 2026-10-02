@@ -5,6 +5,7 @@ import {
   OTHER,
   COUNTS,
   uuid,
+  newPlayer,
   phaseName,
   type Game,
   type Actor,
@@ -15,6 +16,7 @@ import {
 import { startNightPoll, closeNightPoll } from './polls.ts';
 import { deliverIntroduction } from './introductions.ts';
 import { assignRandomRoles } from './assignment.ts';
+import { returnToLobby } from './lobby.ts';
 import {
   isHms,
   hms,
@@ -74,8 +76,8 @@ export function setPhase(g: Game, phase: Phase, at: number, seconds?: number) {
   if (g.phase === 'night' && phase !== 'night') closeNightPoll(g);
   g.phase = phase;
   if (phase === 'ended') g.players.forEach((p) => (p.publicAlive = p.alive));
-  g.remaining = seconds ?? g.timers[phase] ?? 0;
-  g.deadline = g.remaining ? at + g.remaining * 1000 : null;
+  g.remaining = g.sandbox ? 0 : (seconds ?? g.timers[phase] ?? 0);
+  g.deadline = g.sandbox ? null : g.remaining ? at + g.remaining * 1000 : null;
   log(g, phaseName[phase] + (g.day ? ' · Day ' + g.day : ''), at, true);
 }
 export function beginNight(g: Game, at: number) {
@@ -92,7 +94,9 @@ export function beginNight(g: Game, at: number) {
     p.master = '';
   });
   setPhase(g, 'night', at);
-  g.nightChoiceDeadline = at + (g.timers.nightChoice ?? 60) * 1000;
+  g.nightChoiceDeadline = g.sandbox
+    ? Number.MAX_SAFE_INTEGER
+    : at + (g.timers.nightChoice ?? 60) * 1000;
   if (isHms(g)) {
     hmsBeginNight(g);
     g.nightChoiceTasks = choiceTasks(g);
@@ -417,6 +421,7 @@ export function tally(g: Game, at: number) {
   if (g.nominationRemaining <= 0) setPhase(g, 'dayReview', at);
 }
 export function tick(g: Game, now: number) {
+  if (g.sandbox) return false;
   let changed =
     g.deadline !== null && g.deadline > now && finishVotingIfReady(g, now);
   for (let n = 0; n < 8 && g.deadline !== null && g.deadline <= now; n++) {
@@ -594,6 +599,8 @@ export function execute(
     'This seat is no longer available.',
   );
   const hostActions = [
+    'addDummy',
+    'removeDummy',
     'setScript',
     'correctVote',
     'moveSeat',
@@ -623,6 +630,13 @@ export function execute(
   ];
   if (hostActions.includes(c.action))
     requireThat(actor.host, 'Only the Storyteller can do that.');
+  if (c.action === 'returnLobby') {
+    requireThat(
+      g.phase === 'ended',
+      'The game must end before returning to the lobby.',
+    );
+    return returnToLobby(g, now);
+  }
   if (c.action === 'nightChoice') {
     const task = nightChoiceTask(g, actor.id);
     requireThat(
@@ -822,6 +836,30 @@ export function execute(
     if (result !== null) return result;
   }
   switch (c.action) {
+    case 'addDummy': {
+      requireThat(g.sandbox, 'Dummy players are only available in Sandbox.');
+      requireThat(g.players.length < 15, 'This table is full.');
+      const name = clean(c.name, 32);
+      requireThat(name, 'Enter a dummy player name.');
+      requireThat(
+        !g.players.some((p) => p.name.toLowerCase() === name.toLowerCase()),
+        'Seat names must be unique.',
+      );
+      const player = newPlayer(name, g.players.length + 1);
+      player.dummy = true;
+      g.players.push(player);
+      log(g, `${name} was added as a dummy player.`, now, true);
+      return `Add ${name} to the Sandbox.`;
+    }
+    case 'removeDummy': {
+      requireThat(g.sandbox, 'Dummy players are only available in Sandbox.');
+      const player = person(g, c.player);
+      requireThat(player.dummy, 'Only dummy players can be removed here.');
+      requireThat(g.phase === 'lobby', 'Remove dummy players from the lobby.');
+      g.players = g.players.filter((p) => p.id !== player.id);
+      g.players.forEach((p, index) => (p.seat = index + 1));
+      return `Remove ${player.name} from the Sandbox.`;
+    }
     case 'setScript': {
       requireThat(
         g.phase === 'lobby',
@@ -864,23 +902,28 @@ export function execute(
       return summary;
     }
     case 'configure': {
-      for (const key of Object.keys({ nightChoice: 60, ...g.timers })) {
-        const n = Number(
-          c[key] ??
-            (key === 'nightChoice' ? (g.timers.nightChoice ?? 60) : undefined),
-        );
-        requireThat(
-          Number.isInteger(n) && n >= 5 && n <= 3600,
-          'Each timer must be 5–3600 seconds.',
-        );
-        g.timers[key] = n;
-      }
+      if (!g.sandbox)
+        for (const key of Object.keys({ nightChoice: 60, ...g.timers })) {
+          const n = Number(
+            c[key] ??
+              (key === 'nightChoice'
+                ? (g.timers.nightChoice ?? 60)
+                : undefined),
+          );
+          requireThat(
+            Number.isInteger(n) && n >= 5 && n <= 3600,
+            'Each timer must be 5–3600 seconds.',
+          );
+          g.timers[key] = n;
+        }
       g.bluffs = [c.bluff1, c.bluff2, c.bluff3]
         .map((v) => clean(v))
         .filter(Boolean);
       g.redHerring = clean(c.redHerring);
       log(g, 'Updated timers and setup reminders.', now);
-      return 'Save timers, Horror bluffs, and red herring. Active timers keep their current time.';
+      return g.sandbox
+        ? 'Save Horror bluffs and the red herring. Sandbox timers stay disabled.'
+        : 'Save timers, Horror bluffs, and red herring. Active timers keep their current time.';
     }
     case 'edit': {
       const p = person(g, c.player);
@@ -976,6 +1019,8 @@ export function execute(
       );
       enforce(setupIssues(g).length === 0, setupIssues(g).join(' '), c);
       if (isHms(g)) applyStartState(g);
+      g.gameStartedAt = now;
+      g.decisions = [];
       g.players.forEach((p) =>
         message(
           g,

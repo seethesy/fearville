@@ -21,6 +21,7 @@ export async function joinSession(
   const db = database();
   for (let i = 0; i < 8; i++) {
     const { game, version } = await read(code);
+    requireThat(!game.sandbox, 'Sandbox sessions do not accept live players.');
     requireThat(
       game.phase === 'lobby',
       'This game has started. Use your recovery key to reconnect.',

@@ -168,7 +168,8 @@ export default function Table() {
     [revealed, setRevealed] = useState(false),
     [chatPlayer, setChatPlayer] = useState('all'),
     [activeTab, setActiveTab] = useState('flow'),
-    [compact, setCompact] = useState(false);
+    [compact, setCompact] = useState(false),
+    [sandboxPov, setSandboxPov] = useState('host');
   const [followChoice, setFollowChoice] = useState(true);
   const confirmation =
     selected?.action === 'night' &&
@@ -220,11 +221,14 @@ export default function Table() {
       const timeout = setTimeout(() => controller.abort(), 10000);
       const promise = (async () => {
         try {
-          const r = await fetch('/api/game', {
-            cache: 'no-store',
-            credentials: 'same-origin',
-            signal: controller.signal,
-          });
+          const r = await fetch(
+            `/api/game${sandboxPov === 'host' ? '' : `?pov=${encodeURIComponent(sandboxPov)}`}`,
+            {
+              cache: 'no-store',
+              credentials: 'same-origin',
+              signal: controller.signal,
+            },
+          );
           const d = (await r.json()) as GameView & { error?: string };
           if (number !== requestNumber.current) return;
           if (!r.ok) {
@@ -254,7 +258,7 @@ export default function Table() {
       inFlight.current = { controller, promise };
       return promise;
     },
-    [applyGame],
+    [applyGame, sandboxPov],
   );
   useEffect(() => {
     let stopped = false;
@@ -322,6 +326,9 @@ export default function Table() {
         body: JSON.stringify({
           ...payload,
           action: control.action,
+          ...(game?.sandboxHost && sandboxPov !== 'host'
+            ? { pov: sandboxPov }
+            : {}),
 
           version: game?.version,
         }),
@@ -485,6 +492,40 @@ export default function Table() {
           {game.players.filter((p) => p.alive).length} alive
         </span>
       </header>
+      {game.sandboxHost && (
+        <section
+          className="panel sandbox-toolbar"
+          aria-label="Sandbox point of view"
+        >
+          <div>
+            <p className="eyebrow">SANDBOX · TIMERS DISABLED</p>
+            <strong>
+              {sandboxPov === 'host'
+                ? 'Storyteller view'
+                : `Viewing as ${name(sandboxPov)}`}
+            </strong>
+          </div>
+          <label className="field">
+            Point of view
+            <select
+              value={sandboxPov}
+              onChange={(event) => {
+                setSelected(null);
+                setSandboxPov(event.target.value);
+              }}
+            >
+              <option value="host">Storyteller</option>
+              {game.players
+                .filter((player) => player.dummy)
+                .map((player) => (
+                  <option key={player.id} value={player.id}>
+                    {player.name}
+                  </option>
+                ))}
+            </select>
+          </label>
+        </section>
+      )}
       {!online && (
         <p className="error" aria-live="polite">
           {connectionError || 'Connection interrupted.'} Your table reconnects
@@ -534,6 +575,35 @@ export default function Table() {
           )}
         </div>
       </div>
+      {game.recaps.length > 0 &&
+        (game.phase === 'lobby' || game.phase === 'ended') && (
+          <section className="panel recap-panel">
+            <p className="eyebrow">GAME RECAP</p>
+            <h2>{game.recaps.at(-1)!.winner} wins</h2>
+            <div className="recap-roles">
+              {game.recaps.at(-1)!.players.map((player) => (
+                <p key={player.id}>
+                  <strong>{player.name}</strong> — {player.role}
+                  {player.shown && player.shown !== player.role
+                    ? ` (shown ${player.shown})`
+                    : ''}
+                </p>
+              ))}
+            </div>
+            <details>
+              <summary>
+                View decisions ({game.recaps.at(-1)!.decisions.length})
+              </summary>
+              <ol className="recap-decisions">
+                {game.recaps.at(-1)!.decisions.map((decision) => (
+                  <li key={decision.id}>
+                    <strong>{decision.actor}</strong>: {decision.text}
+                  </li>
+                ))}
+              </ol>
+            </details>
+          </section>
+        )}
       {notice && (
         <div className="notice" aria-live="polite">
           <span>{notice}</span>

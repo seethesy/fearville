@@ -25,8 +25,23 @@ export async function GET(r: Request) {
       if (changed && !(await save(game, version))) continue;
       // Ended games are recorded here as well, so a result that failed to
       // record at the moment the game ended is recorded on the next poll.
-      if (game.phase === 'ended') await syncResult(game, created, now);
-      return json(view(game, actor, version + Number(changed), now));
+      if (game.phase === 'ended')
+        await syncResult(game, game.gameStartedAt ?? created, now);
+      const requested = new URL(r.url).searchParams.get('pov');
+      const pov =
+        actor.host && game.sandbox
+          ? game.players.find((p) => p.id === requested && p.dummy)
+          : null;
+      const viewer = pov ? { id: pov.id, host: false } : actor;
+      return json(
+        view(
+          game,
+          viewer,
+          version + Number(changed),
+          now,
+          !!game.sandbox && actor.host,
+        ),
+      );
     }
     return json({ error: 'The table is busy. Reconnect in a moment.' }, 409);
   } catch (e) {
@@ -56,6 +71,11 @@ export async function POST(r: Request) {
       const { game, version, created } = await read(code);
       const now = Date.now();
       const before = game.phase;
+      const pov =
+        actor.host && game.sandbox
+          ? game.players.find((p) => p.id === c.pov && p.dummy)
+          : null;
+      const actionActor = pov ? { id: pov.id, host: false } : actor;
       if (tick(game, now)) {
         if (!(await save(game, version))) continue;
         return json(
@@ -71,14 +91,38 @@ export async function POST(r: Request) {
           { error: 'The table changed. Review this action again.' },
           409,
         );
-      const summary = execute(game, actor, c, now);
+      if (c.action === 'returnLobby' && before === 'ended')
+        await syncResult(game, game.gameStartedAt ?? created, now);
+      const summary = execute(game, actionActor, c, now);
       if (c.preview) return json({ summary, version });
+      if (!['chat', 'returnLobby'].includes(c.action)) {
+        const player = game.players.find((p) => p.id === actionActor.id);
+        game.decisions ??= [];
+        game.decisions.push({
+          id: crypto.randomUUID(),
+          at: now,
+          actor: actionActor.host ? game.hostName : (player?.name ?? 'Player'),
+          text: summary,
+        });
+      }
       if (!(await save(game, version))) continue;
       // Record the result when the game ends; withdraw it if the Storyteller
       // rewinds out of the ended phase. Both are idempotent.
-      if (game.phase === 'ended' || before === 'ended')
-        await syncResult(game, created, now);
-      return json({ summary, game: view(game, actor, version + 1, now) });
+      if (
+        c.action !== 'returnLobby' &&
+        (game.phase === 'ended' || before === 'ended')
+      )
+        await syncResult(game, game.gameStartedAt ?? created, now);
+      return json({
+        summary,
+        game: view(
+          game,
+          actionActor,
+          version + 1,
+          now,
+          !!game.sandbox && actor.host,
+        ),
+      });
     }
     return json(
       { error: 'Another action arrived at the same time. Please try again.' },

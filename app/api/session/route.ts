@@ -56,7 +56,9 @@ export async function POST(r: Request) {
       await auth(r);
       return json({ ok: true }, 200, { 'Set-Cookie': cookie(r, tokenOf(r)) });
     }
-    if (['rename', 'remove', 'deleteLobby'].includes(body.action)) {
+    if (
+      ['rename', 'remove', 'leaveLobby', 'deleteLobby'].includes(body.action)
+    ) {
       for (let attempt = 0; attempt < 8; attempt++) {
         const { actor, code } = await auth(r);
         const { game, version } = await read(code);
@@ -80,7 +82,22 @@ export async function POST(r: Request) {
             body.action !== 'remove' || actor.host,
             'Only the Storyteller can remove players.',
           );
-          removed = removeMember(game, actor, body.player, Date.now());
+          if (body.action === 'leaveLobby') {
+            requireThat(
+              !actor.host,
+              'The Storyteller can delete the lobby instead.',
+            );
+            requireThat(
+              game.phase === 'lobby' || game.phase === 'ended',
+              'Finish the game or return to the lobby before leaving it.',
+            );
+          }
+          removed = removeMember(
+            game,
+            actor,
+            body.action === 'leaveLobby' ? actor.id : body.player,
+            Date.now(),
+          );
         }
         // Unique operation marker makes credential revocation conditional on
         // this exact successful update, inside one atomic D1 transaction.
@@ -104,7 +121,15 @@ export async function POST(r: Request) {
         }
         const result = await db.batch(statements);
         if (!result[0].meta.changes) continue;
-        return json({ ok: true });
+        return json(
+          { ok: true },
+          200,
+          body.action === 'leaveLobby'
+            ? {
+                'Set-Cookie': `${cookieName}=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0`,
+              }
+            : {},
+        );
       }
       return json({ error: 'The table changed. Please try again.' }, 409);
     }
@@ -159,7 +184,7 @@ export async function POST(r: Request) {
       .trim()
       .slice(0, 32);
     requireThat(name, 'Enter your name.');
-    if (body.action === 'create') {
+    if (body.action === 'create' || body.action === 'createSandbox') {
       await limited(r, 'create', 5);
       const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
       for (let attempt = 0; attempt < 5; attempt++) {
@@ -174,6 +199,7 @@ export async function POST(r: Request) {
           .first();
         if (exists) continue;
         const game = newGame(code, name);
+        game.sandbox = body.action === 'createSandbox';
         await db.batch([
           db
             .prepare(

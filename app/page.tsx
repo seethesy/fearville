@@ -211,10 +211,20 @@ export default function Home() {
                 disabled={busy || !name.trim()}
                 onClick={() => void enter('create')}
               >
-                {busy ? 'Creating…' : 'Create a session →'}
+                {busy ? 'Creating…' : 'Create a lobby →'}
+              </button>
+              <button
+                className="secondary full"
+                disabled={busy || !name.trim()}
+                onClick={() => void enter('createSandbox')}
+              >
+                {busy ? 'Creating…' : 'Open Sandbox →'}
               </button>
               <p className="hint">
-                You’ll receive a code to share with your players.
+                A lobby gives you one reusable code and keeps everyone’s seats
+                between games. Sandbox makes you the Storyteller, lets you add
+                dummy players and switch between their private views, with all
+                timers disabled.
               </p>
             </TabsContent>
             <TabsContent value="return">

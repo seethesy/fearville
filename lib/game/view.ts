@@ -28,6 +28,7 @@ import {
   nightChoiceWindowDeadline,
 } from './hms.ts';
 import { hmsNightFields, deathControl, hmsControls } from './hms-view.ts';
+import { recapOf } from './lobby.ts';
 const select = (
   key: string,
   label: string,
@@ -82,6 +83,36 @@ export function controls(g: Game, a: Actor): Control[] {
   ) => result.push({ action, title, description, fields, danger });
   if (a.host) {
     if (g.phase === 'lobby') {
+      if (g.sandbox) {
+        add(
+          'addDummy',
+          'Add dummy player',
+          'Add a simulated seat that you can control by switching point of view.',
+          [
+            input(
+              'name',
+              'Dummy player name',
+              `Player ${g.players.length + 1}`,
+            ),
+          ],
+        );
+        for (const player of g.players.filter((p) => p.dummy))
+          add(
+            'removeDummy',
+            `Remove ${player.name}`,
+            'Remove this dummy seat from the Sandbox.',
+            [
+              select(
+                'player',
+                'Dummy player',
+                [{ value: player.id, label: player.name }],
+                player.id,
+                true,
+              ),
+            ],
+            true,
+          );
+      }
       add(
         'setScript',
         'Change role script',
@@ -319,10 +350,11 @@ export function controls(g: Game, a: Actor): Control[] {
           overrideFields,
         );
     }
-    if (g.deadline !== null) add('pause', 'Pause timer', 'Pause for everyone.');
-    else if (g.remaining > 0 && g.timers[g.phase])
+    if (!g.sandbox && g.deadline !== null)
+      add('pause', 'Pause timer', 'Pause for everyone.');
+    else if (!g.sandbox && g.remaining > 0 && g.timers[g.phase])
       add('resume', 'Resume timer', 'Continue the shared countdown.');
-    if (g.timers[g.phase]) {
+    if (!g.sandbox && g.timers[g.phase]) {
       add('extend', 'Add time', 'Extend this timer.', [
         num('seconds', 'Seconds to add', 30),
       ]);
@@ -334,6 +366,19 @@ export function controls(g: Game, a: Actor): Control[] {
         true,
       );
     }
+    if (
+      g.sandbox &&
+      ['discovery', 'discussion', 'nomination', 'defense', 'voting'].includes(
+        g.phase,
+      )
+    )
+      add(
+        'advance',
+        'Advance phase',
+        'Sandbox timers are disabled. Advance whenever you are ready.',
+        [],
+        true,
+      );
     if (g.phase === 'dayReview' && isHms(g))
       add(
         'finishDay',
@@ -599,21 +644,25 @@ export function controls(g: Game, a: Actor): Control[] {
       );
     add(
       'configure',
-      'Timers & script setup',
-      'Timer values are in seconds. New values apply when the next phase begins.',
+      g.sandbox ? 'Script setup' : 'Timers & script setup',
+      g.sandbox
+        ? 'Set Horror bluffs and other script reminders. Timers are disabled in Sandbox.'
+        : 'Timer values are in seconds. New values apply when the next phase begins.',
       [
-        ...Object.entries({ nightChoice: 60, ...g.timers }).map(
-          ([key, value]) =>
-            num(
-              key,
-              key === 'nightChoice'
-                ? 'Night choices'
-                : key[0].toUpperCase() + key.slice(1),
-              value,
-              5,
-              3600,
-            ),
-        ),
+        ...(g.sandbox
+          ? []
+          : Object.entries({ nightChoice: 60, ...g.timers }).map(
+              ([key, value]) =>
+                num(
+                  key,
+                  key === 'nightChoice'
+                    ? 'Night choices'
+                    : key[0].toUpperCase() + key.slice(1),
+                  value,
+                  5,
+                  3600,
+                ),
+            )),
         ...['bluff1', 'bluff2', 'bluff3'].map((key, i) =>
           select(
             key,
@@ -724,9 +773,21 @@ export function controls(g: Game, a: Actor): Control[] {
       );
     }
   }
+  if (g.phase === 'ended')
+    add(
+      'returnLobby',
+      'Return to lobby',
+      'Keep this lobby, its players, and seat order for another game. The completed game remains available as a recap.',
+    );
   return result;
 }
-export function view(g: Game, a: Actor, version: number, now: number) {
+export function view(
+  g: Game,
+  a: Actor,
+  version: number,
+  now: number,
+  sandboxHost = false,
+) {
   const me = g.players.find((p) => p.id === a.id);
   const leader = candidate(g);
   const choiceTask = nightChoiceTask(g, a.id);
@@ -735,6 +796,8 @@ export function view(g: Game, a: Actor, version: number, now: number) {
   const actingPlayer = g.players.find((p) => p.id === currentTask?.player);
   return {
     code: g.code,
+    sandbox: !!g.sandbox,
+    sandboxHost,
     script: g.script ?? 'classic',
     scriptName: SCRIPTS[g.script ?? 'classic'],
     nightIntroduction:
@@ -747,7 +810,7 @@ export function view(g: Game, a: Actor, version: number, now: number) {
       now < nightChoiceDeadlineFor(g, choiceTask)
         ? {
             task: choiceTask.key,
-            deadline: nightChoiceDeadlineFor(g, choiceTask),
+            deadline: g.sandbox ? null : nightChoiceDeadlineFor(g, choiceTask),
             conditional: choiceTask.role === 'ravenkeeper',
             round: choiceTask.round,
             count: choiceTask.count,
@@ -815,7 +878,7 @@ export function view(g: Game, a: Actor, version: number, now: number) {
     version,
     serverNow: now,
     nightChoiceDeadline:
-      g.phase === 'night' ? nightChoiceWindowDeadline(g) : null,
+      g.phase === 'night' && !g.sandbox ? nightChoiceWindowDeadline(g) : null,
     deadline: g.deadline,
     remaining: g.remaining,
     winner: g.winner,
@@ -833,6 +896,10 @@ export function view(g: Game, a: Actor, version: number, now: number) {
       (g.phase !== 'night' || g.previousNightPoll.night < g.night)
         ? g.previousNightPoll
         : null,
+    recaps:
+      g.phase === 'ended'
+        ? [...(g.recaps ?? []), recapOf(g, now)]
+        : (g.recaps ?? []),
     players: g.players
       .slice()
       .sort((a, b) => a.seat - b.seat)
@@ -841,6 +908,7 @@ export function view(g: Game, a: Actor, version: number, now: number) {
         name: p.name,
         seat: p.seat,
         departed: !!p.departed,
+        dummy: !!p.dummy,
         alive: a.host ? p.alive : p.publicAlive,
         ghost: g.phase === 'night' && !a.host ? p.ghost : p.ghost,
         ...(a.host
