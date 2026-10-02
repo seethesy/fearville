@@ -7,6 +7,8 @@ import {
   pendingDeath,
   astrologistSuggestion,
   seatNeighbors,
+  suggestions,
+  nightChoicesReady,
 } from '../lib/game/hms.ts';
 import { HMS_ROLES } from '../lib/game/types.ts';
 
@@ -64,11 +66,14 @@ function choose(g: Game, seat: number, c: Record<string, unknown>) {
   const p = P(g, seat);
   const t = nightChoiceTask(g, p.id);
   assert.ok(t, `seat ${seat} has a night choice`);
+  const deadline = view(g, { id: p.id, host: false }, 1, clock).nightChoice
+    ?.deadline;
+  assert.ok(deadline, `seat ${seat} has an active deadline`);
   return execute(
     g,
     { id: p.id, host: false },
     { action: 'nightChoice', task: t.key, round: t.round, ...c },
-    g.nightChoiceDeadline! - 1,
+    deadline - 1,
   );
 }
 // Confirms the current task with the form's defaults, as a Storyteller would,
@@ -408,7 +413,7 @@ void test('Werewolf deaths wait until after Spirit and Insomniac, then pass thro
   assert.equal(g.hms!.deathQueue.length, 3);
   assert.equal(pendingDeath(g), null);
   resolve(g);
-  assert.match(lastMessage(g, 2), /P4 was visited by 1 player and is good/);
+  assert.equal(lastMessage(g, 2), '1 evil\n0 good');
   resolve(g);
   resolve(g);
   // P2 survives on an extra life.
@@ -730,11 +735,29 @@ void test('an executed Nightmare haunts a player and redirects them once, after 
   assert.equal(order(g)[0], 'nightmare:7');
   resolve(g);
   assert.equal(g.hms!.nightmare!.bound, P(g, 4).id);
-  // Next night the Nightmare pre-commits a redirect.
+  const firstRedirect = nightChoiceTask(g, P(g, 7).id)!;
+  assert.equal(firstRedirect.role, 'nightmareRedirect');
+  assert.equal(
+    view(g, { id: P(g, 7).id, host: false }, 1, clock).nightChoice!.deadline,
+    g.nightChoiceDeadlines![firstRedirect.key],
+  );
+  choose(g, 7, { pass: true });
+  // On the next night, no redirect is offered until the haunted player acts.
   finishNight(g);
   toNight(g);
-  choose(g, 7, { target: P(g, 6).id });
+  assert.equal(nightChoiceTask(g, P(g, 7).id), null);
+  const targetDeadline = view(g, { id: P(g, 4).id, host: false }, 1, clock)
+    .nightChoice!.deadline!;
   choose(g, 4, { target: P(g, 3).id });
+  const redirect = nightChoiceTask(g, P(g, 7).id)!;
+  assert.equal(redirect.role, 'nightmareRedirect');
+  assert.ok('label' in redirect);
+  assert.match(redirect.label, /P4 chose a player/);
+  assert.equal(
+    g.nightChoiceDeadlines![redirect.key],
+    targetDeadline - 1 + 60000,
+  );
+  choose(g, 7, { target: P(g, 6).id });
   while (tasks(g).find((t) => !t.done)!.role !== 'spirit') resolve(g);
   const form = view(g, host, 1, clock).controls.find(
     (c) => c.action === 'night',
@@ -874,6 +897,98 @@ void test('a Lost Soul acts as a hidden Villager without learning which', () => 
   assert.equal(v.nightChoice?.label, 'Choose 3 different players');
   assert.ok(order(g).includes('astrologist:1'));
   assert.equal(P(g, 1).drunk, true);
+});
+
+void test('a Lost Soul receives only minimal values and no correctness confirmation', () => {
+  const g = game(
+    [
+      'lostsoul',
+      'astronaut',
+      'insomniac',
+      'diviner',
+      'spirit',
+      'priest',
+      'nightmare',
+      'dreameater',
+    ],
+    { 0: 'prophet' },
+  );
+  while (tasks(g).find((t) => !t.done)!.role !== 'prophet') step(g);
+  resolve(g, { info: 'Dreameater, Nightmare' });
+  assert.equal(lastMessage(g, 1), 'Dreameater, Nightmare');
+  assert.doesNotMatch(lastMessage(g, 1), /Prophet|correct|in play/i);
+});
+
+void test('Spirit learns visitor alignments, never the chosen player alignment', () => {
+  const g = game([
+    'fateweaver',
+    'spirit',
+    'insomniac',
+    'priest',
+    'diviner',
+    'zealot',
+    'nightmare',
+    'miasma',
+  ]);
+  const task = {
+    key: 'spirit:' + P(g, 2).id,
+    role: 'spirit',
+    player: P(g, 2).id,
+    name: 'Spirit',
+    done: false,
+  };
+  g.hms!.visits = [
+    { from: P(g, 3).id, to: P(g, 4).id, role: 'insomniac' },
+    { from: P(g, 8).id, to: P(g, 4).id, role: 'miasma' },
+  ];
+  assert.equal(
+    suggestions(g, task, { id: '', target: P(g, 4).id, target2: '' }),
+    '1 evil\n1 good',
+  );
+  g.hms!.visits = [];
+  assert.equal(
+    suggestions(g, task, { id: '', target: P(g, 4).id, target2: '' }),
+    '0 people.',
+  );
+  P(g, 2).alive = false;
+  g.hms!.visits = [
+    { from: P(g, 3).id, to: P(g, 4).id, role: 'insomniac' },
+    { from: P(g, 8).id, to: P(g, 4).id, role: 'miasma' },
+  ];
+  assert.equal(
+    suggestions(g, task, { id: '', target: P(g, 4).id, target2: '' }),
+    '2 people.',
+  );
+});
+
+void test('Nightmare gets a fresh 60-second prompt after the haunted target chooses and all responses close early', () => {
+  const g = game(['astronaut', 'prophet', 'spirit', 'nightmare', 'miasma']);
+  g.hms!.nightmare = {
+    player: P(g, 4).id,
+    bound: P(g, 3).id,
+    used: false,
+  };
+  assert.equal(nightChoiceTask(g, P(g, 4).id), null);
+  choose(g, 5, { target: P(g, 1).id });
+  const originalDeadline = g.nightChoiceDeadline!;
+  choose(g, 3, { target: P(g, 2).id });
+  const redirect = nightChoiceTask(g, P(g, 4).id)!;
+  const deadline = g.nightChoiceDeadlines![redirect.key];
+  assert.equal(deadline, originalDeadline - 1 + 60000);
+  assert.equal(nightChoicesReady(g, originalDeadline + 1), false);
+  assert.throws(
+    () =>
+      execute(
+        g,
+        host,
+        { action: 'nightSkip', reason: 'Nightmare is still deciding' },
+        originalDeadline + 1,
+      ),
+    /timer to finish/,
+  );
+  choose(g, 4, { pass: true });
+  assert.equal(g.nightChoiceDeadline, deadline - 1);
+  assert.equal(nightChoicesReady(g, deadline - 1), true);
 });
 
 void test('a Prophet reveal queues deaths for the night; rewind restores the script state', () => {

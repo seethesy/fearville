@@ -13,6 +13,7 @@ import {
   type Phase,
 } from './types.ts';
 import { startNightPoll, closeNightPoll } from './polls.ts';
+import { deliverIntroduction } from './introductions.ts';
 import { assignRandomRoles } from './assignment.ts';
 import {
   isHms,
@@ -20,6 +21,9 @@ import {
   hmsTasks,
   choiceTasks,
   choiceSpec,
+  afterNightChoice,
+  nightChoicesReady,
+  nightChoiceDeadlineFor,
   validateChoice,
   hmsSetupIssues,
   hmsBeginNight,
@@ -77,6 +81,8 @@ export function setPhase(g: Game, phase: Phase, at: number, seconds?: number) {
 export function beginNight(g: Game, at: number) {
   g.night++;
   g.nightChoices = {};
+  g.nightChoiceDeadlines = {};
+  g.nightIntroductions = {};
   startNightPoll(g);
   g.done = [];
   g.active = null;
@@ -618,11 +624,11 @@ export function execute(
   if (hostActions.includes(c.action))
     requireThat(actor.host, 'Only the Storyteller can do that.');
   if (c.action === 'nightChoice') {
+    const task = nightChoiceTask(g, actor.id);
     requireThat(
-      g.nightChoiceDeadline === undefined || now < g.nightChoiceDeadline,
+      !task || now < nightChoiceDeadlineFor(g, task),
       'The night choice timer has ended. The Storyteller will decide.',
     );
-    const task = nightChoiceTask(g, actor.id);
     requireThat(
       !actor.host &&
         task &&
@@ -634,6 +640,7 @@ export function execute(
     if (isHms(g)) {
       g.nightChoices ??= {};
       g.nightChoices[task.key] = validateChoice(g, task, c);
+      afterNightChoice(g, task, now);
       return g.nightChoices[task.key].pass
         ? 'Pass sent. The Storyteller will confirm.'
         : 'Choice sent. Waiting for the Storyteller to confirm.';
@@ -654,6 +661,21 @@ export function execute(
       target: String(c.target),
       target2: task.count === 2 ? String(c.target2) : '',
     };
+    const choiceRoles = new Set([
+      'poisoner',
+      'monk',
+      'imp',
+      'butler',
+      'fortuneteller',
+      'ravenkeeper',
+    ]);
+    if (
+      (g.nightChoiceTasks ?? []).every(
+        (candidate) =>
+          !choiceRoles.has(candidate.role) || !!g.nightChoices?.[candidate.key],
+      )
+    )
+      g.nightChoiceDeadline = now;
     return 'Choice sent. Waiting for the Storyteller to confirm.';
   }
   if (c.action === 'nightPoll') {
@@ -740,6 +762,8 @@ export function execute(
     );
     delete g.nightPoll;
     delete g.nightChoices;
+    delete g.nightChoiceDeadlines;
+    delete g.nightIntroductions;
     delete g.nightChoiceDeadline;
     delete g.nightChoiceTasks;
     delete g.script;
@@ -781,7 +805,7 @@ export function execute(
     ['night', 'nightSkip', 'dawn'].includes(c.action)
   ) {
     requireThat(
-      g.nightChoiceDeadline === undefined || now >= g.nightChoiceDeadline,
+      nightChoicesReady(g, now),
       'Wait for the night choice timer to finish.',
     );
   }
@@ -1072,40 +1096,10 @@ export function execute(
         );
         return hmsResolve(g, t, c, now);
       }
-      if (r === 'minioninfo') {
-        const text =
-          'The Horror is ' +
-          g.players
-            .filter((p) => p.role === 'imp')
-            .map((p) => p.name)
-            .join(', ') +
-          '. Haunts: ' +
-          g.players
-            .filter((p) => role(p.role)?.team === 'minion')
-            .map((p) => p.name)
-            .join(', ') +
-          '.';
-        g.players
-          .filter((p) => role(p.role)?.team === 'minion')
-          .forEach((p) => message(g, p.id, text, now));
+      if (r === 'minioninfo' || r === 'demoninfo') {
+        const text = deliverIntroduction(g, r, now);
         g.done.push(t.key);
-        return text + ' Send privately to Haunts.';
-      }
-      if (r === 'demoninfo') {
-        const text =
-          'Your Haunts: ' +
-          g.players
-            .filter((p) => role(p.role)?.team === 'minion')
-            .map((p) => p.name)
-            .join(', ') +
-          '. Out-of-play bluffs: ' +
-          g.bluffs.map((r) => role(r)?.name).join(', ') +
-          '.';
-        g.players
-          .filter((p) => p.role === 'imp')
-          .forEach((p) => message(g, p.id, text, now));
-        g.done.push(t.key);
-        return text + ' Send privately to the Horror.';
+        return text;
       }
       const p = person(g, t.player);
       const choice = g.nightChoices?.[t.key];

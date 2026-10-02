@@ -21,7 +21,12 @@ import {
   eligibleVoters,
   nightChoiceTask,
 } from './engine.ts';
-import { isHms, ST } from './hms.ts';
+import {
+  isHms,
+  ST,
+  nightChoiceDeadlineFor,
+  nightChoiceWindowDeadline,
+} from './hms.ts';
 import { hmsNightFields, deathControl, hmsControls } from './hms-view.ts';
 const select = (
   key: string,
@@ -732,13 +737,17 @@ export function view(g: Game, a: Actor, version: number, now: number) {
     code: g.code,
     script: g.script ?? 'classic',
     scriptName: SCRIPTS[g.script ?? 'classic'],
+    nightIntroduction:
+      !a.host && me && !me.departed && g.phase === 'night' && g.night === 1
+        ? (g.nightIntroductions?.[a.id] ?? null)
+        : null,
     nightChoice:
       !a.host &&
       choiceTask?.player === a.id &&
-      (g.nightChoiceDeadline === undefined || now < g.nightChoiceDeadline)
+      now < nightChoiceDeadlineFor(g, choiceTask)
         ? {
             task: choiceTask.key,
-            deadline: g.nightChoiceDeadline ?? null,
+            deadline: nightChoiceDeadlineFor(g, choiceTask),
             conditional: choiceTask.role === 'ravenkeeper',
             round: choiceTask.round,
             count: choiceTask.count,
@@ -806,7 +815,7 @@ export function view(g: Game, a: Actor, version: number, now: number) {
     version,
     serverNow: now,
     nightChoiceDeadline:
-      g.phase === 'night' ? (g.nightChoiceDeadline ?? null) : null,
+      g.phase === 'night' ? nightChoiceWindowDeadline(g) : null,
     deadline: g.deadline,
     remaining: g.remaining,
     winner: g.winner,

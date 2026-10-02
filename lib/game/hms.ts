@@ -23,6 +23,7 @@ import {
   type DeathItem,
   type NightChoice,
 } from './types.ts';
+import { deliverIntroduction } from './introductions.ts';
 import {
   requireThat,
   person,
@@ -425,7 +426,7 @@ export function choiceSpec(g: Game, t: Task): ChoiceSpec | null {
       return {
         ...base,
         optional: true,
-        label: `If ${nameOf(g, s.nightmare?.bound ?? '')} targets anyone tonight, redirect it to (once per game), or pass:`,
+        label: `${nameOf(g, s.nightmare?.bound ?? '')} chose a player. Redirect their ability to a different player (once per game), or pass:`,
         eligible: living,
       };
   }
@@ -433,26 +434,61 @@ export function choiceSpec(g: Game, t: Task): ChoiceSpec | null {
 }
 // Tasks each player may answer during the night-choice window.
 export function choiceTasks(g: Game) {
-  const s = hms(g);
   const list = hmsTasks(g).filter((t) => t.player && t.player !== ST);
-  const n = s.nightmare;
-  if (n?.bound && !n.used) {
-    const p = g.players.find((q) => q.id === n.player);
-    if (p && !p.departed)
-      list.push({
-        key: 'nightmareRedirect:' + p.id,
-        role: 'nightmareRedirect',
-        player: p.id,
-        name: 'Nightmare redirect · ' + p.name,
-        done: false,
-      });
-  }
   return list.filter((t) => {
     const p = g.players.find((q) => q.id === t.player)!;
     return (
       p.alive || ['spirit', 'nightmare', 'nightmareRedirect'].includes(t.role)
     );
   });
+}
+
+const NIGHTMARE_DECISION_MS = 60_000;
+export function nightChoiceDeadlineFor(g: Game, t: Pick<Task, 'key'>) {
+  return g.nightChoiceDeadlines?.[t.key] ?? g.nightChoiceDeadline ?? 0;
+}
+function openNightmareDecision(g: Game, now: number) {
+  const n = hms(g).nightmare;
+  if (!n?.bound || n.used || !g.nightChoices) return;
+  const boundChoice = Object.entries(g.nightChoices).find(([key, choice]) => {
+    const task = g.nightChoiceTasks?.find((t) => t.key === key);
+    return (
+      task?.player === n.bound && TARGETING.includes(task.role) && !choice.pass
+    );
+  });
+  const nightmare = g.players.find((p) => p.id === n.player);
+  if (!boundChoice || !nightmare || nightmare.departed) return;
+  const key = 'nightmareRedirect:' + nightmare.id;
+  if (!g.nightChoiceTasks?.some((t) => t.key === key))
+    g.nightChoiceTasks?.push({
+      key,
+      role: 'nightmareRedirect',
+      player: nightmare.id,
+      name: 'Nightmare redirect · ' + nightmare.name,
+      done: false,
+    });
+  g.nightChoiceDeadlines ??= {};
+  g.nightChoiceDeadlines[key] ??= now + NIGHTMARE_DECISION_MS;
+}
+export function afterNightChoice(g: Game, t: Task, now: number) {
+  const n = hms(g).nightmare;
+  if (n?.bound === t.player && TARGETING.includes(t.role))
+    openNightmareDecision(g, now);
+  if (nightChoicesReady(g, now)) g.nightChoiceDeadline = now;
+}
+export function nightChoicesReady(g: Game, now: number) {
+  if (!isHms(g))
+    return g.nightChoiceDeadline === undefined || now >= g.nightChoiceDeadline;
+  return (g.nightChoiceTasks ?? []).every((t) => {
+    if (!choiceSpec(g, t)) return true;
+    return !!g.nightChoices?.[t.key] || now >= nightChoiceDeadlineFor(g, t);
+  });
+}
+export function nightChoiceWindowDeadline(g: Game) {
+  const pending = (g.nightChoiceTasks ?? [])
+    .filter((t) => choiceSpec(g, t) && !g.nightChoices?.[t.key])
+    .map((t) => nightChoiceDeadlineFor(g, t));
+  return pending.length ? Math.max(...pending) : (g.nightChoiceDeadline ?? 0);
 }
 export function validateChoice(g: Game, t: Task, c: Command): NightChoice {
   const spec = choiceSpec(g, t);
@@ -713,12 +749,21 @@ export function suggestions(g: Game, t: Task, choice?: NightChoice | null) {
     }
     case 'spirit': {
       if (!target) return '';
-      const n = s.visits.filter(
-        (v) => v.to === target.id && v.from !== p.id,
-      ).length;
-      return p.alive
-        ? `${target.name} was visited by ${n} player${n === 1 ? '' : 's'} and is ${evil(target) ? 'evil' : 'good'}.`
-        : `${target.name} was visited by ${n} player${n === 1 ? '' : 's'}.`;
+      const visitorIds = [
+        ...new Set(
+          s.visits
+            .filter(
+              (v) => v.to === target.id && v.from !== p.id && v.from !== ST,
+            )
+            .map((v) => v.from),
+        ),
+      ];
+      if (!visitorIds.length) return '0 people.';
+      if (!p.alive)
+        return `${visitorIds.length} ${visitorIds.length === 1 ? 'person' : 'people'}.`;
+      const visitors = visitorIds.map((id) => person(g, id));
+      const bad = visitors.filter(evil).length;
+      return `${bad} evil\n${visitors.length - bad} good`;
     }
     case 'mystic':
       return target
@@ -743,23 +788,9 @@ export function hmsResolve(g: Game, t: Task, c: Command, now: number): string {
   requireNoPendingDeath(g);
   const r = t.role;
   if (r === 'minioninfo' || r === 'demoninfo') {
-    const minions = g.players.filter((p) => team(p.role) === 'minion');
-    const horror = g.players.filter((p) => team(p.role) === 'demon');
-    const celestial = g.players.some((p) => p.role === 'celestial')
-      ? 'A Celestial is in play.'
-      : 'No Celestial is in play.';
-    const text =
-      r === 'minioninfo'
-        ? `The Horror is ${horror.map((p) => p.name).join(', ')} (${horror.map((p) => roleName(p.role)).join(', ')}). Haunts: ${minions.map((p) => p.name).join(', ')}. ${celestial}`
-        : `Your Haunts: ${minions.map((p) => `${p.name} (${roleName(p.role)})`).join(', ')}. Out-of-play bluffs: ${g.bluffs.map(roleName).join(', ')}. ${celestial}`;
-    (r === 'minioninfo' ? minions : horror).forEach((p) =>
-      message(g, p.id, text, now),
-    );
+    const text = deliverIntroduction(g, r, now);
     g.done.push(t.key);
-    return (
-      text +
-      ` Send privately to ${r === 'minioninfo' ? 'Haunts' : 'the Horror'}.`
-    );
+    return text;
   }
   if (r === 'plague') {
     const inf = s.infected!;
@@ -789,6 +820,7 @@ export function hmsResolve(g: Game, t: Task, c: Command, now: number): string {
   const choice = g.nightChoices?.[t.key];
   const fine = ok(p);
   const isST = p.id === ST;
+  const lost = p.role === 'lostsoul';
   const n = s.nightmare;
   const bound = !!n && !n.used && n.bound === p.id;
   // Targets as chosen, then where they actually land.
@@ -839,9 +871,10 @@ export function hmsResolve(g: Game, t: Task, c: Command, now: number): string {
   const H = hits.map((h) => g.players.find((q) => q.id === h)!);
   let info = '';
   let summary = '';
-  const send = (text: string) => {
-    if (!isST) message(g, p.id, text, now);
-    info = text;
+  const send = (text: string, minimal = text) => {
+    const delivered = lost ? minimal : text;
+    if (!isST) message(g, p.id, delivered, now);
+    info = delivered;
   };
   const once = () => {
     if (isST) s.stUsed = true;
@@ -851,7 +884,10 @@ export function hmsResolve(g: Game, t: Task, c: Command, now: number): string {
     case 'constellation': {
       const members = hits;
       s.constellation = { owner: p.id, members, linked: fine };
-      send(`Your Constellation: ${H.map((q) => q.name).join(', ')}.`);
+      send(
+        `Your Constellation: ${H.map((q) => q.name).join(', ')}.`,
+        H.map((q) => q.name).join(', '),
+      );
       summary = `Constellation linked ${H.map((q) => q.name).join(', ')}${fine ? '' : ' (impaired: no link)'}.`;
       break;
     }
@@ -859,6 +895,7 @@ export function hmsResolve(g: Game, t: Task, c: Command, now: number): string {
       s.stargazer[p.id] = hits[0];
       send(
         `You are watching ${H[0].name}. Ask the Storyteller about them at any time.`,
+        H[0].name,
       );
       summary = `Stargazer watches ${H[0].name}.`;
       break;
@@ -879,6 +916,7 @@ export function hmsResolve(g: Game, t: Task, c: Command, now: number): string {
       );
       send(
         `One of these characters belongs to one of ${H.map((q) => q.name).join(', ')}: ${shown.map(roleName).join(', ')}.`,
+        shown.map(roleName).join(', '),
       );
       summary = info;
       break;
@@ -901,6 +939,7 @@ export function hmsResolve(g: Game, t: Task, c: Command, now: number): string {
         links.length
           ? `${H[0].name} may be connected to ${links.map((id) => nameOf(g, id)).join(', ')}.`
           : `You sense no connections around ${H[0].name}.`,
+        links.length ? links.map((id) => nameOf(g, id)).join(', ') : 'Nobody',
       );
       summary = info;
       break;
@@ -928,7 +967,14 @@ export function hmsResolve(g: Game, t: Task, c: Command, now: number): string {
           : r === 'prophet'
             ? `Haunt and Horror characters in play: ${given}.`
             : given;
-      send(text);
+      const minimal =
+        r === 'insomniac'
+          ? given
+              .replace(/^Visited by: /, '')
+              .replace(/\. Neighbors who visited someone: /, '\n')
+              .replace(/\.$/, '')
+          : given;
+      send(text, minimal);
       summary = text;
       break;
     }
@@ -942,6 +988,7 @@ export function hmsResolve(g: Game, t: Task, c: Command, now: number): string {
       );
       send(
         `You asked: “${q}”. The Storyteller suggests you speak to ${nameOf(g, answer)}.`,
+        nameOf(g, answer),
       );
       summary = info;
       break;
@@ -968,8 +1015,9 @@ export function hmsResolve(g: Game, t: Task, c: Command, now: number): string {
         );
         send(
           `You have reached ${target.name}. You can talk privately until dawn.`,
+          target.name,
         );
-      } else send(`You reach out to ${target.name}…`);
+      } else send(`You reach out to ${target.name}…`, target.name);
       summary = `Medium chose ${target.name}.${fine ? '' : ' Impaired: no channel or ability.'}`;
       break;
     }
@@ -977,7 +1025,7 @@ export function hmsResolve(g: Game, t: Task, c: Command, now: number): string {
     case 'priest':
     case 'necromancer': {
       if (pass) {
-        send('You did not use your ability tonight.');
+        send('You did not use your ability tonight.', 'Passed');
         summary = `${role(r)?.name} passed.`;
         break;
       }
@@ -1024,7 +1072,7 @@ export function hmsResolve(g: Game, t: Task, c: Command, now: number): string {
             : `At dawn ${target.name} returns as the ${roleName(newRole)}.`;
       } else
         summary = `${role(r)?.name} chose ${target.name}. ${fine ? 'The Storyteller refused the change.' : 'Impaired: nothing happens.'}`;
-      send(`You chose ${target.name}.`);
+      send(`You chose ${target.name}.`, target.name);
       break;
     }
     case 'guess': {
@@ -1037,7 +1085,7 @@ export function hmsResolve(g: Game, t: Task, c: Command, now: number): string {
           '',
       }));
       if (c.pass === true || (choice?.pass && !pairs.some((x) => x.role))) {
-        send('You keep your guess for another night.');
+        send('You keep your guess for another night.', 'Passed');
         summary = 'Constellation passed.';
         break;
       }
@@ -1082,14 +1130,14 @@ export function hmsResolve(g: Game, t: Task, c: Command, now: number): string {
           });
         } else
           person(g, member).extraLife = (person(g, member).extraLife ?? 0) + 1;
-        send('Your guess was correct.');
+        send('Your guess was correct.', 'Resolved');
         summary = `Constellation guessed correctly: ${kind === 'revive' ? nameOf(g, member) + ' returns at dawn' : nameOf(g, member) + ' gains an extra life'}.`;
       } else {
         con.linked = false;
         if (c.killSelf === true && p.alive)
           enqueueDeath(g, p.id, 'Constellation guess');
         if (other) enqueueDeath(g, other, 'Constellation guess');
-        send('Your guess was wrong. The link is broken.');
+        send('Your guess was wrong. The link is broken.', 'Resolved');
         summary = `Constellation guessed wrong; link broken.${c.killSelf === true ? ' ' + p.name + ' may die.' : ''}${other ? ' ' + nameOf(g, other) + ' may die.' : ''}`;
       }
       break;
@@ -1162,6 +1210,7 @@ export function hmsResolve(g: Game, t: Task, c: Command, now: number): string {
         c,
       );
       s.nightmare!.bound = target.id;
+      openNightmareDecision(g, now);
       send(
         `You now haunt ${target.name}. Once, you may redirect their ability.`,
       );

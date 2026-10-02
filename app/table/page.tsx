@@ -10,6 +10,7 @@ import { NightChoiceNotice } from '@/components/night-choice-notice';
 import { StorytellerVote } from '@/components/storyteller-vote';
 import { TableNightChoice } from '@/components/table-night-choice';
 import { NightPuzzles } from '@/components/night-puzzles';
+import { NightIntroduction } from '@/components/night-introduction';
 import { TableDawn } from '@/components/table-dawn';
 import { TableSeating } from '@/components/table-seating';
 import { eligibleField } from '@/lib/game/choices';
@@ -553,6 +554,12 @@ export default function Table() {
             const c = game.controls.find((c) => c.action === 'night');
             if (c) open(c);
           }}
+        />
+      )}
+      {game.nightIntroduction && (
+        <NightIntroduction
+          key={game.nightIntroduction.id}
+          information={game.nightIntroduction}
         />
       )}
       {game.nightChoice && (

@@ -193,7 +193,7 @@ export const HMS_ROLES: RoleDef[] = [
     'spirit',
     'Spirit',
     'townsfolk',
-    'Each night, choose a player. Learn how many players visited them and their alignment. If you die, you keep learning the number but not the alignment.',
+    'Each night, choose a player. Learn how many of their visitors are good and evil. If nobody visited, learn “0 people.” If you die, learn only the number of visitors.',
   ],
   [
     'gravedigger',
@@ -235,7 +235,7 @@ export const HMS_ROLES: RoleDef[] = [
     'lostsoul',
     'Lost Soul',
     'outsider',
-    'You secretly act as an out-of-play Villager, but you do not know which. Its ability does not work.',
+    'You secretly act as an out-of-play Villager, but you do not know which. Its ability does not work, and information is given only as unlabeled names or values.',
   ],
   [
     'zealot',
@@ -265,7 +265,7 @@ export const HMS_ROLES: RoleDef[] = [
     'nightmare',
     'Nightmare',
     'minion',
-    'If you are executed, at night choose a player with a nighttime targeting ability. Once per game, you may redirect their target without them knowing.',
+    'If you are executed, at night choose a player with a nighttime targeting ability. Once per game, when they choose a target, you have 60 seconds to redirect it without them knowing.',
   ],
   [
     'astrophage',
@@ -512,6 +512,8 @@ export const HMS_OTHER = [
   'deaths',
 ];
 export type Game = {
+  nightIntroductions?: Record<string, { id: string; text: string }>;
+  nightChoiceDeadlines?: Record<string, number>;
   nightChoiceDeadline?: number;
   nightChoiceTasks?: {
     key: string;

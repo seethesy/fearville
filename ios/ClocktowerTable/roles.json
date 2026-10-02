@@ -213,7 +213,7 @@
     "id": "spirit",
     "name": "Spirit",
     "team": "townsfolk",
-    "description": "Each night, choose a player. Learn how many players visited them and their alignment. If you die, you keep learning the number but not the alignment.",
+    "description": "Each night, choose a player. Learn how many of their visitors are good and evil. If nobody visited, learn ‘0 people.’ If you die, learn only the number of visitors.",
     "script": "holyMoonStars"
   },
   {
@@ -262,7 +262,7 @@
     "id": "lostsoul",
     "name": "Lost Soul",
     "team": "outsider",
-    "description": "You secretly act as an out-of-play Villager, but you do not know which. Its ability does not work.",
+    "description": "You secretly act as an out-of-play Villager, but you do not know which. Its ability does not work, and information is given only as unlabeled names or values.",
     "script": "holyMoonStars"
   },
   {
@@ -297,7 +297,7 @@
     "id": "nightmare",
     "name": "Nightmare",
     "team": "minion",
-    "description": "If you are executed, at night choose a player with a nighttime targeting ability. Once per game, you may redirect their target without them knowing.",
+    "description": "If you are executed, at night choose a player with a nighttime targeting ability. Once per game, when they choose a target, you have 60 seconds to redirect it without them knowing.",
     "script": "holyMoonStars"
   },
   {
