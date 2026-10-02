@@ -70,7 +70,6 @@ export function PlayerNotes({ game }: { game: GameView }) {
           Tap to cycle: red (ruled out), yellow (possible), green (in play). All
           roles start as possible.
         </p>
-        {!roles.length && <p>Holy Moon and Stars roles are coming soon.</p>}
         {(
           [
             ['townsfolk', 'Villagers'],

@@ -722,7 +722,9 @@ export default function Table() {
                       Check Messages for instructions from your Storyteller.
                       Reply there with your choices.
                     </p>
-                    <NightPuzzles key={`${game.code}:${game.me}:${game.night}`} />
+                    <NightPuzzles
+                      key={`${game.code}:${game.me}:${game.night}`}
+                    />
                     {game.nightPoll && (
                       <div className="night-poll">
                         <p className="eyebrow">TONIGHT’S POLL · JUST FOR FUN</p>
@@ -1038,26 +1040,18 @@ export default function Table() {
               {game.phase === 'lobby' && (
                 <section className="panel">
                   <h2>{game.scriptName}</h2>
-                  {game.script === 'holyMoonStars' && (
-                    <p>
-                      Coming soon. Roles for this script have not been defined
-                      yet.
-                    </p>
-                  )}
                   {game.controls
                     .filter((c) => c.action === 'setScript')
                     .map((c) => button(c))}
                 </section>
               )}
-              {game.host &&
-                game.phase === 'lobby' &&
-                game.script === 'classic' && (
-                  <RolePicker
-                    key={game.players.map((p) => p.role).join(',')}
-                    game={game}
-                    refresh={refresh}
-                  />
-                )}
+              {game.host && game.phase === 'lobby' && (
+                <RolePicker
+                  key={`${game.script}:${game.players.map((p) => p.role).join(',')}`}
+                  game={game}
+                  refresh={refresh}
+                />
+              )}
               {game.host && <TableSeating game={game} refresh={refresh} />}
               <TableMembership
                 key={game.code + game.me}
@@ -1156,14 +1150,7 @@ export default function Table() {
             <Link className="quiet-link" href="/rules">
               Open the full reference page →
             </Link>
-            {game.script === 'holyMoonStars' ? (
-              <p>
-                Holy Moon and Stars is coming soon. Its roles have not been
-                defined yet.
-              </p>
-            ) : (
-              <RulesReference script={game.script} />
-            )}
+            <RulesReference script={game.script} />
           </div>
         </TabsContent>
         {game.host && (
