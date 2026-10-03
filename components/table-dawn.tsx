@@ -1,5 +1,7 @@
 'use client';
 import { useState } from 'react';
+import { DeathEffect } from './death-effect';
+import { PlayerAvatar } from './player-avatar';
 import type { GameView } from '@/lib/game/view';
 import {
   Dialog,
@@ -44,9 +46,30 @@ export function TableDawn({ game }: { game: GameView }) {
             The town wakes to discover who died during the night.
           </DialogDescription>
         </DialogHeader>
-        {announcement?.names.map((name, i) => (
-          <h2 key={i}>{name}</h2>
-        ))}
+        <div className="death-announcement" key={announcement?.id}>
+          {announcement?.names.map((name, i) => {
+            const player = game.players.find(
+              (p) => p.id === announcement.playerIds?.[i],
+            );
+            return (
+              <div
+                className="farewell-player"
+                key={announcement.playerIds?.[i] ?? i}
+              >
+                <div className="cosmetic-preview-stage">
+                  <PlayerAvatar
+                    avatar={player?.avatar}
+                    id={player?.id ?? name}
+                    frame={player?.portraitFrame}
+                    dead
+                  />
+                  <DeathEffect effect={player?.deathEffect} />
+                </div>
+                <h2>{name}</h2>
+              </div>
+            );
+          })}
+        </div>
         <p>Died during the night.</p>
         <button className="primary full" onClick={dismiss}>
           Continue to the town

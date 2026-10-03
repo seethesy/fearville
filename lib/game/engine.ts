@@ -1,3 +1,5 @@
+import { validAvatar } from './avatars.ts';
+import { validFrame, validDeathEffect } from './cosmetics.ts';
 import {
   role,
   scriptRoles,
@@ -663,6 +665,29 @@ export function execute(
   ];
   if (hostActions.includes(c.action))
     requireThat(actor.host, 'Only the Storyteller can do that.');
+  if (c.action === 'setAvatar') {
+    const player = g.players.find((p) => p.id === actor.id && !p.departed);
+    requireThat(
+      !actor.host && player,
+      'Choose your own player seat to change its avatar.',
+    );
+    requireThat(
+      validAvatar(c.avatar),
+      'Choose a preset or a small JPEG portrait.',
+    );
+    requireThat(
+      c.portraitFrame === undefined || validFrame(c.portraitFrame),
+      'Choose a portrait frame.',
+    );
+    requireThat(
+      c.deathEffect === undefined || validDeathEffect(c.deathEffect),
+      'Choose a death effect.',
+    );
+    player.avatar = c.avatar;
+    if (validFrame(c.portraitFrame)) player.portraitFrame = c.portraitFrame;
+    if (validDeathEffect(c.deathEffect)) player.deathEffect = c.deathEffect;
+    return 'Avatar updated.';
+  }
   if (c.action === 'returnLobby') {
     requireThat(
       g.phase === 'ended',
@@ -1158,6 +1183,9 @@ export function execute(
       g.dawnAnnouncement = {
         id: uuid(),
         night: g.night,
+        playerIds: g.players
+          .filter((p) => !p.alive && p.nightDeath === g.night)
+          .map((p) => p.id),
         names: g.players
           .filter((p) => !p.alive && p.nightDeath === g.night)
           .map((p) => p.name),

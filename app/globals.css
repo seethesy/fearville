@@ -2617,3 +2617,89 @@ h3,
     grid-template-columns: 1fr;
   }
 }
+
+/* Seat portraits remain decorative: names and life status stay readable. */
+.player-avatar {
+  display: inline-grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  flex-shrink: 0;
+  overflow: hidden;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  background: radial-gradient(circle at 35% 25%, #405064, #141b26 80%);
+  box-shadow: inset 0 0 0 4px #ffffff0a, 0 3px 12px #0005;
+}
+.player-avatar svg { width: 58%; height: 58%; }
+.player-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.player-avatar.is-dead { filter: grayscale(1); opacity: .65; }
+.avatar-preview { display: grid; justify-items: center; gap: .5rem; margin: 1rem 0; }
+.avatar-preview .player-avatar { width: 96px; height: 96px; }
+.avatar-options { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .6rem; margin: 1rem 0; }
+.avatar-options button { display: grid; justify-items: center; gap: .4rem; padding: .6rem .2rem; }
+.avatar-options button[aria-pressed=true] { border-color: #edcc87; background: #423c30; box-shadow: 0 0 0 2px #edcc87; }
+.avatar-options .player-avatar { width: 48px; height: 48px; }
+.circle-seat .player-avatar { display: inline-grid; width: 46px; height: 46px; }
+.seat-mini-list .seat-identity { display: grid; justify-items: center; text-align: center; gap: .3rem; min-width: 0; flex: 1; }
+.seat-identity strong { overflow-wrap: anywhere; }
+.death-announcement { text-align: center; padding: 1rem; animation: death-reveal 1.5s ease-out both; }
+.departing-spirit { width: 64px; height: 64px; margin: 0 auto 1rem; color: #c4d5df; animation: spirit-rise 2s ease-out both; }
+@keyframes death-reveal { from { opacity: 0; } to { opacity: 1; } }
+@keyframes spirit-rise { from { opacity: 0; transform: translateY(24px) scale(.85); } to { opacity: 1; transform: translateY(0) scale(1); } }
+@media (prefers-reduced-motion: reduce) {
+  .death-announcement, .departing-spirit { animation: none; }
+}
+@media (max-width: 420px) { .avatar-options { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/* Shared cosmetic layers: transform/opacity only, with no pointer interception. */
+.cosmetic-table { position: relative; isolation: isolate; min-height: 100vh; }
+.table-atmosphere { position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; background: transparent; transition: background-color 1.8s ease; }
+.atmosphere-night { background-color: #10182790; }
+.atmosphere-day { background-color: #533e1812; }
+.fog-bank { position: absolute; width: 150%; height: 45vh; left: -25%; bottom: -12vh; border-radius: 50%; background: radial-gradient(ellipse, #b8d3df18, #a3bdce08 40%, transparent 70%); animation: fog-drift 28s ease-in-out infinite alternate; }
+.fog-bank-two { bottom: 12vh; opacity: .5; animation-delay: -14s; animation-duration: 36s; }
+.atmosphere-day .fog-bank { opacity: .45; }
+.ambient-mote { position: absolute; width: 3px; height: 3px; border-radius: 50%; background: #dbd1b5; box-shadow: 0 0 7px #dfcaa580; opacity: 0; animation: mote-drift var(--duration) linear var(--delay) infinite; }
+.atmosphere-night .ambient-mote { background: #bed6ed; }
+.atmosphere-control { max-width: 1400px; margin: 0 auto; padding: .6rem 1rem 0; text-align: right; }
+.atmosphere-control button { font-size: .75rem; padding: .4rem .7rem; }
+.portrait-stage { display: inline-grid; position: relative; vertical-align: middle; line-height: 1; }
+.player-avatar { transition: filter 1s ease, opacity 1s ease, box-shadow .35s ease, border-color .35s ease; }
+.player-avatar.frame-silver { border: 3px double #d1dce8; box-shadow: 0 0 0 2px #536275, 0 0 0 4px #b3c3d333, 0 3px 12px #0006; }
+.player-avatar.frame-thorns { border: 4px dashed #a57a8a; outline: 2px solid #553746; outline-offset: 1px; box-shadow: 0 0 0 5px #38252f, 0 3px 12px #0008; }
+.player-avatar.frame-gilded { border: 4px double #f4d193; outline: 1px solid #987038; outline-offset: 2px; box-shadow: 0 0 0 5px #312a20, 0 0 16px #d6a25233; }
+.player-avatar.frame-spectral { border: 2px solid #c2eee6; box-shadow: 0 0 0 3px #91d9d333, 0 0 0 6px #91d9d311, 0 0 20px #91d9d355; }
+.circle-seat .portrait-stage { display: inline-grid; overflow: visible; }
+.cosmetic-options { border: 0; margin: 1.5rem 0; padding: 0; min-width: 0; }
+.cosmetic-options legend { font-weight: 600; margin-bottom: .8rem; }
+.frame-options { display: grid; grid-template-columns: repeat(auto-fit, minmax(105px, 1fr)); gap: .75rem; }
+.frame-options button { display: grid; justify-items: center; gap: .8rem; padding: 1rem .5rem; font-size: .8rem; }
+.frame-options button[aria-pressed=true] { background: #423c30; border-color: #edcc87; box-shadow: 0 0 0 2px #edcc87; }
+.cosmetic-preview-stage { display: inline-grid; place-items: center; position: relative; padding: 1rem; }
+.avatar-picker > button { margin-right: .6rem; margin-bottom: .6rem; }
+.death-announcement { animation: none; display: flex; flex-wrap: wrap; justify-content: center; gap: 1.5rem; }
+.farewell-player { min-width: 100px; max-width: 100%; }
+.farewell-player h2 { overflow-wrap: anywhere; }
+.farewell-player .player-avatar { width: 80px; height: 80px; }
+.death-fx { position: absolute; inset: 0; display: block; overflow: visible; pointer-events: none; z-index: 3; animation: farewell-lifetime 2.5s linear both; }
+.death-fx .death-spirit { position: absolute; width: 48px; height: 48px; left: calc(50% - 24px); top: calc(50% - 24px); color: #d6f1ec; filter: drop-shadow(0 0 8px #a0dfd5); animation: farewell-spirit 2.4s ease-out both; }
+.death-particle { position: absolute; top: 50%; left: 50%; width: 4px; height: 4px; border-radius: 50%; background: #c0ece6; animation: farewell-particle 2s ease-out var(--delay) both; }
+.death-fx-embers .death-particle { background: #f6bd76; box-shadow: 0 0 7px #e98540; }
+.death-fx-petals .death-particle { width: 9px; height: 6px; border-radius: 80% 0 80% 20%; background: #c47a91; }
+.death-mist { position: absolute; inset: -10%; border-radius: 50%; background: radial-gradient(ellipse, transparent 30%, #b5d6da55 50%, transparent 70%); animation: farewell-mist 2.4s ease-out both; }
+.death-mist-second { animation-delay: .15s; }
+@keyframes fog-drift { from { transform: translate3d(-8%, 0, 0) scale(1); } to { transform: translate3d(8%, -8%, 0) scale(1.1); } }
+@keyframes mote-drift { 0%, 100% { opacity: 0; } 25%, 65% { opacity: .35; } to { transform: translate3d(25px, -100px, 0); } }
+@keyframes farewell-lifetime { 0%, 90% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes farewell-spirit { 0% { opacity: 0; transform: translateY(10px) scale(.7); } 25% { opacity: .95; } 100% { opacity: 0; transform: translateY(-70px) scale(1.15); } }
+@keyframes farewell-particle { from { opacity: 0; transform: translate(0, 0) scale(.4); } 15% { opacity: .9; } to { opacity: 0; transform: translate(var(--dx), var(--dy)) rotate(var(--rotation)) scale(.2); } }
+@keyframes farewell-mist { from { opacity: 0; transform: scale(.6); } 25% { opacity: .85; } to { opacity: 0; transform: translateY(-30px) scale(1.8); } }
+.cosmetic-motion-off .table-atmosphere { display: none; }
+.cosmetic-motion-off .player-avatar { transition: none; }
+@media (prefers-reduced-motion: reduce) {
+  .table-atmosphere, .death-fx { display: none; }
+  .player-avatar { transition: none; }
+}
+.farewell-preview { display: flex; align-items: center; gap: 1rem; padding: 1rem 0; min-height: 130px; }
+.farewell-preview .cosmetic-preview-stage { flex-shrink: 0; }

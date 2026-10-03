@@ -2,6 +2,7 @@
 import { useRef, useState } from 'react';
 import { role } from '@/lib/game/types';
 import { RoleIcon } from './role-icon';
+import { PlayerAvatar } from './player-avatar';
 import type { GameView } from '@/lib/game/view';
 
 export function TableSeating({
@@ -127,6 +128,14 @@ export function TableSeating({
                   }
                 }}
               >
+                <PlayerAvatar
+                  avatar={p.avatar}
+                  id={p.id}
+                  dead={!p.alive}
+                  frame={p.portraitFrame}
+                  deathEffect={p.deathEffect}
+                  publicDead={!p.publicAlive}
+                />
                 <span>
                   {i + 1}. {p.name}
                 </span>

@@ -365,6 +365,9 @@ export const COUNTS: Record<number, number[]> = {
   15: [9, 2, 3, 1],
 };
 export type Player = {
+  avatar?: string;
+  portraitFrame?: import('./cosmetics').PortraitFrame;
+  deathEffect?: import('./cosmetics').DeathEffectId;
   dummy?: boolean;
   departed?: boolean;
   id: string;
@@ -539,7 +542,12 @@ export type Game = {
   script?: RoleScript;
   nightChoices?: Record<string, NightChoice>;
   hms?: HmsState;
-  dawnAnnouncement?: { id: string; night: number; names: string[] };
+  dawnAnnouncement?: {
+    id: string;
+    night: number;
+    names: string[];
+    playerIds?: string[];
+  };
   assignmentSeed?: string;
   nightPoll?: {
     id: string;

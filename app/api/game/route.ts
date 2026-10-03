@@ -95,7 +95,7 @@ export async function POST(r: Request) {
         await syncResult(game, game.gameStartedAt ?? created, now);
       const summary = execute(game, actionActor, c, now);
       if (c.preview) return json({ summary, version });
-      if (!['chat', 'returnLobby'].includes(c.action)) {
+      if (!['chat', 'returnLobby', 'setAvatar'].includes(c.action)) {
         const player = game.players.find((p) => p.id === actionActor.id);
         game.decisions ??= [];
         game.decisions.push({
