@@ -9,6 +9,7 @@ import {
   uuid,
   newPlayer,
   phaseName,
+  MAX_PLAYERS,
   type Game,
   type Actor,
   type Command,
@@ -21,6 +22,7 @@ import { assignRandomRoles } from './assignment.ts';
 import { returnToLobby } from './lobby.ts';
 import {
   isHms,
+  isMoon,
   hms,
   hmsTasks,
   choiceTasks,
@@ -40,6 +42,7 @@ import {
   requireNoPendingDeath,
   ST,
 } from './hms.ts';
+import { isHof, hofFinish, hofAnnounceCharges, bluffIssue } from './hof.ts';
 export function requireThat(ok: unknown, message: string): asserts ok {
   if (!ok) throw new Error(message);
 }
@@ -53,9 +56,12 @@ export const nameOf = (g: Game, id: string) =>
     ? 'the Storyteller'
     : g.players.find((p) => p.id === id)?.name || 'Nobody';
 export const healthy = (p: Player) =>
-  !p.poisoned && p.role !== 'drunk' && !p.drunk;
+  !p.poisoned && p.role !== 'drunk' && !p.drunk && !p.feared;
 export const evil = (p: Player) =>
   ['minion', 'demon'].includes(role(p.role)?.team || '');
+// Travelers are neutral: neither good nor evil.
+export const alignment = (p: Player): 'good' | 'evil' | 'neutral' =>
+  evil(p) ? 'evil' : role(p.role)?.team === 'traveler' ? 'neutral' : 'good';
 export function log(g: Game, text: string, at: number, visible = false) {
   g.log.push({ id: uuid(), text, at, public: visible });
 }
@@ -77,7 +83,10 @@ export function snapshot(g: Game, text: string, at: number) {
 export function setPhase(g: Game, phase: Phase, at: number, seconds?: number) {
   if (g.phase === 'night' && phase !== 'night') closeNightPoll(g);
   g.phase = phase;
-  if (phase === 'ended') g.players.forEach((p) => (p.publicAlive = p.alive));
+  if (phase === 'ended') {
+    g.players.forEach((p) => (p.publicAlive = p.alive));
+    if (isHof(g)) hofFinish(g, at);
+  }
   g.remaining = g.sandbox ? 0 : (seconds ?? g.timers[phase] ?? 0);
   g.deadline = g.sandbox ? null : g.remaining ? at + g.remaining * 1000 : null;
   log(g, phaseName[phase] + (g.day ? ' · Day ' + g.day : ''), at, true);
@@ -185,6 +194,7 @@ export function nightChoiceTask(g: Game, player?: string) {
       members: spec.members,
       optional: spec.optional,
       label: spec.label,
+      flag: spec.flag,
       options: g.players
         .filter((p) => !p.departed)
         .sort((a, b) => a.seat - b.seat)
@@ -238,7 +248,8 @@ export function setupIssues(g: Game) {
   if (isHms(g)) return hmsSetupIssues(g);
   const issues: string[] = [];
   const expected = COUNTS[g.players.length]?.slice();
-  if (!expected) return ['Fearville Classic requires 5–15 players.'];
+  if (!expected)
+    return [`Fearville Classic requires 5–${MAX_PLAYERS} players.`];
   if (g.players.some((p) => p.role === 'baron')) {
     expected[0] -= 2;
     expected[1] += 2;
@@ -269,20 +280,13 @@ export function setupIssues(g: Game) {
     !g.players.some((p) => p.id === g.redHerring && !evil(p))
   )
     issues.push('Choose a good player as the Fortune Teller’s red herring.');
-  if (
-    g.players.length >= 7 &&
-    (g.bluffs.length !== 3 ||
-      new Set(g.bluffs).size !== 3 ||
-      g.bluffs.some(
-        (r) =>
-          !role(r) ||
-          ['minion', 'demon'].includes(role(r)!.team) ||
-          g.players.some((p) => p.role === r || p.shown === r),
-      ))
-  )
-    issues.push(
-      'Choose three distinct, out-of-play good characters as Horror bluffs.',
-    );
+  const bluffs = bluffIssue(
+    g,
+    scriptRoles('classic')
+      .filter((r) => ['townsfolk', 'outsider'].includes(r.team))
+      .map((r) => r.id),
+  );
+  if (bluffs) issues.push(bluffs);
   return issues;
 }
 export function candidate(g: Game) {
@@ -908,7 +912,7 @@ export function execute(
   switch (c.action) {
     case 'addDummy': {
       requireThat(g.sandbox, 'Dummy players are only available in Sandbox.');
-      requireThat(g.players.length < 15, 'This table is full.');
+      requireThat(g.players.length < MAX_PLAYERS, 'This table is full.');
       const name = clean(c.name, 32);
       requireThat(name, 'Enter a dummy player name.');
       requireThat(
@@ -936,10 +940,12 @@ export function execute(
         'Change the role script before starting the game.',
       );
       requireThat(
-        c.script === 'classic' || c.script === 'holyMoonStars',
+        c.script === 'classic' ||
+          c.script === 'holyMoonStars' ||
+          c.script === 'horrors',
         'Choose a valid role script.',
       );
-      g.script = c.script as 'classic' | 'holyMoonStars';
+      g.script = c.script;
       log(g, 'Updated role script.', now, true);
       return 'Role script updated.';
     }
@@ -1034,6 +1040,18 @@ export function execute(
           'Extra lives must be 0–3.',
         );
         p.extraLife = lives;
+        if (isHof(g)) {
+          p.feared = !!c.feared;
+          const charge = clean(c.charge);
+          if (['executioner', 'guardian'].includes(p.role)) {
+            requireThat(
+              !charge ||
+                g.players.some((q) => q.id === charge && q.id !== p.id),
+              'Choose another player.',
+            );
+            p.charge = charge;
+          } else delete p.charge;
+        }
       } else p.shown = p.role === 'drunk' ? clean(c.shown) : p.role;
       requireThat(
         p.role !== 'drunk' || role(p.shown)?.team === 'townsfolk',
@@ -1055,7 +1073,7 @@ export function execute(
         message(
           g,
           p.id,
-          `Your character is ${role(p.shown)?.name}. Your alignment is ${evil(p) ? 'evil' : 'good'}.`,
+          `Your character is ${role(p.shown)?.name}. Your alignment is ${alignment(p)}.`,
           now,
         );
       log(
@@ -1068,8 +1086,8 @@ export function execute(
     case 'start': {
       requireThat(g.phase === 'lobby', 'The game has already started.');
       requireThat(
-        g.players.length >= 5 && g.players.length <= 15,
-        'Join 5–15 players before starting.',
+        g.players.length >= 5 && g.players.length <= MAX_PLAYERS,
+        `Join 5–${MAX_PLAYERS} players before starting.`,
       );
       requireThat(
         g.players.every((p) => role(p.role)),
@@ -1113,18 +1131,26 @@ export function execute(
         ),
         'Choose the Drunk’s shown Villager.',
       );
+      if (isHof(g))
+        for (const p of g.players)
+          if (
+            ['executioner', 'guardian'].includes(p.role) &&
+            c['charge_' + p.id]
+          )
+            p.charge = clean(c['charge_' + p.id]);
       enforce(setupIssues(g).length === 0, setupIssues(g).join(' '), c);
-      if (isHms(g)) applyStartState(g);
+      if (isHms(g)) applyStartState(g, c);
       g.gameStartedAt = now;
       g.decisions = [];
       g.players.forEach((p) =>
         message(
           g,
           p.id,
-          `Your character is ${role(p.shown || p.role)?.name}. Your alignment is ${evil(p) ? 'evil' : 'good'}.\n${role(p.shown || p.role)?.description}`,
+          `Your character is ${role(p.shown || p.role)?.name}. Your alignment is ${alignment(p)}.\n${role(p.shown || p.role)?.description}`,
           now,
         ),
       );
+      if (isHof(g)) hofAnnounceCharges(g, now);
       beginNight(g, now);
       return 'Deal every player their private character and begin the first night.';
     }
@@ -1395,7 +1421,7 @@ export function execute(
     case 'nominate': {
       requireThat(g.phase === 'nomination', 'Nominations are not open.');
       const by = person(g, actor.host ? c.by : actor.id);
-      if (isHms(g) && c.target === ST) {
+      if (isMoon(g) && c.target === ST) {
         enforce(
           by.alive,
           'Dead players cannot nominate.',
@@ -1458,7 +1484,7 @@ export function execute(
         g.active.virginFirst = true;
         log(
           g,
-          `Virgin review: ${by.name} nominated ${target.name}. Healthy: ${healthy(target)}. Nominator type: ${{ townsfolk: 'Villager', outsider: 'Fool', minion: 'Haunt', demon: 'Horror' }[role(by.role)?.team ?? 'townsfolk']}. Confirm Virgin ruling before voting.`,
+          `Virgin review: ${by.name} nominated ${target.name}. Healthy: ${healthy(target)}. Nominator type: ${{ townsfolk: 'Villager', outsider: 'Fool', traveler: 'Traveler', minion: 'Haunt', demon: 'Horror' }[role(by.role)?.team ?? 'townsfolk']}. Confirm Virgin ruling before voting.`,
           now,
         );
       }

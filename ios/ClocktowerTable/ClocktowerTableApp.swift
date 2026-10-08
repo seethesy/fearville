@@ -62,7 +62,7 @@ struct WelcomeView: View {
                     } else {
                         TextField("Name at the table", text: $name).textContentType(.nickname)
                         if mode == "join" { TextField("Six-letter session code", text: $code).textInputAutocapitalization(.characters).autocorrectionDisabled().font(.title2.monospaced()) }
-                        else { Text("Invite 5–15 players, assign characters, and lead the game.").foregroundStyle(.secondary) }
+                        else { Text("Invite 5–18 players, assign characters, and lead the game.").foregroundStyle(.secondary) }
                     }
                     Button(store.working ? "Connecting…" : mode == "join" ? "Join the table" : mode == "create" ? "Create a session" : "Restore session") {
                         Task { await store.enter(action: mode, name: name, code: code, recovery: recovery) }
@@ -86,7 +86,7 @@ struct GameView: View {
             NavigationStack { FlowView(game: game, selected: $selected).navigationTitle(game.phaseLabel).navigationBarTitleDisplayMode(.inline) }.tabItem { Text("Game") }
             NavigationStack { SeatsView(game: game, selected: $selected).navigationTitle("Seats") }.tabItem { Text("Seats") }
             NavigationStack { MessagesView(game: game, selected: $selected).navigationTitle("Messages") }.tabItem { Text("Messages") }
-            NavigationStack { ScriptView().navigationTitle("Trouble Brewing") }.tabItem { Text("Script") }
+            NavigationStack { ScriptView(script: game.script ?? "classic").navigationTitle(game.scriptName ?? "Fearville Classic") }.tabItem { Text("Script") }
             NavigationStack { ControlView(game: game, selected: $selected).navigationTitle(game.host ? "Storyteller" : "Session") }.tabItem { Text("Controls") }
         }
         .sheet(item: $selected) { action in ActionView(action: action).environmentObject(store) }
@@ -106,8 +106,11 @@ struct FlowView: View {
     let game: GameState
     @Binding var selected: GameAction?
     @State private var reveal = false
+    @State private var glimpse: Glimpse?
+    @State private var dismissedGlimpse = ""
     var body: some View {
         List {
+            if let current = game.glimpse { Section("Sphinx") { Text("Your glimpse of every role is open until the night choice timer ends."); Button("View glimpse") { glimpse = current } } }
             Section {
                 HStack(alignment: .top) {
                     VStack(alignment: .leading, spacing: 6) { Text(game.phase == "night" ? "Night \(game.night)" : game.day > 0 ? "Day \(game.day)" : "Gather your town.").font(.largeTitle.weight(.regular)); Text((game.scriptName ?? "Fearville Classic").uppercased()).font(.caption).tracking(2).foregroundStyle(Color.tableHighlight) }
@@ -142,7 +145,14 @@ struct FlowView: View {
                 Section("Today's votes") { ForEach(game.ballots) { ballot in HStack { Text(game.name(ballot.target)); Spacer(); Text("\(ballot.count) yes") } }; Text(game.leader.tied ? "Tied · no execution" : game.leader.target.isEmpty ? "No qualifying nominee" : game.leader.name + " leads the vote") }
             }
         }.scrollContentBackground(.hidden).background(Color.tableBackground)
-        .onChange(of: scene) { _, phase in if phase != .active { reveal = false } }
+        .onChange(of: scene) { _, phase in if phase != .active { reveal = false; glimpse = nil } }
+        .onAppear { showGlimpse() }
+        .onChange(of: game.glimpse?.id) { _, _ in showGlimpse() }
+        .sheet(item: $glimpse, onDismiss: { dismissedGlimpse = game.glimpse?.id ?? "" }) { current in NavigationStack { GlimpseView(glimpse: current).environmentObject(store) } }
+    }
+    private func showGlimpse() {
+        guard let current = game.glimpse else { glimpse = nil; return }
+        if current.id != dismissedGlimpse && glimpse == nil { glimpse = current }
     }
 }
 struct SeatsView: View {
@@ -159,6 +169,7 @@ struct SeatsView: View {
                 if player.nominated { Text("Nominated today").font(.caption) }
                 if player.hasNominated { Text("Nomination used today").font(.caption) }
                 if player.poisoned == true { Text("POISONED").foregroundStyle(.orange) }
+                if player.feared == true { Text("FEARED").foregroundStyle(.orange) }
                 if player.protected == true { Text("MONK PROTECTION").foregroundStyle(Color.tableHighlight) }
                 if let notes = player.notes, !notes.isEmpty { Text(notes) }
                 if let action = game.controls.first(where: { $0.action == "edit" && $0.fields.first?.value?.text == player.id }) { Button("Edit seat & character") { selected = action }.disabled(!store.online) }
@@ -197,10 +208,28 @@ let GLOSSARY: [GlossaryEntry] = [
     GlossaryEntry(term: "Neighbor", definition: "A player sitting directly next to you; everyone has two. Neighbors include both living and dead players unless an ability says otherwise, for example “living neighbors”.", example: nil)
 ]
 struct ScriptView: View {
-    private let roles: [ScriptRole] = {
+    let script: String
+    private static let all: [ScriptRole] = {
         guard let url = Bundle.main.url(forResource: "roles", withExtension: "json"), let data = try? Data(contentsOf: url), let roles = try? JSONDecoder().decode([ScriptRole].self, from: data) else { return [] }; return roles
     }()
-    var body: some View { List { Section { Text("All characters on the script, including those not in play. These are short summaries."); Link("Official script and rulings", destination: URL(string: "https://wiki.bloodontheclocktower.com/Trouble_Brewing")!) }; Section("Glossary") { ForEach(GLOSSARY) { entry in VStack(alignment: .leading, spacing: 6) { Text(entry.term).font(.headline); Text(entry.definition); if let example = entry.example { Text("Example: " + example).font(.callout).italic().foregroundStyle(.secondary) } }.padding(.vertical, 4) } }; ForEach(roles) { role in VStack(alignment: .leading, spacing: 8) { Text(role.team.uppercased()).font(.caption).foregroundStyle(Color.tableHighlight); Text(role.name).font(.headline); Text(role.description) }.padding(.vertical, 6) } }.scrollContentBackground(.hidden).background(Color.tableBackground) }
+    private var roles: [ScriptRole] { ScriptView.all.filter { ($0.script ?? "classic") == script } }
+    private func teamName(_ team: String) -> String { ["townsfolk": "Villager", "outsider": "Fool", "traveler": "Traveler · neutral", "minion": "Haunt", "demon": "Horror"][team] ?? team }
+    var body: some View { List { Section { Text("All characters on the script, including those not in play. These are short summaries."); if script == "classic" { Link("Official script and rulings", destination: URL(string: "https://wiki.bloodontheclocktower.com/Trouble_Brewing")!) } }; Section("Glossary") { ForEach(GLOSSARY) { entry in VStack(alignment: .leading, spacing: 6) { Text(entry.term).font(.headline); Text(entry.definition); if let example = entry.example { Text("Example: " + example).font(.callout).italic().foregroundStyle(.secondary) } }.padding(.vertical, 4) } }; ForEach(roles) { role in VStack(alignment: .leading, spacing: 8) { Text(teamName(role.team).uppercased()).font(.caption).foregroundStyle(Color.tableHighlight); Text(role.name).font(.headline); Text(role.description) }.padding(.vertical, 6) } }.scrollContentBackground(.hidden).background(Color.tableBackground) }
+}
+// The Sphinx's nightly glimpse. Opens on its own and closes when the server
+// stops sending it (the night-choice timer ended).
+struct GlimpseView: View {
+    @EnvironmentObject var store: TableStore
+    @Environment(\.dismiss) private var dismiss
+    let glimpse: Glimpse
+    var body: some View {
+        List {
+            Section { Text("Keep this screen to yourself. It closes when the night choice timer ends.")
+                if let deadline = glimpse.deadline { TimelineView(.periodic(from: .now, by: 1)) { context in Text("\(max(0, Int(ceil(deadline / 1000 - context.date.timeIntervalSince1970 - store.offset))))s remaining").monospacedDigit().foregroundStyle(Color.tableHighlight) } }
+            }
+            Section("Every player’s role") { ForEach(glimpse.entries) { entry in HStack { Text("\(entry.seat). \(entry.name)" + (entry.alive ? "" : " (dead)")).foregroundStyle(entry.alive ? .primary : .secondary); Spacer(); Text(entry.role).bold() } } }
+        }.scrollContentBackground(.hidden).background(Color.tableBackground).navigationTitle("Sphinx · Night \(glimpse.night)").toolbar { Button("Hide") { dismiss() } }
+    }
 }
 struct ControlView: View {
     @EnvironmentObject var store: TableStore

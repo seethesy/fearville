@@ -1,6 +1,17 @@
 import { RoleIcon } from './role-icon';
-import { ROLES, HMS_ROLES, HMS_FIRST, HMS_OTHER, role } from '@/lib/game/types';
-import { GLOSSARY } from '@/lib/game/glossary';
+import {
+  HMS_ROLES,
+  HMS_FIRST,
+  HMS_OTHER,
+  HOF_ROLES,
+  HOF_FIRST,
+  HOF_OTHER,
+  MAX_PLAYERS,
+  scriptRoles,
+  role,
+  type RoleScript,
+} from '@/lib/game/types';
+import { GLOSSARY, glossarySegments } from '@/lib/game/glossary';
 
 const teams = [
   {
@@ -14,6 +25,13 @@ const teams = [
     name: 'Fools',
     alignment: 'Good',
     description: 'Good players whose abilities complicate the town’s work.',
+  },
+  {
+    id: 'traveler',
+    name: 'Travelers',
+    alignment: 'Neutral',
+    description:
+      'Neither good nor evil. Each has a personal win condition, won alongside the team result.',
   },
   {
     id: 'minion',
@@ -36,12 +54,33 @@ const STEP_NAMES: Record<string, string> = {
   nightmare: 'An executed Nightmare chooses a player to haunt',
   guess: 'Constellation’s once-per-game guess',
   deaths: 'Queued deaths resolve',
+  fear: 'Banshee and Monster fear takes effect',
+  sphinx: 'Sphinx (automatic glimpse during the choice timer)',
 };
-function RoleTeams({ script }: { script: 'classic' | 'holyMoonStars' }) {
-  const list = script === 'classic' ? ROLES : HMS_ROLES;
+const teamsFor = (script: RoleScript) =>
+  teams.filter((team) => scriptRoles(script).some((r) => r.team === team.id));
+// Role text with glossary terms linked to their definitions.
+function Described({ text, linked }: { text: string; linked: boolean }) {
+  if (!linked) return <>{text}</>;
   return (
     <>
-      {teams.map((team) => (
+      {glossarySegments(text).map((part, i) =>
+        typeof part === 'string' ? (
+          part
+        ) : (
+          <a key={i} className="glossary-link" href={`#glossary-${part.id}`}>
+            {part.text}
+          </a>
+        ),
+      )}
+    </>
+  );
+}
+function RoleTeams({ script }: { script: RoleScript }) {
+  const list = scriptRoles(script);
+  return (
+    <>
+      {teamsFor(script).map((team) => (
         <section
           id={`roles-${script}-${team.id}`}
           key={team.id}
@@ -59,7 +98,12 @@ function RoleTeams({ script }: { script: 'classic' | 'holyMoonStars' }) {
                   <h4>
                     <RoleIcon role={r.id} /> {r.name}
                   </h4>
-                  <p>{r.description}</p>
+                  <p>
+                    <Described
+                      text={r.description}
+                      linked={script === 'horrors'}
+                    />
+                  </p>
                 </article>
               ))}
           </div>
@@ -135,20 +179,80 @@ function MoonAndStars() {
   );
 }
 
+function HorrorsOfFearville() {
+  const step = (id: string) => STEP_NAMES[id] ?? role(id)?.name ?? id;
+  return (
+    <section className="reference-section" aria-labelledby="hof-roles">
+      <p className="eyebrow">HORRORS OF FEARVILLE · 5–18 PLAYERS</p>
+      <h2 id="hof-roles">All {HOF_ROLES.length} roles</h2>
+      <div className="rules-grid">
+        <article>
+          <h3>Fear, visits and saves</h3>
+          <p>
+            Choosing a player at night <a href="#glossary-visit">visits</a>{' '}
+            them. A <a href="#glossary-fear">feared</a> player’s ability
+            malfunctions without them knowing. A{' '}
+            <a href="#glossary-save">saved</a> player cannot die that night.
+          </p>
+        </article>
+        <article>
+          <h3>Declarations</h3>
+          <p>
+            The Vigilante, the Researcher and a killed Hag act by{' '}
+            <a href="#glossary-declare">declaring</a> publicly during the day,
+            from their Controls. The Storyteller rules on the outcome.
+          </p>
+        </article>
+        <article>
+          <h3>Travelers</h3>
+          <p>
+            Executioner, Researcher and Guardian are neutral. They register as
+            neither good nor evil and win in addition to whichever team wins.
+            The Researcher learns their result at the end of the game.
+          </p>
+        </article>
+        <article>
+          <h3>How a death resolves</h3>
+          <p>
+            A save or an impaired killer prevents a night death. Then the
+            Guardian may die in their ward’s place, and only then do triggers
+            happen (Executioner, Banshee, Hag, Hunter, Monster).
+          </p>
+        </article>
+      </div>
+      <div className="rules-grid">
+        <article>
+          <h3>First night</h3>
+          <ol>
+            {HOF_FIRST.filter((id) => id !== 'deaths').map((id) => (
+              <li key={id}>{step(id)}</li>
+            ))}
+          </ol>
+        </article>
+        <article>
+          <h3>Other nights</h3>
+          <ol>
+            {HOF_OTHER.map((id) => (
+              <li key={id}>{step(id)}</li>
+            ))}
+          </ol>
+        </article>
+      </div>
+      <RoleTeams script="horrors" />
+    </section>
+  );
+}
+
 // Shared public reference: never accepts a game state or exposes assigned roles.
 // Inside a game, only that game's script is shown; the public page shows both.
-export function RulesReference({
-  script,
-}: {
-  script?: 'classic' | 'holyMoonStars';
-}) {
+export function RulesReference({ script }: { script?: RoleScript }) {
   return (
     <div className="rules-reference">
       <nav className="reference-nav" aria-label="Rules and role sections">
         <a href="#how-to-play">How to play</a>
         <a href="#glossary">Glossary</a>
         <a href="#using-fearville">Using Fearville</a>
-        {teams.map((team) => (
+        {teamsFor(script ?? 'classic').map((team) => (
           <a key={team.id} href={`#roles-${script ?? 'classic'}-${team.id}`}>
             {team.name}
           </a>
@@ -254,9 +358,9 @@ export function RulesReference({
         <ol className="reference-steps">
           <li>
             <strong>Join and prepare.</strong> One Storyteller creates a room
-            for 5–15 players. They assign roles randomly or manually, review
-            setup, and start the game. Your character stays hidden until you
-            reveal it on your own screen.
+            for 5–{MAX_PLAYERS} players. They assign roles randomly or manually,
+            review setup, and start the game. Your character stays hidden until
+            you reveal it on your own screen.
           </li>
           <li>
             <strong>Follow Game flow.</strong> Discovery, discussion,
@@ -286,7 +390,7 @@ export function RulesReference({
           </li>
         </ol>
       </section>
-      {script !== 'holyMoonStars' && (
+      {(!script || script === 'classic') && (
         <section className="reference-section" aria-labelledby="all-roles">
           <p className="eyebrow">FEARVILLE CLASSIC</p>
           <h2 id="all-roles">All 22 roles</h2>
@@ -306,7 +410,8 @@ export function RulesReference({
           <RoleTeams script="classic" />
         </section>
       )}
-      {script !== 'classic' && <MoonAndStars />}
+      {(!script || script === 'holyMoonStars') && <MoonAndStars />}
+      {(!script || script === 'horrors') && <HorrorsOfFearville />}
     </div>
   );
 }

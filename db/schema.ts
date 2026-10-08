@@ -192,7 +192,7 @@ export const gamePlayers = sqliteTable(
     }),
     name: text('name').notNull(),
     role: text('role').notNull(),
-    team: text('team').notNull(), // good | evil (final alignment)
+    team: text('team').notNull(), // good | evil | neutral (final alignment; Travelers are neutral)
     won: integer('won').notNull(),
     alive: integer('alive').notNull(),
   },

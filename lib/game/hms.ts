@@ -25,6 +25,23 @@ import {
 } from './types.ts';
 import { deliverIntroduction } from './introductions.ts';
 import {
+  isHof,
+  hofTasks,
+  hofChoiceSpec,
+  hofSetupIssues,
+  hofStartState,
+  hofBeginNight,
+  hofResolve,
+  hofPrevented,
+  guardianFor,
+  validateHofTriggers,
+  hofAfterKill,
+  hofDawn,
+  hofWinHints,
+  hofAction,
+  bluffIssue,
+} from './hof.ts';
+import {
   requireThat,
   person,
   nameOf,
@@ -32,9 +49,15 @@ import {
   message,
   healthy,
   evil,
+  alignment,
 } from './engine.ts';
 
-export const isHms = (g: Game) => g.script === 'holyMoonStars';
+// The queued engine: Holy Moon and Stars and Horrors of Fearville share
+// night tasks with player choices, visits, the death queue and dawn changes.
+// isMoon is Holy Moon and Stars only.
+export const isHms = (g: Game) =>
+  g.script === 'holyMoonStars' || g.script === 'horrors';
+export const isMoon = (g: Game) => g.script === 'holyMoonStars';
 export const ST = 'storyteller';
 
 export function hms(g: Game): HmsState {
@@ -84,6 +107,17 @@ export const TARGETING = [
   'grimreaper',
   'werewolf',
   'nightmare',
+  // Horrors of Fearville
+  'basilisk',
+  'lostwanderer',
+  'doctor',
+  'monster',
+  'wraith',
+  'detective',
+  'judge',
+  'watchman',
+  'mortician',
+  'psychic',
 ];
 // Abilities the Medium can grant to a dead player. Start-of-game abilities
 // count as already used, so those players only receive the channel.
@@ -104,22 +138,24 @@ const ONCE = ['gravedigger', 'priest', 'necromancer'];
 export const targetCount = (r: string, g: Game) =>
   r === 'constellation' || r === 'astrologist'
     ? 3
-    : r === 'werewolf'
-      ? g.night % 3 === 0
-        ? 3
-        : 0
-      : [
-            'diviner',
-            'insomniac',
-            'astronaut',
-            'prophet',
-            'dreameater',
-            'guess',
-          ].includes(r)
-        ? 0
-        : TARGETING.includes(r) || r === 'nightmareRedirect'
-          ? 1
-          : 0;
+    : r === 'detective' || r === 'judge'
+      ? 2
+      : r === 'werewolf'
+        ? g.night % 3 === 0
+          ? 3
+          : 0
+        : [
+              'diviner',
+              'insomniac',
+              'astronaut',
+              'prophet',
+              'dreameater',
+              'guess',
+            ].includes(r)
+          ? 0
+          : TARGETING.includes(r) || r === 'nightmareRedirect'
+            ? 1
+            : 0;
 
 // The Storyteller's own seat once a Zealot grants them an ability. It cannot
 // be targeted and never appears in the player list.
@@ -190,7 +226,7 @@ export function evilDistance(g: Game, p: Player) {
 
 // ---------------------------------------------------------------- tasks
 
-function taskFor(r: string, p: Player, done: string[]): Task {
+export function taskFor(r: string, p: Player, done: string[]): Task {
   return {
     key: r + ':' + p.id,
     role: r,
@@ -215,6 +251,7 @@ function canAct(g: Game, p: Player, r: string) {
   );
 }
 export function hmsTasks(g: Game): Task[] {
+  if (isHof(g)) return hofTasks(g);
   const s = hms(g);
   const order = g.night === 1 ? HMS_FIRST : HMS_OTHER;
   const st = stActor(g);
@@ -303,6 +340,7 @@ export type ChoiceSpec = {
   members: string[];
   optional: boolean;
   label: string;
+  flag?: string; // label of an optional yes/no the player may tick
   eligible: (q: Player) => boolean;
 };
 export function choiceSpec(g: Game, t: Task): ChoiceSpec | null {
@@ -320,6 +358,7 @@ export function choiceSpec(g: Game, t: Task): ChoiceSpec | null {
     optional: false,
   };
   const r = t.role;
+  if (isHof(g)) return hofChoiceSpec(g, t, me, base);
   // A Lost Soul never learns which ability it is using.
   const lost = me.role === 'lostsoul';
   const pick = (n: number) =>
@@ -529,6 +568,7 @@ export function validateChoice(g: Game, t: Task, c: Command): NightChoice {
       ids[2] ?? '',
     ];
   }
+  if (spec.flag) choice.flag = c.flag === true;
   if (spec.text) {
     const text = clean(c.text, 500);
     requireThat(text, 'Write your question.');
@@ -564,9 +604,10 @@ export function validateChoice(g: Game, t: Task, c: Command): NightChoice {
 // ---------------------------------------------------------------- setup
 
 export function hmsSetupIssues(g: Game) {
+  if (isHof(g)) return hofSetupIssues(g);
   const issues: string[] = [];
   const counts = COUNTS[g.players.length]?.slice();
-  if (!counts) return ['Holy Moon and Stars requires 5–15 players.'];
+  if (!counts) return ['Holy Moon and Stars requires 5–18 players.'];
   const ids = g.players.map((p) => p.role);
   if (g.players.some((p) => !HMS_ROLES.some((r) => r.id === p.role)))
     issues.push('Assign a Holy Moon and Stars character to every seat.');
@@ -618,25 +659,21 @@ export function hmsSetupIssues(g: Game) {
     issues.push(
       'Each drunk or Lost Soul player needs a different out-of-play Villager.',
     );
-  if (
-    g.players.length >= 7 &&
-    !atheist &&
-    (g.bluffs.length !== 3 ||
-      new Set(g.bluffs).size !== 3 ||
-      g.bluffs.some(
-        (r) =>
-          !HMS_ROLES.some((x) => x.id === r) ||
-          !['townsfolk', 'outsider'].includes(team(r)) ||
-          g.players.some((p) => p.role === r || p.shown === r),
-      ))
-  )
-    issues.push(
-      'Choose three distinct, out-of-play good characters as Horror bluffs.',
-    );
+  const bluffs = atheist
+    ? ''
+    : bluffIssue(
+        g,
+        HMS_ROLES.filter(
+          (r) =>
+            ['townsfolk', 'outsider'].includes(r.team) && r.id !== 'atheist',
+        ).map((r) => r.id),
+      );
+  if (bluffs) issues.push(bluffs);
   return issues;
 }
 // Fill in hidden characters after any (random or manual) deal.
-export function applyStartState(g: Game) {
+export function applyStartState(g: Game, c: Command = { action: 'start' }) {
+  if (isHof(g)) return hofStartState(g, c);
   const moon = g.players.some((p) => p.role === 'moonshiner');
   for (const p of g.players) {
     p.drunk =
@@ -662,9 +699,26 @@ export function hmsBeginNight(g: Game) {
     p.poisoned = !!p.poisonUntil && p.poisonUntil > g.night;
     if (!p.poisoned) delete p.poisonUntil;
   }
+  if (isHof(g)) hofBeginNight(g);
 }
-const visit = (g: Game, from: string, to: string, r: string) =>
-  hms(g).visits.push({ from, to, role: r });
+export function visit(
+  g: Game,
+  from: string,
+  to: string,
+  r: string,
+  hidden = false,
+) {
+  const s = hms(g);
+  const v = {
+    from,
+    to,
+    role: r,
+    night: g.night,
+    ...(hidden ? { hidden } : {}),
+  };
+  s.visits.push(v);
+  if (isHof(g)) (s.history ??= []).push(v);
+}
 
 export function enqueueDeath(
   g: Game,
@@ -859,7 +913,7 @@ export function hmsResolve(g: Game, t: Task, c: Command, now: number): string {
     c.pass === true ||
     (count > 0 &&
       chosen.every((x) => !x) &&
-      ['gravedigger', 'priest', 'necromancer'].includes(r));
+      ['gravedigger', 'priest', 'necromancer', 'mortician'].includes(r));
   const hits = chosen;
   let redirectNote = '';
   if (count && !pass) {
@@ -884,7 +938,10 @@ export function hmsResolve(g: Game, t: Task, c: Command, now: number): string {
         )
         .filter(Boolean)
         .join(', ')}.`;
-    if (TARGETING.includes(r)) hits.forEach((h) => visit(g, p.id, h, r));
+    // A Wraith may choose not to be detected visiting.
+    const hidden = r === 'wraith' && c.hidden === true;
+    if (TARGETING.includes(r))
+      hits.forEach((h) => visit(g, p.id, h, r, hidden));
   }
   const H = hits.map((h) => g.players.find((q) => q.id === h)!);
   let info = '';
@@ -898,7 +955,20 @@ export function hmsResolve(g: Game, t: Task, c: Command, now: number): string {
     if (isST) s.stUsed = true;
     else p.used = true;
   };
-  switch (r) {
+  if (isHof(g))
+    summary = hofResolve(g, t, c, {
+      p,
+      H,
+      choice,
+      fine,
+      pass,
+      send: (text) => send(text),
+      once,
+    });
+  // Horrors of Fearville abilities resolved above.
+  switch (isHof(g) ? 'hof' : r) {
+    case 'hof':
+      break;
     case 'constellation': {
       const members = hits;
       s.constellation = { owner: p.id, members, linked: fine };
@@ -1258,6 +1328,7 @@ export function fateweaverFor(g: Game, victim: Player) {
 export function preventedBy(g: Game, d: DeathItem) {
   const v = person(g, d.player);
   if (d.impaired) return 'the killing ability is impaired';
+  if (isHof(g)) return hofPrevented(g, d);
   if ((v.extraLife ?? 0) > 0) return 'an extra life';
   if (
     !d.night &&
@@ -1299,6 +1370,23 @@ export function resolveDeath(g: Game, c: Command, now: number): string {
     );
     return `${v.name} does not die.`;
   }
+  // Horrors of Fearville: the Guardian dies in place of their ward.
+  const guardian =
+    isHof(g) && !d.redirected && c.guardian !== false
+      ? guardianFor(g, v)
+      : undefined;
+  if (guardian) {
+    remove();
+    enqueueDeath(
+      g,
+      guardian.id,
+      `${d.cause}, the Guardian took ${v.name}’s place`,
+      { ready: true, night: d.night, redirected: true },
+      true,
+    );
+    log(g, `Guardian ${guardian.name} dies in place of ${v.name}.`, now);
+    return `The Guardian dies in place of ${v.name}. Resolve it next.`;
+  }
   const weaver = !d.redirected ? fateweaverFor(g, v) : undefined;
   const to = weaver ? clean(c.fateweaver) : '';
   if (to) {
@@ -1332,6 +1420,7 @@ export function resolveDeath(g: Game, c: Command, now: number): string {
   return `${v.name} dies (${d.cause}).${d.night ? ' Night deaths stay private until dawn.' : ''}`;
 }
 function validateTriggers(g: Game, v: Player, d: DeathItem, c: Command) {
+  if (isHof(g)) return validateHofTriggers(g, v, d, c);
   if (v.role === 'zealot')
     requireThat(
       HMS_ROLES.some((r) => r.id === clean(c.zealotRole)),
@@ -1429,6 +1518,7 @@ function kill(g: Game, v: Player, d: DeathItem, c: Command, now: number) {
     s.nightmare = { player: v.id, bound: '', used: false };
   if (v.role === 'moonshiner')
     log(g, 'The Moonshiner died: you may sober up the Fools at any time.', now);
+  if (isHof(g)) hofAfterKill(g, v, d, c, now);
 }
 
 // ---------------------------------------------------------------- dawn & day
@@ -1455,7 +1545,7 @@ export function hmsDawn(g: Game, now: number) {
     message(
       g,
       p.id,
-      `${ch.kind === 'revive' ? 'You have returned to life. ' : ''}Your character is now ${roleName(ch.role)}. Your alignment is ${evil(p) ? 'evil' : 'good'}.\n${role(ch.role)?.description}`,
+      `${ch.kind === 'revive' ? 'You have returned to life. ' : ''}Your character is now ${roleName(ch.role)}. Your alignment is ${alignment(p)}.\n${role(ch.role)?.description}`,
       now,
     );
     log(
@@ -1477,9 +1567,11 @@ export function hmsDawn(g: Game, now: number) {
     );
     delete s.channel;
   }
+  if (isHof(g)) hofDawn(g);
 }
 export function hmsWinHints(g: Game) {
   const alive = g.players.filter((p) => p.alive);
+  const travelers = isHof(g) ? hofWinHints(g) : [];
   if (atheistInPlay(g))
     return alive.length <= 2
       ? [
@@ -1491,7 +1583,7 @@ export function hmsWinHints(g: Game) {
   if (!horror) hints.push('No living Horror: good wins.');
   if (alive.length <= 2 && horror)
     hints.push('Two or fewer living players with a living Horror: evil wins.');
-  return hints;
+  return [...hints, ...travelers];
 }
 
 // Day and anytime actions. Returns null when the action is not an HMS one.
@@ -1502,6 +1594,10 @@ export function hmsAction(
   now: number,
 ): string | null {
   const s = hms(g);
+  if (isHof(g)) {
+    const result = hofAction(g, actor, c, now);
+    if (result !== null) return result;
+  }
   const me = actor.host ? null : person(g, actor.id);
   const day = [
     'discovery',

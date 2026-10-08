@@ -1,8 +1,14 @@
 import { role, type Game, type Team } from '../game/types.ts';
 
 export type Alignment = 'good' | 'evil';
-export const alignmentOf = (team: Team | undefined): Alignment =>
-  team === 'minion' || team === 'demon' ? 'evil' : 'good';
+// Travelers are neutral and win on their own condition.
+export type SeatAlignment = Alignment | 'neutral';
+export const alignmentOf = (team: Team | undefined): SeatAlignment =>
+  team === 'minion' || team === 'demon'
+    ? 'evil'
+    : team === 'traveler'
+      ? 'neutral'
+      : 'good';
 
 export type GameRecord = {
   id: string;
@@ -19,7 +25,7 @@ export type GameRecord = {
     player: string;
     name: string;
     role: string;
-    team: Alignment;
+    team: SeatAlignment;
     won: boolean;
     alive: boolean;
   }[];
@@ -59,7 +65,10 @@ export function deriveResult(
         name: p.name,
         role: p.role,
         team,
-        won: team === winner,
+        won:
+          team === 'neutral'
+            ? !!g.hms?.travelerWins?.includes(p.id)
+            : team === winner,
         alive: p.alive,
       };
     });

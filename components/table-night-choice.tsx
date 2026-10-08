@@ -7,6 +7,7 @@ import {
   NativeSelectOption,
 } from '@/components/ui/native-select';
 import type { GameView } from '@/lib/game/view';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Dialog,
   DialogContent,
@@ -56,6 +57,7 @@ export function TableNightChoice({
       .slice(0, prompt.count);
   const [picked, setPicked] = useState<string[]>(initial);
   const [question, setQuestion] = useState(prompt.choice?.text ?? '');
+  const [flag, setFlag] = useState(!!prompt.choice?.flag);
   const [guessRows, setGuessRows] = useState<
     { player: string; role: string }[]
   >(() =>
@@ -103,6 +105,7 @@ export function TableNightChoice({
                 target2: ids[1],
                 target3: ids[2],
                 ...(prompt.text ? { text: question.trim() } : {}),
+                ...(prompt.flag ? { flag } : {}),
                 ...(prompt.guesses ? { guesses: filledGuesses } : {}),
               }),
         }),
@@ -124,6 +127,7 @@ export function TableNightChoice({
     (picked[1] ?? '') === prompt.choice.target2 &&
     (picked[2] ?? '') === (prompt.choice.target3 ?? '') &&
     (!prompt.text || question.trim() === prompt.choice.text) &&
+    (!prompt.flag || flag === !!prompt.choice.flag) &&
     (!prompt.guesses ||
       JSON.stringify(filledGuesses) === JSON.stringify(prompt.choice.guesses));
   if (expired) return null;
@@ -306,6 +310,19 @@ export function TableNightChoice({
                 </button>
               ))}
             </div>
+          )}
+          {prompt.flag && (
+            <label className="check-field">
+              <Checkbox
+                checked={flag}
+                disabled={busy}
+                onCheckedChange={(v) => {
+                  setFlag(v === true);
+                  setError('');
+                }}
+              />
+              {prompt.flag}
+            </label>
           )}
           <output>
             {busy

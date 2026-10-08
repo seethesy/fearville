@@ -45,6 +45,7 @@ export async function statsFor(account: string): Promise<Stats> {
   const town = { wins: 0, losses: 0 },
     evil = { wins: 0, losses: 0 };
   for (const t of teams.results) {
+    if (t.team === 'neutral') continue; // Travelers are neither town nor evil
     const bucket = t.team === 'evil' ? evil : town;
     if (t.won) bucket.wins += t.n;
     else bucket.losses += t.n;

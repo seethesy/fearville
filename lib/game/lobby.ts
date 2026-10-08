@@ -51,6 +51,9 @@ export function returnToLobby(g: Game, now: number) {
       misses: undefined,
       marked: undefined,
       pref: undefined,
+      feared: undefined,
+      fearNight: undefined,
+      charge: undefined,
     }));
   Object.assign(g, fresh);
   return 'Return everyone to the lobby. Seats and access are preserved for the next game.';
