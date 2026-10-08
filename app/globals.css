@@ -1991,6 +1991,35 @@ h3,
 .reference-steps {
   line-height: 1.7;
 }
+.glossary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+  margin: 20px 0;
+}
+.glossary-term {
+  border-top: 1px solid var(--border);
+  padding-top: 16px;
+  scroll-margin-top: 20px;
+}
+.glossary-term:target {
+  border-top-color: var(--ring);
+}
+.glossary dt {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+.glossary dd {
+  margin: 0;
+  line-height: 1.7;
+}
+.glossary-example {
+  display: block;
+  margin-top: 6px;
+  font-style: italic;
+  color: var(--muted-foreground);
+}
 .reference-steps {
   list-style: decimal;
   padding-left: 24px;
@@ -2000,6 +2029,7 @@ h3,
   margin-bottom: 16px;
 }
 @media (max-width: 600px) {
+  .glossary,
   .rules-grid,
   .reference-role-grid {
     grid-template-columns: 1fr;

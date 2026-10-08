@@ -1,5 +1,6 @@
 import { RoleIcon } from './role-icon';
 import { ROLES, HMS_ROLES, HMS_FIRST, HMS_OTHER, role } from '@/lib/game/types';
+import { GLOSSARY } from '@/lib/game/glossary';
 
 const teams = [
   {
@@ -145,6 +146,7 @@ export function RulesReference({
     <div className="rules-reference">
       <nav className="reference-nav" aria-label="Rules and role sections">
         <a href="#how-to-play">How to play</a>
+        <a href="#glossary">Glossary</a>
         <a href="#using-fearville">Using Fearville</a>
         {teams.map((team) => (
           <a key={team.id} href={`#roles-${script ?? 'classic'}-${team.id}`}>
@@ -216,6 +218,35 @@ export function RulesReference({
           </a>
           . Character-specific rulings take precedence.
         </p>
+      </section>
+      <section
+        id="glossary"
+        className="reference-section"
+        aria-labelledby="glossary-title"
+      >
+        <p className="eyebrow">KEY TERMS</p>
+        <h2 id="glossary-title">Glossary</h2>
+        <p className="muted">
+          Role descriptions use these words with a precise meaning.
+        </p>
+        <dl className="glossary">
+          {GLOSSARY.map((t) => (
+            <div key={t.id} id={`glossary-${t.id}`} className="glossary-term">
+              <dt>{t.term}</dt>
+              <dd>
+                {t.definition}
+                {t.example && (
+                  <>
+                    {' '}
+                    <span className="glossary-example">
+                      Example: {t.example}
+                    </span>
+                  </>
+                )}
+              </dd>
+            </div>
+          ))}
+        </dl>
       </section>
       <section id="using-fearville" className="reference-section">
         <p className="eyebrow">AT THIS TABLE</p>
