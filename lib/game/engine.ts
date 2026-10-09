@@ -18,7 +18,6 @@ import {
   type Player,
   type Phase,
 } from './types.ts';
-import { startNightPoll, closeNightPoll } from './polls.ts';
 import { assignRandomRoles } from './assignment.ts';
 import { recapOf, returnToLobby } from './lobby.ts';
 import {
@@ -103,7 +102,6 @@ export function setPhase(g: Game, phase: Phase, at: number, seconds?: number) {
     delete g.gameEndedAt;
     delete g.mvpVotes;
   }
-  if (g.phase === 'night' && phase !== 'night') closeNightPoll(g);
   g.phase = phase;
   if (phase === 'ended') {
     g.gameEndedAt ??= at;
@@ -119,7 +117,7 @@ export function beginNight(g: Game, at: number) {
   g.nightChoices = {};
   g.nightChoiceDeadlines = {};
   g.nightIntroductions = {};
-  startNightPoll(g);
+  g.nightChoiceRound = uuid();
   g.done = [];
   g.deferredNightTasks = [];
   g.active = null;
@@ -157,7 +155,7 @@ export function nightChoiceTask(g: Game, player?: string) {
   const spec = choiceSpec(g, task)!;
   return {
     ...task,
-    round: g.nightPoll?.id ?? String(g.night),
+    round: g.nightChoiceRound ?? `${g.gameStartedAt ?? 0}:${g.night}`,
     count: spec.count,
     text: spec.text,
     guesses: spec.guesses,
@@ -544,26 +542,6 @@ function executeCommand(
       : 'Choice sent. Waiting for the Storyteller to confirm.';
   }
 
-  if (c.action === 'nightPoll') {
-    requireThat(!actor.host, 'Only seated players can answer the poll.');
-    person(g, actor.id);
-    const poll = g.nightPoll;
-    requireThat(
-      g.phase === 'night' && poll && poll.night === g.night,
-      'This night poll is closed.',
-    );
-    requireThat(
-      c.poll === poll.id,
-      'The night poll changed. Review the new question.',
-    );
-    const target = person(g, c.target);
-    poll.answers[actor.id] = target.id;
-    return (
-      'Save your private poll answer: ' +
-      target.name +
-      '. You can change it until dawn.'
-    );
-  }
   if (c.action === 'chat') {
     const channel = g.hms?.channel;
     const to =
@@ -626,7 +604,7 @@ function executeCommand(
       g.players.every((p) => state.players.some((q: Player) => q.id === p.id)),
       'Cannot rewind before a player joined. Correct seats manually.',
     );
-    delete g.nightPoll;
+    delete g.nightChoiceRound;
     delete g.nightChoices;
     delete g.nightChoiceDeadlines;
     delete g.nightIntroductions;
@@ -634,7 +612,6 @@ function executeCommand(
     delete g.nightChoiceTasks;
     delete g.script;
     delete g.dawnAnnouncement;
-    delete g.previousNightPoll;
     delete g.hms;
     delete g.gameEndedAt;
     delete g.mvpVotes;

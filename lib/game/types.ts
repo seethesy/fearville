@@ -689,6 +689,7 @@ export type Game = {
   nightIntroductions?: Record<string, { id: string; text: string }>;
   nightChoiceDeadlines?: Record<string, number>;
   nightChoiceDeadline?: number;
+  nightChoiceRound?: string;
   nightChoiceTasks?: {
     key: string;
     role: string;
@@ -706,13 +707,6 @@ export type Game = {
     playerIds?: string[];
   };
   assignmentSeed?: string;
-  nightPoll?: {
-    id: string;
-    night: number;
-    question: string;
-    answers: Record<string, string>;
-  };
-  previousNightPoll?: { night: number; question: string; winners: string[] };
   code: string;
   hostName: string;
   phase: Phase;
