@@ -7,11 +7,11 @@ Updated September 8, 2026. This guide replaces the previous Clocktower Table ins
 | Field | Value |
 |---|---|
 | App name | Fearville |
-| Website / homepage | https://fearville.phatsyloaf.chatgpt.site |
-| Privacy policy | https://fearville.phatsyloaf.chatgpt.site/privacy |
-| Google authorized redirect URI | https://fearville.phatsyloaf.chatgpt.site/api/accounts/callback/google |
-| Apple domain / subdomain | fearville.phatsyloaf.chatgpt.site |
-| Apple return URL | https://fearville.phatsyloaf.chatgpt.site/api/accounts/callback/apple |
+| Website / homepage | https://fearville.app |
+| Privacy policy | https://fearville.app/privacy |
+| Google authorized redirect URI | https://fearville.app/api/accounts/callback/google |
+| Apple domain / subdomain | fearville.app |
+| Apple return URL | https://fearville.app/api/accounts/callback/apple |
 
 Copy callback URLs without spaces or a trailing slash. The Google and Apple paths are different. This guide uses the current English console labels from the linked official documentation; a wizard may omit a step you have already completed.
 
@@ -39,8 +39,8 @@ Copy callback URLs without spaces or a trailing slash. The Google and Apple path
 ### C. Set branding links and check domain requirements
 
 1. Return to **Branding**. Under **App Domain**, use the homepage and privacy URLs in the table above. Save the form.
-2. If **Authorized domains** is required, use **Add domain** and supply the domain Google accepts for this hosted address, without `https://` or a path. Start with `fearville.phatsyloaf.chatgpt.site`; Google may require its registrable parent instead.
-3. If Google rejects the domain or requests ownership verification you cannot complete, stop at that error. Do not claim ownership of `chatgpt.site`. Send me the error text; production verification may require a domain you control and a hosting configuration that supports it.
+2. If **Authorized domains** is required, use **Add domain** and enter `fearville.app`, without `https://` or a path.
+3. Verify `fearville.app` as a DNS-level Domain property in Google Search Console using a Google account that is an Owner or Editor of the Google Cloud project.
 4. For public production branding, review **Verify Branding** / **View issues** if shown. Google requires verified ownership for the homepage domain and may require additional links, including terms. Fearville currently has a privacy page, but no terms page. Do not enter a nonexistent terms URL. Complete those requirements before publishing branding.
 
 [Google's branding and domain requirements](https://support.google.com/cloud/answer/15549049?hl=en)
@@ -52,7 +52,7 @@ Copy callback URLs without spaces or a trailing slash. The Google and Apple path
 3. Leave **Authorized JavaScript origins** empty for this implementation: the backend handles the code exchange. This is not a Google JavaScript SDK integration.
 4. Under **Authorized redirect URIs**, click **Add URI** and paste:
 
-   `https://fearville.phatsyloaf.chatgpt.site/api/accounts/callback/google`
+   `https://fearville.app/api/accounts/callback/google`
 
 5. Click **Create**. Save the **Client ID** and **Client secret** securely when displayed. Use **Download JSON** if offered; save the file outside the source repository.
 6. If the secret is no longer visible and you did not save it, open **Clients → your client** and use **Add Secret** to create and securely save a replacement. Do not delete working credentials as part of setup.
@@ -96,11 +96,11 @@ In the App ID's **Sign in with Apple → Configure/Edit** settings, classify Fea
 3. Select Fearville under **Primary App ID**.
 4. In the website configuration, enter **Domains and Subdomains**:
 
-   `fearville.phatsyloaf.chatgpt.site`
+   `fearville.app`
 
 5. Enter **Return URLs**:
 
-   `https://fearville.phatsyloaf.chatgpt.site/api/accounts/callback/apple`
+   `https://fearville.app/api/accounts/callback/apple`
 
 6. Click **Done**, then **Continue**, then **Save**. Reopen the configuration and check both values were saved.
 
@@ -124,7 +124,7 @@ The domain field has no scheme or path. The return URL includes both. Apple's cu
 2. In the left project navigator, click the blue project icon, then select **ClocktowerTable** under **TARGETS**.
 3. Open **Signing & Capabilities**, select your team, and enable automatic signing. Set **Bundle Identifier** to the exact App ID from section A.
 4. Click **+ Capability**, search for **Sign in with Apple**, and add it. [Apple's Xcode guidance](https://developer.apple.com/documentation/xcode/configuring-sign-in-with-apple)
-5. Check the target's **Info** settings or `ClocktowerTable/Info.plist`: `ClocktowerAPIURL` must be `https://fearville.phatsyloaf.chatgpt.site`. The updated project already contains this value.
+5. Check the target's **Info** settings or `ClocktowerTable/Info.plist`: `ClocktowerAPIURL` must be `https://fearville.app`. The updated project already contains this value.
 6. Keep the existing URL scheme `clocktowertable`. The app uses `clocktowertable://signin` internally to return from its authentication browser. This internal scheme is not the website address, and must not replace Google's or Apple's HTTPS callback.
 7. Build and run on your iPhone. A previously built app must be rebuilt to pick up the new backend address. Follow the separate TestFlight guide for archive/upload steps.
 

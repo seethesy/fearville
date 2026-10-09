@@ -5,7 +5,7 @@ import { random, appleSecret, decryptToken, type Provider } from './oidc';
 import { linkSeatRecords } from '@/lib/social/results';
 import { pendingCounts } from '@/lib/social/pending';
 export const accountCookie = 'ct_account';
-export const origin = 'https://fearville.phatsyloaf.chatgpt.site';
+export const origin = 'https://fearville.app';
 export function config(key: string) {
   const value = (env as unknown as Record<string, unknown>)[key];
   return typeof value === 'string' ? value.trim() : '';
