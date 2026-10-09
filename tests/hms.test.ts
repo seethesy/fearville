@@ -232,7 +232,7 @@ void test('Holy Moon and Stars starts, deals privately, and follows the Night 1 
 void test('setup checks counts, the Moonshiner, hidden Villagers, and the script', () => {
   const g = newGame('HMS', 'Host');
   g.script = 'holyMoonStars';
-  g.players = ['washerwoman', 'chef', 'empath', 'poisoner', 'imp'].map(
+  g.players = ['sheriff', 'teacher', 'judge', 'basilisk', 'monster'].map(
     (r, i) => ({ ...newPlayer('P' + i, i + 1), role: r, shown: r }),
   );
   assert.throws(

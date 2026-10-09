@@ -11,6 +11,7 @@ import { incomingInvites, sessionInvites } from './invites';
 import { receivedRatings, ratingContext } from './ratings';
 import { gamesTogether, recentGames, statsFor, type Stats } from './stats';
 import { normalizeHandle } from './derive';
+import { canView, privacyFor } from './privacy';
 
 export type Friend = PublicAccount & {
   since: number;
@@ -20,14 +21,16 @@ export type Friend = PublicAccount & {
 
 // The signed-in player's whole social picture, for the Friends page.
 export async function socialView(me: string, now: number) {
-  const [lists, together, invites, stats, recent, ratings] = await Promise.all([
-    friendLists(me),
-    gamesTogether(me),
-    incomingInvites(me, now),
-    statsFor(me),
-    recentGames(me),
-    receivedRatings(me),
-  ]);
+  const [lists, together, invites, stats, recent, ratings, privacy] =
+    await Promise.all([
+      friendLists(me),
+      gamesTogether(me),
+      incomingInvites(me, now),
+      statsFor(me),
+      recentGames(me),
+      receivedRatings(me),
+      privacyFor(me),
+    ]);
   return {
     friends: lists.friends.map<Friend>((f) => ({
       ...f,
@@ -41,19 +44,22 @@ export async function socialView(me: string, now: number) {
     stats,
     recent,
     ratings,
+    privacy,
   };
 }
 
 export type Profile = {
   account: PublicAccount;
   relation: RelationStatus | 'self';
-  games: number;
+  canRequest: boolean;
+  games: number | null;
+  recent: Awaited<ReturnType<typeof recentGames>> | null;
   stats: Stats | null;
   together: number;
 };
 
-// A public profile: anyone signed in sees the handle and games played;
-// friends (and the player themselves) see the full record.
+// Profile identity is discoverable unless blocked; all record data is gated
+// separately by the owner's statistics and history visibility.
 export async function profileView(
   viewer: string,
   handleValue: unknown,
@@ -66,14 +72,20 @@ export async function profileView(
       ? 'self'
       : relationStatus(viewer, await relations(viewer, account.id));
   if (relation === 'unavailable') throw Error('No player has that handle.');
-  const stats = await statsFor(account.id);
-  const full = relation === 'self' || relation === 'friends';
+  const privacy = await privacyFor(account.id);
+  const full = canView(privacy.stats, relation);
+  const stats = full ? await statsFor(account.id) : null;
+  const recent = canView(privacy.history, relation)
+    ? await recentGames(account.id)
+    : null;
   const together = full ? await gamesTogether(viewer) : null;
   return {
     account,
     relation,
-    games: stats.games + stats.storyteller.games,
-    stats: full ? stats : null,
+    canRequest: relation === 'none' && privacy.requests === 'everyone',
+    games: stats ? stats.games + stats.storyteller.games : null,
+    stats,
+    recent,
     together: together?.get(account.id)?.games || 0,
   };
 }
@@ -81,10 +93,16 @@ export async function profileView(
 // What a seated player needs from the social system while at a table: their
 // friends with invitation status (lobby), and the rating context (ended).
 export async function tableView(me: string, code: string, now: number) {
-  const [lists, sent, rating] = await Promise.all([
+  const [lists, sent, rating, preferences] = await Promise.all([
     friendLists(me),
     sessionInvites(code, now),
     ratingContext(me, code, now),
+    database()
+      .prepare(
+        "SELECT s.account,s.game_invites AS invites FROM account_settings s JOIN friendships f ON (f.requester=s.account AND f.addressee=?) OR (f.addressee=s.account AND f.requester=?) WHERE f.status='accepted'",
+      )
+      .bind(me, me)
+      .all<{ account: string; invites: string }>(),
   ]);
   const seated = await database()
     .prepare('SELECT account FROM account_seats WHERE code=?')
@@ -95,6 +113,9 @@ export async function tableView(me: string, code: string, now: number) {
     friends: lists.friends.map((f) => ({
       ...f,
       seated: present.has(f.id),
+      invitesAllowed: !preferences.results.some(
+        (p) => p.account === f.id && p.invites === 'nobody',
+      ),
       invite: sent.find((i) => i.account === f.id) || null,
     })),
     rating,

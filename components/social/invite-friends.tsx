@@ -74,6 +74,8 @@ export function InviteFriends({ code }: { code: string }) {
               </div>
               {f.seated ? (
                 <span className="status-pill">At the table</span>
+              ) : !f.invitesAllowed ? (
+                <span className="status-pill">Invitations disabled</span>
               ) : f.invite?.status === 'pending' ? (
                 <span className="status-pill">Invited</span>
               ) : (

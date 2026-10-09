@@ -1,5 +1,6 @@
 import { database } from '@/db';
 import { normalizeHandle } from './derive';
+import { privacyFor } from './privacy';
 
 export type PublicAccount = { id: string; name: string; handle: string | null };
 type Relation = { requester: string; addressee: string; status: string };
@@ -76,16 +77,9 @@ export async function sendRequest(
     throw Error('A friend request cannot be sent to this player.');
   if (status === 'friends') throw Error('You are already friends.');
   if (status === 'requested') throw Error('Your request is already waiting.');
+  if ((await privacyFor(target.id)).requests === 'nobody')
+    throw Error('This player is not accepting friend requests.');
   const db = database();
-  if (status === 'incoming') {
-    await db
-      .prepare(
-        "UPDATE friendships SET status='accepted',updated=? WHERE requester=? AND addressee=? AND status='pending'",
-      )
-      .bind(now, target.id, me)
-      .run();
-    return { account: target, status: 'friends' as const };
-  }
   const outgoing = await db
     .prepare(
       "SELECT COUNT(*) AS n FROM friendships WHERE requester=? AND status='pending'",
@@ -94,13 +88,35 @@ export async function sendRequest(
     .first<{ n: number }>();
   if ((outgoing?.n || 0) >= 50)
     throw Error('You have too many waiting requests. Cancel some first.');
-  await db
-    .prepare(
-      "INSERT INTO friendships (requester,addressee,status,created,updated) VALUES (?,?,'pending',?,?) ON CONFLICT(requester,addressee) DO NOTHING",
-    )
-    .bind(me, target.id, now, now)
-    .run();
-  return { account: target, status: 'requested' as const };
+  await db.batch([
+    db
+      .prepare(
+        "UPDATE friendships SET status='accepted',updated=? WHERE requester=? AND addressee=? AND status='pending' AND NOT EXISTS (SELECT 1 FROM friendships b WHERE b.status='blocked' AND ((b.requester=? AND b.addressee=?) OR (b.requester=? AND b.addressee=?)))",
+      )
+      .bind(now, target.id, me, me, target.id, target.id, me),
+    // Each batch sees the opposite request or block atomically. Simultaneous
+    // mutual requests produce one accepted friendship, never two rows.
+    db
+      .prepare(
+        "INSERT INTO friendships (requester,addressee,status,created,updated) SELECT ?,?,'pending',?,? WHERE NOT EXISTS (SELECT 1 FROM friendships WHERE (requester=? AND addressee=?) OR (requester=? AND addressee=?)) AND COALESCE((SELECT friend_requests FROM account_settings WHERE account=?),'everyone')='everyone' AND (SELECT COUNT(*) FROM friendships WHERE requester=? AND status='pending')<50",
+      )
+      .bind(
+        me,
+        target.id,
+        now,
+        now,
+        me,
+        target.id,
+        target.id,
+        me,
+        target.id,
+        me,
+      ),
+  ]);
+  const current = relationStatus(me, await relations(me, target.id));
+  if (current !== 'friends' && current !== 'requested')
+    throw Error('A friend request cannot be sent to this player.');
+  return { account: target, status: current };
 }
 
 export async function acceptRequest(me: string, other: string, now: number) {
@@ -124,13 +140,20 @@ export async function dismissRequest(me: string, other: string) {
 }
 
 export async function removeFriend(me: string, other: string) {
-  const r = await database()
-    .prepare(
-      "DELETE FROM friendships WHERE status='accepted' AND ((requester=? AND addressee=?) OR (requester=? AND addressee=?))",
-    )
-    .bind(me, other, other, me)
-    .run();
-  if (r.meta.changes === 0)
+  const db = database();
+  const rows = await db.batch([
+    db
+      .prepare(
+        "DELETE FROM friendships WHERE status='accepted' AND ((requester=? AND addressee=?) OR (requester=? AND addressee=?))",
+      )
+      .bind(me, other, other, me),
+    db
+      .prepare(
+        "UPDATE session_invites SET status='revoked' WHERE status='pending' AND ((sender=? AND recipient=?) OR (sender=? AND recipient=?))",
+      )
+      .bind(me, other, other, me),
+  ]);
+  if (rows[0].meta.changes === 0)
     throw Error('You are not friends with this player.');
 }
 

@@ -1,3 +1,4 @@
+import { claimSeats } from './claim-seats.mjs';
 import assert from 'node:assert/strict';
 const base = process.env.CT_TEST_URL || 'http://localhost:3000';
 async function call(path, token, body) {
@@ -13,7 +14,7 @@ async function call(path, token, body) {
   assert.equal(r.status, 200, JSON.stringify(data));
   return data;
 }
-for (const script of ['classic', 'holyMoonStars']) {
+for (const script of ['horrors', 'holyMoonStars']) {
   const host = await call('/api/session', '', {
     action: 'create',
     name: 'Introduction QA',
@@ -27,6 +28,7 @@ for (const script of ['classic', 'holyMoonStars']) {
         name: `Intro ${i + 1}`,
       }),
     );
+  await claimSeats(base, seats.map((s) => s.token));
   let g = await call('/api/game', host.token);
   async function act(c) {
     g = (await call('/api/game', host.token, { ...c, version: g.version }))
@@ -34,15 +36,15 @@ for (const script of ['classic', 'holyMoonStars']) {
   }
   await act({ action: 'setScript', script });
   const roles =
-    script === 'classic'
+    script === 'horrors'
       ? [
-          'washerwoman',
-          'librarian',
-          'chef',
-          'monk',
-          'soldier',
-          'poisoner',
-          'imp',
+          'sheriff',
+          'hoflibrarian',
+          'teacher',
+          'doctor',
+          'lostwanderer',
+          'basilisk',
+          'monster',
         ]
       : [
           'astronaut',
@@ -64,8 +66,8 @@ for (const script of ['classic', 'holyMoonStars']) {
       ghost: true,
     });
   const bluffs =
-    script === 'classic'
-      ? ['mayor', 'empath', 'virgin']
+    script === 'horrors'
+      ? ['bodyguard', 'judge', 'vigilante']
       : ['astrologist', 'mystic', 'priest'];
   await act({
     action: 'configure',

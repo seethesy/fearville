@@ -1,4 +1,5 @@
 'use client';
+import { GlossaryText } from '@/components/glossary-text';
 import { useEffect, useRef, useState } from 'react';
 import { useMessagePreferences } from './message-preferences';
 import { role } from '@/lib/game/types';
@@ -202,6 +203,10 @@ export function TableMessages({
       <section className="conversation" aria-label={title}>
         <header>
           <h2>{title}</h2>
+          <p className="hint">
+            Session messages are revealed to everyone in the recap after the
+            game ends.
+          </p>
           <p className="muted">
             {to === 'all'
               ? 'Messages here are visible to every player.'
@@ -270,7 +275,7 @@ export function TableMessages({
                             ? player?.name
                             : 'Storyteller'}
               </small>
-              <p>{m.text}</p>
+              <p>{m.kind === 'info' ? <GlossaryText text={m.text} /> : m.text}</p>
               <time dateTime={new Date(m.at).toISOString()}>
                 {new Date(m.at).toLocaleTimeString([], {
                   hour: '2-digit',

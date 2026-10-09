@@ -1,4 +1,5 @@
 'use client';
+import { GlossaryText } from '@/components/glossary-text';
 import { useEffect, useState } from 'react';
 import { Check, X } from 'lucide-react';
 import { role, scriptRoles } from '@/lib/game/types';
@@ -139,7 +140,7 @@ export function TableNightChoice({
           ? 'You passed. You can change this until the timer ends.'
           : prompt.choice
             ? 'Choice sent. The Storyteller will confirm your action.'
-            : what}
+            : <GlossaryText text={what} />}
       </p>
       <button className="primary" onClick={() => setOpen(true)}>
         {prompt.choice ? 'View or change choice' : 'Make your choice'}
@@ -149,7 +150,7 @@ export function TableNightChoice({
           <DialogHeader>
             <DialogTitle>Your night choice</DialogTitle>
             <DialogDescription>
-              {what} Your choice is sent privately to the Storyteller, who
+              <GlossaryText text={what} /> Your choice is sent privately to the Storyteller, who
               confirms the action.
             </DialogDescription>
           </DialogHeader>

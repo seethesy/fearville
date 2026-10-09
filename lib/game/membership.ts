@@ -55,9 +55,6 @@ export function removeMember(
     g.players = g.players
       .filter((q) => q.id !== p.id)
       .sort((a, b) => a.seat - b.seat);
-    g.players.forEach((q, i) => {
-      q.seat = i + 1;
-    });
     if (g.redHerring === p.id) g.redHerring = '';
   } else p.departed = true;
   finishVotingIfReady(g, now);

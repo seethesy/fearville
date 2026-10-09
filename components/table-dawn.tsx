@@ -60,7 +60,6 @@ export function TableDawn({ game }: { game: GameView }) {
                   <PlayerAvatar
                     avatar={player?.avatar}
                     id={player?.id ?? name}
-                    frame={player?.portraitFrame}
                     dead
                   />
                   <DeathEffect effect={player?.deathEffect} />

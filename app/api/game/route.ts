@@ -8,7 +8,8 @@ import {
 } from '@/lib/game/store';
 import { tick, execute, requireThat } from '@/lib/game/engine';
 import { view } from '@/lib/game/view';
-import { syncResult } from '@/lib/social/results';
+import { syncResult, syncMvp, voidResult } from '@/lib/social/results';
+import { prepareProgression } from '@/lib/social/start';
 export async function GET(r: Request) {
   try {
     const { actor, code } = await auth(r);
@@ -26,7 +27,14 @@ export async function GET(r: Request) {
       // Ended games are recorded here as well, so a result that failed to
       // record at the moment the game ended is recorded on the next poll.
       if (game.phase === 'ended')
-        await syncResult(game, game.gameStartedAt ?? created, now);
+        await syncResult(
+          game,
+          game.gameStartedAt ?? created,
+          now,
+          version + Number(changed),
+        );
+      else if (game.recaps?.length)
+        await syncMvp(game, version + Number(changed));
       const requested = new URL(r.url).searchParams.get('pov');
       const pov =
         actor.host && game.sandbox
@@ -71,6 +79,7 @@ export async function POST(r: Request) {
       const { game, version, created } = await read(code);
       const now = Date.now();
       const before = game.phase;
+      const resultStarted = game.gameStartedAt ?? created;
       const pov =
         actor.host && game.sandbox
           ? game.players.find((p) => p.id === c.pov && p.dummy)
@@ -84,7 +93,16 @@ export async function POST(r: Request) {
         );
       }
       if (
-        !['vote', 'chat', 'nightPoll', 'nightChoice'].includes(c.action) &&
+        ![
+          'vote',
+          'chat',
+          'nightChoice',
+          'mvpVote',
+          'claimSeat',
+          'leaveSeat',
+          'saveNotebook',
+          'returnLobby',
+        ].includes(c.action) &&
         c.version !== version
       )
         return json(
@@ -92,27 +110,32 @@ export async function POST(r: Request) {
           409,
         );
       if (c.action === 'returnLobby' && before === 'ended')
-        await syncResult(game, game.gameStartedAt ?? created, now);
+        await syncResult(game, game.gameStartedAt ?? created, now, version);
       const summary = execute(game, actionActor, c, now);
+      if (c.action === 'start') await prepareProgression(game);
       if (c.preview) return json({ summary, version });
-      if (!['chat', 'returnLobby', 'setAvatar'].includes(c.action)) {
-        const player = game.players.find((p) => p.id === actionActor.id);
-        game.decisions ??= [];
-        game.decisions.push({
-          id: crypto.randomUUID(),
-          at: now,
-          actor: actionActor.host ? game.hostName : (player?.name ?? 'Player'),
-          text: summary,
-        });
-      }
       if (!(await save(game, version))) continue;
       // Record the result when the game ends; withdraw it if the Storyteller
       // rewinds out of the ended phase. Both are idempotent.
       if (
+        before === 'ended' &&
+        game.phase !== 'ended' &&
+        c.action !== 'returnLobby'
+      )
+        await voidResult(code, resultStarted, version + 1);
+      else if (
         c.action !== 'returnLobby' &&
         (game.phase === 'ended' || before === 'ended')
       )
-        await syncResult(game, game.gameStartedAt ?? created, now);
+        await syncResult(
+          game,
+          game.gameStartedAt ?? created,
+          now,
+          version + 1,
+          true,
+        );
+      if (c.action === 'mvpVote' || c.action === 'returnLobby')
+        await syncMvp(game, version + 1);
       return json({
         summary,
         game: view(

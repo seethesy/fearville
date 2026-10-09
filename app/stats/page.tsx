@@ -78,8 +78,9 @@ export default function StatsPage() {
               <Record stats={view.stats} />
               <p className="hint">
                 Games count once they end. A seat joined as a guest is added
-                when you save it to your account. Your friends can see this
-                record; other players see only how many games you have played.
+                when you save it to your account. MVP bonus XP updates as votes
+                arrive. Manage statistics and history visibility in your
+                account.
               </p>
               <Link className="quiet-link" href="/friends">
                 Friends & invitations →

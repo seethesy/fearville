@@ -3,6 +3,7 @@
 // Storyteller resolution, dawn, and a public Vigilante declaration.
 // Requires the development server (see README).
 import assert from 'node:assert/strict';
+import { claimSeats } from './claim-seats.mjs';
 const base = process.env.CT_TEST_URL || 'http://localhost:3000';
 async function call(path, token, body) {
   const r = await fetch(base + path, {
@@ -38,6 +39,7 @@ for (let i = 0; i < 9; i++)
   joined.push(await call('/api/session', '', { action: 'join', code, name: 'Townie ' + (i + 1) }));
 assert.ok(joined.every((r) => r.status === 200));
 const tokens = joined.map((r) => r.data.token);
+await claimSeats(base, tokens);
 let state;
 async function action(payload, token = host) {
   state = (await call('/api/game', host)).data;

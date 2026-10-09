@@ -19,13 +19,13 @@ function game(roles: string[]) {
     role: r,
     shown: r,
   }));
-  g.bluffs = ['monk', 'soldier', 'mayor'];
+  g.bluffs = ['doctor', 'watchman', 'bodyguard'];
   g.redHerring = g.players[0].id;
   return g;
 }
 
 void test('nothing is recorded before a game ends or for an abandoned lobby', () => {
-  const g = game(['washerwoman', 'librarian', 'chef', 'poisoner', 'imp']);
+  const g = game(['sheriff', 'hoflibrarian', 'teacher', 'basilisk', 'monster']);
   assert.equal(deriveResult(g, 1, 2), null);
   execute(g, host, { action: 'end', winner: 'good' }, 100);
   assert.equal(g.phase, 'ended');
@@ -33,7 +33,7 @@ void test('nothing is recorded before a game ends or for an abandoned lobby', ()
 });
 
 void test('a finished game records final alignment, roles, and the winner', () => {
-  const g = game(['washerwoman', 'librarian', 'chef', 'poisoner', 'imp']);
+  const g = game(['sheriff', 'hoflibrarian', 'teacher', 'basilisk', 'monster']);
   execute(g, host, { action: 'start' }, 100);
   g.players[2].alive = false;
   execute(g, host, { action: 'end', winner: 'evil' }, 200);
@@ -47,38 +47,17 @@ void test('a finished game records final alignment, roles, and the winner', () =
   assert.deepEqual(
     record.seats.map((s) => [s.role, s.team, s.won, s.alive]),
     [
-      ['washerwoman', 'good', false, true],
-      ['librarian', 'good', false, true],
-      ['chef', 'good', false, false],
-      ['poisoner', 'evil', true, true],
-      ['imp', 'evil', true, true],
+      ['sheriff', 'good', false, true],
+      ['hoflibrarian', 'good', false, true],
+      ['teacher', 'good', false, false],
+      ['basilisk', 'evil', true, true],
+      ['monster', 'evil', true, true],
     ],
   );
 });
 
-void test('the Drunk records as good and a promoted Minion records as the Imp', () => {
-  const g = game(['drunk', 'librarian', 'chef', 'scarletwoman', 'imp']);
-  g.players[0].shown = 'monk';
-  execute(
-    g,
-    host,
-    { action: 'start', override: true, reason: 'Test Storyteller ruling' },
-    100,
-  );
-  g.players[3].role = 'imp';
-  g.players[4].alive = false;
-  execute(g, host, { action: 'end', winner: 'good' }, 200);
-  const record = deriveResult(g, 1, 200);
-  assert.ok(record);
-  assert.equal(record.seats[0].role, 'drunk');
-  assert.equal(record.seats[0].team, 'good');
-  assert.equal(record.seats[0].won, true);
-  assert.equal(record.seats[3].role, 'imp');
-  assert.equal(record.seats[3].won, false);
-});
-
 void test('winner labels with rulings still map to a team', () => {
-  assert.equal(winnerOf('Evil · Saint execution'), 'evil');
+  assert.equal(winnerOf('Evil · Banshee execution'), 'evil');
   assert.equal(winnerOf('Good'), 'good');
   assert.equal(winnerOf(''), null);
 });

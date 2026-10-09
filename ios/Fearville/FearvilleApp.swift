@@ -7,7 +7,7 @@ extension Color {
     static let tablePanel = Color(red: 43/255, green: 43/255, blue: 43/255)
     static let tableHighlight = Color(red: 246/255, green: 162/255, blue: 101/255)
 }
-@main struct ClocktowerTableApp: App {
+@main struct FearvilleApp: App {
     @StateObject private var store = TableStore()
     var body: some Scene {
         WindowGroup { RootView().environmentObject(store).preferredColorScheme(.dark).tint(.tableAccent) }
@@ -44,7 +44,7 @@ struct WelcomeView: View {
                 VStack(alignment: .leading, spacing: 28) {
                     Text("FEARVILLE").font(.caption.bold()).tracking(3).foregroundStyle(Color.tableHighlight)
                     Text("A seat at\nthe table.").font(.system(size: 52, design: .serif))
-                    Text("Trouble Brewing · In person").foregroundStyle(.secondary)
+                    Text("In person").foregroundStyle(.secondary)
                     if let account = store.accountState?.account {
                         Text("Signed in as " + account.name)
                         Button("Account & saved games") { showAccount = true }
@@ -69,7 +69,7 @@ struct WelcomeView: View {
                     }.buttonStyle(.borderedProminent).controlSize(.large).frame(maxWidth: .infinity)
                     .disabled(store.working || (mode == "restore" ? recovery.isEmpty : name.trimmingCharacters(in: .whitespaces).isEmpty || (mode == "join" && code.count != 6)))
                     if !store.error.isEmpty { Text(store.error).foregroundStyle(.red).accessibilityAddTraits(.updatesFrequently) }
-                    Text("Unofficial companion for Blood on the Clocktower. Keep the app open during play to receive information.").font(.footnote).foregroundStyle(.secondary)
+                    Text("Keep the app open during play to receive information.").font(.footnote).foregroundStyle(.secondary)
                 }.textFieldStyle(.roundedBorder).padding(28)
             }.background(Color.tableBackground).toolbarBackground(Color.tableBackground, for: .navigationBar)
             .task { await store.refreshAccount() }
@@ -86,7 +86,7 @@ struct GameView: View {
             NavigationStack { FlowView(game: game, selected: $selected).navigationTitle(game.phaseLabel).navigationBarTitleDisplayMode(.inline) }.tabItem { Text("Game") }
             NavigationStack { SeatsView(game: game, selected: $selected).navigationTitle("Seats") }.tabItem { Text("Seats") }
             NavigationStack { MessagesView(game: game, selected: $selected).navigationTitle("Messages") }.tabItem { Text("Messages") }
-            NavigationStack { ScriptView(script: game.script ?? "classic").navigationTitle(game.scriptName ?? "Fearville Classic") }.tabItem { Text("Script") }
+            NavigationStack { ScriptView(script: game.script ?? "horrors").navigationTitle(game.scriptName ?? "Horrors of Fearville") }.tabItem { Text("Script") }
             NavigationStack { ControlView(game: game, selected: $selected).navigationTitle(game.host ? "Storyteller" : "Session") }.tabItem { Text("Controls") }
         }
         .sheet(item: $selected) { action in ActionView(action: action).environmentObject(store) }
@@ -113,7 +113,7 @@ struct FlowView: View {
             if let current = game.glimpse { Section("Sphinx") { Text("Your glimpse of every role is open until the night choice timer ends."); Button("View glimpse") { glimpse = current } } }
             Section {
                 HStack(alignment: .top) {
-                    VStack(alignment: .leading, spacing: 6) { Text(game.phase == "night" ? "Night \(game.night)" : game.day > 0 ? "Day \(game.day)" : "Gather your town.").font(.largeTitle.weight(.regular)); Text((game.scriptName ?? "Fearville Classic").uppercased()).font(.caption).tracking(2).foregroundStyle(Color.tableHighlight) }
+                    VStack(alignment: .leading, spacing: 6) { Text(game.phase == "night" ? "Night \(game.night)" : game.day > 0 ? "Day \(game.day)" : "Gather your town.").font(.largeTitle.weight(.regular)); Text((game.scriptName ?? "Horrors of Fearville").uppercased()).font(.caption).tracking(2).foregroundStyle(Color.tableHighlight) }
                     Spacer()
                     TimelineView(.periodic(from: .now, by: 1)) { context in
                         let seconds = max(0, Int(ceil(game.deadline.map { $0 / 1000 - context.date.timeIntervalSince1970 - store.offset } ?? game.remaining)))
@@ -131,12 +131,23 @@ struct FlowView: View {
             }
             if let character = game.character {
                 Section("Your private character") {
-                    if reveal { Text(character.name).font(.title2); Text(character.alignment.uppercased() + " TEAM").font(.caption).foregroundStyle(Color.tableHighlight); Text(character.description) }
+                    if reveal { Text(character.name).font(.title2); Text(character.alignment.uppercased() + " TEAM").font(.caption).foregroundStyle(Color.tableHighlight); GlossaryText(text: character.description) }
                     Button(reveal ? "Hide character" : "Reveal my character") { reveal.toggle() }
                 }
             }
             if !game.tasks.isEmpty {
-                Section("Night order") { ForEach(game.tasks) { task in HStack { Text(task.done ? "✓" : "·"); Text(task.name).foregroundStyle(task.done ? .secondary : .primary); Spacer(); if task.id == game.tasks.first(where: { !$0.done })?.id { Text("NEXT").font(.caption).foregroundStyle(Color.tableHighlight) } } }
+                Section("Night order") {
+                    ForEach(game.tasks) { task in
+                        HStack {
+                            Text(task.done ? "✓" : "·")
+                            Text(task.name).foregroundStyle(task.done ? .secondary : .primary)
+                            Spacer()
+                            if task.id == game.tasks.first(where: { !$0.done })?.id {
+                                Text("NEXT").font(.caption).foregroundStyle(Color.tableHighlight)
+                            }
+                        }
+                    }
+                }
             }
             Section("Actions") {
                 ForEach(game.controls.filter { !["chat","edit","configure","undo","rewind","end","overridePhase"].contains($0.action) }) { action in Button(action.title) { selected = action }.disabled(!store.online) }
@@ -170,7 +181,7 @@ struct SeatsView: View {
                 if player.hasNominated { Text("Nomination used today").font(.caption) }
                 if player.poisoned == true { Text("POISONED").foregroundStyle(.orange) }
                 if player.feared == true { Text("FEARED").foregroundStyle(.orange) }
-                if player.protected == true { Text("MONK PROTECTION").foregroundStyle(Color.tableHighlight) }
+                if player.protected == true { Text("PROTECTED").foregroundStyle(Color.tableHighlight) }
                 if let notes = player.notes, !notes.isEmpty { Text(notes) }
                 if let action = game.controls.first(where: { $0.action == "edit" && $0.fields.first?.value?.text == player.id }) { Button("Edit seat & character") { selected = action }.disabled(!store.online) }
             }.padding(.vertical, 8)
@@ -190,31 +201,68 @@ struct MessagesView: View {
                 VStack(alignment: .leading, spacing: 8) {
                     HStack { Text(game.name(message.from)).bold(); Spacer(); Text(Date(timeIntervalSince1970: message.at / 1000), style: .time).font(.caption) }
                     Text(message.to == "all" ? "Everyone" : "Private").font(.caption).foregroundStyle(.secondary)
-                    Text(message.text).textSelection(.enabled)
+                    if message.kind == "info" { GlossaryText(text: message.text) } else { Text(message.text).textSelection(.enabled) }
                 }.padding(.vertical, 6)
             }
             if game.messages.isEmpty { Text("No messages yet.").foregroundStyle(.secondary) }
         }.scrollContentBackground(.hidden).background(Color.tableBackground)
     }
 }
-struct GlossaryEntry: Identifiable { let term: String; let definition: String; let example: String?; var id: String { term } }
-// Keep in sync with lib/game/glossary.ts (checked by tests/glossary.test.ts).
-let GLOSSARY: [GlossaryEntry] = [
-    GlossaryEntry(term: "Fear", definition: "A feared player’s ability malfunctions, exactly as if they were poisoned or drunk. They are not told. They still wake and make choices, but their ability has no effect and anything they learn may be false. Fear lasts only as long as the ability that caused it says.", example: nil),
-    GlossaryEntry(term: "Visit", definition: "When a player with a night ability chooses another player, they visit that player, unless the ability says otherwise. A feared player still visits. If a visit is redirected, it lands on the new player instead.", example: nil),
-    GlossaryEntry(term: "Save", definition: "A saved player cannot die that night. A save stops every attempt to kill that player that night, even several at once. Saves only work at night, and players can never save themselves.", example: nil),
-    GlossaryEntry(term: "Learn", definition: "The Storyteller privately tells you information that players cannot normally access. This is the main ability of information roles. If you are feared, poisoned or drunk, what you learn may be false.", example: nil),
-    GlossaryEntry(term: "Declare", definition: "An official public statement made during the day. If you are asked to declare at night, wait until morning to make your declaration.", example: "“I am the Vigilante and I declare that I want to kill Player A.”"),
-    GlossaryEntry(term: "Neighbor", definition: "A player sitting directly next to you; everyone has two. Neighbors include both living and dead players unless an ability says otherwise, for example “living neighbors”.", example: nil)
-]
+// Generated reference data use the same definitions and variants as the web.
+struct GlossaryEntry: Decodable, Identifiable { let id: String; let term: String; let definition: String; let example: String? }
+struct GlossaryData: Decodable { let terms: [GlossaryEntry]; let forms: [String: String] }
+let glossaryData: GlossaryData = {
+    guard let url = Bundle.main.url(forResource: "glossary", withExtension: "json"), let data = try? Data(contentsOf: url), let result = try? JSONDecoder().decode(GlossaryData.self, from: data) else { return GlossaryData(terms: [], forms: [:]) }
+    return result
+}()
+let GLOSSARY = glossaryData.terms
+struct GlossaryText: View {
+    let text: String
+    @State private var selected: GlossaryEntry?
+    private var attributed: AttributedString {
+        let forms = glossaryData.forms.keys.sorted { $0.count > $1.count }.map { NSRegularExpression.escapedPattern(for: $0) }.joined(separator: "|")
+        guard !forms.isEmpty, let pattern = try? NSRegularExpression(pattern: "(?<![\\p{L}\\p{N}_])(" + forms + ")(?![\\p{L}\\p{N}_])", options: [.caseInsensitive]) else { return AttributedString(text) }
+        let source = text as NSString
+        var result = AttributedString(), last = 0, seen = Set<String>()
+        for match in pattern.matches(in: text, range: NSRange(location: 0, length: source.length)) {
+            let word = source.substring(with: match.range)
+            guard let id = glossaryData.forms[word.lowercased()], !seen.contains(id), GLOSSARY.contains(where: { $0.id == id }) else { continue }
+            seen.insert(id)
+            result.append(AttributedString(source.substring(with: NSRange(location: last, length: match.range.location - last))))
+            var term = AttributedString(word)
+            term.link = URL(string: "fearville-glossary://" + id)
+            term.underlineStyle = .single
+            result.append(term)
+            last = match.range.location + match.range.length
+        }
+        result.append(AttributedString(source.substring(from: last)))
+        return result
+    }
+    var body: some View {
+        Text(attributed)
+            .environment(\.openURL, OpenURLAction { url in
+                guard url.scheme == "fearville-glossary", let id = url.host, let entry = GLOSSARY.first(where: { $0.id == id }) else { return .discarded }
+                selected = selected?.id == id ? nil : entry
+                return .handled
+            })
+            .popover(item: $selected) { entry in
+                VStack(alignment: .leading, spacing: 10) {
+                    Text(entry.term).font(.headline)
+                    Text(entry.definition)
+                    if let example = entry.example { Text("Example: " + example).italic() }
+                    Button("Close definition") { selected = nil }
+                }.padding().frame(maxWidth: 320).presentationCompactAdaptation(.popover)
+            }
+    }
+}
 struct ScriptView: View {
     let script: String
     private static let all: [ScriptRole] = {
         guard let url = Bundle.main.url(forResource: "roles", withExtension: "json"), let data = try? Data(contentsOf: url), let roles = try? JSONDecoder().decode([ScriptRole].self, from: data) else { return [] }; return roles
     }()
-    private var roles: [ScriptRole] { ScriptView.all.filter { ($0.script ?? "classic") == script } }
+    private var roles: [ScriptRole] { ScriptView.all.filter { ($0.script ?? "horrors") == script } }
     private func teamName(_ team: String) -> String { ["townsfolk": "Villager", "outsider": "Fool", "traveler": "Traveler · neutral", "minion": "Haunt", "demon": "Horror"][team] ?? team }
-    var body: some View { List { Section { Text("All characters on the script, including those not in play. These are short summaries."); if script == "classic" { Link("Official script and rulings", destination: URL(string: "https://wiki.bloodontheclocktower.com/Trouble_Brewing")!) } }; Section("Glossary") { ForEach(GLOSSARY) { entry in VStack(alignment: .leading, spacing: 6) { Text(entry.term).font(.headline); Text(entry.definition); if let example = entry.example { Text("Example: " + example).font(.callout).italic().foregroundStyle(.secondary) } }.padding(.vertical, 4) } }; ForEach(roles) { role in VStack(alignment: .leading, spacing: 8) { Text(teamName(role.team).uppercased()).font(.caption).foregroundStyle(Color.tableHighlight); Text(role.name).font(.headline); Text(role.description) }.padding(.vertical, 6) } }.scrollContentBackground(.hidden).background(Color.tableBackground) }
+    var body: some View { List { Section { Text("All characters on the script, including those not in play. These are short summaries.") }; Section("Glossary") { ForEach(GLOSSARY) { entry in VStack(alignment: .leading, spacing: 6) { Text(entry.term).font(.headline); Text(entry.definition); if let example = entry.example { Text("Example: " + example).font(.callout).italic().foregroundStyle(.secondary) } }.padding(.vertical, 4) } }; ForEach(roles) { role in VStack(alignment: .leading, spacing: 8) { Text(teamName(role.team).uppercased()).font(.caption).foregroundStyle(Color.tableHighlight); Text(role.name).font(.headline); GlossaryText(text: role.description) }.padding(.vertical, 6) } }.scrollContentBackground(.hidden).background(Color.tableBackground) }
 }
 // The Sphinx's nightly glimpse. Opens on its own and closes when the server
 // stops sending it (the night-choice timer ended).
@@ -267,7 +315,7 @@ struct ActionView: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section { Text(action.description) }
+                Section { GlossaryText(text: action.description) }
                 if let preview {
                     Section("Confirm this result") { Text(preview.summary).textSelection(.enabled) }
                     Button("Back to choices") { self.preview = nil }

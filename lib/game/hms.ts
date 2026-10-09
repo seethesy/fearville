@@ -1,4 +1,4 @@
-// Holy Moon and Stars rules. Classic games never enter this module.
+// Holy Moon and Stars rules. Uses the shared queued night engine.
 //
 // Order of operations for any death (see resolveDeath):
 //   1. Targeting: Dazed and Nightmare redirects are applied when the

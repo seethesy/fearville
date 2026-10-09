@@ -88,7 +88,7 @@ export default function Home() {
       </header>
       <div className="entry-grid">
         <section className="intro">
-          <p className="eyebrow">FEARVILLE CLASSIC</p>
+          <p className="eyebrow">HORRORS OF FEARVILLE</p>
           <h1>
             A seat at
             <br />
@@ -278,16 +278,7 @@ export default function Home() {
           )}
         </section>
       </div>
-      <footer>
-        Unofficial companion for Blood on the Clocktower.
-        <Link
-          href="https://wiki.bloodontheclocktower.com/Trouble_Brewing"
-          target="_blank"
-          rel="noreferrer"
-        >
-          Official script reference ↗
-        </Link>
-      </footer>
+      <footer>An in-person game companion.</footer>
     </main>
   );
 }

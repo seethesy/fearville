@@ -1,11 +1,11 @@
 import { database } from '@/db';
-import { attachMember } from '@/lib/accounts/service';
 import { joinSession } from '@/lib/game/join';
 import { read, hash, tokenOf } from '@/lib/game/store';
 import { requireThat } from '@/lib/game/engine';
 import { uuid } from '@/lib/game/types';
 import { areFriends, accountByID, type PublicAccount } from './friends';
 import { text } from './derive';
+import { privacyFor } from './privacy';
 
 export const inviteLifetime = 24 * 60 * 60 * 1000;
 
@@ -50,6 +50,10 @@ export async function sendInvite(
     'You can only invite your friends.',
   );
   const { game } = await read(code);
+  requireThat(
+    (await privacyFor(recipient)).invites === 'friends',
+    'This friend has disabled game invitations.',
+  );
   requireThat(game.phase === 'lobby', 'This game has already started.');
   requireThat(game.players.length < 15, 'This table is full.');
   const db = database();
@@ -60,9 +64,25 @@ export async function sendInvite(
   requireThat(!seated, 'That friend is already at this table.');
   await db
     .prepare(
-      "INSERT INTO session_invites (id,code,sender,recipient,status,created,expires) VALUES (?,?,?,?,'pending',?,?) ON CONFLICT(code,recipient) DO UPDATE SET sender=excluded.sender,status='pending',created=excluded.created,expires=excluded.expires WHERE session_invites.status<>'accepted'",
+      "INSERT INTO session_invites (id,code,sender,recipient,status,created,expires) SELECT ?,?,?,?,'pending',?,? WHERE COALESCE((SELECT game_invites FROM account_settings WHERE account=?),'friends')='friends' AND EXISTS (SELECT 1 FROM friendships WHERE status='accepted' AND ((requester=? AND addressee=?) OR (requester=? AND addressee=?))) AND NOT EXISTS (SELECT 1 FROM friendships WHERE status='blocked' AND ((requester=? AND addressee=?) OR (requester=? AND addressee=?))) ON CONFLICT(code,recipient) DO UPDATE SET sender=excluded.sender,status='pending',created=excluded.created,expires=excluded.expires WHERE session_invites.status<>'accepted'",
     )
-    .bind(uuid(), code, me, recipient, now, now + inviteLifetime)
+    .bind(
+      uuid(),
+      code,
+      me,
+      recipient,
+      now,
+      now + inviteLifetime,
+      recipient,
+      me,
+      recipient,
+      recipient,
+      me,
+      me,
+      recipient,
+      recipient,
+      me,
+    )
     .run();
 }
 
@@ -120,18 +140,26 @@ export async function acceptInvite(
   now: number,
 ) {
   const invite = await pendingInvite(me, id, now);
+  requireThat(
+    await areFriends(me, invite.sender),
+    'This invitation is no longer available.',
+  );
+  requireThat(
+    (await privacyFor(me)).invites === 'friends',
+    'Game invitations are disabled.',
+  );
   const self = await accountByID(me);
   const name = text(nameValue, 32) || text(self?.name, 32) || 'Player';
   requireThat(name, 'Enter your name.');
   const token = uuid() + uuid();
   const tokenHash = await hash(token);
-  const joined = await joinSession(invite.code, name, tokenHash);
+  const joined = await joinSession(invite.code, name, tokenHash, {
+    id: invite.id,
+    account: me,
+    sender: invite.sender,
+    now,
+  });
   requireThat(joined, 'The table changed. Please try again.');
-  await attachMember(tokenHash, me);
-  await database()
-    .prepare("UPDATE session_invites SET status='accepted' WHERE id=?")
-    .bind(invite.id)
-    .run();
   return { code: invite.code, token };
 }
 

@@ -2,146 +2,12 @@ export type Team = 'townsfolk' | 'outsider' | 'traveler' | 'minion' | 'demon';
 // Tables seat 5–18 players in every script.
 export const MIN_PLAYERS = 5;
 export const MAX_PLAYERS = 18;
-export const ROLES = [
-  [
-    'washerwoman',
-    'Washerwoman',
-    'townsfolk',
-    'On the first night, learn a Villager character held by one of two players.',
-  ],
-  [
-    'librarian',
-    'Librarian',
-    'townsfolk',
-    'On the first night, learn an Fool character held by one of two players, or learn that no Fools are in play.',
-  ],
-  [
-    'investigator',
-    'Investigator',
-    'townsfolk',
-    'On the first night, learn a Haunt character held by one of two players.',
-  ],
-  [
-    'chef',
-    'Chef',
-    'townsfolk',
-    'On the first night, learn the number of adjacent evil pairs around the table.',
-  ],
-  [
-    'empath',
-    'Empath',
-    'townsfolk',
-    'Each night, learn how many of your nearest living neighbors are evil.',
-  ],
-  [
-    'fortuneteller',
-    'Fortune Teller',
-    'townsfolk',
-    'Each night, check two players for a Horror. One good player is a permanent false positive.',
-  ],
-  [
-    'undertaker',
-    'Undertaker',
-    'townsfolk',
-    'After an execution that caused death, learn the executed character that night.',
-  ],
-  [
-    'monk',
-    'Monk',
-    'townsfolk',
-    'After the first night, choose someone other than yourself to protect from the Horror that night.',
-  ],
-  [
-    'ravenkeeper',
-    'Ravenkeeper',
-    'townsfolk',
-    'If you die at night, choose someone and learn their character.',
-  ],
-  [
-    'virgin',
-    'Virgin',
-    'townsfolk',
-    'Your first nomination consumes your ability. If the nominator is a Villager, they are executed immediately.',
-  ],
-  [
-    'slayer',
-    'Slayer',
-    'townsfolk',
-    'Once, during the day, publicly choose someone. If they register as the Horror, they die.',
-  ],
-  [
-    'soldier',
-    'Soldier',
-    'townsfolk',
-    'While healthy, you are safe from the Horror.',
-  ],
-  [
-    'mayor',
-    'Mayor',
-    'townsfolk',
-    'Good can win with three living players and no execution. A night attack on you may be redirected.',
-  ],
-  [
-    'butler',
-    'Butler',
-    'outsider',
-    'Choose a master each night. While alive, your yes vote requires your master to vote yes.',
-  ],
-  [
-    'drunk',
-    'Drunk',
-    'outsider',
-    'You do not know you are the Drunk. Instead, you are shown a random Villager role that you believe yourself to be. That role’s ability will not work as intended, but you will not know that.',
-  ],
-  [
-    'recluse',
-    'Recluse',
-    'outsider',
-    'You may register as evil or as a Haunt or Horror, even while dead.',
-  ],
-  [
-    'saint',
-    'Saint',
-    'outsider',
-    'If your ability works when you die by execution, evil wins.',
-  ],
-  [
-    'poisoner',
-    'Poisoner',
-    'minion',
-    'Choose someone each night to disable their ability until the next dusk without telling them.',
-  ],
-  [
-    'spy',
-    'Spy',
-    'minion',
-    'Each night, inspect the full game state. You may register as good or as a Villager or Fool.',
-  ],
-  [
-    'scarletwoman',
-    'Scarlet Woman',
-    'minion',
-    'If the Horror dies with at least five players alive just before death, you become the Horror.',
-  ],
-  [
-    'baron',
-    'Baron',
-    'minion',
-    'During setup, replace two Villagers with two additional Fools.',
-  ],
-  [
-    'imp',
-    'Imp',
-    'demon',
-    'After the first night, choose someone to kill. Killing yourself passes the Imp to a living Haunt.',
-  ],
-].map(([id, name, team, description]) => ({
-  id,
-  name,
-  team: team as Team,
-  description,
-}));
-export type RoleDef = (typeof ROLES)[number];
+export type RoleDef = {
+  id: string;
+  name: string;
+  team: Team;
+  description: string;
+};
 // Holy Moon and Stars characters. Wording follows the Fearville script sheet.
 export const HMS_ROLES: RoleDef[] = [
   [
@@ -307,7 +173,7 @@ export const HMS_ROLES: RoleDef[] = [
   description,
 }));
 // Horrors of Fearville characters. Wording follows the script sheet; the
-// Vigilante acts once per game by day. The Drunk is shared with Classic.
+// Vigilante acts once per game by day. The Drunk retains its hidden Villager ability.
 export const HOF_ROLES: RoleDef[] = [
   [
     'doctor',
@@ -453,37 +319,8 @@ export const HOF_ROLES: RoleDef[] = [
   team: team as Team,
   description,
 }));
-export const ALL_ROLES: RoleDef[] = [
-  ...ROLES,
-  ...HMS_ROLES,
-  ...HOF_ROLES.filter((r) => !ROLES.some((x) => x.id === r.id)),
-];
+export const ALL_ROLES: RoleDef[] = [...HMS_ROLES, ...HOF_ROLES];
 export const role = (id: string) => ALL_ROLES.find((r) => r.id === id);
-// Official TPI nightsheet, filtered to Fearville Classic (verified 2026-09-08).
-export const FIRST = [
-  'minioninfo',
-  'demoninfo',
-  'poisoner',
-  'washerwoman',
-  'librarian',
-  'investigator',
-  'chef',
-  'empath',
-  'fortuneteller',
-  'butler',
-  'spy',
-];
-export const OTHER = [
-  'poisoner',
-  'monk',
-  'imp',
-  'ravenkeeper',
-  'empath',
-  'fortuneteller',
-  'undertaker',
-  'butler',
-  'spy',
-];
 export type Phase =
   | 'lobby'
   | 'night'
@@ -554,13 +391,12 @@ export const TEAM_NAMES: Record<Team, string> = {
   minion: 'Haunts',
   demon: 'Horrors',
 };
-// Standard team sizes for a table, keyed by team. Classic and Holy Moon and
-// Stars have no Travelers.
+// Standard team sizes for a table, keyed by team. Holy Moon and Stars has no Travelers.
 export function standardCounts(
   script: string | undefined,
   players: number,
 ): Record<Team, number> | null {
-  if (script === 'horrors') {
+  if (script !== 'holyMoonStars') {
     const c = HOF_COUNTS[players];
     return c
       ? {
@@ -585,7 +421,6 @@ export function standardCounts(
 }
 export type Player = {
   avatar?: string;
-  portraitFrame?: import('./cosmetics').PortraitFrame;
   deathEffect?: import('./cosmetics').DeathEffectId;
   dummy?: boolean;
   departed?: boolean;
@@ -603,7 +438,7 @@ export type Player = {
   used: boolean;
   nightDeath: number;
   notes: string;
-  // Holy Moon and Stars status. All optional so saved Classic games load.
+  // Holy Moon and Stars status. All optional for compatibility with older saves.
   acts?: string; // character whose night slot this player takes (Lost Soul)
   drunk?: boolean; // permanent malfunction (Dazed, Lost Soul, Moonshiner, Celestial)
   poisonUntil?: number; // poison persists until this night begins
@@ -631,9 +466,9 @@ export type Nomination = {
   threshold: number;
   count?: number;
   invalid?: string[];
-  virginFirst?: boolean;
 };
 export type Message = {
+  participants?: string[];
   id: string;
   from: string;
   to: string;
@@ -715,17 +550,12 @@ export type HmsState = {
   travelerWins?: string[]; // Travelers who met their win condition
 };
 export const SCRIPTS = {
-  classic: 'Fearville Classic',
   holyMoonStars: 'Holy Moon and Stars',
   horrors: 'Horrors of Fearville',
 } as const;
 export type RoleScript = keyof typeof SCRIPTS;
 export const scriptRoles = (script?: string) =>
-  script === 'holyMoonStars'
-    ? HMS_ROLES
-    : script === 'horrors'
-      ? HOF_ROLES
-      : ROLES;
+  script === 'holyMoonStars' ? HMS_ROLES : HOF_ROLES;
 // Horrors of Fearville night orders. Steps that are not characters:
 // minioninfo/demoninfo — evil introductions (7+ players)
 // fear — Banshee and Monster fear carried from the day or previous night
@@ -803,22 +633,61 @@ export const HMS_OTHER = [
   'insomniac',
   'deaths',
 ];
+export type Notebook = {
+  roles: Record<string, number>;
+  players: Record<string, { role: string; confidence: string }>;
+  text: string;
+};
+export type Decision = {
+  id: string;
+  at: number;
+  actor: string;
+  text: string;
+  playerIds?: string[];
+  day?: number;
+  night?: number;
+};
+export type SessionRecap = {
+  progression?: import('../social/progression.ts').ProgressionSnapshot;
+  ranked?: boolean;
+  id: string;
+  ended: number;
+  started?: number;
+  number?: number;
+  winner: string;
+  script: RoleScript;
+  players: {
+    id: string;
+    name: string;
+    role: string;
+    shown: string;
+    roleId?: string;
+    team?: Team;
+    seat?: number;
+    avatar?: string;
+    alive?: boolean;
+    notebook?: Notebook;
+  }[];
+  decisions: Decision[];
+  messages?: Message[];
+  votes?: Record<string, string[]>;
+};
 export type Game = {
+  ranked?: boolean;
+  progression?: import('../social/progression.ts').ProgressionSnapshot;
   deferredNightTasks?: string[];
   sandbox?: boolean;
   gameStartedAt?: number;
-  decisions?: { id: string; at: number; actor: string; text: string }[];
-  recaps?: {
-    id: string;
-    ended: number;
-    winner: string;
-    script: RoleScript;
-    players: { id: string; name: string; role: string; shown: string }[];
-    decisions: { id: string; at: number; actor: string; text: string }[];
-  }[];
+  gameEndedAt?: number;
+  sessionNumber?: number;
+  notebooks?: Record<string, Notebook>;
+  mvpVotes?: Record<string, string[]>;
+  decisions?: Decision[];
+  recaps?: SessionRecap[];
   nightIntroductions?: Record<string, { id: string; text: string }>;
   nightChoiceDeadlines?: Record<string, number>;
   nightChoiceDeadline?: number;
+  nightChoiceRound?: string;
   nightChoiceTasks?: {
     key: string;
     role: string;
@@ -836,13 +705,6 @@ export type Game = {
     playerIds?: string[];
   };
   assignmentSeed?: string;
-  nightPoll?: {
-    id: string;
-    night: number;
-    question: string;
-    answers: Record<string, string>;
-  };
-  previousNightPoll?: { night: number; question: string; winners: string[] };
   code: string;
   hostName: string;
   phase: Phase;
@@ -908,6 +770,7 @@ export function newPlayer(name: string, seat: number): Player {
 }
 export function newGame(code: string, name: string): Game {
   return {
+    script: 'horrors',
     assignmentSeed: uuid(),
     decisions: [],
     recaps: [],

@@ -1,3 +1,4 @@
+import { claimSeats } from './claim-seats.mjs';
 import assert from 'node:assert/strict';
 
 const base = process.env.CT_TEST_URL || 'http://localhost:3000';
@@ -83,6 +84,7 @@ for (let i = 1; i <= 5; i++) {
   assert.equal(joined.status, 200, JSON.stringify(joined.data));
   seats.push(joined.data);
 }
+await claimSeats(base, seats.map((s) => s.token));
 let shared = (await call('/api/game', lobby.data.token)).data;
 async function sharedAct(tokenForAction, action) {
   const result = await call('/api/game', tokenForAction, {

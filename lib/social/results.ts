@@ -1,24 +1,37 @@
 import { database } from '@/db';
 import type { Game } from '@/lib/game/types';
 import { deriveResult, gameID } from './derive';
+import { BASE_XP, mvpShares } from './progression';
 
-// Records a finished game. Safe to call repeatedly: an existing record is
-// updated in place (so a game that ended, was rewound, and ended again with a
-// different outcome is corrected), and ratings attached to it are kept. Seats are linked to accounts through
-// account_seats at recording time; seats attached later are linked by
-// linkSeatRecords(). Returns true when a record exists after the call.
-export async function recordResult(g: Game, started: number, ended: number) {
+// Version guards prevent a delayed poll from restoring a withdrawn result or
+// overwriting newer MVP rewards. D1 batches commit the whole result atomically.
+export async function recordResult(
+  g: Game,
+  started: number,
+  ended: number,
+  version?: number,
+) {
   const record = deriveResult(g, started, ended);
-  if (!record) return false;
+  if (!record || g.sandbox) return false;
   const db = database();
-  await db.batch([
+  const guard =
+    'EXISTS (SELECT 1 FROM sessions WHERE code=? AND (? IS NULL OR version=?))';
+  const guarded = [g.code, version ?? null, version ?? null];
+  const rewards = mvpShares(
+    record.seats.map((s) => s.player),
+    g.mvpVotes,
+  );
+  const snapshot = g.progression;
+  const hostAccount = snapshot?.hostAccount ?? null;
+  const statements = [
     db
-      .prepare(
-        'INSERT INTO games (id,code,host_account,host_name,winner,reason,players,days,nights,started,ended) VALUES (?,?,(SELECT account FROM account_seats WHERE code=? AND host=1 LIMIT 1),?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET host_account=COALESCE(excluded.host_account,games.host_account),host_name=excluded.host_name,winner=excluded.winner,reason=excluded.reason,players=excluded.players,days=excluded.days,nights=excluded.nights,ended=excluded.ended',
-      )
+      .prepare(`INSERT INTO games (id,code,host_account,host_name,winner,reason,players,days,nights,started,ended,script,ranked,host_xp)
+    SELECT ?,?,(SELECT id FROM accounts WHERE id=COALESCE(?,(SELECT account FROM account_seats WHERE code=? AND host=1 LIMIT 1))),?,?,?,?,?,?,?,?,?,?,? WHERE ${guard}
+    ON CONFLICT(id) DO UPDATE SET host_account=COALESCE(excluded.host_account,games.host_account),host_name=excluded.host_name,winner=excluded.winner,reason=excluded.reason,players=excluded.players,days=excluded.days,nights=excluded.nights,ended=excluded.ended,script=excluded.script,ranked=excluded.ranked,host_xp=excluded.host_xp`)
       .bind(
         record.id,
         record.code,
+        hostAccount,
         record.code,
         record.hostName,
         record.winner,
@@ -28,38 +41,63 @@ export async function recordResult(g: Game, started: number, ended: number) {
         record.nights,
         record.started,
         record.ended,
+        record.script,
+        Number(record.ranked),
+        BASE_XP * 3,
+        ...guarded,
       ),
-    ...record.seats.map((s) =>
+  ];
+  for (const s of record.seats) {
+    const rating = snapshot?.seats.find((p) => p.player === s.player);
+    statements.push(
       db
-        .prepare(
-          'INSERT INTO game_players (game,player,account,name,role,team,won,alive) VALUES (?,?,(SELECT account FROM account_seats WHERE code=? AND player=? AND host=0 LIMIT 1),?,?,?,?,?) ON CONFLICT(game,player) DO UPDATE SET account=COALESCE(excluded.account,game_players.account),name=excluded.name,role=excluded.role,team=excluded.team,won=excluded.won,alive=excluded.alive',
-        )
+        .prepare(`INSERT INTO game_players (game,player,account,name,role,team,won,alive,role_type,base_xp,mvp_xp,mvp_votes,rating_before,opponent_rating,team_rating,elo_delta)
+      SELECT ?,?,(SELECT id FROM accounts WHERE id=COALESCE(?,(SELECT account FROM account_seats WHERE code=? AND player=? AND host=0 LIMIT 1))),?,?,?,?,?,?,?,?,?,?,?,?,? WHERE ${guard}
+      ON CONFLICT(game,player) DO UPDATE SET account=COALESCE(excluded.account,game_players.account),name=excluded.name,role=excluded.role,team=excluded.team,won=excluded.won,alive=excluded.alive,role_type=excluded.role_type,base_xp=excluded.base_xp,mvp_xp=excluded.mvp_xp,mvp_votes=excluded.mvp_votes,rating_before=excluded.rating_before,opponent_rating=excluded.opponent_rating,team_rating=excluded.team_rating,elo_delta=excluded.elo_delta`)
         .bind(
           record.id,
           s.player,
+          rating?.account ?? null,
           record.code,
           s.player,
           s.name,
           s.role,
           s.team,
-          s.won ? 1 : 0,
-          s.alive ? 1 : 0,
+          Number(s.won),
+          Number(s.alive),
+          s.roleType,
+          BASE_XP * (s.won ? 1.5 : 1),
+          rewards[s.player].xp,
+          rewards[s.player].votes,
+          rating?.rating ?? null,
+          rating?.opponentRating ?? null,
+          rating?.teamRating ?? null,
+          record.ranked && rating ? (s.won ? rating.win : rating.loss) : 0,
+          ...guarded,
         ),
-    ),
-  ]);
-  return true;
+    );
+  }
+  statements.push(
+    db
+      .prepare(`DELETE FROM ranked_seats WHERE game=? AND ${guard}`)
+      .bind(record.id, ...guarded),
+  );
+  const result = await db.batch(statements);
+  return result[0].meta.changes > 0;
 }
 
-// Called when the Storyteller rewinds out of the ended phase: the result was
-// provisional, so the record and any ratings attached to it are withdrawn.
-// The game is recorded again if it ends again.
-export async function voidResult(code: string, started: number) {
+export async function voidResult(
+  code: string,
+  started: number,
+  version?: number,
+) {
   await database()
-    .prepare('DELETE FROM games WHERE id=?')
-    .bind(gameID(code, started))
+    .prepare(
+      'DELETE FROM games WHERE id=? AND EXISTS (SELECT 1 FROM sessions WHERE code=? AND (? IS NULL OR version=?))',
+    )
+    .bind(gameID(code, started), code, version ?? null, version ?? null)
     .run();
 }
-
 export async function isRecorded(code: string, started: number) {
   return !!(await database()
     .prepare('SELECT 1 AS present FROM games WHERE id=?')
@@ -67,30 +105,92 @@ export async function isRecorded(code: string, started: number) {
     .first());
 }
 
-// Keeps ended games in sync with the state: records a game whose result is
-// missing (for example after a transient database failure at the moment the
-// game ended) and withdraws a record for a game that was rewound.
-export async function syncResult(g: Game, started: number, now: number) {
+export async function syncMvp(g: Game, version?: number) {
+  if (g.sandbox) return;
+  const recaps: {
+    id: string;
+    players: { id: string }[];
+    votes?: Record<string, string[]>;
+  }[] = [...(g.recaps ?? [])];
+  if (g.phase === 'ended')
+    recaps.push({
+      id: gameID(g.code, g.gameStartedAt ?? 0),
+      players: g.players,
+      votes: g.mvpVotes,
+    });
+  const db = database();
+  const recorded = await db
+    .prepare(
+      'SELECT p.game,p.player,p.mvp_votes,p.mvp_xp FROM game_players p JOIN games games ON games.id=p.game WHERE games.code=?',
+    )
+    .bind(g.code)
+    .all<{ game: string; player: string; mvp_votes: number; mvp_xp: number }>();
+  const existing = new Map(
+    recorded.results.map((r) => [`${r.game}:${r.player}`, r]),
+  );
+  const statements = recaps.flatMap((r) => {
+    const rewards = mvpShares(
+      r.players.map((p) => p.id),
+      r.votes,
+    );
+    return r.players
+      .filter((p) => {
+        const row = existing.get(`${r.id}:${p.id}`);
+        return (
+          row &&
+          (row.mvp_votes !== rewards[p.id].votes ||
+            row.mvp_xp !== rewards[p.id].xp)
+        );
+      })
+      .map((p) =>
+        db
+          .prepare(
+            'UPDATE game_players SET mvp_xp=?,mvp_votes=? WHERE game=? AND player=? AND (mvp_xp<>? OR mvp_votes<>?) AND EXISTS (SELECT 1 FROM sessions WHERE code=? AND (? IS NULL OR version=?))',
+          )
+          .bind(
+            rewards[p.id].xp,
+            rewards[p.id].votes,
+            r.id,
+            p.id,
+            rewards[p.id].xp,
+            rewards[p.id].votes,
+            g.code,
+            version ?? null,
+            version ?? null,
+          ),
+      );
+  });
+  for (let offset = 0; offset < statements.length; offset += 50)
+    await db.batch(statements.slice(offset, offset + 50));
+}
+export async function syncResult(
+  g: Game,
+  started: number,
+  now: number,
+  version?: number,
+  update = false,
+) {
+  if (g.sandbox) return;
   if (g.phase === 'ended') {
-    if (!(await isRecorded(g.code, started)))
-      await recordResult(g, started, now);
+    if (update || !(await isRecorded(g.code, started)))
+      await recordResult(g, started, g.gameEndedAt ?? now, version);
+    else await syncMvp(g, version);
   } else if (g.night > 0 && (await isRecorded(g.code, started)))
-    await voidResult(g.code, started);
+    await voidResult(g.code, started, version);
 }
 
-// When a seat is attached to an account after the game was recorded, the
-// existing record picks up the account so the player's stats include it.
+// Guest seats acquire their existing XP/history when attached, once only.
 export async function linkSeatRecords(account: string) {
   const db = database();
   await db.batch([
     db
       .prepare(
-        "UPDATE game_players SET account=? WHERE account IS NULL AND EXISTS (SELECT 1 FROM account_seats s JOIN sessions se ON se.code=s.code WHERE s.account=? AND s.host=0 AND s.player=game_players.player AND game_players.game=s.code || ':' || se.created)",
+        "UPDATE game_players SET account=? WHERE account IS NULL AND EXISTS (SELECT 1 FROM account_seats s JOIN sessions se ON se.code=s.code WHERE s.account=? AND s.host=0 AND s.player=game_players.player AND (game_players.game=s.code || ':' || se.created OR game_players.game=s.code || ':' || json_extract(se.state,'$.gameStartedAt') OR EXISTS (SELECT 1 FROM json_each(se.state,'$.recaps') r WHERE json_extract(r.value,'$.id')=game_players.game AND EXISTS (SELECT 1 FROM json_each(r.value,'$.players') p WHERE json_extract(p.value,'$.id')=s.player))))",
       )
       .bind(account, account),
     db
       .prepare(
-        "UPDATE games SET host_account=? WHERE host_account IS NULL AND EXISTS (SELECT 1 FROM account_seats s JOIN sessions se ON se.code=s.code WHERE s.account=? AND s.host=1 AND games.id=s.code || ':' || se.created)",
+        "UPDATE games SET host_account=? WHERE host_account IS NULL AND EXISTS (SELECT 1 FROM account_seats s JOIN sessions se ON se.code=s.code WHERE s.account=? AND s.host=1 AND (games.id=s.code || ':' || se.created OR games.id=s.code || ':' || json_extract(se.state,'$.gameStartedAt') OR EXISTS (SELECT 1 FROM json_each(se.state,'$.recaps') r WHERE json_extract(r.value,'$.id')=games.id)))",
       )
       .bind(account, account),
   ]);

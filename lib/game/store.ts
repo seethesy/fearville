@@ -1,5 +1,6 @@
 import { database } from '@/db';
 import type { Actor, Game } from './types';
+import { savedGame } from './saved-state';
 export const cookieName = 'ct_session';
 export async function hash(token: string) {
   const data = await crypto.subtle.digest(
@@ -52,7 +53,7 @@ export async function read(code: string) {
     .first<{ state: string; version: number; created: number }>();
   if (!row) throw Error('Session not found.');
   return {
-    game: JSON.parse(row.state) as Game,
+    game: savedGame(row.state),
     version: row.version,
     created: row.created,
   };
@@ -63,13 +64,69 @@ export async function save(g: Game, version: number) {
     throw Error(
       'Session storage is full. End this session and create another.',
     );
-  const r = await database()
+  const db = database();
+  const update = db
     .prepare(
       'UPDATE sessions SET state = ?, version = version + 1 WHERE code = ? AND version = ?',
     )
-    .bind(state, g.code, version)
-    .run();
-  return r.meta.changes === 1;
+    .bind(state, g.code, version);
+  const guard =
+    'EXISTS (SELECT 1 FROM sessions WHERE code=? AND version=? AND state=?)';
+  const lockStatements: D1PreparedStatement[] = [];
+  if (g.phase === 'lobby' || !g.ranked) {
+    lockStatements.push(
+      db
+        .prepare(`DELETE FROM ranked_seats WHERE code=? AND ${guard}`)
+        .bind(g.code, g.code, version + 1, state),
+    );
+  } else if (g.progression?.ranked) {
+    for (const seat of g.progression.seats) {
+      if (!seat.account) continue;
+      lockStatements.push(
+        db
+          .prepare(
+            `INSERT INTO ranked_seats (account,code,game) SELECT ?,?,? WHERE ${guard} AND (?<>'ended' OR NOT EXISTS (SELECT 1 FROM games WHERE id=?)) ON CONFLICT(account) DO UPDATE SET game=excluded.game WHERE ranked_seats.code=excluded.code`,
+          )
+          .bind(
+            seat.account,
+            g.code,
+            `${g.code}:${g.gameStartedAt}`,
+            g.code,
+            version + 1,
+            state,
+            g.phase,
+            `${g.code}:${g.gameStartedAt}`,
+          ),
+      );
+      // A conflicting account must fail the entire batch, including the CAS.
+      lockStatements.push(
+        db
+          .prepare(
+            `INSERT INTO ranked_seats (account,code,game) SELECT ?,?,? WHERE ${guard} AND EXISTS (SELECT 1 FROM ranked_seats WHERE account=? AND code<>?)`,
+          )
+          .bind(
+            seat.account,
+            g.code,
+            `${g.code}:${g.gameStartedAt}`,
+            g.code,
+            version + 1,
+            state,
+            seat.account,
+            g.code,
+          ),
+      );
+    }
+  }
+  try {
+    const results = await db.batch([update, ...lockStatements]);
+    return results[0].meta.changes === 1;
+  } catch (error) {
+    if (String(error).includes('ranked_seats.account'))
+      throw Error(
+        'A participant is already playing another ranked game. Finish that game first.',
+      );
+    throw error;
+  }
 }
 export function json(
   data: unknown,

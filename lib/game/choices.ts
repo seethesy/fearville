@@ -7,7 +7,7 @@ export function eligibleField(
   field: Field,
   control: Control,
   values: Record<string, unknown>,
-  game: GameView,
+  _game: GameView,
 ): Field {
   let options = field.options;
   if (!options) return field;
@@ -15,25 +15,6 @@ export function eligibleField(
     if (field.key === 'target' || field.key === 'target2') {
       const other = values[field.key === 'target' ? 'target2' : 'target'];
       options = options.filter((o) => !o.value || o.value !== other);
-    }
-    if (field.key === 'reveal' && !values.override) {
-      const task = game.tasks.find((t) => t.key === values.task);
-      const actor = game.players.find((p) => p.id === task?.player);
-      if (actor && actor.role !== 'drunk' && !actor.poisoned) {
-        const ids = (
-          task?.role === 'undertaker'
-            ? [game.execution]
-            : [values.target, values.target2]
-        ).filter(Boolean);
-        const checked = ids.length
-          ? game.players.filter((p) => ids.includes(p.id))
-          : game.players;
-        // Registration can legitimately change the character learned.
-        if (!checked.some((p) => ['spy', 'recluse'].includes(p.role ?? '')))
-          options = options.filter(
-            (o) => !o.value || checked.some((p) => p.role === o.value),
-          );
-      }
     }
   }
   if (

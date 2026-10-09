@@ -2,6 +2,7 @@ import {
   sqliteTable,
   text,
   integer,
+  real,
   index,
   uniqueIndex,
   primaryKey,
@@ -162,6 +163,9 @@ export const games = sqliteTable(
   'games',
   {
     id: text('id').primaryKey(),
+    script: text('script').notNull().default('unknown'),
+    ranked: integer('ranked').notNull().default(0),
+    hostXp: integer('host_xp').notNull().default(0),
     code: text('code').notNull(),
     hostAccount: text('host_account').references(() => accounts.id, {
       onDelete: 'set null',
@@ -175,7 +179,10 @@ export const games = sqliteTable(
     started: integer('started').notNull(),
     ended: integer('ended').notNull(),
   },
-  (t) => [index('idx_games_host').on(t.hostAccount)],
+  (t) => [
+    index('idx_games_host').on(t.hostAccount),
+    index('idx_games_ended').on(t.ended),
+  ],
 );
 
 // One row per seat in a finished game. `account` is filled when the seat is
@@ -187,6 +194,14 @@ export const gamePlayers = sqliteTable(
       .notNull()
       .references(() => games.id, { onDelete: 'cascade' }),
     player: text('player').notNull(),
+    roleType: text('role_type').notNull().default('unknown'),
+    baseXp: integer('base_xp').notNull().default(0),
+    mvpXp: real('mvp_xp').notNull().default(0),
+    mvpVotes: integer('mvp_votes').notNull().default(0),
+    ratingBefore: integer('rating_before'),
+    opponentRating: real('opponent_rating'),
+    teamRating: real('team_rating'),
+    eloDelta: integer('elo_delta').notNull().default(0),
     account: text('account').references(() => accounts.id, {
       onDelete: 'set null',
     }),
@@ -222,4 +237,28 @@ export const storytellerRatings = sqliteTable(
     primaryKey({ columns: [t.game, t.rater] }),
     index('idx_ratings_storyteller').on(t.storyteller),
   ],
+);
+
+export const accountSettings = sqliteTable('account_settings', {
+  account: text('account')
+    .primaryKey()
+    .references(() => accounts.id, { onDelete: 'cascade' }),
+  statsVisibility: text('stats_visibility').notNull().default('friends'),
+  historyVisibility: text('history_visibility').notNull().default('friends'),
+  friendRequests: text('friend_requests').notNull().default('everyone'),
+  gameInvites: text('game_invites').notNull().default('friends'),
+});
+// Prevent one account from starting two rated matches with the same rating.
+export const rankedSeats = sqliteTable(
+  'ranked_seats',
+  {
+    account: text('account')
+      .primaryKey()
+      .references(() => accounts.id, { onDelete: 'cascade' }),
+    code: text('code')
+      .notNull()
+      .references(() => sessions.code, { onDelete: 'cascade' }),
+    game: text('game').notNull(),
+  },
+  (t) => [index('idx_ranked_seats_code').on(t.code)],
 );

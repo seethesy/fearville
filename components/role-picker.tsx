@@ -1,4 +1,5 @@
 'use client';
+import { GlossaryText } from '@/components/glossary-text';
 import { useState } from 'react';
 import {
   standardCounts,
@@ -26,16 +27,7 @@ export function RolePicker({
   const ROLES = scriptRoles(game.script);
   const hms = game.script === 'holyMoonStars';
   const atheist = hms && selected.includes('atheist');
-  const extra =
-    game.script === 'horrors'
-      ? 0
-      : hms
-        ? selected.includes('moonshiner')
-          ? 1
-          : 0
-        : selected.includes('baron')
-          ? 2
-          : 0;
+  const extra = hms && selected.includes('moonshiner') ? 1 : 0;
   const expected: Record<Team, number> | null = !counts
     ? null
     : atheist
@@ -73,9 +65,7 @@ export function RolePicker({
         {atheist
           ? ' · Atheist: every player is good'
           : extra > 0
-            ? hms
-              ? ' · Moonshiner: one Villager becomes a Fool, and every Fool is drunk'
-              : ' · Baron: two Villagers become Fools (private setup)'
+            ? ' · Moonshiner: one Villager becomes a Fool, and every Fool is drunk'
             : ''}
       </p>
       {!counts && <p>Join 5–18 players to deal a balanced setup.</p>}
@@ -88,25 +78,28 @@ export function RolePicker({
           </h3>
           <div className="role-pick-grid">
             {ROLES.filter((r) => r.team === team).map((r) => (
-              <button
-                key={r.id}
-                className={
-                  selected.includes(r.id) ? 'role-pick chosen' : 'role-pick'
-                }
-                aria-pressed={selected.includes(r.id)}
-                disabled={busy}
-                onClick={() =>
-                  setSelected((old) =>
-                    old.includes(r.id)
-                      ? old.filter((id) => id !== r.id)
-                      : [...old, r.id],
-                  )
-                }
-              >
-                <RoleIcon role={r.id} />
-                <strong>{r.name}</strong>
-                <small>{r.description}</small>
-              </button>
+              <article key={r.id} className="role-pick-card">
+                <button
+                  className={
+                    selected.includes(r.id) ? 'role-pick chosen' : 'role-pick'
+                  }
+                  aria-pressed={selected.includes(r.id)}
+                  disabled={busy}
+                  onClick={() =>
+                    setSelected((old) =>
+                      old.includes(r.id)
+                        ? old.filter((id) => id !== r.id)
+                        : [...old, r.id],
+                    )
+                  }
+                >
+                  <RoleIcon role={r.id} />
+                  <strong>{r.name}</strong>
+                </button>
+                <small>
+                  <GlossaryText text={r.description} />
+                </small>
+              </article>
             ))}
           </div>
         </section>

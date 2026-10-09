@@ -1,3 +1,4 @@
+import { claimSeats } from './claim-seats.mjs';
 import assert from 'node:assert/strict';
 const base = process.env.CT_TEST_URL || 'http://localhost:3000';
 async function call(path, token = '', body) {
@@ -29,6 +30,7 @@ for (let i = 0; i < 5; i++)
       }),
     ),
   );
+await claimSeats(base, players.map((p) => p.token));
 let g = ok(await call('/api/game', host.token));
 assert.equal(
   (
@@ -94,6 +96,7 @@ players[4] = ok(
     name: 'Replacement',
   }),
 );
+ok(await call('/api/game', players[4].token, { action: 'claimSeat', seat: 5 }));
 g = ok(await call('/api/game', host.token));
 g = ok(
   await call('/api/game', host.token, {

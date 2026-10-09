@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Check, CircleHelp } from 'lucide-react';
 import { scriptRoles } from '@/lib/game/types';
 import type { GameView } from '@/lib/game/view';
@@ -13,23 +13,90 @@ const empty = (): Notebook => ({ roles: {}, players: {}, text: '' });
 const colors = ['red', 'yellow', 'green'];
 const labels = ['Ruled out', 'Possible', 'In play'];
 export function PlayerNotes({ game }: { game: GameView }) {
-  const storageKey = `fearville-notes:${game.code}:${game.me}`;
-  const [notes, setNotes] = useState<Notebook>(empty);
+  const storageKey = `fearville-notes:${game.code}:${game.me}:${game.gameStartedAt}`;
+  const [notes, setNotes] = useState<Notebook>(game.notebook ?? empty);
+  const [initialNotebook] = useState(game.notebook);
   const [ready, setReady] = useState(false);
   const [error, setError] = useState('');
+  const queued = useRef(Promise.resolve());
+  const pending = useRef<Notebook | null>(null);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [saving, setSaving] = useState(false);
+  const save = useCallback(
+    (next: Notebook) => {
+      setSaving(true);
+      queued.current = queued.current.then(async () => {
+        try {
+          const r = await fetch('/api/game', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            keepalive: true,
+            body: JSON.stringify({
+              action: 'saveNotebook',
+              started: game.gameStartedAt,
+              notebook: next,
+              ...(game.sandboxHost ? { pov: game.me } : {}),
+            }),
+          });
+          const data = (await r.json()) as { error?: string };
+          if (!r.ok) throw Error(data.error || 'Notes could not sync.');
+          if (pending.current === next) {
+            pending.current = null;
+            try {
+              localStorage.removeItem(storageKey + ':pending');
+            } catch {
+              /* Server save succeeded. */
+            }
+          }
+          setError('');
+        } catch (e) {
+          setError(
+            e instanceof Error
+              ? e.message
+              : 'Notes could not sync. Your device copy is saved.',
+          );
+        } finally {
+          setSaving(false);
+        }
+      });
+    },
+    [game.gameStartedAt, game.me, game.sandboxHost, storageKey],
+  );
+  useEffect(() => {
+    function flush() {
+      if (timer.current) clearTimeout(timer.current);
+      if (pending.current) save(pending.current);
+    }
+    function hidden() {
+      if (document.visibilityState === 'hidden') flush();
+    }
+    window.addEventListener('pagehide', flush);
+    document.addEventListener('visibilitychange', hidden);
+    return () => {
+      window.removeEventListener('pagehide', flush);
+      document.removeEventListener('visibilitychange', hidden);
+      flush();
+    };
+  }, [save]);
   useEffect(() => {
     const frame = requestAnimationFrame(() => {
       try {
         const raw = localStorage.getItem(storageKey);
-        if (raw) {
+        if (
+          raw &&
+          (!initialNotebook || localStorage.getItem(storageKey + ':pending'))
+        ) {
           const saved = JSON.parse(raw);
           if (
             saved &&
             typeof saved.text === 'string' &&
             saved.roles &&
             saved.players
-          )
+          ) {
             setNotes(saved);
+            pending.current = saved;
+            save(saved);
+          }
         }
       } catch {
         setError('Saved notes could not be loaded on this device.');
@@ -37,11 +104,15 @@ export function PlayerNotes({ game }: { game: GameView }) {
       setReady(true);
     });
     return () => cancelAnimationFrame(frame);
-  }, [storageKey]);
+  }, [storageKey, initialNotebook, save]);
   function update(next: Notebook) {
     setNotes(next);
+    pending.current = next;
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = setTimeout(() => save(next), 400);
     try {
       localStorage.setItem(storageKey, JSON.stringify(next));
+      localStorage.setItem(storageKey + ':pending', 'yes');
       setError('');
     } catch {
       setError(
@@ -55,9 +126,18 @@ export function PlayerNotes({ game }: { game: GameView }) {
       <section className="panel">
         <h2>Your private notebook</h2>
         <p className="muted">
-          Saved on this device for this seat. Your notes are not shared with the
-          Storyteller or other players.
+          Private during play. Your notes and messages are revealed to everyone
+          in the session recap after the game ends. Notes also save on this
+          device.
         </p>
+        <p className="hint" aria-live="polite">
+          {saving ? 'Saving notes…' : 'Notes save automatically.'}
+        </p>
+        {error && (
+          <button className="secondary" onClick={() => save(notes)}>
+            Retry saving notes
+          </button>
+        )}
         {error && (
           <p role="alert" className="error">
             {error}

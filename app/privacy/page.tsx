@@ -34,8 +34,8 @@ export default function Privacy() {
           records. Previously read information cannot be made unknown.
         </p>
         <p>
-          This is an unofficial in-person game companion. It is not affiliated
-          with Google, Apple, or The Pandemonium Institute.
+          This is an in-person game companion. It is not affiliated with Google
+          or Apple.
         </p>
         <Link href="/account" className="quiet-link">
           Manage your account →

@@ -188,23 +188,3 @@ void test('Storyteller can correct the latest ballot and refund or spend dead vo
     ),
   );
 });
-void test('correcting a master vote also recalculates the Butler vote', () => {
-  const g = setup();
-  g.players[2].role = 'butler';
-  g.players[2].master = g.players[1].id;
-  for (const p of g.players.slice(1))
-    execute(g, host, { action: 'vote', player: p.id, yes: true }, 100);
-  execute(
-    g,
-    host,
-    {
-      action: 'correctVote',
-      ballot: 'ballot',
-      player: g.players[1].id,
-      yes: false,
-    },
-    200,
-  );
-  assert.equal(g.ballots[0].count, 2);
-  assert.deepEqual(g.ballots[0].invalid, [g.players[2].id]);
-});

@@ -14,9 +14,11 @@ import {
 export function TableMembership({
   game,
   refresh,
+  cosmetic = false,
 }: {
   game: GameView;
   refresh: () => Promise<void>;
+  cosmetic?: boolean;
 }) {
   const current = game.host
     ? game.hostName
@@ -63,7 +65,7 @@ export function TableMembership({
   }
   return (
     <section className="panel membership-panel">
-      <h2>Your seat & table</h2>
+      <h2>{cosmetic ? 'Lobby name' : 'Your seat & table'}</h2>
       <form
         onSubmit={(e) => {
           e.preventDefault();
@@ -92,64 +94,67 @@ export function TableMembership({
           {error}
         </p>
       )}
-      {game.host ? (
-        <>
-          <h3>Manage players</h3>
-          {game.players
-            .filter((p) => !p.departed)
-            .map((p) => (
-              <div className="membership-row" key={p.id}>
-                <span>{p.name}</span>
-                <button
-                  className="danger"
-                  disabled={busy}
-                  onClick={() => {
-                    setError('');
-                    setPending({
-                      action: 'remove',
-                      player: p.id,
-                      name: p.name,
-                    });
-                  }}
-                >
-                  Remove {p.name}
-                </button>
-              </div>
-            ))}
-          {game.phase === 'lobby' && (
-            <button
-              className="danger"
-              disabled={busy}
-              onClick={() => {
-                setError('');
-                setPending({ action: 'deleteLobby' });
-              }}
-            >
-              Delete lobby
-            </button>
-          )}
-        </>
-      ) : (
-        <button
-          className="danger"
-          disabled={busy}
-          onClick={() => {
-            setError('');
-            if (game.phase === 'lobby' || game.phase === 'ended')
-              setPending({ action: 'leaveLobby' });
-            else void act('leave');
-          }}
-        >
-          {game.phase === 'lobby' || game.phase === 'ended'
-            ? 'Leave lobby'
-            : 'Leave table'}
-        </button>
+      {!cosmetic &&
+        (game.host ? (
+          <>
+            <h3>Manage players</h3>
+            {game.players
+              .filter((p) => !p.departed)
+              .map((p) => (
+                <div className="membership-row" key={p.id}>
+                  <span>{p.name}</span>
+                  <button
+                    className="danger"
+                    disabled={busy}
+                    onClick={() => {
+                      setError('');
+                      setPending({
+                        action: 'remove',
+                        player: p.id,
+                        name: p.name,
+                      });
+                    }}
+                  >
+                    Remove {p.name}
+                  </button>
+                </div>
+              ))}
+            {game.phase === 'lobby' && (
+              <button
+                className="danger"
+                disabled={busy}
+                onClick={() => {
+                  setError('');
+                  setPending({ action: 'deleteLobby' });
+                }}
+              >
+                Delete lobby
+              </button>
+            )}
+          </>
+        ) : (
+          <button
+            className="danger"
+            disabled={busy}
+            onClick={() => {
+              setError('');
+              if (game.phase === 'lobby' || game.phase === 'ended')
+                setPending({ action: 'leaveLobby' });
+              else void act('leave');
+            }}
+          >
+            {game.phase === 'lobby' || game.phase === 'ended'
+              ? 'Leave lobby'
+              : 'Leave table'}
+          </button>
+        ))}
+      {!cosmetic && (
+        <p className="hint">
+          Leaving saves your seat. Return from the home page on this device,
+          your saved account, or with your recovery key. Only Storyteller
+          removal ends access.
+        </p>
       )}
-      <p className="hint">
-        Leaving saves your seat. Return from the home page on this device, your
-        saved account, or with your recovery key. Only Storyteller removal ends
-        access.
-      </p>
       <AlertDialog
         open={!!pending}
         onOpenChange={(v) => {
