@@ -1,3 +1,4 @@
+import { GlossaryText } from '@/components/glossary-text';
 import { RoleIcon } from './role-icon';
 import {
   HMS_ROLES,
@@ -11,7 +12,7 @@ import {
   role,
   type RoleScript,
 } from '@/lib/game/types';
-import { GLOSSARY, glossarySegments } from '@/lib/game/glossary';
+import { GLOSSARY } from '@/lib/game/glossary';
 
 const teams = [
   {
@@ -59,23 +60,6 @@ const STEP_NAMES: Record<string, string> = {
 };
 const teamsFor = (script: RoleScript) =>
   teams.filter((team) => scriptRoles(script).some((r) => r.team === team.id));
-// Role text with glossary terms linked to their definitions.
-function Described({ text, linked }: { text: string; linked: boolean }) {
-  if (!linked) return <>{text}</>;
-  return (
-    <>
-      {glossarySegments(text).map((part, i) =>
-        typeof part === 'string' ? (
-          part
-        ) : (
-          <a key={i} className="glossary-link" href={`#glossary-${part.id}`}>
-            {part.text}
-          </a>
-        ),
-      )}
-    </>
-  );
-}
 function RoleTeams({ script }: { script: RoleScript }) {
   const list = scriptRoles(script);
   return (
@@ -99,10 +83,7 @@ function RoleTeams({ script }: { script: RoleScript }) {
                     <RoleIcon role={r.id} /> {r.name}
                   </h4>
                   <p>
-                    <Described
-                      text={r.description}
-                      linked={script === 'horrors'}
-                    />
+                    <GlossaryText text={r.description} />
                   </p>
                 </article>
               ))}
@@ -189,18 +170,13 @@ function HorrorsOfFearville() {
         <article>
           <h3>Fear, visits and saves</h3>
           <p>
-            Choosing a player at night <a href="#glossary-visit">visits</a>{' '}
-            them. A <a href="#glossary-fear">feared</a> player’s ability
-            malfunctions without them knowing. A{' '}
-            <a href="#glossary-save">saved</a> player cannot die that night.
+            <GlossaryText text="Choosing a player at night visits them. A feared player’s ability malfunctions without them knowing. A saved player cannot die that night." />
           </p>
         </article>
         <article>
           <h3>Declarations</h3>
           <p>
-            The Vigilante, the Researcher and a killed Hag act by{' '}
-            <a href="#glossary-declare">declaring</a> publicly during the day,
-            from their Controls. The Storyteller rules on the outcome.
+            <GlossaryText text="The Vigilante, the Researcher and a killed Hag act by declaring publicly during the day, from their Controls. The Storyteller rules on the outcome." />
           </p>
         </article>
         <article>
@@ -252,8 +228,8 @@ export function RulesReference({ script }: { script?: RoleScript }) {
         <a href="#how-to-play">How to play</a>
         <a href="#glossary">Glossary</a>
         <a href="#using-fearville">Using Fearville</a>
-        {teamsFor(script ?? 'classic').map((team) => (
-          <a key={team.id} href={`#roles-${script ?? 'classic'}-${team.id}`}>
+        {teamsFor(script ?? 'horrors').map((team) => (
+          <a key={team.id} href={`#roles-${script ?? 'horrors'}-${team.id}`}>
             {team.name}
           </a>
         ))}
@@ -369,12 +345,6 @@ export function RulesReference({ script }: { script?: RoleScript }) {
             The Storyteller confirms the day’s outcome.
           </li>
           <li>
-            <strong>Answer a night poll.</strong> Everyone can pick a name for
-            fun while waiting. Polls do not use character abilities or count as
-            execution votes. Only the favorite or tied favorites appear after
-            dawn.
-          </li>
-          <li>
             <strong>Keep your seat.</strong> Closing a tab does not leave the
             game. Return from the home page in the same browser. Save your
             private recovery key or link your account to return from another
@@ -382,17 +352,6 @@ export function RulesReference({ script }: { script?: RoleScript }) {
           </li>
         </ol>
       </section>
-      {(!script || script === 'classic') && (
-        <section className="reference-section" aria-labelledby="all-roles">
-          <p className="eyebrow">FEARVILLE CLASSIC</p>
-          <h2 id="all-roles">All 22 roles</h2>
-          <p className="muted">
-            This is the full script, including characters that may not be in
-            your game. These summaries never reveal which roles are assigned.
-          </p>
-          <RoleTeams script="classic" />
-        </section>
-      )}
       {(!script || script === 'holyMoonStars') && <MoonAndStars />}
       {(!script || script === 'horrors') && <HorrorsOfFearville />}
     </div>

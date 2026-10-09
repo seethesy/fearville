@@ -9,15 +9,15 @@ function setup(script: RoleScript) {
   const g = newGame('INTRO', 'Host');
   g.script = script;
   const roles =
-    script === 'classic'
+    script === 'horrors'
       ? [
-          'washerwoman',
-          'librarian',
-          'chef',
-          'monk',
-          'soldier',
-          'poisoner',
-          'imp',
+          'sheriff',
+          'hoflibrarian',
+          'teacher',
+          'doctor',
+          'lostwanderer',
+          'basilisk',
+          'monster',
         ]
       : [
           'astronaut',
@@ -34,13 +34,13 @@ function setup(script: RoleScript) {
     shown: r,
   }));
   g.bluffs =
-    script === 'classic'
-      ? ['mayor', 'empath', 'virgin']
+    script === 'horrors'
+      ? ['bodyguard', 'judge', 'vigilante']
       : ['astrologist', 'mystic', 'priest'];
   execute(g, host, { action: 'start' }, 100);
   return g;
 }
-for (const script of ['classic', 'holyMoonStars'] as const) {
+for (const script of ['horrors', 'holyMoonStars'] as const) {
   void test(`${script}: introductions are private, explicit, and delivered only by the night task`, () => {
     const g = setup(script),
       haunt = g.players[5],
@@ -92,7 +92,7 @@ for (const script of ['classic', 'holyMoonStars'] as const) {
     );
     assert.equal(g.messages.filter((m) => m.id === info.id).length, 1);
     horror.name = 'Renamed';
-    g.players[5].role = 'monk';
+    g.players[5].role = 'doctor';
     assert.equal(playerView(horror.id).nightIntroduction!.text, info.text);
     horror.departed = true;
     assert.equal(playerView(horror.id).nightIntroduction, null);
@@ -141,7 +141,7 @@ for (const script of ['classic', 'holyMoonStars'] as const) {
   });
 }
 void test('older saves without introductions remain readable', () => {
-  const g = setup('classic');
+  const g = setup('horrors');
   delete g.nightIntroductions;
   assert.equal(
     view(g, { id: g.players[6].id, host: false }, 1, 100).nightIntroduction,
@@ -150,7 +150,7 @@ void test('older saves without introductions remain readable', () => {
 });
 
 void test('small tables and Atheist games keep existing introduction restrictions', () => {
-  for (const script of ['classic', 'holyMoonStars'] as const) {
+  for (const script of ['horrors', 'holyMoonStars'] as const) {
     const g = setup(script);
     g.players = g.players.slice(2);
     assert.ok(

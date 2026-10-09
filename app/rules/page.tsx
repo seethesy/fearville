@@ -5,7 +5,7 @@ import { RulesReference } from '@/components/rules-reference';
 export const metadata: Metadata = {
   title: 'Rules & roles · Fearville',
   description:
-    'Learn how to play, look up key terms, and browse every role in Fearville Classic, Holy Moon and Stars, and Horrors of Fearville. No account or lobby required.',
+    'Learn how to play, look up key terms, and browse every role in Horrors of Fearville, Holy Moon and Stars, and Horrors of Fearville. No account or lobby required.',
 };
 
 export default function Rules() {

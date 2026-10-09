@@ -96,7 +96,6 @@ export async function POST(r: Request) {
         ![
           'vote',
           'chat',
-          'nightPoll',
           'nightChoice',
           'mvpVote',
           'claimSeat',

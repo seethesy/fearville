@@ -2,70 +2,6 @@
 @import 'tw-animate-css';
 @import 'shadcn/tailwind.css';
 
-.night-puzzles {
-  margin-block: 1.5rem;
-  padding-block: 1rem;
-  border-block: 1px solid var(--border);
-}
-.puzzle-controls,
-.puzzle-actions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: end;
-  gap: 0.65rem;
-  margin-block: 0.8rem;
-}
-.puzzle-controls .field {
-  flex: 1 1 120px;
-  min-width: 0;
-}
-.puzzle-controls select {
-  width: 100%;
-  min-height: 44px;
-  font-size: 16px;
-}
-.puzzle-actions button {
-  min-height: 44px;
-  flex: 1 1 90px;
-}
-.puzzle-board {
-  margin-block: 1rem;
-}
-.puzzle-prompt {
-  font-size: clamp(1.1rem, 4vw, 1.7rem);
-  padding-block: 1rem;
-  overflow-wrap: anywhere;
-}
-.puzzle-tiles {
-  display: grid;
-  gap: 4px;
-  max-width: 360px;
-  margin-block: 1rem;
-}
-.puzzle-tiles .puzzle-tile {
-  min-width: 0;
-  min-height: 40px;
-  aspect-ratio: 1;
-  padding: 0;
-  border: 1px solid #71697d;
-  border-radius: 6px;
-  background: #211c2a;
-  color: #d9d0e6;
-}
-.puzzle-tiles .puzzle-tile:disabled {
-  opacity: 1;
-}
-.puzzle-tiles .lit,
-.puzzle-actions .puzzle-flash:disabled {
-  background: #e0b96c;
-  color: #211506;
-  opacity: 1;
-}
-.puzzle-tiles .miss {
-  background: #662f42;
-  color: #fff;
-}
-
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
@@ -1867,15 +1803,6 @@ h3,
 }
 
 /* Keep the game usable on narrow phones and with the on-screen keyboard. */
-.poll-result {
-  margin-bottom: 20px;
-  overflow-wrap: anywhere;
-}
-.night-poll {
-  margin-top: 24px;
-  padding-top: 20px;
-  border-top: 1px solid var(--border);
-}
 .table-title > div,
 .panel,
 .field {
@@ -2714,16 +2641,7 @@ h3,
 .atmosphere-control button { font-size: .75rem; padding: .4rem .7rem; }
 .portrait-stage { display: inline-grid; position: relative; vertical-align: middle; line-height: 1; }
 .player-avatar { transition: filter 1s ease, opacity 1s ease, box-shadow .35s ease, border-color .35s ease; }
-.player-avatar.frame-silver { border: 3px double #d1dce8; box-shadow: 0 0 0 2px #536275, 0 0 0 4px #b3c3d333, 0 3px 12px #0006; }
-.player-avatar.frame-thorns { border: 4px dashed #a57a8a; outline: 2px solid #553746; outline-offset: 1px; box-shadow: 0 0 0 5px #38252f, 0 3px 12px #0008; }
-.player-avatar.frame-gilded { border: 4px double #f4d193; outline: 1px solid #987038; outline-offset: 2px; box-shadow: 0 0 0 5px #312a20, 0 0 16px #d6a25233; }
-.player-avatar.frame-spectral { border: 2px solid #c2eee6; box-shadow: 0 0 0 3px #91d9d333, 0 0 0 6px #91d9d311, 0 0 20px #91d9d355; }
 .circle-seat .portrait-stage { display: inline-grid; overflow: visible; }
-.cosmetic-options { border: 0; margin: 1.5rem 0; padding: 0; min-width: 0; }
-.cosmetic-options legend { font-weight: 600; margin-bottom: .8rem; }
-.frame-options { display: grid; grid-template-columns: repeat(auto-fit, minmax(105px, 1fr)); gap: .75rem; }
-.frame-options button { display: grid; justify-items: center; gap: .8rem; padding: 1rem .5rem; font-size: .8rem; }
-.frame-options button[aria-pressed=true] { background: #423c30; border-color: #edcc87; box-shadow: 0 0 0 2px #edcc87; }
 .cosmetic-preview-stage { display: inline-grid; place-items: center; position: relative; padding: 1rem; }
 .avatar-picker > button { margin-right: .6rem; margin-bottom: .6rem; }
 .death-announcement { animation: none; display: flex; flex-wrap: wrap; justify-content: center; gap: 1.5rem; }
@@ -2872,8 +2790,12 @@ h3,
 .sphinx-glimpse li.dead {
   opacity: 0.6;
 }
-.rules-reference a.glossary-link {
-  color: inherit;
-  text-decoration-style: dotted;
-  text-underline-offset: 3px;
-}
+
+/* Inline character glossary definitions. */
+button.glossary-trigger { display: inline; padding: 0; min-height: 0; border: 0; border-radius: 2px; background: transparent; color: inherit; font: inherit; line-height: inherit; cursor: pointer; text-decoration: underline dotted; text-underline-offset: 3px; }
+button.glossary-trigger:hover { text-decoration-style: solid; background: transparent; }
+button.glossary-trigger:focus-visible { outline: 2px solid currentColor; outline-offset: 3px; }
+.glossary-bubble { width: min(320px, calc(100vw - 24px)); max-width: var(--available-width); max-height: min(70dvh, var(--available-height)); overflow-y: auto; background: #fff7e9; color: #26211e; border: 1px solid #bfa880; padding: 14px; font-size: 15px; line-height: 1.5; }
+.glossary-bubble [data-slot='popover-description'] { color: inherit; }
+.role-pick-card { display: flex; flex-direction: column; gap: 8px; border: 1px solid var(--border); padding: 10px; border-radius: 10px; }
+.role-pick-card > small { display: block; line-height: 1.5; }

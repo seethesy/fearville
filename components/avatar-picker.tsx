@@ -3,12 +3,7 @@ import { useState } from 'react';
 import { AVATARS, defaultAvatar } from '@/lib/game/avatars';
 import type { GameView } from '@/lib/game/view';
 import { PlayerAvatar } from './player-avatar';
-import {
-  PORTRAIT_FRAMES,
-  DEATH_EFFECTS,
-  type PortraitFrame,
-  type DeathEffectId,
-} from '@/lib/game/cosmetics';
+import { DEATH_EFFECTS, type DeathEffectId } from '@/lib/game/cosmetics';
 import { DeathEffect } from './death-effect';
 
 async function portrait(file: File) {
@@ -55,7 +50,6 @@ export function AvatarPicker({
 }) {
   const me = game.players.find((p) => p.id === game.me);
   const [choice, setChoice] = useState<string | null>(null);
-  const [frame, setFrame] = useState<PortraitFrame | null>(null);
   const [effect, setEffect] = useState<DeathEffectId | null>(null);
   const [preview, setPreview] = useState(0);
   const [busy, setBusy] = useState(false);
@@ -67,16 +61,12 @@ export function AvatarPicker({
       <section className="panel avatar-picker">
         <h2>Your appearance</h2>
         <div className="avatar-preview">
-          <PlayerAvatar
-            avatar={me.avatar}
-            id={me.id}
-            frame={me.portraitFrame}
-          />
+          <PlayerAvatar avatar={me.avatar} id={me.id} />
           <strong>{me.name}</strong>
         </div>
         <p className="muted">
-          Appearance is locked during the game. Change your avatar, frame, and
-          death effect when you return to the pregame lobby.
+          Appearance is locked during the game. Change your avatar and death
+          effect when you return to the pregame lobby.
         </p>
       </section>
     );
@@ -85,7 +75,6 @@ export function AvatarPicker({
     AVATARS.some((a) => a.id === avatar)
       ? game.players.find((p) => p.id !== me.id && p.avatar === avatar)
       : undefined;
-  const selectedFrame = frame ?? me.portraitFrame;
   const selectedEffect = effect ?? me.deathEffect;
   async function save() {
     setBusy(true);
@@ -98,7 +87,6 @@ export function AvatarPicker({
         body: JSON.stringify({
           action: 'setAvatar',
           avatar: selected,
-          portraitFrame: selectedFrame,
           deathEffect: selectedEffect,
           version: game.version,
           ...(game.sandboxHost ? { pov: game.me } : {}),
@@ -109,7 +97,6 @@ export function AvatarPicker({
         throw Error(result.error || 'Unable to save your avatar.');
       await refresh();
       setChoice(null);
-      setFrame(null);
       setEffect(null);
       setNotice('Appearance saved for this table.');
     } catch (e) {
@@ -127,7 +114,7 @@ export function AvatarPicker({
       </p>
       <div className="avatar-preview">
         <div className="cosmetic-preview-stage">
-          <PlayerAvatar avatar={selected} id={me.id} frame={selectedFrame} />
+          <PlayerAvatar avatar={selected} id={me.id} />
         </div>
         <strong>{me.name}</strong>
       </div>
@@ -181,28 +168,6 @@ export function AvatarPicker({
         JPG, PNG, or WebP, up to 8 MB. Photos are center-cropped; only the small
         portrait is saved. Pick a preset to replace your photo.
       </p>
-      <fieldset className="cosmetic-options">
-        <legend>Portrait frame</legend>
-        <div className="frame-options">
-          {PORTRAIT_FRAMES.map((item) => (
-            <button
-              type="button"
-              className="secondary"
-              key={item.id}
-              disabled={busy}
-              aria-pressed={selectedFrame === item.id}
-              title={item.description}
-              onClick={() => {
-                setFrame(item.id);
-                setNotice('');
-              }}
-            >
-              <PlayerAvatar avatar={selected} id={me.id} frame={item.id} />
-              <span>{item.name}</span>
-            </button>
-          ))}
-        </div>
-      </fieldset>
       <label className="field">
         Death effect
         <select
@@ -227,7 +192,7 @@ export function AvatarPicker({
       </p>
       <div className="farewell-preview">
         <div className="cosmetic-preview-stage">
-          <PlayerAvatar avatar={selected} id={me.id} frame={selectedFrame} />
+          <PlayerAvatar avatar={selected} id={me.id} />
           {preview > 0 && <DeathEffect key={preview} effect={selectedEffect} />}
         </div>
         <div>
@@ -251,7 +216,6 @@ export function AvatarPicker({
           busy ||
           !!ownerOf(selected) ||
           (selected === (me.avatar ?? defaultAvatar(me.id)) &&
-            selectedFrame === me.portraitFrame &&
             selectedEffect === me.deathEffect)
         }
         onClick={() => void save()}

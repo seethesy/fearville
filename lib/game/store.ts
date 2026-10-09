@@ -1,5 +1,6 @@
 import { database } from '@/db';
 import type { Actor, Game } from './types';
+import { savedGame } from './saved-state';
 export const cookieName = 'ct_session';
 export async function hash(token: string) {
   const data = await crypto.subtle.digest(
@@ -52,7 +53,7 @@ export async function read(code: string) {
     .first<{ state: string; version: number; created: number }>();
   if (!row) throw Error('Session not found.');
   return {
-    game: JSON.parse(row.state) as Game,
+    game: savedGame(row.state),
     version: row.version,
     created: row.created,
   };

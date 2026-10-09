@@ -45,13 +45,13 @@ async function action(payload) {
   return r.data;
 }
 const roleIDs = [
-  'washerwoman',
-  'librarian',
-  'chef',
-  'empath',
-  'fortuneteller',
-  'poisoner',
-  'imp',
+  'sheriff',
+  'hoflibrarian',
+  'teacher',
+  'judge',
+  'lostwanderer',
+  'basilisk',
+  'monster',
 ];
 for (let i = 0; i < 7; i++) {
   const p = state.players[i];
@@ -73,36 +73,13 @@ await action({
   nomination: 60,
   defense: 5,
   voting: 5,
-  bluff1: 'monk',
-  bluff2: 'soldier',
-  bluff3: 'mayor',
+  bluff1: 'doctor',
+  bluff2: 'watchman',
+  bluff3: 'bodyguard',
   redHerring: state.players[0].id,
 });
 await action({ action: 'start' });
 const playerStates = await Promise.all(tokens.map((t) => call('/api/game', t)));
-// Polls accept simultaneous answers despite an unrelated game version change.
-const pollId = playerStates[0].data.nightPoll.id;
-const pollAnswers = await Promise.all(
-  tokens.map((token, i) =>
-    call('/api/game', token, {
-      action: 'nightPoll',
-      poll: pollId,
-      target: state.players[i % 2].id,
-      version: -1,
-    }),
-  ),
-);
-assert.ok(
-  pollAnswers.every((r) => r.status === 200),
-  JSON.stringify(pollAnswers),
-);
-for (let i = 0; i < tokens.length; i++) {
-  const v = (await call('/api/game', tokens[i])).data;
-  assert.equal(v.nightPoll.answer, state.players[i % 2].id);
-  assert.equal(v.previousNightPoll, null);
-  assert.ok(!Object.hasOwn(v.nightPoll, 'answers'));
-}
-assert.equal((await call('/api/game', host)).data.nightPoll, null);
 assert.ok(playerStates.every((r) => r.data.character));
 for (const r of playerStates) {
   assert.ok(r.data.players.every((p) => !Object.hasOwn(p, 'role')));

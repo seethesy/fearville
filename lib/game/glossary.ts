@@ -1,6 +1,5 @@
 // Key game terms, shared by the web rules reference and role descriptions.
-// The iPhone client keeps a copy in ClocktowerTableApp.swift (GLOSSARY);
-// tests/glossary.test.ts checks that both stay identical.
+// scripts/generate-ios-reference.mjs exports these data for the iPhone client.
 export type GlossaryTerm = {
   id: string;
   term: string;
@@ -76,17 +75,25 @@ export const GLOSSARY_FORMS: Record<string, string> = {
 // point at the definition of each key term.
 export function glossarySegments(
   text: string,
+  excludeId?: string,
 ): (string | { text: string; id: string })[] {
   const out: (string | { text: string; id: string })[] = [];
+  const seen = new Set(excludeId ? [excludeId] : []);
   const pattern = new RegExp(
-    `\\b(${Object.keys(GLOSSARY_FORMS).join('|')})\\b`,
-    'gi',
+    `(?<![\\p{L}\\p{N}_])(${Object.keys(GLOSSARY_FORMS)
+      .sort((a, b) => b.length - a.length)
+      .map((form) => form.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+      .join('|')})(?![\\p{L}\\p{N}_])`,
+    'giu',
   );
   let last = 0;
   for (const match of text.matchAll(pattern)) {
+    const id = GLOSSARY_FORMS[match[0].toLowerCase()];
+    if (seen.has(id) || !glossaryTerm(id)) continue;
+    seen.add(id);
     const at = match.index ?? 0;
     if (at > last) out.push(text.slice(last, at));
-    out.push({ text: match[0], id: GLOSSARY_FORMS[match[0].toLowerCase()] });
+    out.push({ text: match[0], id });
     last = at + match[0].length;
   }
   if (last < text.length) out.push(text.slice(last));

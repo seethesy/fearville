@@ -41,12 +41,13 @@ async function call(path, account = '', body, member = '') {
     method: body ? 'POST' : 'GET',
     headers: {
       'Content-Type': 'application/json',
+      'cf-connecting-ip': prefix,
       ...(account ? { 'X-Account-Authorization': 'Bearer ' + account } : {}),
       ...(member ? { Authorization: 'Bearer ' + member } : {}),
     },
     ...(body ? { body: JSON.stringify(body) } : {}),
   });
-  return { status: response.status, data: await response.json() };
+  return { status: response.status, data: await json(response,path) };
 }
 const social = (account, body, member) =>
   call('/api/social', account, body, member);
@@ -302,7 +303,7 @@ async function action(payload, token = hostToken) {
   state = r.data.game;
   return r.data;
 }
-const roles = ['empath', 'chef', 'librarian', 'imp', 'poisoner'];
+const roles = ['judge', 'teacher', 'hoflibrarian', 'monster', 'basilisk'];
 state = await ok(call('/api/game', '', undefined, hostToken), 'full table');
 assert.deepEqual(
   state.players.map((p) => p.name),
@@ -327,9 +328,9 @@ await action({
   nomination: 60,
   defense: 5,
   voting: 5,
-  bluff1: 'monk',
-  bluff2: 'soldier',
-  bluff3: 'mayor',
+  bluff1: 'doctor',
+  bluff2: 'watchman',
+  bluff3: 'bodyguard',
   redHerring: state.players[0].id,
 });
 await action({ action: 'start' });
@@ -338,7 +339,7 @@ assert.equal(state.phase, 'night');
 assert.equal((await ok(social(tA), 'A pre')).stats.storyteller.games, 0);
 await action({ action: 'end', winner: 'evil' });
 assert.equal(state.phase, 'ended');
-// Stats: A storytold; B (empath, good) lost; F (chef, good) lost.
+// Stats: A storytold; B (judge, good) lost; F (teacher, good) lost.
 viewA = await ok(social(tA), 'A post');
 assert.equal(viewA.stats.storyteller.games, 1);
 assert.equal(viewA.stats.games, 0);
@@ -349,8 +350,8 @@ assert.deepEqual(viewB.stats.town, { wins: 0, losses: 1 });
 assert.deepEqual(viewB.stats.evil, { wins: 0, losses: 0 });
 assert.deepEqual(viewB.stats.roles.map(({ role, name, team, played, wins, losses }) => ({ role, name, team, played, wins, losses })), [
   {
-    role: 'empath',
-    name: 'Empath',
+    role: 'judge',
+    name: 'Judge',
     team: 'good',
     played: 1,
     wins: 0,
@@ -359,9 +360,9 @@ assert.deepEqual(viewB.stats.roles.map(({ role, name, team, played, wins, losses
 ]);
 assert.equal(viewB.friends.find((f) => f.id === A).together, 1);
 assert.equal(viewB.friends.find((f) => f.id === F).together, 1);
-assert.equal(viewB.recent[0].roleName, 'Empath');
+assert.equal(viewB.recent[0].roleName, 'Judge');
 assert.equal(viewB.recent[0].winner, 'evil');
-// Guest 3 (poisoner, evil, won) attaches the seat afterwards.
+// Guest 3 (basilisk, evil, won) attaches the seat afterwards.
 assert.equal((await ok(social(tD), 'D before attach')).stats.games, 0);
 await ok(
   call('/api/accounts', tD, { action: 'attach' }, guestToken),
@@ -369,7 +370,7 @@ await ok(
 );
 const viewD = await ok(social(tD), 'D after attach');
 assert.deepEqual(viewD.stats.evil, { wins: 1, losses: 0 });
-assert.equal(viewD.stats.roles[0].role, 'poisoner');
+assert.equal(viewD.stats.roles[0].role, 'basilisk');
 
 // --- Ratings -----------------------------------------------------------------
 const rating = await ok(
@@ -452,3 +453,5 @@ for (const t of [tB, tC, tD, tE])
 console.log(
   'PASS: handles, friend requests (accept, decline, cancel, mutual, remove, block), profiles, invitations (send, accept, decline, single use, seating), recorded results with late seat attachment, Storyteller ratings and averages, rewind withdrawal, and deletion.',
 );
+
+async function json(response,path) { const text=await response.text(); try { return JSON.parse(text); } catch { throw Error(path+" returned "+response.status+": "+text); } }

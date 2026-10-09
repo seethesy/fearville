@@ -14,7 +14,7 @@ export function recapOf(g: Game, ended: number): SessionRecap {
     started: g.gameStartedAt,
     number: g.sessionNumber ?? (g.recaps?.length ?? 0) + 1,
     winner: g.winner,
-    script: g.script ?? ('classic' as const),
+    script: g.script ?? ('horrors' as const),
     players: g.players
       .slice()
       .sort((a, b) => a.seat - b.seat)
@@ -27,7 +27,6 @@ export function recapOf(g: Game, ended: number): SessionRecap {
         team: role(p.role)?.team,
         seat: p.seat,
         avatar: p.avatar,
-        portraitFrame: p.portraitFrame,
         alive: p.alive,
         notebook: g.notebooks?.[p.id],
       })),

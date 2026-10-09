@@ -4,7 +4,7 @@ export const STARTING_ELO = 1000;
 export type RatingSeat = {
   player: string;
   account: string | null;
-  team: 'good' | 'evil';
+  team: 'good' | 'evil' | 'neutral';
   rating: number;
   rankedGames: number;
 };
@@ -46,9 +46,9 @@ export function snapshotRatings(
       ? rows.reduce((sum, p) => sum + p.rating, 0) / rows.length
       : null;
   return seats.map((p) => {
-    const opponentRating = average(seats.filter((q) => q.team !== p.team));
+    const opponentRating = p.team === 'neutral' ? null : average(seats.filter((q) => q.team !== 'neutral' && q.team !== p.team));
     // Teammates excludes the player themselves.
-    const teamRating = average(
+    const teamRating = p.team === 'neutral' ? null : average(
       seats.filter((q) => q.team === p.team && q.player !== p.player),
     );
     return {

@@ -1,4 +1,5 @@
 'use client';
+import { GlossaryText } from '@/components/glossary-text';
 import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { PlayerNotes } from '@/components/player-notes';
@@ -9,7 +10,6 @@ import { MessageBadge } from '@/components/message-badge';
 import { NightChoiceNotice } from '@/components/night-choice-notice';
 import { StorytellerVote } from '@/components/storyteller-vote';
 import { TableNightChoice } from '@/components/table-night-choice';
-import { NightPuzzles } from '@/components/night-puzzles';
 import { NightIntroduction } from '@/components/night-introduction';
 import { SphinxGlimpse } from '@/components/sphinx-glimpse';
 import { TableDawn } from '@/components/table-dawn';
@@ -751,22 +751,6 @@ export default function Table() {
             {game.phase === 'lobby' && (
               <TableSeating game={game} refresh={refresh} />
             )}
-            {game.previousNightPoll && (
-              <section
-                className="panel poll-result"
-                aria-label="Previous night poll result"
-              >
-                <p className="eyebrow">
-                  NIGHT {game.previousNightPoll.night} · TABLE FAVORITES
-                </p>
-                <h2>{game.previousNightPoll.question}</h2>
-                <p>
-                  {game.previousNightPoll.winners.length
-                    ? `${game.previousNightPoll.winners.length > 1 ? 'Tied favorites: ' : 'Table favorite: '}${game.previousNightPoll.winners.join(', ')}`
-                    : 'No answers this time.'}
-                </p>
-              </section>
-            )}
             <RankedMode game={game} refresh={refresh} />
             <div className="workspace-grid flow-dashboard">
               <section className="panel flow-panel">
@@ -866,28 +850,6 @@ export default function Table() {
                         Check Messages for instructions from your Storyteller.
                         Reply there with your choices.
                       </p>
-                      <NightPuzzles
-                        key={`${game.code}:${game.me}:${game.night}`}
-                      />
-                      {game.nightPoll && (
-                        <div className="night-poll">
-                          <p className="eyebrow">
-                            TONIGHT’S POLL · JUST FOR FUN
-                          </p>
-                          <h3>{game.nightPoll.question}</h3>
-                          <p className="muted">
-                            Everyone can play while waiting. Your night ability
-                            still comes first. Only the favorite is shared after
-                            dawn, never who voted.
-                          </p>
-                          {game.nightPoll.answer && (
-                            <output>
-                              Your answer: {name(game.nightPoll.answer)}. You
-                              can change it until dawn.
-                            </output>
-                          )}
-                        </div>
-                      )}
                     </>
                   )
                 ) : (
@@ -1070,7 +1032,9 @@ export default function Table() {
                           <p className="alignment">
                             {game.character.alignment} team
                           </p>
-                          <p>{game.character.description}</p>
+                          <p>
+                            <GlossaryText text={game.character.description} />
+                          </p>
                         </>
                       )}
                       <button
@@ -1109,7 +1073,6 @@ export default function Table() {
                             avatar={p.avatar}
                             id={p.id}
                             dead={!p.alive}
-                            frame={p.portraitFrame}
                             deathEffect={p.deathEffect}
                             publicDead={!p.publicAlive}
                           />
@@ -1173,7 +1136,13 @@ export default function Table() {
                               })}
                             </small>
                           </div>
-                          <p>{m.text}</p>
+                          <p>
+                            {m.kind === 'info' ? (
+                              <GlossaryText text={m.text} />
+                            ) : (
+                              m.text
+                            )}
+                          </p>
                         </article>
                       ))
                   )}
@@ -1181,11 +1150,6 @@ export default function Table() {
                 </section>
               )}
             </div>
-            {game.phase === 'lobby' && !game.host && (
-              <section className="panel">
-                <NightPuzzles lobby />
-              </section>
-            )}
           </TabsContent>
           <TabsContent value="seats" keepMounted>
             {!game.host && (
@@ -1227,7 +1191,7 @@ export default function Table() {
                 )}
 
                 {game.host && game.phase === 'lobby' && (
-                  <section className="panel poll-result">
+                  <section className="panel">
                     <h2>Assign the town’s characters.</h2>
                     <p className="muted">
                       Edit each seat to choose its character manually, or start
@@ -1251,7 +1215,6 @@ export default function Table() {
                         avatar={p.avatar}
                         id={p.id}
                         dead={!p.alive}
-                        frame={p.portraitFrame}
                         deathEffect={p.deathEffect}
                         publicDead={!p.publicAlive}
                       />
@@ -1350,7 +1313,9 @@ export default function Table() {
                       )
                       .map((c) => (
                         <div key={c.action}>
-                          <p>{c.description}</p>
+                          <p>
+                            <GlossaryText text={c.description} />
+                          </p>
                           {button(c)}
                         </div>
                       ))}
@@ -1412,7 +1377,9 @@ export default function Table() {
             <DialogHeader>
               <DialogTitle>{actionControl?.title}</DialogTitle>
               <DialogDescription>
-                {actionControl?.description}
+                {actionControl && (
+                  <GlossaryText text={actionControl.description} />
+                )}
               </DialogDescription>
             </DialogHeader>
             <form
@@ -1428,7 +1395,9 @@ export default function Table() {
                       <strong>
                         {confirmation.playerName || 'Night task'} ability
                       </strong>
-                      <p>{confirmation.ability}</p>
+                      <p>
+                        <GlossaryText text={confirmation.ability} />
+                      </p>
                     </div>
                   )}
                   <div className="status-bubbles" aria-label="Player status">

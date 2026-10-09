@@ -126,7 +126,7 @@ void test('privacy allows self, honors each visibility and never bypasses blocks
 });
 void test('ranked controls are host-only and previews never expose other seats or hidden calibration', () => {
   const g = newGame('RANKED', 'Host');
-  g.players = ['washerwoman', 'librarian', 'chef', 'poisoner', 'imp'].map(
+  g.players = ['sheriff', 'hoflibrarian', 'teacher', 'basilisk', 'monster'].map(
     (role, i) => ({ ...newPlayer(`Seat ${i}`, i + 1), role, shown: role }),
   );
   const host = { id: 'host', host: true },
@@ -135,7 +135,7 @@ void test('ranked controls are host-only and previews never expose other seats o
     execute(g, actor, { action: 'setRanked', ranked: true }, 1),
   );
   execute(g, host, { action: 'setRanked', ranked: true }, 1);
-  g.bluffs = ['monk', 'soldier', 'mayor'];
+  g.bluffs = ['doctor', 'watchman', 'bodyguard'];
   g.redHerring = g.players[0].id;
   execute(g, host, { action: 'start' }, 100);
   g.progression = {

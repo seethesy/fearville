@@ -1,4 +1,4 @@
-// Horrors of Fearville rules. Classic games never enter this module; Holy
+// Horrors of Fearville rules. Holy
 // Moon and Stars and Horrors of Fearville share the queued engine in hms.ts,
 // which calls in here for everything specific to this script.
 //

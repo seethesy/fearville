@@ -4,13 +4,10 @@ import {
   resolvedAvatars,
   assignAvatars,
 } from './avatars.ts';
-import { validFrame, validDeathEffect } from './cosmetics.ts';
+import { validDeathEffect } from './cosmetics.ts';
 import {
   role,
   scriptRoles,
-  FIRST,
-  OTHER,
-  COUNTS,
   uuid,
   newPlayer,
   phaseName,
@@ -21,12 +18,9 @@ import {
   type Player,
   type Phase,
 } from './types.ts';
-import { startNightPoll, closeNightPoll } from './polls.ts';
-import { deliverIntroduction } from './introductions.ts';
 import { assignRandomRoles } from './assignment.ts';
 import { recapOf, returnToLobby } from './lobby.ts';
 import {
-  isHms,
   isMoon,
   hms,
   hmsTasks,
@@ -47,7 +41,8 @@ import {
   requireNoPendingDeath,
   ST,
 } from './hms.ts';
-import { isHof, hofFinish, hofAnnounceCharges, bluffIssue } from './hof.ts';
+import { isHof, hofFinish, hofAnnounceCharges } from './hof.ts';
+import { savedGame } from './saved-state.ts';
 export function requireThat(ok: unknown, message: string): asserts ok {
   if (!ok) throw new Error(message);
 }
@@ -107,7 +102,6 @@ export function setPhase(g: Game, phase: Phase, at: number, seconds?: number) {
     delete g.gameEndedAt;
     delete g.mvpVotes;
   }
-  if (g.phase === 'night' && phase !== 'night') closeNightPoll(g);
   g.phase = phase;
   if (phase === 'ended') {
     g.gameEndedAt ??= at;
@@ -123,7 +117,7 @@ export function beginNight(g: Game, at: number) {
   g.nightChoices = {};
   g.nightChoiceDeadlines = {};
   g.nightIntroductions = {};
-  startNightPoll(g);
+  g.nightChoiceRound = uuid();
   g.done = [];
   g.deferredNightTasks = [];
   g.active = null;
@@ -136,27 +130,10 @@ export function beginNight(g: Game, at: number) {
   g.nightChoiceDeadline = g.sandbox
     ? Number.MAX_SAFE_INTEGER
     : at + (g.timers.nightChoice ?? 60) * 1000;
-  if (isHms(g)) {
-    hmsBeginNight(g);
-    g.nightChoiceTasks = choiceTasks(g);
-    return;
-  }
-  g.nightChoiceTasks = tasks(g);
-  // Preselect conditional Ravenkeeper targets without revealing night deaths.
-  if (g.night > 1)
-    for (const p of g.players.filter(
-      (p) =>
-        p.alive && (p.role === 'drunk' ? p.shown : p.role) === 'ravenkeeper',
-    )) {
-      g.nightChoiceTasks.push({
-        key: 'ravenkeeper:' + p.id,
-        role: 'ravenkeeper',
-        player: p.id,
-        name: 'Ravenkeeper · ' + p.name,
-        done: false,
-      });
-    }
+  hmsBeginNight(g);
+  g.nightChoiceTasks = choiceTasks(g);
 }
+
 export function tasks(g: Game) {
   const defer = <T extends { key: string; done: boolean }>(items: T[]) => {
     const later = new Set(g.deferredNightTasks ?? []);
@@ -164,161 +141,47 @@ export function tasks(g: Game) {
       (a, b) => Number(later.has(a.key)) - Number(later.has(b.key)),
     );
   };
-  if (isHms(g)) return defer(hmsTasks(g));
-  const order = g.night === 1 ? FIRST : OTHER;
-  return defer(
-    order.flatMap((r) => {
-      if (r === 'minioninfo' || r === 'demoninfo') {
-        if (g.players.length < 7) return [];
-        return [
-          {
-            key: r,
-            role: r,
-            player: '',
-            name:
-              r === 'minioninfo'
-                ? 'Haunt introductions'
-                : 'Horror introductions',
-            done: g.done.includes(r),
-          },
-        ];
-      }
-      return g.players
-        .filter((p) => {
-          const shown = p.role === 'drunk' ? p.shown : p.role;
-          return (
-            shown === r &&
-            (r === 'ravenkeeper' ? p.nightDeath === g.night : p.alive) &&
-            (r !== 'undertaker' || !!g.execution)
-          );
-        })
-        .sort((a, b) => a.seat - b.seat)
-        .map((p) => ({
-          key: r + ':' + p.id,
-          role: r,
-          player: p.id,
-          name: role(r)!.name + ' · ' + p.name,
-          done: g.done.includes(r + ':' + p.id),
-        }));
-    }),
-  );
+  return defer(hmsTasks(g));
 }
+
 export function nightChoiceTask(g: Game, player?: string) {
   if (g.phase !== 'night') return null;
-  if (isHms(g)) {
-    if (!player) return null;
-    const task = (g.nightChoiceTasks ?? []).find(
-      (t) => t.player === player && !g.done.includes(t.key) && choiceSpec(g, t),
-    );
-    if (!task) return null;
-    const spec = choiceSpec(g, task)!;
-    return {
-      ...task,
-      round: g.nightPoll?.id ?? String(g.night),
-      count: spec.count,
-      text: spec.text,
-      guesses: spec.guesses,
-      members: spec.members,
-      optional: spec.optional,
-      label: spec.label,
-      flag: spec.flag,
-      options: g.players
-        .filter((p) => !p.departed)
-        .sort((a, b) => a.seat - b.seat)
-        .map((p) => ({
-          id: p.id,
-          name: p.name,
-          seat: p.seat,
-          eligible: spec.eligible(p),
-        })),
-    };
-  }
-  const task = player
-    ? (g.nightChoiceTasks ?? tasks(g)).find(
-        (t) => t.player === player && !g.done.includes(t.key),
-      )
-    : tasks(g).find((t) => !t.done);
-  if (
-    !task ||
-    ![
-      'poisoner',
-      'monk',
-      'imp',
-      'butler',
-      'fortuneteller',
-      'ravenkeeper',
-    ].includes(task.role)
-  )
-    return null;
+
+  if (!player) return null;
+  const task = (g.nightChoiceTasks ?? []).find(
+    (t) => t.player === player && !g.done.includes(t.key) && choiceSpec(g, t),
+  );
+  if (!task) return null;
+  const spec = choiceSpec(g, task)!;
   return {
     ...task,
-    round: g.nightPoll?.id ?? String(g.night),
-    count: task.role === 'fortuneteller' ? 2 : 1,
+    round: g.nightChoiceRound ?? `${g.gameStartedAt ?? 0}:${g.night}`,
+    count: spec.count,
+    text: spec.text,
+    guesses: spec.guesses,
+    members: spec.members,
+    optional: spec.optional,
+    label: spec.label,
+    flag: spec.flag,
     options: g.players
-      .filter(
-        (p) =>
-          !p.departed &&
-          (!['imp', 'poisoner'].includes(task.role) || p.publicAlive) &&
-          (!['monk', 'butler'].includes(task.role) || p.id !== task.player),
-      )
+      .filter((p) => !p.departed)
       .sort((a, b) => a.seat - b.seat)
       .map((p) => ({
         id: p.id,
         name: p.name,
         seat: p.seat,
-        eligible:
-          !['monk', 'butler'].includes(task.role) || p.id !== task.player,
+        eligible: spec.eligible(p),
       })),
   };
 }
+
 export function setupIssues(g: Game) {
   const seats = g.players.some((p) => p.seat < 1)
     ? ['Every player must claim a seat before roles are dealt.']
     : [];
-  if (isHms(g)) return [...seats, ...hmsSetupIssues(g)];
-  const issues: string[] = [...seats];
-  const expected = COUNTS[g.players.length]?.slice();
-  if (!expected)
-    return [`Fearville Classic requires 5–${MAX_PLAYERS} players.`];
-  if (g.players.some((p) => p.role === 'baron')) {
-    expected[0] -= 2;
-    expected[1] += 2;
-  }
-  const actual = ['townsfolk', 'outsider', 'minion', 'demon'].map(
-    (t) => g.players.filter((p) => role(p.role)?.team === t).length,
-  );
-  if (actual.some((v, i) => v !== expected[i]))
-    issues.push(
-      `Expected ${expected[0]} Villagers, ${expected[1]} Fools, ${expected[2]} Haunts and 1 Horror.`,
-    );
-  if (g.players.some((p) => !role(p.role)))
-    issues.push('Assign a character to every seat.');
-  if (new Set(g.players.map((p) => p.role)).size !== g.players.length)
-    issues.push('Characters must be unique at setup.');
-  const drunk = g.players.find((p) => p.role === 'drunk');
-  if (
-    drunk &&
-    (!role(drunk.shown) ||
-      role(drunk.shown)?.team !== 'townsfolk' ||
-      g.players.some((p) => p.role === drunk.shown))
-  )
-    issues.push('Give the Drunk a Villager character that is not in play.');
-  if (
-    g.players.some(
-      (p) => p.role === 'fortuneteller' || p.shown === 'fortuneteller',
-    ) &&
-    !g.players.some((p) => p.id === g.redHerring && !evil(p))
-  )
-    issues.push('Choose a good player as the Fortune Teller’s red herring.');
-  const bluffs = bluffIssue(
-    g,
-    scriptRoles('classic')
-      .filter((r) => ['townsfolk', 'outsider'].includes(r.team))
-      .map((r) => r.id),
-  );
-  if (bluffs) issues.push(bluffs);
-  return issues;
+  return [...seats, ...hmsSetupIssues(g)];
 }
+
 export function candidate(g: Game) {
   const eligible = g.ballots.filter(
     (b) => b.count !== undefined && b.count >= b.threshold,
@@ -332,88 +195,24 @@ export function candidate(g: Game) {
   };
 }
 export function winHints(g: Game) {
-  if (isHms(g)) return hmsWinHints(g);
-  const alive = g.players.filter((p) => p.alive);
-  const hints: string[] = [];
-  if (!alive.some((p) => p.role === 'imp'))
-    hints.push(
-      'No living Horror: good wins unless a succession must be resolved.',
-    );
-  if (alive.length <= 2 && alive.some((p) => p.role === 'imp'))
-    hints.push('Two or fewer living players with a living Horror: evil wins.');
-  if (
-    g.phase === 'dayReview' &&
-    !candidate(g).target &&
-    alive.length === 3 &&
-    alive.some((p) => p.role === 'mayor' && healthy(p))
-  )
-    hints.push(
-      'Three living players, a healthy Mayor, and no execution: good wins at the end of today.',
-    );
-  return hints;
+  return hmsWinHints(g);
 }
-function automaticWinner(g: Game, noExecution = false) {
+function automaticWinner(g: Game) {
   const alive = g.players.filter((p) => p.alive);
-  if (isHms(g)) {
-    if (g.players.some((p) => p.role === 'atheist'))
-      return alive.length <= 2 ? 'Evil' : '';
-    const horror = alive.some((p) => role(p.role)?.team === 'demon');
-    if (!horror) return 'Good';
-    if (alive.length <= 2) return 'Evil';
-    return '';
-  }
-  const horror = alive.some((p) => p.role === 'imp');
-  if (!horror) return 'Good';
-  if (alive.length <= 2) return 'Evil';
-  if (
-    noExecution &&
-    alive.length === 3 &&
-    alive.some((p) => p.role === 'mayor' && healthy(p))
-  )
-    return 'Good';
-  return '';
+  if (g.players.some((p) => p.role === 'atheist'))
+    return alive.length <= 2 ? 'Evil' : '';
+  if (!alive.some((p) => role(p.role)?.team === 'demon')) return 'Good';
+  return alive.length <= 2 ? 'Evil' : '';
 }
-export function death(
-  g: Game,
-  p: Player,
-  at: number,
-  reason: string,
-  successor?: string,
-) {
+
+export function death(g: Game, p: Player, at: number, reason: string) {
   if (!p.alive) return;
-  const aliveBefore = g.players.filter((q) => q.alive).length;
   p.alive = false;
   p.nightDeath = g.phase === 'night' ? g.night : 0;
   if (g.phase !== 'night') p.publicAlive = false;
   log(g, `${p.name} died (${reason}).`, at, g.phase !== 'night');
-  if (p.role === 'imp') {
-    const scarlet = g.players.find(
-      (q) => q.alive && q.role === 'scarletwoman' && healthy(q),
-    );
-    const next =
-      aliveBefore >= 5 && scarlet
-        ? scarlet
-        : successor
-          ? person(g, successor)
-          : null;
-    if (next) {
-      requireThat(
-        next.alive && role(next.role)?.team === 'minion',
-        'The successor must be a living Haunt.',
-      );
-      next.role = 'imp';
-      next.shown = 'imp';
-      message(
-        g,
-        next.id,
-        'Your character is now Imp. Your alignment is evil.',
-        at,
-      );
-      log(g, `${next.name} became the Imp.`, at); // A new Imp from a self-kill does not attack again this night.
-      if (g.phase === 'night') g.done.push('imp:' + next.id);
-    }
-  }
 }
+
 export function eligibleVoters(g: Game) {
   return g.players.filter(
     (p) => p.id !== g.active?.target && !p.departed && (p.alive || p.ghost),
@@ -457,18 +256,6 @@ export function tally(g: Game, at: number) {
       )
       .map((p) => p.id),
   );
-  for (const p of g.players) {
-    if (
-      valid.has(p.id) &&
-      p.alive &&
-      p.role === 'butler' &&
-      healthy(p) &&
-      !valid.has(p.master)
-    ) {
-      valid.delete(p.id);
-      b.invalid.push(p.id);
-    }
-  }
   b.count = valid.size;
   for (const p of g.players) {
     if (!p.alive && valid.has(p.id)) {
@@ -536,126 +323,6 @@ function enforce(condition: unknown, message: string, c: Command) {
     message + ' Use a Storyteller override if needed.',
   );
 }
-function infoResult(g: Game, r: string, p: Player, c: Command) {
-  const a = c.target ? person(g, c.target) : null,
-    b = c.target2 ? person(g, c.target2) : null;
-  let info = clean(c.info, 12000);
-  if (['washerwoman', 'librarian', 'investigator'].includes(r)) {
-    if (r === 'librarian' && c.zero) {
-      enforce(
-        !g.players.some((q) => role(q.role)?.team === 'outsider') ||
-          !healthy(p),
-        'Fools are in play.',
-        c,
-      );
-      return 'You learn that there are no Fools in play.';
-    }
-    requireThat(a && b && a.id !== b.id, 'Choose two different players.');
-    const t =
-      r === 'washerwoman'
-        ? 'townsfolk'
-        : r === 'librarian'
-          ? 'outsider'
-          : 'minion';
-    requireThat(
-      role(clean(c.reveal))?.team === t,
-      'Choose a character of the correct type.',
-    );
-    enforce(
-      !healthy(p) || a.role === c.reveal || b.role === c.reveal,
-      'Neither selected player has that character. Consider Spy or Recluse registration.',
-      c,
-    );
-    return `One of ${a.name} and ${b.name} is the ${role(clean(c.reveal))!.name}.`;
-  }
-  if (r === 'chef') {
-    const seats = [...g.players].sort((a, b) => a.seat - b.seat);
-    const count = seats.reduce(
-      (n, q, i) => n + Number(evil(q) && evil(seats[(i + 1) % seats.length])),
-      0,
-    );
-    if (!info) info = String(count);
-    enforce(
-      !healthy(p) || info === String(count),
-      'This differs from actual alignment. Review Spy/Recluse registration.',
-      c,
-    );
-    return `You learn ${info} adjacent evil pairs.`;
-  }
-  if (r === 'empath') {
-    const seats = [...g.players].sort((a, b) => a.seat - b.seat);
-    const at = seats.findIndex((q) => q.id === p.id);
-    const neighbors = [1, -1].map((dir) => {
-      for (let i = 1; i < seats.length; i++) {
-        const q = seats[(at + dir * i + seats.length) % seats.length];
-        if (q.alive) return q;
-      }
-      return null;
-    });
-    const count = neighbors.reduce((n, q) => n + Number(q && evil(q)), 0);
-    if (!info) info = String(count);
-    enforce(
-      !healthy(p) || info === String(count),
-      'This differs from actual living neighbors. Review registration.',
-      c,
-    );
-    return `You learn ${info} evil living neighbors.`;
-  }
-  if (r === 'fortuneteller') {
-    requireThat(a && b && a.id !== b.id, 'Choose two different players.');
-    const actual = [a, b].some((q) => q.role === 'imp' || q.id === g.redHerring)
-      ? 'Yes'
-      : 'No';
-    if (!info) info = actual;
-    requireThat(['Yes', 'No'].includes(info), 'Answer Yes or No.');
-    enforce(
-      !healthy(p) || info === actual,
-      'This differs from the Horror/red herring check. Review Recluse registration.',
-      c,
-    );
-    return `${a.name} and ${b.name}: ${info}.`;
-  }
-  if (r === 'undertaker') {
-    const dead = person(g, g.execution);
-    const revealed = clean(c.reveal) || dead.role;
-    requireThat(role(revealed), 'Choose a character.');
-    enforce(
-      !healthy(p) || revealed === dead.role,
-      'This differs from the executed character. Review registration.',
-      c,
-    );
-    return `The executed player was the ${role(revealed)!.name}.`;
-  }
-  if (r === 'ravenkeeper') {
-    requireThat(a, 'Choose the player checked by the Ravenkeeper.');
-    const revealed = clean(c.reveal) || a.role;
-    requireThat(role(revealed), 'Choose a character.');
-    enforce(
-      !healthy(p) || revealed === a.role,
-      'This differs from the chosen player’s character. Review registration.',
-      c,
-    );
-    return `${a.name} is the ${role(revealed)!.name}.`;
-  }
-  if (r === 'spy') {
-    const grim = g.players
-      .slice()
-      .sort((a, b) => a.seat - b.seat)
-      .map(
-        (q) =>
-          `${q.seat}. ${q.name}: ${role(q.role)?.name} ${q.role === 'drunk' ? '(shown ' + role(q.shown)?.name + ')' : ''}; ${q.alive ? 'alive' : 'dead'}${q.poisoned ? '; poisoned' : ''}${q.protected ? '; Monk protection' : ''}${q.id === g.redHerring ? '; red herring' : ''}${q.master ? '; master: ' + nameOf(g, q.master) : ''}${q.used ? '; ability spent' : ''}${q.notes ? '; ' + q.notes : ''}`,
-      )
-      .join('\n');
-    if (!healthy(p)) {
-      requireThat(info, 'Supply a fabricated Grimoire for the poisoned Spy.');
-      return info;
-    }
-    return (
-      grim + '\nDemon bluffs: ' + g.bluffs.map((r) => role(r)?.name).join(', ')
-    );
-  }
-  return info;
-}
 function executeCommand(
   g: Game,
   actor: Actor,
@@ -688,8 +355,6 @@ function executeCommand(
     'undo',
     'rewind',
     'end',
-    'slayer',
-    'virgin',
     'overridePhase',
     'revoke',
     'resolveDeath',
@@ -809,10 +474,6 @@ function executeCommand(
       'Choose a preset or a small JPEG portrait.',
     );
     requireThat(
-      c.portraitFrame === undefined || validFrame(c.portraitFrame),
-      'Choose a portrait frame.',
-    );
-    requireThat(
       c.deathEffect === undefined || validDeathEffect(c.deathEffect),
       'Choose a death effect.',
     );
@@ -826,7 +487,6 @@ function executeCommand(
     );
     assignAvatars(g.players);
     player.avatar = c.avatar;
-    if (validFrame(c.portraitFrame)) player.portraitFrame = c.portraitFrame;
     if (validDeathEffect(c.deathEffect)) player.deathEffect = c.deathEffect;
     return 'Avatar updated.';
   }
@@ -868,67 +528,15 @@ function executeCommand(
         task.round === c.round,
       'This night choice is no longer available.',
     );
-    if (isHms(g)) {
-      g.nightChoices ??= {};
-      g.nightChoices[task.key] = validateChoice(g, task, c);
-      afterNightChoice(g, task, now);
-      return g.nightChoices[task.key].pass
-        ? 'Pass sent. The Storyteller will confirm.'
-        : 'Choice sent. Waiting for the Storyteller to confirm.';
-    }
-    requireThat(
-      task.options.some((p) => p.eligible && p.id === c.target),
-      'Choose an eligible player.',
-    );
-    if (task.count === 2)
-      requireThat(
-        c.target !== c.target2 &&
-          task.options.some((p) => p.eligible && p.id === c.target2),
-        'Choose two different eligible players.',
-      );
+
     g.nightChoices ??= {};
-    g.nightChoices[task.key] = {
-      id: uuid(),
-      target: String(c.target),
-      target2: task.count === 2 ? String(c.target2) : '',
-    };
-    const choiceRoles = new Set([
-      'poisoner',
-      'monk',
-      'imp',
-      'butler',
-      'fortuneteller',
-      'ravenkeeper',
-    ]);
-    if (
-      (g.nightChoiceTasks ?? []).every(
-        (candidate) =>
-          !choiceRoles.has(candidate.role) || !!g.nightChoices?.[candidate.key],
-      )
-    )
-      g.nightChoiceDeadline = now;
-    return 'Choice sent. Waiting for the Storyteller to confirm.';
+    g.nightChoices[task.key] = validateChoice(g, task, c);
+    afterNightChoice(g, task, now);
+    return g.nightChoices[task.key].pass
+      ? 'Pass sent. The Storyteller will confirm.'
+      : 'Choice sent. Waiting for the Storyteller to confirm.';
   }
-  if (c.action === 'nightPoll') {
-    requireThat(!actor.host, 'Only seated players can answer the poll.');
-    person(g, actor.id);
-    const poll = g.nightPoll;
-    requireThat(
-      g.phase === 'night' && poll && poll.night === g.night,
-      'This night poll is closed.',
-    );
-    requireThat(
-      c.poll === poll.id,
-      'The night poll changed. Review the new question.',
-    );
-    const target = person(g, c.target);
-    poll.answers[actor.id] = target.id;
-    return (
-      'Save your private poll answer: ' +
-      target.name +
-      '. You can change it until dawn.'
-    );
-  }
+
   if (c.action === 'chat') {
     const channel = g.hms?.channel;
     const to =
@@ -986,12 +594,12 @@ function executeCommand(
         : g.history.findIndex((h) => h.id === c.history);
     requireThat(index >= 0, 'No saved decision to restore.');
     const entry = g.history[index];
-    const state = JSON.parse(entry.before);
+    const state = savedGame(entry.before);
     requireThat(
       g.players.every((p) => state.players.some((q: Player) => q.id === p.id)),
       'Cannot rewind before a player joined. Correct seats manually.',
     );
-    delete g.nightPoll;
+    delete g.nightChoiceRound;
     delete g.nightChoices;
     delete g.nightChoiceDeadlines;
     delete g.nightIntroductions;
@@ -999,7 +607,6 @@ function executeCommand(
     delete g.nightChoiceTasks;
     delete g.script;
     delete g.dawnAnnouncement;
-    delete g.previousNightPoll;
     delete g.hms;
     delete g.gameEndedAt;
     delete g.mvpVotes;
@@ -1042,18 +649,17 @@ function executeCommand(
       'Wait for the night choice timer to finish.',
     );
   }
-  if (isHms(g)) {
-    const result = hmsAction(g, actor, c, now);
-    if (result === 'END_GAME') {
-      setPhase(g, 'ended', now);
-      return 'The Storyteller is executed with the Atheist in play: good wins.';
-    }
-    if (result === 'END_DAY') {
-      beginNight(g, now);
-      return 'The day ends early. Night begins.';
-    }
-    if (result !== null) return result;
+
+  const result = hmsAction(g, actor, c, now);
+  if (result === 'END_GAME') {
+    setPhase(g, 'ended', now);
+    return 'The Storyteller is executed with the Atheist in play: good wins.';
   }
+  if (result === 'END_DAY') {
+    beginNight(g, now);
+    return 'The day ends early. Night begins.';
+  }
+  if (result !== null) return result;
   switch (c.action) {
     case 'addDummy': {
       requireThat(g.sandbox, 'Dummy players are only available in Sandbox.');
@@ -1087,9 +693,7 @@ function executeCommand(
         'Change the role script before starting the game.',
       );
       requireThat(
-        c.script === 'classic' ||
-          c.script === 'holyMoonStars' ||
-          c.script === 'horrors',
+        c.script === 'holyMoonStars' || c.script === 'horrors',
         'Choose a valid role script.',
       );
       g.script = c.script;
@@ -1149,37 +753,35 @@ function executeCommand(
       p.name = name;
       requireThat(role(clean(c.role)), 'Choose a character.');
       p.role = clean(c.role);
-      if (isHms(g)) {
-        const shown = clean(c.shown);
-        p.shown =
-          p.role === 'lostsoul'
-            ? shown || 'lostsoul'
-            : shown && role(shown)?.team === 'townsfolk'
-              ? shown
-              : p.role;
-        if (p.role === 'lostsoul') p.acts = clean(c.acts);
-        else delete p.acts;
-        p.drunk = !!c.drunk;
-        p.marked = !!c.marked;
-        const lives = Number(c.extraLife ?? 0);
-        requireThat(
-          Number.isInteger(lives) && lives >= 0 && lives <= 3,
-          'Extra lives must be 0–3.',
-        );
-        p.extraLife = lives;
-        if (isHof(g)) {
-          p.feared = !!c.feared;
-          const charge = clean(c.charge);
-          if (['executioner', 'guardian'].includes(p.role)) {
-            requireThat(
-              !charge ||
-                g.players.some((q) => q.id === charge && q.id !== p.id),
-              'Choose another player.',
-            );
-            p.charge = charge;
-          } else delete p.charge;
-        }
-      } else p.shown = p.role === 'drunk' ? clean(c.shown) : p.role;
+
+      const shown = clean(c.shown);
+      p.shown =
+        p.role === 'lostsoul'
+          ? shown || 'lostsoul'
+          : shown && role(shown)?.team === 'townsfolk'
+            ? shown
+            : p.role;
+      if (p.role === 'lostsoul') p.acts = clean(c.acts);
+      else delete p.acts;
+      p.drunk = !!c.drunk;
+      p.marked = !!c.marked;
+      const lives = Number(c.extraLife ?? 0);
+      requireThat(
+        Number.isInteger(lives) && lives >= 0 && lives <= 3,
+        'Extra lives must be 0–3.',
+      );
+      p.extraLife = lives;
+      if (isHof(g)) {
+        p.feared = !!c.feared;
+        const charge = clean(c.charge);
+        if (['executioner', 'guardian'].includes(p.role)) {
+          requireThat(
+            !charge || g.players.some((q) => q.id === charge && q.id !== p.id),
+            'Choose another player.',
+          );
+          p.charge = charge;
+        } else delete p.charge;
+      }
       requireThat(
         p.role !== 'drunk' || role(p.shown)?.team === 'townsfolk',
         'The Drunk must be shown a Villager.',
@@ -1212,7 +814,10 @@ function executeCommand(
     }
     case 'setRanked': {
       requireThat(actor.host, 'Only the Storyteller can choose ranked mode.');
-      requireThat(g.phase === 'lobby', 'Choose ranked mode before the game starts.');
+      requireThat(
+        g.phase === 'lobby',
+        'Choose ranked mode before the game starts.',
+      );
       requireThat(typeof c.ranked === 'boolean', 'Choose casual or ranked.');
       requireThat(!g.sandbox || !c.ranked, 'Sandbox games cannot be ranked.');
       g.ranked = c.ranked;
@@ -1278,7 +883,7 @@ function executeCommand(
           )
             p.charge = clean(c['charge_' + p.id]);
       enforce(setupIssues(g).length === 0, setupIssues(g).join(' '), c);
-      if (isHms(g)) applyStartState(g, c);
+      applyStartState(g, c);
       g.gameStartedAt = now;
       delete g.gameEndedAt;
       g.mvpVotes = {};
@@ -1352,7 +957,7 @@ function executeCommand(
         'Night tasks remain.',
         c,
       );
-      if (isHms(g)) hmsDawn(g, now);
+      hmsDawn(g, now);
       g.dawnAnnouncement = {
         id: uuid(),
         night: g.night,
@@ -1380,12 +985,11 @@ function executeCommand(
       requireThat(g.phase === 'night', 'It is not night.');
       const task = tasks(g).find((t) => !t.done);
       requireThat(task, 'All night tasks are complete.');
-      if (isHms(g)) {
-        requireNoPendingDeath(g);
-        if (task.key === 'deaths')
-          hms(g).deathQueue = hms(g).deathQueue.filter((d) => !d.night);
-        if (task.key === 'plague') delete hms(g).infected;
-      }
+
+      requireNoPendingDeath(g);
+      if (task.key === 'deaths')
+        hms(g).deathQueue = hms(g).deathQueue.filter((d) => !d.night);
+      if (task.key === 'plague') delete hms(g).infected;
       g.done.push(task.key);
       g.deferredNightTasks = (g.deferredNightTasks ?? []).filter(
         (key) => key !== task.key,
@@ -1401,111 +1005,12 @@ function executeCommand(
       requireThat(g.phase === 'night', 'It is not night.');
       const t = tasks(g).find((t) => !t.done);
       requireThat(t && t.key === c.task, 'The active night task changed.');
-      const r = t.role;
-      if (isHms(g)) {
-        const choice = g.nightChoices?.[t.key];
-        requireThat(
-          (c.choiceId || '') === (choice?.id || ''),
-          'The player changed their choice. Review it before confirming.',
-        );
-        return hmsResolve(g, t, c, now);
-      }
-      if (r === 'minioninfo' || r === 'demoninfo') {
-        const text = deliverIntroduction(g, r, now);
-        g.done.push(t.key);
-        return text;
-      }
-      const p = person(g, t.player);
       const choice = g.nightChoices?.[t.key];
       requireThat(
         (c.choiceId || '') === (choice?.id || ''),
         'The player changed their choice. Review it before confirming.',
       );
-      let result = '';
-      if (['poisoner', 'monk', 'imp', 'butler'].includes(r)) {
-        const target = person(g, c.target);
-        if (r === 'monk' || r === 'butler')
-          enforce(
-            target.id !== p.id,
-            'Choose someone other than the acting player.',
-            c,
-          );
-        if (r === 'poisoner') {
-          if (healthy(p)) target.poisoned = true;
-          result = `Record ${target.name} as the Poisoner’s choice. ${healthy(p) || target.id === p.id ? 'Poison is applied until dusk.' : 'The acting player is impaired; no poison is applied.'}`;
-        }
-        if (r === 'monk') {
-          if (healthy(p)) target.protected = true;
-          result = `Record ${target.name} as the Monk’s choice. ${healthy(p) ? 'Horror protection is applied for tonight.' : 'The acting player is impaired; no protection is applied.'}`;
-        }
-        if (r === 'butler') {
-          p.master = target.id;
-          result = `Record ${target.name} as ${p.name}’s master.`;
-        }
-        if (r === 'imp') {
-          let victim = target;
-          if (target.role === 'mayor' && healthy(target) && c.redirect)
-            victim = person(g, c.redirect);
-          const blocked =
-            !healthy(p) ||
-            victim.protected ||
-            (victim.role === 'soldier' && healthy(victim));
-          const kill =
-            c.outcome === 'kill'
-              ? true
-              : c.outcome === 'spare'
-                ? false
-                : !blocked;
-          if (kill === blocked)
-            requireThat(
-              override(c),
-              'Changing the suggested death outcome requires a Storyteller override.',
-            );
-          if (kill && victim.alive) {
-            if (
-              victim.id === p.id &&
-              !g.players.some(
-                (q) =>
-                  q.alive &&
-                  q.role === 'scarletwoman' &&
-                  healthy(q) &&
-                  g.players.filter((s) => s.alive).length >= 5,
-              ) &&
-              g.players.some((q) => q.alive && role(q.role)?.team === 'minion')
-            )
-              requireThat(
-                c.successor,
-                'Choose a living Haunt to receive the Imp.',
-              );
-            death(
-              g,
-              victim,
-              now,
-              'Imp attack',
-              victim.id === p.id ? clean(c.successor) : undefined,
-            );
-          }
-          result = `Imp chose ${target.name}. ${kill ? victim.name + ' dies.' : 'No death.'} Night deaths stay private until dawn.`;
-        }
-        message(
-          g,
-          p.id,
-          `Your choice of ${target.name} has been recorded.`,
-          now,
-        );
-      } else {
-        result = infoResult(g, r, p, c);
-        requireThat(result, 'Enter information to deliver.');
-        message(g, p.id, result, now);
-        result = 'Send privately to ' + p.name + ':\n' + result;
-      }
-      g.done.push(t.key);
-      log(
-        g,
-        t.name + ': ' + result + (override(c) ? ' Storyteller override.' : ''),
-        now,
-      );
-      return result;
+      return hmsResolve(g, t, c, now);
     }
     case 'correctVote': {
       const b = g.ballots.at(-1);
@@ -1541,17 +1046,6 @@ function executeCommand(
           .map((p) => p.id),
       );
       b.invalid = [];
-      for (const p of b.voterState)
-        if (
-          valid.has(p.id) &&
-          p.alive &&
-          p.role === 'butler' &&
-          !p.poisoned &&
-          !valid.has(p.master)
-        ) {
-          valid.delete(p.id);
-          b.invalid.push(p.id);
-        }
       b.count = valid.size;
       b.spentGhosts = b.voterState
         .filter((p) => !p.alive && valid.has(p.id))
@@ -1626,17 +1120,8 @@ function executeCommand(
         votes: {},
         threshold: Math.ceil(g.players.filter((p) => p.alive).length / 2),
       };
-      if (target.role === 'virgin' && target.alive && !target.used) {
-        target.used = true;
-        g.active.virginFirst = true;
-        log(
-          g,
-          `Virgin review: ${by.name} nominated ${target.name}. Healthy: ${healthy(target)}. Nominator type: ${{ townsfolk: 'Villager', outsider: 'Fool', traveler: 'Traveler', minion: 'Haunt', demon: 'Horror' }[role(by.role)?.team ?? 'townsfolk']}. Confirm Virgin ruling before voting.`,
-          now,
-        );
-      }
       setPhase(g, 'defense', now);
-      return `${by.name} nominates ${target.name}. Start Defense. ${actor.host && target.role === 'virgin' ? 'Review the first-nomination Virgin effect.' : ''}`;
+      return `${by.name} nominates ${target.name}. Start Defense.`;
     }
     case 'vote': {
       requireThat(g.phase === 'voting' && g.active, 'Voting is not open.');
@@ -1662,140 +1147,38 @@ function executeCommand(
         ? 'Record a yes vote. If dead, this spends your remaining vote when the ballot closes.'
         : 'Record no. A no vote does not spend a dead vote.';
     }
-    case 'virgin': {
-      requireThat(
-        g.active && ['defense', 'voting'].includes(g.phase),
-        'No active nomination.',
-      );
-      const v = person(g, g.active.target),
-        p = person(g, g.active.by);
-      const applies =
-        g.active.virginFirst &&
-        v.role === 'virgin' &&
-        v.alive &&
-        healthy(v) &&
-        role(p.role)?.team === 'townsfolk';
-      enforce(
-        applies,
-        'Virgin execution does not apply by actual roles/status. Review Spy registration.',
-        c,
-      );
-      g.execution = p.alive ? p.id : '';
-      death(g, p, now, 'Virgin execution');
-      g.active = null;
-      setPhase(g, 'dayReview', now);
-      log(g, 'Virgin execution ends the day; no further execution.', now);
-      return `${p.name} is executed immediately. Close nominations and review the end of the day.`;
-    }
-    case 'slayer': {
-      requireThat(
-        !['night', 'lobby', 'ended'].includes(g.phase),
-        'Slayer claims happen during the day.',
-      );
-      const p = person(g, c.player),
-        target = person(g, c.target);
-      if (p.role === 'slayer')
-        enforce(!p.used, 'The Slayer ability has already been used.', c);
-      const applies =
-        p.alive &&
-        p.role === 'slayer' &&
-        healthy(p) &&
-        !p.used &&
-        target.role === 'imp';
-      p.used = true;
-      const kill =
-        c.outcome === 'kill' ? true : c.outcome === 'spare' ? false : applies;
-      enforce(
-        kill === applies,
-        'Review Recluse registration or a failed ability.',
-        c,
-      );
-      if (kill) death(g, target, now, 'Slayer claim');
-      log(
-        g,
-        `${p.name} claims Slayer and chooses ${target.name}. ${kill ? 'Death.' : 'No effect.'}`,
-        now,
-        true,
-      );
-      return (
-        'Resolve public Slayer claim: ' +
-        (kill ? target.name + ' dies.' : 'No effect.') +
-        ' ' +
-        winHints(g).join(' ')
-      );
-    }
     case 'finishDay': {
       requireThat(g.phase === 'dayReview', 'Wait for the execution review.');
-      if (isHms(g)) {
-        requireNoPendingDeath(g);
-        const leader = candidate(g).target;
-        if (leader && !g.execution) {
-          const result = hmsAction(
-            g,
-            { id: 'host', host: true },
-            {
-              action: 'execute',
-              target: leader,
-              atheistRuling: 'none',
-            },
-            now,
-          );
-          if (result === 'END_GAME') {
-            setPhase(g, 'ended', now);
-            return 'The Storyteller is executed with the Atheist in play: good wins.';
-          }
-          if (pendingDeath(g))
-            return `${result ?? `Execute ${nameOf(g, leader)}.`} Resolve the execution death, then confirm the day outcome again.`;
-        }
-        const winner = automaticWinner(g, !g.execution);
-        if (winner) {
-          g.winner = winner;
-          setPhase(g, 'ended', now);
-          return `${winner} wins. The day outcome and win conditions were calculated automatically.`;
-        }
-        beginNight(g, now);
-        return (
-          (g.execution ? '' : 'No execution today. ') + 'Begin the next night.'
+
+      requireNoPendingDeath(g);
+      const leader = candidate(g).target;
+      if (leader && !g.execution) {
+        const result = hmsAction(
+          g,
+          { id: 'host', host: true },
+          {
+            action: 'execute',
+            target: leader,
+            atheistRuling: 'none',
+          },
+          now,
         );
-      }
-      const result = candidate(g);
-      const target = result.target;
-      const previousExecution = !!g.execution;
-      requireThat(
-        !previousExecution || !c.target,
-        'The Virgin already caused an execution today.',
-      );
-      if (target && !previousExecution) {
-        const p = person(g, target);
-        const saint = p.alive && p.role === 'saint' && healthy(p);
-        g.execution = p.alive ? p.id : '';
-        death(g, p, now, 'execution');
-        if (saint) {
-          g.winner = 'Evil · Saint execution';
+        if (result === 'END_GAME') {
           setPhase(g, 'ended', now);
-          return (
-            'Execute ' +
-            p.name +
-            '. The healthy Saint dies by execution: evil wins.'
-          );
+          return 'The Storyteller is executed with the Atheist in play: good wins.';
         }
+        if (pendingDeath(g))
+          return `${result ?? `Execute ${nameOf(g, leader)}.`} Resolve the execution death, then confirm the day outcome again.`;
       }
-      const winner = automaticWinner(g, !target && !previousExecution);
+      const winner = automaticWinner(g);
       if (winner) {
         g.winner = winner;
         setPhase(g, 'ended', now);
-        return `${winner} wins. The execution and win conditions were calculated automatically.`;
+        return `${winner} wins. The day outcome and win conditions were calculated automatically.`;
       }
       beginNight(g, now);
       return (
-        (previousExecution
-          ? 'Keep the Virgin execution.'
-          : target
-            ? 'Execute ' + nameOf(g, target) + '.'
-            : result.tied
-              ? 'Votes tied: no execution.'
-              : 'No qualifying nominee: no execution.') +
-        ' Begin the next night.'
+        (g.execution ? '' : 'No execution today. ') + 'Begin the next night.'
       );
     }
     case 'end': {

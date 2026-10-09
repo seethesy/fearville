@@ -54,8 +54,8 @@ await act(
     started,
     notebook: {
       text: 'I suspected Bram after the first night.',
-      roles: { imp: 2 },
-      players: { [ids[1]]: { role: 'imp', confidence: 'suspected' } },
+      roles: { monster: 2 },
+      players: { [ids[1]]: { role: 'monster', confidence: 'suspected' } },
     },
   },
   members[0].token,
