@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { AccountPanel, type AccountView } from '@/components/account-panel';
+import { PrivacySettings } from '@/components/social/privacy-settings';
 import {
   AlertDialog,
   AlertDialogContent,
@@ -156,6 +157,7 @@ export default function Account() {
           </section>
         )}
       </div>
+      {state?.account && <PrivacySettings />}
       <footer>
         <Link href="/">Back to the table</Link>
         <Link href="/privacy">Privacy</Link>

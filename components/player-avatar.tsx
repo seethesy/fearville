@@ -11,6 +11,15 @@ import {
   Flame,
   Flower2,
   Eye,
+  Crown,
+  Sword,
+  Lamp,
+  KeyRound,
+  BookOpen,
+  Hourglass,
+  Gem,
+  Drama,
+  Dog,
 } from 'lucide-react';
 import { AVATARS, defaultAvatar } from '@/lib/game/avatars';
 import type { PortraitFrame, DeathEffectId } from '@/lib/game/cosmetics';
@@ -25,7 +34,63 @@ const icons = {
   flame: Flame,
   rose: Flower2,
   eye: Eye,
+  bat: BatPortrait,
+  spider: SpiderPortrait,
+  wolf: Dog,
+  crown: Crown,
+  dagger: Sword,
+  lantern: Lamp,
+  key: KeyRound,
+  book: BookOpen,
+  hourglass: Hourglass,
+  gem: Gem,
+  mushroom: MushroomPortrait,
+  mask: Drama,
 };
+
+function BatPortrait({ strokeWidth }: { strokeWidth: number }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={strokeWidth}
+      strokeLinejoin="round"
+    >
+      <path d="M10 10 9 5l3 2 3-2-1 5 7-5-1 10-4-1-4 6-4-6-4 1L3 5z" />
+      <path d="m10 12 1 1m2 0 1-1" />
+    </svg>
+  );
+}
+function SpiderPortrait({ strokeWidth }: { strokeWidth: number }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={strokeWidth}
+      strokeLinecap="round"
+    >
+      <ellipse cx="12" cy="13" rx="3" ry="5" />
+      <path d="m10 8-2-4m6 4 2-4M9 11 5 9 3 5m6 8-5-1-2-2m7 5-5 2-1 3m12-9 4-2 2-4m-6 8 5-1 2-2m-7 5 5 2 1 3" />
+    </svg>
+  );
+}
+function MushroomPortrait({ strokeWidth }: { strokeWidth: number }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={strokeWidth}
+      strokeLinejoin="round"
+    >
+      <path d="M3 13a9 9 0 0 1 18 0zM10 13l-1 8h6l-1-8" />
+      <circle cx="9" cy="9" r="1" />
+      <circle cx="15" cy="10" r="1.5" />
+    </svg>
+  );
+}
 
 export function PlayerAvatar({
   avatar,

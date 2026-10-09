@@ -17,7 +17,7 @@ const ids = {
   targetRelease: 'A00000000000000000000015',
 };
 const files = [
-  ['ClocktowerTableApp.swift', 'sourcecode.swift', 'source'],
+  ['FearvilleApp.swift', 'sourcecode.swift', 'source'],
   ['Models.swift', 'sourcecode.swift', 'source'],
   ['TableStore.swift', 'sourcecode.swift', 'source'],
   ['roles.json', 'text.json', 'resource'],
@@ -37,9 +37,9 @@ let objects = files
       `${f.ref} = { isa = PBXFileReference; lastKnownFileType = ${f.type}; path = "${f.name}"; sourceTree = "<group>"; };\n${f.phase === 'none' ? '' : `${f.build} = { isa = PBXBuildFile; fileRef = ${f.ref}; };`}`,
   )
   .join('\n');
-objects += `\n${ids.app} = { isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "ClocktowerTable.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+objects += `\n${ids.app} = { isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Fearville.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 ${ids.root} = { isa = PBXGroup; children = (${ids.sources},${ids.products}); sourceTree = "<group>"; };
-${ids.sources} = { isa = PBXGroup; children = (${files.map((f) => f.ref).join(',')}); path = ClocktowerTable; sourceTree = "<group>"; };
+${ids.sources} = { isa = PBXGroup; children = (${files.map((f) => f.ref).join(',')}); path = Fearville; sourceTree = "<group>"; };
 ${ids.products} = { isa = PBXGroup; children = (${ids.app}); name = Products; sourceTree = "<group>"; };
 ${ids.sourcePhase} = { isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (${files
   .filter((f) => f.phase === 'source')
@@ -50,13 +50,13 @@ ${ids.resourcePhase} = { isa = PBXResourcesBuildPhase; buildActionMask = 2147483
   .map((f) => f.build)
   .join(',')}); runOnlyForDeploymentPostprocessing = 0; };
 ${ids.frameworkPhase} = { isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
-${ids.target} = { isa = PBXNativeTarget; buildConfigurationList = ${ids.targetList}; buildPhases = (${ids.sourcePhase},${ids.frameworkPhase},${ids.resourcePhase}); buildRules = (); dependencies = (); name = ClocktowerTable; productName = ClocktowerTable; productReference = ${ids.app}; productType = "com.apple.product-type.application"; };
+${ids.target} = { isa = PBXNativeTarget; buildConfigurationList = ${ids.targetList}; buildPhases = (${ids.sourcePhase},${ids.frameworkPhase},${ids.resourcePhase}); buildRules = (); dependencies = (); name = Fearville; productName = Fearville; productReference = ${ids.app}; productType = "com.apple.product-type.application"; };
 ${ids.project} = { isa = PBXProject; attributes = { BuildIndependentTargetsInParallel = 1; LastUpgradeCheck = 2600; TargetAttributes = { ${ids.target} = { CreatedOnToolsVersion = 26.0; ProvisioningStyle = Automatic; }; }; }; buildConfigurationList = ${ids.projectList}; compatibilityVersion = "Xcode 14.0"; developmentRegion = en; hasScannedForEncodings = 0; knownRegions = (en,Base); mainGroup = ${ids.root}; productRefGroup = ${ids.products}; projectDirPath = ""; projectRoot = ""; targets = (${ids.target}); };
 `;
 const projectSettings =
   'CLANG_ENABLE_MODULES = YES; SDKROOT = iphoneos; IPHONEOS_DEPLOYMENT_TARGET = 17.0; SWIFT_VERSION = 5.0; ENABLE_USER_SCRIPT_SANDBOXING = YES;';
 const targetSettings =
-  'ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon; CODE_SIGN_STYLE = Automatic; CURRENT_PROJECT_VERSION = 1; DEVELOPMENT_TEAM = ""; GENERATE_INFOPLIST_FILE = NO; INFOPLIST_FILE = ClocktowerTable/Info.plist; MARKETING_VERSION = 0.1.0; PRODUCT_BUNDLE_IDENTIFIER = com.example.ClocktowerTable; PRODUCT_NAME = "$(TARGET_NAME)"; SUPPORTED_PLATFORMS = "iphoneos iphonesimulator"; SWIFT_EMIT_LOC_STRINGS = YES; TARGETED_DEVICE_FAMILY = 1;';
+  'ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon; CODE_SIGN_STYLE = Automatic; CURRENT_PROJECT_VERSION = 1; DEVELOPMENT_TEAM = ""; GENERATE_INFOPLIST_FILE = NO; INFOPLIST_FILE = Fearville/Info.plist; MARKETING_VERSION = 0.1.0; PRODUCT_BUNDLE_IDENTIFIER = com.example.Fearville; PRODUCT_NAME = "$(TARGET_NAME)"; SUPPORTED_PLATFORMS = "iphoneos iphonesimulator"; SWIFT_EMIT_LOC_STRINGS = YES; TARGETED_DEVICE_FAMILY = 1;';
 for (const [id, name, settings] of [
   [
     ids.projectDebug,
@@ -76,11 +76,11 @@ for (const [id, name, settings] of [
   objects += `${id} = { isa = XCBuildConfiguration; buildSettings = { ${settings} }; name = ${name}; };\n`;
 objects += `${ids.projectList} = { isa = XCConfigurationList; buildConfigurations = (${ids.projectDebug},${ids.projectRelease}); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };\n${ids.targetList} = { isa = XCConfigurationList; buildConfigurations = (${ids.targetDebug},${ids.targetRelease}); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };`;
 writeFileSync(
-  'ios/ClocktowerTable.xcodeproj/project.pbxproj',
+  'ios/Fearville.xcodeproj/project.pbxproj',
   `// !$*UTF8*$!\n{ archiveVersion = 1; classes = {}; objectVersion = 56; objects = {\n${objects}\n}; rootObject = ${ids.project}; }\n`,
 );
 writeFileSync(
-  'ios/ClocktowerTable.xcodeproj/xcshareddata/xcschemes/ClocktowerTable.xcscheme',
-  `<?xml version="1.0" encoding="UTF-8"?><Scheme LastUpgradeVersion="2600" version="1.3"><BuildAction parallelizeBuildables="YES" buildImplicitDependencies="YES"><BuildActionEntries><BuildActionEntry buildForTesting="YES" buildForRunning="YES" buildForProfiling="YES" buildForArchiving="YES" buildForAnalyzing="YES"><BuildableReference BuildableIdentifier="primary" BlueprintIdentifier="${ids.target}" BuildableName="ClocktowerTable.app" BlueprintName="ClocktowerTable" ReferencedContainer="container:ClocktowerTable.xcodeproj"/></BuildActionEntry></BuildActionEntries></BuildAction><TestAction buildConfiguration="Debug" shouldUseLaunchSchemeArgsEnv="YES"/><LaunchAction buildConfiguration="Debug" selectedDebuggerIdentifier="Xcode.DebuggerFoundation.Debugger.LLDB" selectedLauncherIdentifier="Xcode.IDEFoundation.Launcher.LLDB" launchStyle="0" useCustomWorkingDirectory="NO" ignoresPersistentStateOnLaunch="NO" debugDocumentVersioning="YES" allowLocationSimulation="YES"><BuildableProductRunnable runnableDebuggingMode="0"><BuildableReference BuildableIdentifier="primary" BlueprintIdentifier="${ids.target}" BuildableName="ClocktowerTable.app" BlueprintName="ClocktowerTable" ReferencedContainer="container:ClocktowerTable.xcodeproj"/></BuildableProductRunnable></LaunchAction><ProfileAction buildConfiguration="Release" shouldUseLaunchSchemeArgsEnv="YES" savedToolIdentifier="" useCustomWorkingDirectory="NO" debugDocumentVersioning="YES"/><AnalyzeAction buildConfiguration="Debug"/><ArchiveAction buildConfiguration="Release" revealArchiveInOrganizer="YES"/></Scheme>`,
+  'ios/Fearville.xcodeproj/xcshareddata/xcschemes/Fearville.xcscheme',
+  `<?xml version="1.0" encoding="UTF-8"?><Scheme LastUpgradeVersion="2600" version="1.3"><BuildAction parallelizeBuildables="YES" buildImplicitDependencies="YES"><BuildActionEntries><BuildActionEntry buildForTesting="YES" buildForRunning="YES" buildForProfiling="YES" buildForArchiving="YES" buildForAnalyzing="YES"><BuildableReference BuildableIdentifier="primary" BlueprintIdentifier="${ids.target}" BuildableName="Fearville.app" BlueprintName="Fearville" ReferencedContainer="container:Fearville.xcodeproj"/></BuildActionEntry></BuildActionEntries></BuildAction><TestAction buildConfiguration="Debug" shouldUseLaunchSchemeArgsEnv="YES"/><LaunchAction buildConfiguration="Debug" selectedDebuggerIdentifier="Xcode.DebuggerFoundation.Debugger.LLDB" selectedLauncherIdentifier="Xcode.IDEFoundation.Launcher.LLDB" launchStyle="0" useCustomWorkingDirectory="NO" ignoresPersistentStateOnLaunch="NO" debugDocumentVersioning="YES" allowLocationSimulation="YES"><BuildableProductRunnable runnableDebuggingMode="0"><BuildableReference BuildableIdentifier="primary" BlueprintIdentifier="${ids.target}" BuildableName="Fearville.app" BlueprintName="Fearville" ReferencedContainer="container:Fearville.xcodeproj"/></BuildableProductRunnable></LaunchAction><ProfileAction buildConfiguration="Release" shouldUseLaunchSchemeArgsEnv="YES" savedToolIdentifier="" useCustomWorkingDirectory="NO" debugDocumentVersioning="YES"/><AnalyzeAction buildConfiguration="Debug"/><ArchiveAction buildConfiguration="Release" revealArchiveInOrganizer="YES"/></Scheme>`,
 );
 console.log('Generated Xcode project and shared scheme.');

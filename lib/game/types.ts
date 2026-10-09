@@ -305,7 +305,7 @@ export const HMS_ROLES: RoleDef[] = [
 }));
 export const ALL_ROLES: RoleDef[] = [...ROLES, ...HMS_ROLES];
 export const role = (id: string) => ALL_ROLES.find((r) => r.id === id);
-// Official TPI nightsheet, filtered to Fearville Classic (verified 2026-09-08).
+// Night order for Fearville Classic.
 export const FIRST = [
   'minioninfo',
   'demoninfo',
@@ -411,6 +411,7 @@ export type Nomination = {
   virginFirst?: boolean;
 };
 export type Message = {
+  participants?: string[];
   id: string;
   from: string;
   to: string;
@@ -516,19 +517,58 @@ export const HMS_OTHER = [
   'insomniac',
   'deaths',
 ];
+export type Notebook = {
+  roles: Record<string, number>;
+  players: Record<string, { role: string; confidence: string }>;
+  text: string;
+};
+export type Decision = {
+  id: string;
+  at: number;
+  actor: string;
+  text: string;
+  playerIds?: string[];
+  day?: number;
+  night?: number;
+};
+export type SessionRecap = {
+  progression?: import('../social/progression.ts').ProgressionSnapshot;
+  ranked?: boolean;
+  id: string;
+  ended: number;
+  started?: number;
+  number?: number;
+  winner: string;
+  script: RoleScript;
+  players: {
+    id: string;
+    name: string;
+    role: string;
+    shown: string;
+    roleId?: string;
+    team?: Team;
+    seat?: number;
+    avatar?: string;
+    portraitFrame?: Player['portraitFrame'];
+    alive?: boolean;
+    notebook?: Notebook;
+  }[];
+  decisions: Decision[];
+  messages?: Message[];
+  votes?: Record<string, string[]>;
+};
 export type Game = {
+  ranked?: boolean;
+  progression?: import('../social/progression.ts').ProgressionSnapshot;
   deferredNightTasks?: string[];
   sandbox?: boolean;
   gameStartedAt?: number;
-  decisions?: { id: string; at: number; actor: string; text: string }[];
-  recaps?: {
-    id: string;
-    ended: number;
-    winner: string;
-    script: RoleScript;
-    players: { id: string; name: string; role: string; shown: string }[];
-    decisions: { id: string; at: number; actor: string; text: string }[];
-  }[];
+  gameEndedAt?: number;
+  sessionNumber?: number;
+  notebooks?: Record<string, Notebook>;
+  mvpVotes?: Record<string, string[]>;
+  decisions?: Decision[];
+  recaps?: SessionRecap[];
   nightIntroductions?: Record<string, { id: string; text: string }>;
   nightChoiceDeadlines?: Record<string, number>;
   nightChoiceDeadline?: number;

@@ -26,22 +26,26 @@ export const DEATH_EFFECTS = [
   {
     id: 'spirit',
     name: 'Departing spirit',
-    description: 'A ghost rises into the mist.',
+    description:
+      'A spectral seal fractures as your soul is pulled into a towering column of light.',
   },
   {
     id: 'embers',
     name: 'Last ember',
-    description: 'Warm sparks scatter and fade.',
+    description:
+      'A molten core charges, erupts into a shockwave, then showers the seat in burning shards.',
   },
   {
     id: 'petals',
     name: 'Fallen petals',
-    description: 'Crimson petals drift away.',
+    description:
+      'A crimson sigil blooms, shatters into a storm of petals, and falls into darkness.',
   },
   {
     id: 'mist',
     name: 'Into the fog',
-    description: 'A ring of mist dissolves.',
+    description:
+      'An eclipse tears open a swirling fog vortex and collapses around your portrait.',
   },
   { id: 'none', name: 'Quiet farewell', description: 'No death animation.' },
 ] as const;

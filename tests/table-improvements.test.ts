@@ -12,28 +12,23 @@ function setup() {
   );
   return g;
 }
-void test('moving a seat inserts in order, preserves roles, and is host-only', () => {
+void test('Storyteller cannot move player seats', () => {
   const g = setup();
-  const p = g.players[0];
+  const original = g.players.map((p) => p.seat);
   assert.throws(
     () =>
       execute(
         g,
-        { id: p.id, host: false },
-        { action: 'moveSeat', player: p.id, seat: 3 },
-        1,
+        host,
+        { action: 'moveSeat', player: g.players[0].id, seat: 3 },
+        2,
       ),
-    /Storyteller/,
+    /own seats/,
   );
-  execute(g, host, { action: 'moveSeat', player: p.id, seat: 3 }, 2);
   assert.deepEqual(
-    g.players
-      .slice()
-      .sort((a, b) => a.seat - b.seat)
-      .map((p) => p.role),
-    ['monk', 'butler', 'investigator', 'poisoner', 'imp'],
+    g.players.map((p) => p.seat),
+    original,
   );
-  assert.equal(g.messages.length, 0);
 });
 void test('night deaths are private until dawn; all seats receive the same announcement', () => {
   const g = setup();

@@ -1,6 +1,6 @@
 # Fearville
 
-A text-only, in-person Trouble Brewing companion: a web app, shared Cloudflare Worker/D1 backend, and native SwiftUI iPhone client. Both clients use the same server-authoritative rules and action forms.
+A text-only, in-person game companion: a web app, shared Cloudflare Worker/D1 backend, and native SwiftUI iPhone client. Both clients use the same server-authoritative rules and action forms.
 
 ## Run the web app locally
 
@@ -11,6 +11,7 @@ npm ci
 npx wrangler d1 execute site-creator-d1 --local --config wrangler.local.json --file drizzle/0000_complex_alice.sql
 npx wrangler d1 execute site-creator-d1 --local --config wrangler.local.json --file drizzle/0001_fine_komodo.sql
 npx wrangler d1 execute site-creator-d1 --local --config wrangler.local.json --file drizzle/0002_smiling_northstar.sql
+npx wrangler d1 execute site-creator-d1 --local --config wrangler.local.json --file drizzle/0003_new_elektra.sql
 npm run dev
 ```
 
@@ -23,10 +24,12 @@ node tests/session-rejoin-integration.mjs
 node tests/membership-integration.mjs
 node tests/accounts-integration.mjs
 node tests/social-integration.mjs
+node tests/progression-integration.mjs
 node tests/hms-integration.mjs
 node tests/introductions-integration.mjs
 node tests/nightmare-integration.mjs
 node tests/sandbox-lobby-integration.mjs
+node tests/lobby-recap-integration.mjs
 npx tsc --noEmit
 npm run build
 ```
@@ -35,9 +38,11 @@ Integration tests require the development server and create test sessions and fi
 
 ## Session behavior
 
-- **Rules & roles** is available publicly at `/rules`, linked from the entry page. Players and Storytellers can also open the **Rules** tab inside a lobby or active game. Both use the same rules summary, Fearville instructions, and all 22 Trouble Brewing character descriptions, grouped by team; the reference never reveals assigned roles. Links back to the table preserve the browser’s session.
+Account progression, ranked Elo, statistics, social privacy, and migration details are documented in [SOCIAL-SYSTEM.md](SOCIAL-SYSTEM.md).
+
+- **Rules & roles** is available publicly at `/rules`, linked from the entry page. Players and Storytellers can also open the **Rules** tab inside a lobby or active game. Both use the same rules summary, Fearville instructions, and all 22 Fearville Classic character descriptions, grouped by team; the reference never reveals assigned roles. Links back to the table preserve the browser’s session.
 - Create a room; 5–15 players join using its six-letter code. Names are unique within the room. Joining locks when the game starts; existing players reconnect using the device session or a private recovery key.
-- Storytellers edit seats and assign roles, configure timers, three Demon bluffs (7+ players), and the Fortune Teller red herring. Setup checks include the Baron and the Drunk’s shown role.
+- Players claim and release their own seats in the lobby. New arrivals are unseated; every player must choose a seat before roles are dealt. Storytellers assign roles, configure timers, three Demon bluffs (7+ players), and the Fortune Teller red herring. Setup checks include the Baron and the Drunk’s shown role.
 - In the lobby, Storytellers can use **Randomly assign roles** to apply a balanced setup, or **Manually assign roles** to edit each seat. Random setup handles the Baron, the Drunk’s shown character, three out-of-play good bluffs, and a good red herring. Randomizing again replaces the setup; manual edits and undo remain available before starting. No role information is delivered to players until the game starts.
 - The entry page detects an existing browser session and offers **Rejoin lobby** or **Return to game** for both players and Storytellers. Re-entering the same session code with a valid device cookie also resumes the original identity without adding a seat, including after play begins. On mobile, returning to the browser or reconnecting immediately refreshes the table. Normal browser storage retains credentials for up to 30 days; clearing data, private browsing, or switching devices requires a saved recovery key (entry page → **Rejoin**) or an account-linked seat. Use **Save recovery key** at the table before leaving if you need a backup. A room code and player name alone never grant access to an existing seat.
 - Actual roles, poisoned/protected status, reminders, history, and night tasks are filtered on the server. A player receives only their shown character and intended messages. Night deaths become public at dawn.
@@ -47,7 +52,9 @@ Integration tests require the development server and create test sessions and fi
 - Mobile web uses bottom navigation, touch-sized controls, 16px form text, safe-area spacing, and scrollable dialogs sized to the available viewport. Current Game flow activities appear before the character card on phones.
 - Web game actions apply directly: fill any required fields and press the action button. Actions without fields run immediately. There is no preview step. Server authorization, rule checks, and stale-state protection still apply. Messages send directly from the conversation composer without preview or confirmation. Characters with registration flexibility require the Storyteller to enter the appropriate override reason. A poisoned Spy requires a manually supplied replacement Grimoire.
 - **Messages** presents a private conversation for each player, with chronological bubbles, timestamps, per-thread drafts, new-message counts during the current visit, and direct Send/Enter-to-send. Shift+Enter adds a line. The Storyteller’s Everyone thread is explicitly public; private threads do not mix other players’ messages. Seats also provides an Open conversation shortcut. Retrying an uncertain send with the same message identifier does not duplicate it.
-- **Seats → Your seat & table** lets players and Storytellers rename themselves. Players can leave, Storytellers can remove players, and the Storyteller can permanently delete an unstarted lobby. Destructive operations require confirmation. Leaving/removal revokes all seat credentials and saved-account seat links atomically; a lobby seat is removed and remaining seats are renumbered. During play the character is retained with a Left table label for the Storyteller to manage. Removal clears earlier rewind points so access cannot be restored accidentally; renaming preserves game history. Closing a tab still allows normal rejoining and is different from leaving.
+- **Lobby navigation.** Players see Lobby, Cosmetic, Session Recap, and Rules. Lobby includes the Storyteller, shared seating chart, selected script, session setup, and puzzles. Cosmetic includes appearance and lobby name. Claiming or leaving a seat takes effect immediately; leaving a seat keeps membership. Storytellers no longer reorder seats. Removing someone through the membership API leaves other claimed seats in place. Active-game membership controls still support leaving the table and renaming.
+- **Game end and MVP.** The end-game popup shows the winning team and duration from role delivery to victory. Players may cast one final MVP vote for another player; the Storyteller may cast three votes for distinct players. Votes are validated on the server and remain available to participants whose popup is still open after someone returns the group to the lobby. Leave Lobby revokes a player's membership; the Storyteller's Leave Lobby exits the screen while preserving the group.
+- **Session recaps.** Returning keeps the group, appearance, and seats and archives each round as Session 1, Session 2, etc. Expand a recap for its final seating diagram, role colors, and MVP counts. Each player opens History, Notes, and Messages. Activity records identify acting/targeted players and include votes, night choices, questions, guesses, and resolved status changes. Notes sync privately during play and all player notes and session messages are revealed after the game. Older saved recaps show only the fields originally recorded; historical device-only notes and missing transcripts cannot be reconstructed. No database migration is required.
 - Discovery → Discussion → Nominations, and Defense → Voting, use shared server deadlines. The foreground table automatically checks for updates one second after each completed request. Requests do not overlap, stalled requests time out and retry, and older responses cannot roll back newer actions. Returning to the app or reconnecting triggers an immediate update. After a disconnection the next authenticated request catches up elapsed phases. No background service, push notification, or offline play is promised. Timers do not depend on a particular phone remaining foregrounded, but clients must connect to receive updates.
 - Nominations suspend and resume the remaining nomination period. Living players nominate once a day; a target may be nominated once a day. Dead targets and self-nominations are allowed.
 - Yes/no votes are public during voting and in the completed ballot breakdown. By this table’s rule, the nominee cannot vote. Ballots close immediately when every eligible player has explicitly answered Yes or No, or at the deadline if anyone is still waiting. Departed players and dead players with spent votes are excluded from completion. Dead players spend their one remaining vote only on a counted yes. A living, healthy Butler’s yes is excluded unless their master also votes yes. Abstention/no never spends a ghost vote.
@@ -89,18 +96,13 @@ Signed-in players get a public handle, a friends list, table invitations, a Stor
 
 ## iOS and TestFlight
 
-Open `ios/ClocktowerTable.xcodeproj` on a Mac. Follow `ios/TESTFLIGHT.md`. The SwiftUI app is a native client, not a web wrapper. A shared scheme and an unsigned simulator CI workflow are included. The project has not been compiled with Xcode in the Windows authoring environment; a Mac build and device checks remain required before distribution.
+Open `ios/Fearville.xcodeproj` on a Mac. Follow `ios/TESTFLIGHT.md`. The SwiftUI app is a native client, not a web wrapper. A shared scheme and an unsigned simulator CI workflow are included. The project has not been compiled with Xcode in the Windows authoring environment; a Mac build and device checks remain required before distribution.
 
 The deployed entry page is public at https://fearville.phatsyloaf.chatgpt.site. Do not embed a Sites owner bypass token in the iOS app. The session API itself enforces per-seat credentials even when the entry page is public.
 
-## Sources and scope
+## Scope
 
-Night order verified 2026-09-08 against the publisher’s canonical data:
-https://github.com/ThePandemoniumInstitute/botc-release/blob/main/resources/data/nightsheet.json
-
-Rules reference: https://wiki.bloodontheclocktower.com/Trouble_Brewing and linked character pages. UI descriptions are original brief summaries. No official artwork is included. This is an unofficial companion and is not affiliated with The Pandemonium Institute.
-
-Fearville Classic (Trouble Brewing) and Holy Moon and Stars are supported. No Travellers, arbitrary custom scripts, remote voice chat, or automated Storyteller. Closed-room internet-connected play is the intended use. Production data is not seeded with sample games.
+Fearville Classic and Holy Moon and Stars are supported. No Travellers, arbitrary custom scripts, remote voice chat, or automated Storyteller. Closed-room internet-connected play is the intended use. Production data is not seeded with sample games.
 
 ## Night puzzles
 

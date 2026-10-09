@@ -18,6 +18,7 @@ import {
 } from '@/lib/social/invites';
 import { rateStoryteller } from '@/lib/social/ratings';
 import { socialView } from '@/lib/social/view';
+import { setPrivacy } from '@/lib/social/privacy';
 
 const id = (value: unknown) =>
   typeof value === 'string' && value.length > 0 && value.length < 100
@@ -46,6 +47,8 @@ export async function POST(r: Request) {
     const body = JSON.parse(raw) as Record<string, unknown>;
     const now = Date.now();
     switch (body.action) {
+      case 'privacy':
+        return json({ privacy: await setPrivacy(a.id, body.privacy) });
       case 'handle':
         return json({ handle: await setHandle(a.id, body.handle) });
       case 'request':

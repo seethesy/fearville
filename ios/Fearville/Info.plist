@@ -14,7 +14,7 @@
 <key>UISupportedInterfaceOrientations</key><array><string>UIInterfaceOrientationPortrait</string><string>UIInterfaceOrientationLandscapeLeft</string><string>UIInterfaceOrientationLandscapeRight</string></array>
 <key>UIUserInterfaceStyle</key><string>Dark</string>
 <key>ITSAppUsesNonExemptEncryption</key><false/>
-<key>CFBundleURLTypes</key><array><dict><key>CFBundleURLName</key><string>Clocktower Account</string><key>CFBundleURLSchemes</key><array><string>clocktowertable</string></array></dict></array><key>ClocktowerAPIURL</key><string>https://fearville.phatsyloaf.chatgpt.site</string>
+<key>CFBundleURLTypes</key><array><dict><key>CFBundleURLName</key><string>Fearville Account</string><key>CFBundleURLSchemes</key><array><string>fearville</string></array></dict></array><key>FearvilleAPIURL</key><string>https://fearville.phatsyloaf.chatgpt.site</string>
 </dict></plist>
 
 

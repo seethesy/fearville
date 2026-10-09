@@ -1,20 +1,39 @@
-import { newGame, role, type Game } from './types.ts';
+import { newGame, role, type Game, type SessionRecap } from './types.ts';
+import { assignAvatars } from './avatars.ts';
 
-export function recapOf(g: Game, ended: number) {
+export function recapOf(g: Game, ended: number): SessionRecap {
+  const endedAt =
+    g.gameEndedAt ??
+    g.log.findLast((l) => l.text.startsWith('Game ended'))?.at ??
+    ended;
   return {
-    id: `${g.code}:${g.gameStartedAt ?? ended}`,
-    ended,
+    progression: g.progression,
+    ranked: !!g.ranked,
+    id: `${g.code}:${g.gameStartedAt ?? endedAt}`,
+    ended: endedAt,
+    started: g.gameStartedAt,
+    number: g.sessionNumber ?? (g.recaps?.length ?? 0) + 1,
     winner: g.winner,
     script: g.script ?? ('classic' as const),
     players: g.players
+      .slice()
       .sort((a, b) => a.seat - b.seat)
       .map((p) => ({
         id: p.id,
         name: p.name,
         role: role(p.role)?.name ?? p.role,
         shown: role(p.shown)?.name ?? p.shown,
+        roleId: p.role,
+        team: role(p.role)?.team,
+        seat: p.seat,
+        avatar: p.avatar,
+        portraitFrame: p.portraitFrame,
+        alive: p.alive,
+        notebook: g.notebooks?.[p.id],
       })),
     decisions: g.decisions ?? [],
+    messages: g.messages,
+    votes: g.mvpVotes ?? {},
   };
 }
 
@@ -23,14 +42,16 @@ export function returnToLobby(g: Game, now: number) {
   const fresh = newGame(g.code, g.hostName);
   fresh.sandbox = g.sandbox;
   fresh.script = g.script;
+  fresh.ranked = g.ranked;
   fresh.timers = { ...g.timers };
-  fresh.recaps = [...(g.recaps ?? []), recap].slice(-10);
+  fresh.recaps = [...(g.recaps ?? []), structuredClone(recap)];
+  fresh.sessionNumber = (recap.number ?? fresh.recaps.length) + 1;
   fresh.players = g.players
     .filter((p) => !p.departed)
     .sort((a, b) => a.seat - b.seat)
-    .map((p, index) => ({
+    .map((p) => ({
       ...p,
-      seat: index + 1,
+      seat: p.seat,
       role: '',
       shown: '',
       alive: true,
@@ -52,6 +73,9 @@ export function returnToLobby(g: Game, now: number) {
       marked: undefined,
       pref: undefined,
     }));
+  assignAvatars(fresh.players);
+  for (const key of Object.keys(g))
+    delete (g as unknown as Record<string, unknown>)[key];
   Object.assign(g, fresh);
   return 'Return everyone to the lobby. Seats and access are preserved for the next game.';
 }

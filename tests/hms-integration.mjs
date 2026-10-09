@@ -1,3 +1,4 @@
+import { claimSeats } from './claim-seats.mjs';
 // Holy Moon and Stars over HTTP: script selection, private night choices,
 // Storyteller resolution, the death queue, dawn, and channel privacy.
 // Requires the development server (see README).
@@ -24,6 +25,7 @@ for (let i = 0; i < 8; i++)
   joined.push(await call('/api/session', '', { action: 'join', code, name: 'Star ' + (i + 1) }));
 assert.ok(joined.every((r) => r.status === 200), JSON.stringify(joined.map((r) => r.data.error)));
 const tokens = joined.map((r) => r.data.token);
+await claimSeats(base, tokens);
 let state;
 async function action(payload, token = host) {
   state = (await call('/api/game', host)).data;

@@ -206,15 +206,7 @@ export function RulesReference({
           </article>
         </div>
         <p className="hint">
-          Quick reference, based on the{' '}
-          <a
-            href="https://wiki.bloodontheclocktower.com/Rules_Explanation"
-            target="_blank"
-            rel="noreferrer"
-          >
-            official rules explanation
-          </a>
-          . Character-specific rulings take precedence.
+          Quick reference. Character-specific rulings take precedence.
         </p>
       </section>
       <section id="using-fearville" className="reference-section">
@@ -262,15 +254,6 @@ export function RulesReference({
           <p className="muted">
             This is the full script, including characters that may not be in
             your game. These summaries never reveal which roles are assigned.
-            See the{' '}
-            <a
-              href="https://wiki.bloodontheclocktower.com/Trouble_Brewing"
-              target="_blank"
-              rel="noreferrer"
-            >
-              official script and character rulings
-            </a>{' '}
-            for details.
           </p>
           <RoleTeams script="classic" />
         </section>

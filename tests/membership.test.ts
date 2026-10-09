@@ -24,7 +24,7 @@ void test('players can rename only themselves and names remain unique', () => {
   renameMember(g, host, 'New Host', 2);
   assert.equal(g.hostName, 'New Host');
 });
-void test('removal closes rewind paths and compacts lobby seats', () => {
+void test('removal closes rewind paths and preserves other claimed seats', () => {
   const g = setup();
   const actor = { id: g.players[0].id, host: false };
   assert.throws(() => removeMember(g, actor, g.players[1].id, 1), /own seat/);
@@ -32,7 +32,7 @@ void test('removal closes rewind paths and compacts lobby seats', () => {
   removeMember(g, host, g.players[1].id, 1);
   assert.deepEqual(
     g.players.map((p) => p.seat),
-    [1, 2],
+    [1, 3],
   );
   assert.equal(g.redHerring, '');
   assert.deepEqual(g.history, []);

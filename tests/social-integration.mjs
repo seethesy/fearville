@@ -1,3 +1,4 @@
+import { claimSeats } from './claim-seats.mjs';
 // Social system integration test. Requires the development server and the
 // local D1 database with all migrations applied. Creates fixture accounts,
 // exercises handles, friend requests, invitations, a full recorded game,
@@ -271,7 +272,7 @@ await ok(
   'B invites F',
 );
 const viewF = await ok(social(tF), 'F invites');
-await ok(
+const seatF = await ok(
   social(tF, {
     action: 'acceptInvite',
     invite: viewF.invites[0].id,
@@ -286,6 +287,7 @@ for (const name of ['Guest 1', 'Guest 2', 'Guest 3'])
   guests.push(
     await ok(call('/api/session', '', { action: 'join', code, name }), name),
   );
+await claimSeats(base, [seatB.token, seatF.token, ...guests.map((g) => g.token)]);
 // Guest 3 signs in later and saves the seat: the record must pick it up.
 const guestToken = guests[2].token;
 async function action(payload, token = hostToken) {
@@ -345,7 +347,7 @@ assert.equal(viewA.recent[0].storyteller, true);
 viewB = await ok(social(tB), 'B post');
 assert.deepEqual(viewB.stats.town, { wins: 0, losses: 1 });
 assert.deepEqual(viewB.stats.evil, { wins: 0, losses: 0 });
-assert.deepEqual(viewB.stats.roles, [
+assert.deepEqual(viewB.stats.roles.map(({ role, name, team, played, wins, losses }) => ({ role, name, team, played, wins, losses })), [
   {
     role: 'empath',
     name: 'Empath',

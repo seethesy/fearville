@@ -8,6 +8,8 @@ export type GameRecord = {
   id: string;
   code: string;
   hostName: string;
+  script: string;
+  ranked: boolean;
   winner: Alignment;
   reason: string;
   players: number;
@@ -19,6 +21,7 @@ export type GameRecord = {
     player: string;
     name: string;
     role: string;
+    roleType: string;
     team: Alignment;
     won: boolean;
     alive: boolean;
@@ -58,6 +61,7 @@ export function deriveResult(
         player: p.id,
         name: p.name,
         role: p.role,
+        roleType: role(p.role)?.team ?? 'unknown',
         team,
         won: team === winner,
         alive: p.alive,
@@ -68,6 +72,8 @@ export function deriveResult(
     id: gameID(g.code, started),
     code: g.code,
     hostName: g.hostName,
+    script: g.script ?? 'classic',
+    ranked: !!g.progression?.ranked,
     winner,
     reason: g.winner,
     players: seats.length,

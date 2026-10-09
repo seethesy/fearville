@@ -202,6 +202,10 @@ export function TableMessages({
       <section className="conversation" aria-label={title}>
         <header>
           <h2>{title}</h2>
+          <p className="hint">
+            Session messages are revealed to everyone in the recap after the
+            game ends.
+          </p>
           <p className="muted">
             {to === 'all'
               ? 'Messages here are visible to every player.'

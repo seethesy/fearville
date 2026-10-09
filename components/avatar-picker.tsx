@@ -62,7 +62,29 @@ export function AvatarPicker({
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   if (!me) return null;
+  if (game.phase !== 'lobby')
+    return (
+      <section className="panel avatar-picker">
+        <h2>Your appearance</h2>
+        <div className="avatar-preview">
+          <PlayerAvatar
+            avatar={me.avatar}
+            id={me.id}
+            frame={me.portraitFrame}
+          />
+          <strong>{me.name}</strong>
+        </div>
+        <p className="muted">
+          Appearance is locked during the game. Change your avatar, frame, and
+          death effect when you return to the pregame lobby.
+        </p>
+      </section>
+    );
   const selected = choice ?? me.avatar ?? defaultAvatar(me.id);
+  const ownerOf = (avatar: string) =>
+    AVATARS.some((a) => a.id === avatar)
+      ? game.players.find((p) => p.id !== me.id && p.avatar === avatar)
+      : undefined;
   const selectedFrame = frame ?? me.portraitFrame;
   const selectedEffect = effect ?? me.deathEffect;
   async function save() {
@@ -100,7 +122,8 @@ export function AvatarPicker({
     <section className="panel avatar-picker">
       <h2>Your appearance</h2>
       <p className="muted">
-        Choose a face for the town. Everyone at this table can see it.
+        Choose a face for the town. Each preset belongs to one seat. Appearance
+        locks when the game starts.
       </p>
       <div className="avatar-preview">
         <div className="cosmetic-preview-stage">
@@ -115,7 +138,8 @@ export function AvatarPicker({
             className="secondary"
             key={a.id}
             aria-pressed={selected === a.id}
-            disabled={busy}
+            disabled={busy || !!ownerOf(a.id)}
+            title={ownerOf(a.id) ? `Taken by ${ownerOf(a.id)!.name}` : a.name}
             onClick={() => {
               setChoice(a.id);
               setNotice('');
@@ -124,6 +148,7 @@ export function AvatarPicker({
           >
             <PlayerAvatar avatar={a.id} id={me.id} />
             <span>{a.name}</span>
+            {ownerOf(a.id) && <small>Taken by {ownerOf(a.id)!.name}</small>}
           </button>
         ))}
       </fieldset>
@@ -224,6 +249,7 @@ export function AvatarPicker({
         className="primary"
         disabled={
           busy ||
+          !!ownerOf(selected) ||
           (selected === (me.avatar ?? defaultAvatar(me.id)) &&
             selectedFrame === me.portraitFrame &&
             selectedEffect === me.deathEffect)

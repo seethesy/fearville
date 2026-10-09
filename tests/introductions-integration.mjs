@@ -1,3 +1,4 @@
+import { claimSeats } from './claim-seats.mjs';
 import assert from 'node:assert/strict';
 const base = process.env.CT_TEST_URL || 'http://localhost:3000';
 async function call(path, token, body) {
@@ -27,6 +28,7 @@ for (const script of ['classic', 'holyMoonStars']) {
         name: `Intro ${i + 1}`,
       }),
     );
+  await claimSeats(base, seats.map((s) => s.token));
   let g = await call('/api/game', host.token);
   async function act(c) {
     g = (await call('/api/game', host.token, { ...c, version: g.version }))

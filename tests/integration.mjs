@@ -1,3 +1,4 @@
+import { claimSeats } from './claim-seats.mjs';
 import assert from 'node:assert/strict';
 const base = process.env.CT_TEST_URL || 'http://localhost:3000';
 async function call(path, token, body) {
@@ -29,6 +30,7 @@ assert.ok(
   JSON.stringify(joined.map((r) => r.data.error)),
 );
 const tokens = joined.map((r) => r.data.token);
+await claimSeats(base, tokens);
 let state = (await call('/api/game', host)).data;
 assert.equal(state.players.length, 7);
 assert.equal(new Set(state.players.map((p) => p.seat)).size, 7);

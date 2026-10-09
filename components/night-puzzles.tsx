@@ -223,7 +223,7 @@ function PuzzleBoard({
   );
 }
 
-export function NightPuzzles() {
+export function NightPuzzles({ lobby = false }: { lobby?: boolean }) {
   const [kind, setKind] = useState<PuzzleKind>('tiles');
   const [level, setLevel] = useState(1);
   const [state, setState] = useState<PuzzleState | null>(null);
@@ -242,12 +242,18 @@ export function NightPuzzles() {
     }
   }
   return (
-    <section className="night-puzzles" aria-label="Night puzzles">
-      <p className="eyebrow">WHILE THE TOWN SLEEPS</p>
-      <h3>Night puzzles</h3>
+    <section
+      className="night-puzzles"
+      aria-label={lobby ? 'Lobby puzzles' : 'Night puzzles'}
+    >
+      <p className="eyebrow">
+        {lobby ? 'WHILE THE TOWN GATHERS' : 'WHILE THE TOWN SLEEPS'}
+      </p>
+      <h3>{lobby ? 'Play puzzles' : 'Night puzzles'}</h3>
       <p className="muted">
-        Just for fun, for every player. Your night choice and Storyteller
-        messages come first. Puzzles never delay dawn or change abilities.
+        {lobby
+          ? 'Enjoy a puzzle while everyone joins the table.'
+          : 'Just for fun, for every player. Your night choice and Storyteller messages come first. Puzzles never delay dawn or change abilities.'}
       </p>
       <div className="puzzle-controls">
         <label className="field">

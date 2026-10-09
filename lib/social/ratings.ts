@@ -22,7 +22,7 @@ export async function ratingContext(me: string, code: string, now: number) {
   await linkSeatRecords(me);
   const game = await db
     .prepare(
-      "SELECT g.id,g.code,g.host_account,g.host_name,g.ended FROM games g JOIN sessions s ON s.code=g.code AND g.id=g.code || ':' || s.created WHERE g.code=?",
+      "SELECT g.id,g.code,g.host_account,g.host_name,g.ended FROM games g JOIN sessions s ON s.code=g.code AND (g.id=g.code || ':' || COALESCE(json_extract(s.state,'$.gameStartedAt'),s.created) OR EXISTS (SELECT 1 FROM json_each(s.state,'$.recaps') r WHERE json_extract(r.value,'$.id')=g.id)) WHERE g.code=? ORDER BY g.ended DESC LIMIT 1",
     )
     .bind(code)
     .first<GameRow>();

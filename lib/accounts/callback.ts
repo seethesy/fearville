@@ -86,7 +86,7 @@ export async function callback(r: Request, provider: Provider) {
       .first<{ account: string }>();
     if (flow.account && existing && existing.account !== flow.account)
       throw Error(
-        'That provider is already connected to another Clocktower account. Accounts are not merged automatically.',
+        'That provider is already connected to another Fearville account. Accounts are not merged automatically.',
       );
     if (
       flow.account &&
@@ -166,7 +166,7 @@ export async function callback(r: Request, provider: Provider) {
       return new Response(null, {
         status: 302,
         headers: {
-          Location: 'clocktowertable://signin?code=' + code,
+          Location: 'fearville://signin?code=' + code,
           'Cache-Control': 'no-store',
           'Referrer-Policy': 'no-referrer',
           'Set-Cookie': cookie('ct_oauth', '', 0, true),
@@ -195,7 +195,7 @@ export async function callback(r: Request, provider: Provider) {
       headers: {
         Location:
           (native
-            ? 'clocktowertable://signin?error='
+            ? 'fearville://signin?error='
             : origin + '/account?error=') + encodeURIComponent(safe),
         'Cache-Control': 'no-store',
         'Set-Cookie': cookie('ct_oauth', '', 0, true),

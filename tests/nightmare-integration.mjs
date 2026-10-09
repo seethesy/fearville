@@ -1,3 +1,4 @@
+import { claimSeats } from './claim-seats.mjs';
 import assert from 'node:assert/strict';
 const base = process.env.CT_TEST_URL || 'http://localhost:3000';
 async function request(path, token, body) {
@@ -30,6 +31,7 @@ for (let i = 1; i <= 5; i++)
       name: 'Dream ' + i,
     }),
   );
+await claimSeats(base, joins.map((s) => s.token));
 let game = await ok('/api/game', host);
 async function hostAction(command) {
   game = await ok('/api/game', host);

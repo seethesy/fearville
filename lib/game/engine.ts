@@ -1,4 +1,9 @@
-import { validAvatar } from './avatars.ts';
+import {
+  validAvatar,
+  isPresetAvatar,
+  resolvedAvatars,
+  assignAvatars,
+} from './avatars.ts';
 import { validFrame, validDeathEffect } from './cosmetics.ts';
 import {
   role,
@@ -18,7 +23,7 @@ import {
 import { startNightPoll, closeNightPoll } from './polls.ts';
 import { deliverIntroduction } from './introductions.ts';
 import { assignRandomRoles } from './assignment.ts';
-import { returnToLobby } from './lobby.ts';
+import { recapOf, returnToLobby } from './lobby.ts';
 import {
   isHms,
   hms,
@@ -68,16 +73,40 @@ export function message(
   from = 'host',
 ) {
   requireThat(text.length <= 12000, 'Message is too long.');
-  g.messages.push({ id: uuid(), from, to, text, at, kind });
+  g.messages.push({
+    id: uuid(),
+    from,
+    to,
+    text,
+    at,
+    kind,
+    ...(to.startsWith('channel:') && g.hms?.channel
+      ? { participants: [g.hms.channel.a, g.hms.channel.b] }
+      : {}),
+  });
 }
 export function snapshot(g: Game, text: string, at: number) {
-  const { history: _history, messages: _messages, log: _log, ...state } = g;
+  const {
+    history: _history,
+    messages: _messages,
+    log: _log,
+    notebooks: _notebooks,
+    recaps: _recaps,
+    ...state
+  } = g;
   g.history.push({ id: uuid(), text, at, before: JSON.stringify(state) });
 }
 export function setPhase(g: Game, phase: Phase, at: number, seconds?: number) {
+  if (g.phase === 'ended' && phase !== 'ended') {
+    delete g.gameEndedAt;
+    delete g.mvpVotes;
+  }
   if (g.phase === 'night' && phase !== 'night') closeNightPoll(g);
   g.phase = phase;
-  if (phase === 'ended') g.players.forEach((p) => (p.publicAlive = p.alive));
+  if (phase === 'ended') {
+    g.gameEndedAt ??= at;
+    g.players.forEach((p) => (p.publicAlive = p.alive));
+  }
   g.remaining = g.sandbox ? 0 : (seconds ?? g.timers[phase] ?? 0);
   g.deadline = g.sandbox ? null : g.remaining ? at + g.remaining * 1000 : null;
   log(g, phaseName[phase] + (g.day ? ' · Day ' + g.day : ''), at, true);
@@ -235,8 +264,11 @@ export function nightChoiceTask(g: Game, player?: string) {
   };
 }
 export function setupIssues(g: Game) {
-  if (isHms(g)) return hmsSetupIssues(g);
-  const issues: string[] = [];
+  const seats = g.players.some((p) => p.seat < 1)
+    ? ['Every player must claim a seat before roles are dealt.']
+    : [];
+  if (isHms(g)) return [...seats, ...hmsSetupIssues(g)];
+  const issues: string[] = [...seats];
   const expected = COUNTS[g.players.length]?.slice();
   if (!expected) return ['Fearville Classic requires 5–15 players.'];
   if (g.players.some((p) => p.role === 'baron')) {
@@ -622,7 +654,7 @@ function infoResult(g: Game, r: string, p: Player, c: Command) {
   }
   return info;
 }
-export function execute(
+function executeCommand(
   g: Game,
   actor: Actor,
   c: Command,
@@ -665,7 +697,106 @@ export function execute(
   ];
   if (hostActions.includes(c.action))
     requireThat(actor.host, 'Only the Storyteller can do that.');
+  if (c.action === 'claimSeat' || c.action === 'leaveSeat') {
+    requireThat(g.phase === 'lobby', 'Seats can only be changed in the lobby.');
+    requireThat(!actor.host, 'Players choose their own seats.');
+    const player = person(g, actor.id);
+    if (c.action === 'leaveSeat') player.seat = 0;
+    else {
+      const seat = Number(c.seat);
+      requireThat(
+        Number.isInteger(seat) && seat >= 1 && seat <= 15,
+        'Choose a valid seat.',
+      );
+      requireThat(
+        player.seat === 0,
+        'Leave your current seat before claiming another.',
+      );
+      requireThat(
+        !g.players.some((p) => p.seat === seat),
+        'That seat was just claimed. Choose another.',
+      );
+      player.seat = seat;
+    }
+    g.history = [];
+    return c.action === 'leaveSeat' ? 'Seat released.' : 'Seat claimed.';
+  }
+  if (c.action === 'mvpVote') {
+    const current = g.phase === 'ended' ? recapOf(g, now) : null;
+    const recap =
+      current?.id === c.recap
+        ? current
+        : g.recaps?.find((r) => r.id === c.recap);
+    requireThat(recap, 'Choose a completed session.');
+    requireThat(
+      actor.host || recap.players.some((p) => p.id === actor.id),
+      'Only participants can vote.',
+    );
+    const target = clean(c.player);
+    requireThat(
+      recap.players.some((p) => p.id === target),
+      'Choose a player from this session.',
+    );
+    requireThat(
+      actor.host || target !== actor.id,
+      'You cannot vote for yourself.',
+    );
+    const votes =
+      current === recap ? (g.mvpVotes ??= {}) : (recap.votes ??= {});
+    const key = actor.host ? 'host' : actor.id;
+    const picks = votes[key] ?? [];
+    requireThat(!picks.includes(target), 'You already voted for this player.');
+    requireThat(
+      picks.length < (actor.host ? 3 : 1),
+      'You have used all your MVP votes.',
+    );
+    votes[key] = [...picks, target];
+    return 'MVP vote saved.';
+  }
+  if (c.action === 'saveNotebook') {
+    requireThat(!actor.host, 'Only players have notebooks.');
+    const book = c.notebook as import('./types.ts').Notebook;
+    requireThat(
+      book && typeof book.text === 'string' && book.text.length <= 12000,
+      'Notes are too long.',
+    );
+    requireThat(
+      book.roles && book.players && JSON.stringify(book).length <= 16000,
+      'Invalid notebook.',
+    );
+    requireThat(
+      Object.entries(book.roles).every(
+        ([id, v]) => role(id) && [0, 1, 2].includes(v),
+      ),
+      'Invalid role notes.',
+    );
+    requireThat(
+      Object.values(book.players).every(
+        (v) =>
+          v &&
+          typeof v.role === 'string' &&
+          typeof v.confidence === 'string' &&
+          ['', 'confirmed', 'suspected'].includes(v.confidence) &&
+          (!v.role || role(v.role)),
+      ),
+      'Invalid player notes.',
+    );
+    if (c.started === g.gameStartedAt && g.gameStartedAt !== undefined)
+      (g.notebooks ??= {})[actor.id] = structuredClone(book);
+    else {
+      const archived = g.recaps
+        ?.find((r) => r.started !== undefined && r.started === c.started)
+        ?.players.find((p) => p.id === actor.id);
+      requireThat(archived, 'This notebook belongs to a different game.');
+      archived.notebook = structuredClone(book);
+    }
+    return 'Notes saved.';
+  }
   if (c.action === 'setAvatar') {
+    requireThat(
+      g.phase === 'lobby',
+      'Appearance can only be changed in the pregame lobby.',
+    );
     const player = g.players.find((p) => p.id === actor.id && !p.departed);
     requireThat(
       !actor.host && player,
@@ -683,12 +814,26 @@ export function execute(
       c.deathEffect === undefined || validDeathEffect(c.deathEffect),
       'Choose a death effect.',
     );
+    const avatars = resolvedAvatars(g.players);
+    requireThat(
+      !isPresetAvatar(c.avatar) ||
+        !g.players.some(
+          (p) => p.id !== player.id && avatars.get(p.id) === c.avatar,
+        ),
+      'That preset avatar is already taken. Choose an available preset or upload a photo.',
+    );
+    assignAvatars(g.players);
     player.avatar = c.avatar;
     if (validFrame(c.portraitFrame)) player.portraitFrame = c.portraitFrame;
     if (validDeathEffect(c.deathEffect)) player.deathEffect = c.deathEffect;
     return 'Avatar updated.';
   }
   if (c.action === 'returnLobby') {
+    if (g.phase === 'lobby') return 'Already in the lobby.';
+    requireThat(
+      c.recap === undefined || c.recap === recapOf(g, now).id,
+      'This is a different game. Review its recap first.',
+    );
     requireThat(
       g.phase === 'ended',
       'The game must end before returning to the lobby.',
@@ -854,6 +999,8 @@ export function execute(
     delete g.dawnAnnouncement;
     delete g.previousNightPoll;
     delete g.hms;
+    delete g.gameEndedAt;
+    delete g.mvpVotes;
     Object.assign(g, state);
     g.history = g.history.slice(0, index);
     if (g.deadline !== null) {
@@ -915,9 +1062,11 @@ export function execute(
         !g.players.some((p) => p.name.toLowerCase() === name.toLowerCase()),
         'Seat names must be unique.',
       );
+      assignAvatars(g.players);
       const player = newPlayer(name, g.players.length + 1);
       player.dummy = true;
       g.players.push(player);
+      assignAvatars(g.players);
       log(g, `${name} was added as a dummy player.`, now, true);
       return `Add ${name} to the Sandbox.`;
     }
@@ -943,24 +1092,8 @@ export function execute(
       log(g, 'Updated role script.', now, true);
       return 'Role script updated.';
     }
-    case 'moveSeat': {
-      const p = person(g, c.player);
-      const seat = Number(c.seat);
-      requireThat(
-        Number.isInteger(seat) && seat >= 1 && seat <= g.players.length,
-        'Choose a valid seat.',
-      );
-      const ordered = g.players
-        .slice()
-        .sort((a, b) => a.seat - b.seat)
-        .filter((q) => q.id !== p.id);
-      ordered.splice(seat - 1, 0, p);
-      ordered.forEach((q, i) => {
-        q.seat = i + 1;
-      });
-      log(g, `${p.name} moved to seat ${seat}.`, now, true);
-      return `Moved ${p.name} to seat ${seat}.`;
-    }
+    case 'moveSeat':
+      throw Error('Players choose their own seats in the lobby.');
     case 'randomAssign': {
       requireThat(
         g.phase === 'lobby',
@@ -1005,14 +1138,10 @@ export function execute(
         ),
         'Seat names must be unique.',
       );
-      const seat = Number(c.seat);
       requireThat(
-        Number.isInteger(seat) && seat >= 1 && seat <= g.players.length,
-        'Choose a valid seat number.',
+        c.seat === undefined || Number(c.seat) === p.seat,
+        'Players choose their own seats.',
       );
-      const other = g.players.find((q) => q.seat === seat);
-      if (other) other.seat = p.seat;
-      p.seat = seat;
       p.name = name;
       requireThat(role(clean(c.role)), 'Choose a character.');
       p.role = clean(c.role);
@@ -1065,7 +1194,19 @@ export function execute(
       );
       return `Update ${p.name} at seat ${p.seat}. Actual: ${role(p.role)?.name}; shown: ${role(p.shown)?.name}. ${g.phase !== 'lobby' ? 'Send their current character privately.' : ''}`;
     }
+    case 'setRanked': {
+      requireThat(actor.host, 'Only the Storyteller can choose ranked mode.');
+      requireThat(g.phase === 'lobby', 'Choose ranked mode before the game starts.');
+      requireThat(typeof c.ranked === 'boolean', 'Choose casual or ranked.');
+      requireThat(!g.sandbox || !c.ranked, 'Sandbox games cannot be ranked.');
+      g.ranked = c.ranked;
+      return g.ranked ? 'Set this game to ranked.' : 'Set this game to casual.';
+    }
     case 'start': {
+      requireThat(
+        g.players.every((p) => p.seat > 0),
+        'Every player must claim a seat before roles are dealt.',
+      );
       requireThat(g.phase === 'lobby', 'The game has already started.');
       requireThat(
         g.players.length >= 5 && g.players.length <= 15,
@@ -1116,6 +1257,14 @@ export function execute(
       enforce(setupIssues(g).length === 0, setupIssues(g).join(' '), c);
       if (isHms(g)) applyStartState(g);
       g.gameStartedAt = now;
+      delete g.gameEndedAt;
+      g.mvpVotes = {};
+      g.notebooks = {};
+      g.players
+        .sort((a, b) => a.seat - b.seat)
+        .forEach((p, i) => {
+          p.seat = i + 1;
+        });
       g.decisions = [];
       g.players.forEach((p) =>
         message(
@@ -1658,4 +1807,106 @@ export function execute(
     default:
       throw Error('Unknown action.');
   }
+}
+
+// Capture the session's complete activity independently of daily ballot resets.
+export function execute(
+  g: Game,
+  actor: Actor,
+  c: Command,
+  now: number,
+): string {
+  const before = g.players.map((p) => ({ ...p }));
+  const logIds = new Set(g.log.map((l) => l.id));
+  const task =
+    c.action === 'night' ? tasks(g).find((t) => t.key === c.task) : null;
+  const ballot = g.active;
+  const day = g.day,
+    night = g.night;
+  const summary = executeCommand(g, actor, c, now);
+  if (
+    [
+      'chat',
+      'returnLobby',
+      'mvpVote',
+      'saveNotebook',
+      'setAvatar',
+      'claimSeat',
+      'leaveSeat',
+      'undo',
+      'rewind',
+    ].includes(c.action) ||
+    g.phase === 'lobby'
+  )
+    return summary;
+  const involved = new Set<string>(actor.host ? [] : [actor.id]);
+  if (task?.player) involved.add(task.player);
+  for (const key of [
+    'player',
+    'by',
+    'target',
+    'target2',
+    'target3',
+    'redirect',
+    'successor',
+  ]) {
+    if (typeof c[key] === 'string' && g.players.some((p) => p.id === c[key]))
+      involved.add(c[key] as string);
+  }
+  for (const guess of Array.isArray(c.guesses) ? c.guesses : []) {
+    if (typeof guess?.player === 'string') involved.add(guess.player);
+  }
+  const changes: string[] = [];
+  for (const p of g.players) {
+    const old = before.find((q) => q.id === p.id);
+    if (!old) continue;
+    for (const [key, on, off] of [
+      ['alive', 'revived', 'died'],
+      ['poisoned', 'poisoned', 'no longer poisoned'],
+      ['protected', 'protected', 'protection ended'],
+      ['drunk', 'drunk', 'sober'],
+      ['marked', 'marked for death', 'death mark removed'],
+    ] as const) {
+      if (!!old[key] !== !!p[key]) {
+        involved.add(p.id);
+        changes.push(`${p.name}: ${p[key] ? on : off}.`);
+      }
+    }
+    if (old.role !== p.role) {
+      involved.add(p.id);
+      changes.push(`${p.name} became ${role(p.role)?.name ?? p.role}.`);
+    }
+  }
+  let text = summary;
+  if (c.action === 'nightChoice') {
+    const choice = g.nightChoices?.[clean(c.task)];
+    if (choice?.text) text += `\nQuestion: ${choice.text}`;
+    if (choice?.guesses?.length)
+      text += `\nGuesses: ${choice.guesses.map((guess) => `${nameOf(g, guess.player)}: ${role(guess.role)?.name ?? guess.role}`).join('; ')}.`;
+  }
+  if (c.action === 'vote' || c.action === 'correctVote') {
+    const voter = actor.host ? clean(c.player) : actor.id;
+    involved.add(voter);
+    const target = ballot?.target ?? g.ballots.at(-1)?.target;
+    if (target) involved.add(target);
+    text = `${nameOf(g, voter)} voted ${c.yes === true ? 'yes' : c.yes === false ? 'no' : 'abstain'} on ${nameOf(g, target ?? '')}.`;
+  }
+  const targets = [...involved].filter(
+    (id) => id !== actor.id && id !== task?.player,
+  );
+  if (['night', 'nightChoice'].includes(c.action) && targets.length)
+    text = `${task?.name ?? nameOf(g, actor.id)} — selected ${targets.map((id) => nameOf(g, id)).join(', ')}. ${text}`;
+  const logs = g.log.filter((l) => !logIds.has(l.id)).map((l) => l.text);
+  (g.decisions ??= []).push({
+    id: uuid(),
+    at: now,
+    actor: actor.host ? g.hostName : nameOf(g, actor.id),
+    text: [text, ...changes, ...logs.filter((l) => !text.includes(l))].join(
+      '\n',
+    ),
+    playerIds: [...involved],
+    day,
+    night,
+  });
+  return summary;
 }

@@ -12,6 +12,7 @@ import { TableNightChoice } from '@/components/table-night-choice';
 import { NightPuzzles } from '@/components/night-puzzles';
 import { NightIntroduction } from '@/components/night-introduction';
 import { TableDawn } from '@/components/table-dawn';
+import { GameEndPopup, SessionRecaps } from '@/components/session-recap';
 import { TableSeating } from '@/components/table-seating';
 import { PlayerAvatar } from '@/components/player-avatar';
 import { AvatarPicker } from '@/components/avatar-picker';
@@ -48,6 +49,7 @@ import {
 } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { InviteFriends } from '@/components/social/invite-friends';
+import { RankedMode } from '@/components/social/ranked-mode';
 import { RateStoryteller } from '@/components/social/rate-storyteller';
 import { TableMessages } from '@/components/table-messages';
 import { TableMembership } from '@/components/table-membership';
@@ -450,6 +452,8 @@ export default function Table() {
     (c) =>
       ![
         'chat',
+        'claimSeat',
+        'leaveSeat',
         'edit',
         'configure',
         'undo',
@@ -587,35 +591,11 @@ export default function Table() {
             )}
           </div>
         </div>
-        {game.recaps.length > 0 &&
-          (game.phase === 'lobby' || game.phase === 'ended') && (
-            <section className="panel recap-panel">
-              <p className="eyebrow">GAME RECAP</p>
-              <h2>{game.recaps.at(-1)!.winner} wins</h2>
-              <div className="recap-roles">
-                {game.recaps.at(-1)!.players.map((player) => (
-                  <p key={player.id}>
-                    <strong>{player.name}</strong> — {player.role}
-                    {player.shown && player.shown !== player.role
-                      ? ` (shown ${player.shown})`
-                      : ''}
-                  </p>
-                ))}
-              </div>
-              <details>
-                <summary>
-                  View decisions ({game.recaps.at(-1)!.decisions.length})
-                </summary>
-                <ol className="recap-decisions">
-                  {game.recaps.at(-1)!.decisions.map((decision) => (
-                    <li key={decision.id}>
-                      <strong>{decision.actor}</strong>: {decision.text}
-                    </li>
-                  ))}
-                </ol>
-              </details>
-            </section>
-          )}
+        <GameEndPopup
+          game={game}
+          refresh={refresh}
+          onReturn={() => setActiveTab('flow')}
+        />
         {notice && (
           <div className="notice" aria-live="polite">
             <span>{notice}</span>
@@ -673,25 +653,56 @@ export default function Table() {
         )}
         <Tabs
           className="game-tabs"
-          value={activeTab}
+          value={
+            game.phase === 'lobby' &&
+            !game.host &&
+            !['flow', 'cosmetic', 'recap', 'script'].includes(activeTab)
+              ? 'flow'
+              : game.phase !== 'lobby' &&
+                  !game.host &&
+                  ['cosmetic', 'recap'].includes(activeTab)
+                ? 'flow'
+                : activeTab
+          }
           onValueChange={(value) => setActiveTab(String(value))}
           orientation={compact || !game.host ? 'horizontal' : 'vertical'}
         >
           <TabsList className="table-tabs" aria-label="Game navigation">
             <TabsTrigger value="flow">
               <Play aria-hidden="true" />
-              <span>Game flow</span>
+              <span>{game.phase === 'lobby' ? 'Lobby' : 'Game flow'}</span>
             </TabsTrigger>
-            <TabsTrigger value="seats">
-              <Users aria-hidden="true" />
-              <span>{game.host ? 'Seats' : 'Notes'}</span>{' '}
-              <span className="count">{game.players.length}</span>
-            </TabsTrigger>
-            <TabsTrigger value="messages">
-              <MessageSquare aria-hidden="true" />
-              <span>Messages</span>{' '}
-              <MessageBadge key={game.code + game.me} game={game} />
-            </TabsTrigger>
+            {game.phase === 'lobby' && !game.host ? (
+              <>
+                <TabsTrigger value="cosmetic">
+                  <Users aria-hidden="true" />
+                  <span>Cosmetic</span>
+                </TabsTrigger>
+                <TabsTrigger value="recap">
+                  <BookOpen aria-hidden="true" />
+                  <span>Session Recap</span>
+                </TabsTrigger>
+              </>
+            ) : (
+              <>
+                <TabsTrigger value="seats">
+                  <Users aria-hidden="true" />
+                  <span>{game.host ? 'Seats' : 'Notes'}</span>{' '}
+                  <span className="count">{game.players.length}</span>
+                </TabsTrigger>
+                <TabsTrigger value="messages">
+                  <MessageSquare aria-hidden="true" />
+                  <span>Messages</span>{' '}
+                  <MessageBadge key={game.code + game.me} game={game} />
+                </TabsTrigger>
+              </>
+            )}
+            {game.host && (
+              <TabsTrigger value="recap">
+                <BookOpen aria-hidden="true" />
+                <span>Session Recap</span>
+              </TabsTrigger>
+            )}
             <TabsTrigger value="script" aria-label="Rules & roles">
               <BookOpen aria-hidden="true" />
               <span>Rules</span>
@@ -703,7 +714,30 @@ export default function Table() {
               </TabsTrigger>
             )}
           </TabsList>
+          <TabsContent value="cosmetic">
+            {!game.host && game.phase === 'lobby' && (
+              <>
+                <AvatarPicker
+                  key={'avatar:' + game.code + game.me}
+                  game={game}
+                  refresh={refresh}
+                />
+                <TableMembership
+                  key={game.code + game.me}
+                  game={game}
+                  refresh={refresh}
+                  cosmetic
+                />
+              </>
+            )}
+          </TabsContent>
+          <TabsContent value="recap">
+            <SessionRecaps game={game} />
+          </TabsContent>
           <TabsContent value="flow">
+            {game.phase === 'lobby' && (
+              <TableSeating game={game} refresh={refresh} />
+            )}
             {game.previousNightPoll && (
               <section
                 className="panel poll-result"
@@ -720,6 +754,7 @@ export default function Table() {
                 </p>
               </section>
             )}
+            <RankedMode game={game} refresh={refresh} />
             <div className="workspace-grid flow-dashboard">
               <section className="panel flow-panel">
                 <p className="eyebrow">
@@ -742,6 +777,12 @@ export default function Table() {
                           game.code +
                           '. Players join on their own devices. Randomly assign roles below, or choose each character manually in Seats.'
                         : 'Your Storyteller will assign characters and begin the game. Keep this screen open.'}
+                    </p>
+                    <p>
+                      <strong>Selected script:</strong> {game.scriptName}
+                    </p>
+                    <p>
+                      <strong>Storyteller:</strong> {game.hostName}
                     </p>
                     <div className="code-display">{game.code}</div>
                     {game.host && (
@@ -999,129 +1040,139 @@ export default function Table() {
                   {core.map((c, i) => button(c, i === 0))}
                 </div>
               </section>
-              <aside className="panel character-panel">
-                <p className="eyebrow">
-                  {game.host ? 'YOUR GRIMOIRE' : 'YOUR SEAT'}
-                </p>
-                {game.character ? (
-                  <>
-                    <h2>
-                      {revealed
-                        ? game.character.name
-                        : 'Your character is private.'}
-                    </h2>
-                    {revealed && (
-                      <>
-                        <p className="alignment">
-                          {game.character.alignment} team
-                        </p>
-                        <p>{game.character.description}</p>
-                      </>
-                    )}
-                    <button
-                      className="secondary full"
-                      onClick={() => setRevealed(!revealed)}
-                    >
-                      {revealed ? 'Hide character' : 'Reveal my character'}
-                    </button>
-                    <p className="hint">
-                      Your character hides when you leave the app.
-                    </p>
-                  </>
-                ) : (
-                  <>
-                    <h2>
-                      {game.players.filter((p) => p.alive).length} living
-                      players
-                    </h2>
-                    <p className="muted">
-                      {game.host
-                        ? 'Actual roles and reminders are visible only to you.'
-                        : 'Your character will appear here when the game starts.'}
-                    </p>
-                    {game.storytellerAbility && (
-                      <p className="alignment">
-                        Your Zealot ability: {game.storytellerAbility}
-                      </p>
-                    )}
-                  </>
-                )}
-                <div className="seat-mini-list">
-                  {game.players.map((p) => (
-                    <div key={p.id}>
-                      <div className="seat-identity">
-                        <PlayerAvatar
-                          avatar={p.avatar}
-                          id={p.id}
-                          dead={!p.alive}
-                          frame={p.portraitFrame}
-                          deathEffect={p.deathEffect}
-                          publicDead={!p.publicAlive}
-                        />
-                        <strong>
-                          {p.name}
-                          {p.id === game.me ? ' · you' : ''}
-                        </strong>
-                        <small>
-                          Seat {p.seat} ·{' '}
-                          {game.host
-                            ? `(${role(p.role ?? '')?.name || 'Unassigned'})`
-                            : p.alive
-                              ? 'Alive'
-                              : p.ghost
-                                ? 'Dead · one vote'
-                                : 'Dead · no votes'}
-                        </small>
-                      </div>
-                      <span className={p.alive ? 'alive-dot' : 'dead-label'}>
-                        {p.alive ? '●' : 'DEAD'}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-                {button(chat)}
-                <p className="hint">
-                  Session data syncs across devices. Stay connected during play.
-                </p>
-              </aside>
-              <section className="panel recent-messages">
-                <div className="section-heading">
-                  <p className="eyebrow">PRIVATE MESSAGES</p>
-                  <button
-                    className="text-action"
-                    onClick={() => setActiveTab('messages')}
-                  >
-                    View all
-                  </button>
-                </div>
-                {game.messages.length === 0 ? (
-                  <p className="muted">
-                    No messages yet. Your conversations will appear here.
+              {game.phase !== 'lobby' && (
+                <aside className="panel character-panel">
+                  <p className="eyebrow">
+                    {game.host ? 'YOUR GRIMOIRE' : 'YOUR SEAT'}
                   </p>
-                ) : (
-                  game.messages
-                    .slice(-3)
-                    .reverse()
-                    .map((m) => (
-                      <article className="message" key={m.id}>
-                        <div>
+                  {game.character ? (
+                    <>
+                      <h2>
+                        {revealed
+                          ? game.character.name
+                          : 'Your character is private.'}
+                      </h2>
+                      {revealed && (
+                        <>
+                          <p className="alignment">
+                            {game.character.alignment} team
+                          </p>
+                          <p>{game.character.description}</p>
+                        </>
+                      )}
+                      <button
+                        className="secondary full"
+                        onClick={() => setRevealed(!revealed)}
+                      >
+                        {revealed ? 'Hide character' : 'Reveal my character'}
+                      </button>
+                      <p className="hint">
+                        Your character hides when you leave the app.
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <h2>
+                        {game.players.filter((p) => p.alive).length} living
+                        players
+                      </h2>
+                      <p className="muted">
+                        {game.host
+                          ? 'Actual roles and reminders are visible only to you.'
+                          : 'Your character will appear here when the game starts.'}
+                      </p>
+                      {game.storytellerAbility && (
+                        <p className="alignment">
+                          Your Zealot ability: {game.storytellerAbility}
+                        </p>
+                      )}
+                    </>
+                  )}
+                  <div className="seat-mini-list">
+                    {game.players.map((p) => (
+                      <div key={p.id}>
+                        <div className="seat-identity">
+                          <PlayerAvatar
+                            avatar={p.avatar}
+                            id={p.id}
+                            dead={!p.alive}
+                            frame={p.portraitFrame}
+                            deathEffect={p.deathEffect}
+                            publicDead={!p.publicAlive}
+                          />
                           <strong>
-                            {m.from === 'host' ? 'Storyteller' : name(m.from)}
+                            {p.name}
+                            {p.id === game.me ? ' · you' : ''}
                           </strong>
                           <small>
-                            {new Date(m.at).toLocaleTimeString([], {
-                              hour: '2-digit',
-                              minute: '2-digit',
-                            })}
+                            Seat {p.seat} ·{' '}
+                            {game.host
+                              ? `(${role(p.role ?? '')?.name || 'Unassigned'})`
+                              : p.alive
+                                ? 'Alive'
+                                : p.ghost
+                                  ? 'Dead · one vote'
+                                  : 'Dead · no votes'}
                           </small>
                         </div>
-                        <p>{m.text}</p>
-                      </article>
-                    ))
-                )}
-                <div className="actions">{button(chat)}</div>
-              </section>
+                        <span className={p.alive ? 'alive-dot' : 'dead-label'}>
+                          {p.alive ? '●' : 'DEAD'}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                  {button(chat)}
+                  <p className="hint">
+                    Session data syncs across devices. Stay connected during
+                    play.
+                  </p>
+                </aside>
+              )}
+              {game.phase !== 'lobby' && (
+                <section className="panel recent-messages">
+                  <div className="section-heading">
+                    <p className="eyebrow">PRIVATE MESSAGES</p>
+                    <button
+                      className="text-action"
+                      onClick={() => setActiveTab('messages')}
+                    >
+                      View all
+                    </button>
+                  </div>
+                  {game.messages.length === 0 ? (
+                    <p className="muted">
+                      No messages yet. Your conversations will appear here.
+                    </p>
+                  ) : (
+                    game.messages
+                      .slice(-3)
+                      .reverse()
+                      .map((m) => (
+                        <article className="message" key={m.id}>
+                          <div>
+                            <strong>
+                              {m.from === 'host' ? 'Storyteller' : name(m.from)}
+                            </strong>
+                            <small>
+                              {new Date(m.at).toLocaleTimeString([], {
+                                hour: '2-digit',
+                                minute: '2-digit',
+                              })}
+                            </small>
+                          </div>
+                          <p>{m.text}</p>
+                        </article>
+                      ))
+                  )}
+                  <div className="actions">{button(chat)}</div>
+                </section>
+              )}
             </div>
+            {game.phase === 'lobby' && !game.host && (
+              <section className="panel">
+                <NightPuzzles lobby />
+              </section>
+            )}
           </TabsContent>
           <TabsContent value="seats" keepMounted>
             {!game.host && (
@@ -1131,7 +1182,12 @@ export default function Table() {
                   game={game}
                   refresh={refresh}
                 />
-                <PlayerNotes key={'notes:' + game.code + game.me} game={game} />
+                {game.phase !== 'lobby' && (
+                  <PlayerNotes
+                    key={'notes:' + game.code + game.me + game.gameStartedAt}
+                    game={game}
+                  />
+                )}
                 <TableMembership
                   key={game.code + game.me}
                   game={game}
@@ -1156,12 +1212,7 @@ export default function Table() {
                     refresh={refresh}
                   />
                 )}
-                {game.host && <TableSeating game={game} refresh={refresh} />}
-                <TableMembership
-                  key={game.code + game.me}
-                  game={game}
-                  refresh={refresh}
-                />
+
                 {game.host && game.phase === 'lobby' && (
                   <section className="panel poll-result">
                     <h2>Assign the town’s characters.</h2>
@@ -1325,8 +1376,14 @@ export default function Table() {
             Save recovery key
           </button>
           <Link href="/account">Account & saved games</Link>
-          <button onClick={() => setActiveTab('seats')}>
-            Your name & table
+          <button
+            onClick={() =>
+              setActiveTab(
+                game.phase === 'lobby' && !game.host ? 'cosmetic' : 'seats',
+              )
+            }
+          >
+            {game.host ? 'Characters' : 'Your name & appearance'}
           </button>
           <Link href="/rules">Rules & roles</Link>
           <Link href="/">Switch session</Link>

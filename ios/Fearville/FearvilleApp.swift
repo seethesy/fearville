@@ -7,7 +7,7 @@ extension Color {
     static let tablePanel = Color(red: 43/255, green: 43/255, blue: 43/255)
     static let tableHighlight = Color(red: 246/255, green: 162/255, blue: 101/255)
 }
-@main struct ClocktowerTableApp: App {
+@main struct FearvilleApp: App {
     @StateObject private var store = TableStore()
     var body: some Scene {
         WindowGroup { RootView().environmentObject(store).preferredColorScheme(.dark).tint(.tableAccent) }
@@ -44,7 +44,7 @@ struct WelcomeView: View {
                 VStack(alignment: .leading, spacing: 28) {
                     Text("FEARVILLE").font(.caption.bold()).tracking(3).foregroundStyle(Color.tableHighlight)
                     Text("A seat at\nthe table.").font(.system(size: 52, design: .serif))
-                    Text("Trouble Brewing · In person").foregroundStyle(.secondary)
+                    Text("In person").foregroundStyle(.secondary)
                     if let account = store.accountState?.account {
                         Text("Signed in as " + account.name)
                         Button("Account & saved games") { showAccount = true }
@@ -69,7 +69,7 @@ struct WelcomeView: View {
                     }.buttonStyle(.borderedProminent).controlSize(.large).frame(maxWidth: .infinity)
                     .disabled(store.working || (mode == "restore" ? recovery.isEmpty : name.trimmingCharacters(in: .whitespaces).isEmpty || (mode == "join" && code.count != 6)))
                     if !store.error.isEmpty { Text(store.error).foregroundStyle(.red).accessibilityAddTraits(.updatesFrequently) }
-                    Text("Unofficial companion for Blood on the Clocktower. Keep the app open during play to receive information.").font(.footnote).foregroundStyle(.secondary)
+                    Text("Keep the app open during play to receive information.").font(.footnote).foregroundStyle(.secondary)
                 }.textFieldStyle(.roundedBorder).padding(28)
             }.background(Color.tableBackground).toolbarBackground(Color.tableBackground, for: .navigationBar)
             .task { await store.refreshAccount() }
@@ -86,7 +86,7 @@ struct GameView: View {
             NavigationStack { FlowView(game: game, selected: $selected).navigationTitle(game.phaseLabel).navigationBarTitleDisplayMode(.inline) }.tabItem { Text("Game") }
             NavigationStack { SeatsView(game: game, selected: $selected).navigationTitle("Seats") }.tabItem { Text("Seats") }
             NavigationStack { MessagesView(game: game, selected: $selected).navigationTitle("Messages") }.tabItem { Text("Messages") }
-            NavigationStack { ScriptView().navigationTitle("Trouble Brewing") }.tabItem { Text("Script") }
+            NavigationStack { ScriptView().navigationTitle("Fearville Classic") }.tabItem { Text("Script") }
             NavigationStack { ControlView(game: game, selected: $selected).navigationTitle(game.host ? "Storyteller" : "Session") }.tabItem { Text("Controls") }
         }
         .sheet(item: $selected) { action in ActionView(action: action).environmentObject(store) }
@@ -190,7 +190,7 @@ struct ScriptView: View {
     private let roles: [ScriptRole] = {
         guard let url = Bundle.main.url(forResource: "roles", withExtension: "json"), let data = try? Data(contentsOf: url), let roles = try? JSONDecoder().decode([ScriptRole].self, from: data) else { return [] }; return roles
     }()
-    var body: some View { List { Section { Text("All characters on the script, including those not in play. These are short summaries."); Link("Official script and rulings", destination: URL(string: "https://wiki.bloodontheclocktower.com/Trouble_Brewing")!) }; ForEach(roles) { role in VStack(alignment: .leading, spacing: 8) { Text(role.team.uppercased()).font(.caption).foregroundStyle(Color.tableHighlight); Text(role.name).font(.headline); Text(role.description) }.padding(.vertical, 6) } }.scrollContentBackground(.hidden).background(Color.tableBackground) }
+    var body: some View { List { Section { Text("All characters on the script, including those not in play. These are short summaries.") }; ForEach(roles) { role in VStack(alignment: .leading, spacing: 8) { Text(role.team.uppercased()).font(.caption).foregroundStyle(Color.tableHighlight); Text(role.name).font(.headline); Text(role.description) }.padding(.vertical, 6) } }.scrollContentBackground(.hidden).background(Color.tableBackground) }
 }
 struct ControlView: View {
     @EnvironmentObject var store: TableStore

@@ -1,3 +1,4 @@
+import { resolvedAvatars } from './avatars.ts';
 import {
   ROLES,
   scriptRoles,
@@ -29,6 +30,8 @@ import {
 } from './hms.ts';
 import { hmsNightFields, deathControl, hmsControls } from './hms-view.ts';
 import { recapOf } from './lobby.ts';
+import { alignmentOf, winnerOf } from '../social/derive.ts';
+import { BASE_XP, mvpShares } from '../social/progression.ts';
 const select = (
   key: string,
   label: string,
@@ -75,6 +78,32 @@ export function controls(g: Game, a: Actor): Control[] {
     fields: Field[] = [],
     danger = false,
   ) => result.push({ action, title, description, fields, danger });
+  if (!a.host && g.phase === 'lobby') {
+    const me = g.players.find((p) => p.id === a.id);
+    if (me?.seat)
+      add(
+        'leaveSeat',
+        'Leave Seat',
+        'Release your seat and stay in the lobby.',
+      );
+    else if (me) {
+      const open = Array.from(
+        {
+          length: Math.max(
+            5,
+            g.players.length,
+            ...g.players.map((p) => p.seat),
+          ),
+        },
+        (_, i) => i + 1,
+      )
+        .filter((seat) => !g.players.some((p) => p.seat === seat))
+        .map((seat) => ({ value: String(seat), label: `Seat ${seat}` }));
+      add('claimSeat', 'Claim a seat', 'Choose an open place at the table.', [
+        select('seat', 'Open seat', open, open[0]?.value),
+      ]);
+    }
+  }
   if (a.host) {
     if (g.phase === 'lobby') {
       if (g.sandbox) {
@@ -676,11 +705,10 @@ export function controls(g: Game, a: Actor): Control[] {
       add(
         'edit',
         `Edit seat ${p.seat} · ${p.name}`,
-        'Swap seat order, change characters, and correct status. Actual roles and reminders are private.',
+        'Change characters and correct status. Actual roles and reminders are private.',
         [
           select('player', 'Player', [{ value: p.id, label: p.name }], p.id),
           input('name', 'Seat name', p.name),
-          num('seat', 'Seat number', p.seat, 1, g.players.length),
           select('role', 'Actual character', roleOptions, p.role),
           select(
             'shown',
@@ -872,6 +900,7 @@ export function view(
   now: number,
   sandboxHost = false,
 ) {
+  const avatars = resolvedAvatars(g.players);
   const me = g.players.find((p) => p.id === a.id);
   const leader = candidate(g);
   const choiceTask = nightChoiceTask(g, a.id);
@@ -1002,6 +1031,18 @@ export function view(
     deadline: g.deadline,
     remaining: g.remaining,
     winner: g.winner,
+    gameStartedAt: g.gameStartedAt,
+    ranked: !!g.ranked,
+    ratingPreview:
+      !a.host && g.progression?.ranked
+        ? (() => {
+            const seat = g.progression.seats.find((p) => p.player === a.id);
+            return seat
+              ? { rating: seat.rating, win: seat.win, loss: seat.loss }
+              : null;
+          })()
+        : null,
+    notebook: !a.host ? (g.notebooks?.[a.id] ?? null) : null,
     execution: g.execution,
     nightPoll:
       !a.host && me && g.phase === 'night' && g.nightPoll?.night === g.night
@@ -1016,10 +1057,53 @@ export function view(
       (g.phase !== 'night' || g.previousNightPoll.night < g.night)
         ? g.previousNightPoll
         : null,
-    recaps:
-      g.phase === 'ended'
-        ? [...(g.recaps ?? []), recapOf(g, now)]
-        : (g.recaps ?? []),
+    recaps: (g.phase === 'ended'
+      ? [...(g.recaps ?? []), recapOf(g, now)]
+      : (g.recaps ?? [])
+    ).map(({ votes, progression: _privateProgression, ...recap }) => ({
+      ...recap,
+      myReward:
+        !g.sandbox &&
+        _privateProgression &&
+        (a.host || recap.players.some((p) => p.id === a.id))
+          ? (() => {
+              const won =
+                alignmentOf(recap.players.find((p) => p.id === a.id)?.team) ===
+                winnerOf(recap.winner);
+              const seat = _privateProgression.seats.find(
+                (p) => p.player === a.id,
+              );
+              const base = BASE_XP * (a.host ? 3 : won ? 1.5 : 1);
+              const bonus = a.host
+                ? 0
+                : (mvpShares(
+                    recap.players.map((p) => p.id),
+                    votes,
+                  )[a.id]?.xp ?? 0);
+              return {
+                baseXp: base,
+                mvpXp: bonus,
+                xp: base + bonus,
+                eloDelta:
+                  !a.host && _privateProgression.ranked && seat
+                    ? won
+                      ? seat.win
+                      : seat.loss
+                    : null,
+                saved: a.host
+                  ? !!_privateProgression.hostAccount
+                  : !!seat?.account,
+              };
+            })()
+          : null,
+      myVotes: votes?.[a.host ? 'host' : a.id] ?? [],
+      mvpCounts: Object.values(votes ?? {})
+        .flat()
+        .reduce<Record<string, number>>((counts, id) => {
+          counts[id] = (counts[id] ?? 0) + 1;
+          return counts;
+        }, {}),
+    })),
     players: g.players
       .slice()
       .sort((a, b) => a.seat - b.seat)
@@ -1027,7 +1111,7 @@ export function view(
         id: p.id,
         name: p.name,
         seat: p.seat,
-        avatar: p.avatar,
+        avatar: avatars.get(p.id),
         portraitFrame: p.portraitFrame ?? 'simple',
         deathEffect: p.deathEffect ?? 'spirit',
         publicAlive: p.publicAlive,

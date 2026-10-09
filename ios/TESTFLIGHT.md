@@ -6,13 +6,13 @@ Native SwiftUI source, Xcode project, app icon, privacy manifest, and shared sch
 
 ## Build on your Mac
 
-1. Open `ClocktowerTable.xcodeproj` in the current stable Xcode supported by App Store Connect.
-2. Select the ClocktowerTable target → Signing & Capabilities. Select your Apple Developer team, keep automatic signing enabled, and replace `com.example.ClocktowerTable` with your registered unique bundle identifier.
-3. In `ClocktowerTable/Info.plist`, verify `ClocktowerAPIURL`. It currently points to the deployed Sites backend. The deployed backend currently allows public player access. Do not put owner tokens in the app.
+1. Open `Fearville.xcodeproj` in the current stable Xcode supported by App Store Connect.
+2. Select the Fearville target → Signing & Capabilities. Select your Apple Developer team, keep automatic signing enabled, and replace `com.example.Fearville` with your registered unique bundle identifier.
+3. In `Fearville/Info.plist`, verify `FearvilleAPIURL`. It currently points to the deployed Sites backend. The deployed backend currently allows public player access. Do not put owner tokens in the app.
 4. Select an iPhone simulator and run. Then run on a real iPhone. Minimum target: iOS 17.
 5. Verify with one Storyteller and at least five separate player identities: join, assign/deal, private messages, each night form, timers, voting, role secrecy, background/foreground recovery, and undo. Use web browsers alongside the iPhone client. Each device may hold one active seat.
 6. Optional unsigned build check:
-   `xcodebuild -project ClocktowerTable.xcodeproj -scheme ClocktowerTable -sdk iphonesimulator -configuration Debug -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build`
+   `xcodebuild -project Fearville.xcodeproj -scheme Fearville -sdk iphonesimulator -configuration Debug -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build`
 
 ## Upload
 
@@ -23,7 +23,7 @@ Native SwiftUI source, Xcode project, app icon, privacy manifest, and shared sch
 5. After Apple processes the build, add it to a TestFlight group. Internal testers must be App Store Connect users with suitable access. External testing may require Beta App Review. Supply your feedback email and the testing notes below. Do not invite testers until you are ready to send invitations.
 
 Suggested beta description:
-“An in-person companion for Trouble Brewing. A human Storyteller hosts a session and players join with a code. Private role delivery, night information and messages, shared timers, nominations and voting support play around a physical table.”
+“An in-person game companion. A human Storyteller hosts a session and players join with a code. Private role delivery, night information and messages, shared timers, nominations and voting support play around a physical table.”
 
 Suggested testing notes:
 “Use one Storyteller and 5–15 players. Test cross-device role privacy, private messages, guided nights, phase timers, votes, and Storyteller corrections. Keep the app open and internet-connected. No voice chat or background push notifications are included.”

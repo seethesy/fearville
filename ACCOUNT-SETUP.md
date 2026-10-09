@@ -1,6 +1,6 @@
 # Fearville: Google and Apple sign-in setup
 
-Updated September 8, 2026. This guide replaces the previous Clocktower Table instructions. The provider integrations are implemented; sign-in becomes available after the credentials are installed on the server. Creating credentials in a provider console does not activate the app by itself.
+Updated September 8, 2026. The provider integrations are implemented; sign-in becomes available after the credentials are installed on the server. Creating credentials in a provider console does not activate the app by itself.
 
 ## Copy these exact values
 
@@ -120,12 +120,12 @@ The domain field has no scheme or path. The return URL includes both. Apple's cu
 
 ### E. Match the Xcode project
 
-1. On your Mac, extract the updated Fearville iOS ZIP and open `ClocktowerTable.xcodeproj`. The internal project/target name remains ClocktowerTable; the installed app displays Fearville.
-2. In the left project navigator, click the blue project icon, then select **ClocktowerTable** under **TARGETS**.
+1. On your Mac, extract the updated Fearville iOS ZIP and open `Fearville.xcodeproj`.
+2. In the left project navigator, click the blue project icon, then select **Fearville** under **TARGETS**.
 3. Open **Signing & Capabilities**, select your team, and enable automatic signing. Set **Bundle Identifier** to the exact App ID from section A.
 4. Click **+ Capability**, search for **Sign in with Apple**, and add it. [Apple's Xcode guidance](https://developer.apple.com/documentation/xcode/configuring-sign-in-with-apple)
-5. Check the target's **Info** settings or `ClocktowerTable/Info.plist`: `ClocktowerAPIURL` must be `https://fearville.phatsyloaf.chatgpt.site`. The updated project already contains this value.
-6. Keep the existing URL scheme `clocktowertable`. The app uses `clocktowertable://signin` internally to return from its authentication browser. This internal scheme is not the website address, and must not replace Google's or Apple's HTTPS callback.
+5. Check the target's **Info** settings or `Fearville/Info.plist`: `FearvilleAPIURL` must be `https://fearville.phatsyloaf.chatgpt.site`. The updated project already contains this value.
+6. Keep the URL scheme `fearville`. The app uses `fearville://signin` internally to return from its authentication browser. This internal scheme is not the website address, and must not replace Google's or Apple's HTTPS callback.
 7. Build and run on your iPhone. A previously built app must be rebuilt to pick up the new backend address. Follow the separate TestFlight guide for archive/upload steps.
 
 ## 3. Install the credentials on Fearville's server

@@ -5,7 +5,7 @@ import AuthenticationServices
 import CryptoKit
 
 private enum Keychain {
-    static let service = "ClocktowerTable.session"
+    static let service = "Fearville.session"
     static func load(account: String = "session") -> String? {
         let query: [String: Any] = [kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: service, kSecAttrAccount as String: account, kSecReturnData as String: true, kSecMatchLimit as String: kSecMatchLimitOne]
         var item: CFTypeRef?
@@ -38,7 +38,7 @@ private enum Keychain {
     let baseURL: URL
     private let network: URLSession
     init() {
-        baseURL = URL(string: Bundle.main.object(forInfoDictionaryKey: "ClocktowerAPIURL") as? String ?? "https://fearville.phatsyloaf.chatgpt.site")!
+        baseURL = URL(string: Bundle.main.object(forInfoDictionaryKey: "FearvilleAPIURL") as? String ?? "https://fearville.phatsyloaf.chatgpt.site")!
         let config = URLSessionConfiguration.ephemeral
         config.timeoutIntervalForRequest = 15
         config.requestCachePolicy = .reloadIgnoringLocalCacheData
@@ -58,10 +58,10 @@ private enum Keychain {
         guard (200..<300).contains(http.statusCode) else {
             let failure = (try? JSONDecoder().decode(APIError.self, from: data).error) ?? "The server is unavailable or requires access. Ask the Storyteller to check the app’s hosting access."
             if http.statusCode == 401 && path == "api/game" { authenticated = false }
-            throw NSError(domain: "Clocktower", code: http.statusCode, userInfo: [NSLocalizedDescriptionKey: failure])
+            throw NSError(domain: "Fearville", code: http.statusCode, userInfo: [NSLocalizedDescriptionKey: failure])
         }
         do { return try JSONDecoder().decode(T.self, from: data) }
-        catch { throw NSError(domain: "Clocktower", code: 0, userInfo: [NSLocalizedDescriptionKey: "The server did not return game data. The backend must allow player access before using the native app."]) }
+        catch { throw NSError(domain: "Fearville", code: 0, userInfo: [NSLocalizedDescriptionKey: "The server did not return game data. The backend must allow player access before using the native app."]) }
     }
     func enter(action: String, name: String, code: String = "", recovery: String = "") async {
         working = true; error = ""
@@ -111,7 +111,7 @@ extension TableStore {
             let start: SignInStart = try await request("api/accounts/start", body: ["provider": .string(provider), "link": .bool(link), "nativeChallenge": .string(digest)])
             guard let url = URL(string: start.url) else { throw URLError(.badURL) }
             let returned: URL = try await withCheckedThrowingContinuation { continuation in
-                let session = ASWebAuthenticationSession(url: url, callbackURLScheme: "clocktowertable") { url, error in
+                let session = ASWebAuthenticationSession(url: url, callbackURLScheme: "fearville") { url, error in
                     if let url { continuation.resume(returning: url) }
                     else { continuation.resume(throwing: error ?? URLError(.cancelled)) }
                 }
@@ -121,7 +121,7 @@ extension TableStore {
                 if !session.start() { continuation.resume(throwing: URLError(.cannotConnectToHost)) }
             }
             let items = URLComponents(url: returned, resolvingAgainstBaseURL: false)?.queryItems ?? []
-            if let reason = items.first(where: { $0.name == "error" })?.value { throw NSError(domain: "Clocktower", code: 0, userInfo: [NSLocalizedDescriptionKey: reason]) }
+            if let reason = items.first(where: { $0.name == "error" })?.value { throw NSError(domain: "Fearville", code: 0, userInfo: [NSLocalizedDescriptionKey: reason]) }
             guard let code = items.first(where: { $0.name == "code" })?.value else { throw URLError(.badServerResponse) }
             let exchanged: SignInExchange = try await request("api/accounts/exchange", body: ["code": .string(code), "verifier": .string(verifier)])
             try Keychain.save(exchanged.accountToken, account: "account"); accountCredential = exchanged.accountToken

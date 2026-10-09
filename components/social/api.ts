@@ -7,6 +7,7 @@ export type TableSocial = {
   friends: (PublicAccount & {
     together: number;
     seated: boolean;
+    invitesAllowed: boolean;
     invite: { id: string; status: string } | null;
   })[];
   rating: {
