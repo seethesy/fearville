@@ -1,5 +1,5 @@
 // Key game terms, shared by the web rules reference and role descriptions.
-// The iPhone client keeps a copy in ClocktowerTableApp.swift (GLOSSARY);
+// The iPhone client keeps a copy in FearvilleApp.swift (GLOSSARY);
 // tests/glossary.test.ts checks that both stay identical.
 export type GlossaryTerm = {
   id: string;

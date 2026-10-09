@@ -221,7 +221,7 @@ void test('random assignment deals valid setups for 5–18 players', () => {
 });
 
 void test('tables seat up to 18 players in every script', () => {
-  for (const script of ['classic', 'holyMoonStars', 'horrors'] as const) {
+  for (const script of ['holyMoonStars', 'horrors'] as const) {
     const g = newGame('BIG', 'Host');
     g.script = script;
     g.players = Array.from({ length: 18 }, (_, i) => newPlayer('P' + i, i + 1));
@@ -587,7 +587,7 @@ void test('the Sphinx sees every role until the night-choice timer ends', () => 
 
 void test('the iPhone role list matches every script', async () => {
   const { readFileSync } = await import('node:fs');
-  const { ROLES, HMS_ROLES } = await import('../lib/game/types.ts');
+  const { HMS_ROLES } = await import('../lib/game/types.ts');
   const rows = JSON.parse(
     readFileSync(
       new URL('../ios/Fearville/roles.json', import.meta.url),
@@ -595,7 +595,6 @@ void test('the iPhone role list matches every script', async () => {
     ),
   ) as { id: string; description: string; script: string }[];
   for (const [script, list] of [
-    ['classic', ROLES],
     ['holyMoonStars', HMS_ROLES],
     ['horrors', HOF_ROLES],
   ] as const)

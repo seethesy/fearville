@@ -88,7 +88,7 @@ export default function Home() {
       </header>
       <div className="entry-grid">
         <section className="intro">
-          <p className="eyebrow">FEARVILLE CLASSIC</p>
+          <p className="eyebrow">HORRORS OF FEARVILLE</p>
           <h1>
             A seat at
             <br />

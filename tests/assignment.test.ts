@@ -1,57 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { newGame, newPlayer } from '../lib/game/types.ts';
-import { execute, setupIssues } from '../lib/game/engine.ts';
+import { execute } from '../lib/game/engine.ts';
 import { view } from '../lib/game/view.ts';
 const host = { id: 'host', host: true };
-void test('selected role roster is dealt exactly and validates Baron counts', () => {
-  const g = lobby(5);
-  const roles = ['empath', 'butler', 'drunk', 'baron', 'imp'];
-  execute(g, host, { action: 'randomAssign', roles }, 100);
-  assert.deepEqual(g.players.map((p) => p.role).sort(), roles.slice().sort());
-  assert.deepEqual(setupIssues(g), []);
-  const original = g.players.map((p) => p.role);
-  assert.throws(
-    () =>
-      execute(
-        g,
-        host,
-        {
-          action: 'randomAssign',
-          roles: ['empath', 'chef', 'monk', 'baron', 'imp'],
-        },
-        101,
-      ),
-    /Choose 1 Villagers/,
-  );
-  assert.deepEqual(
-    g.players.map((p) => p.role),
-    original,
-  );
-  assert.throws(
-    () =>
-      execute(
-        g,
-        host,
-        {
-          action: 'randomAssign',
-          roles: ['empath', 'empath', 'monk', 'poisoner', 'imp'],
-        },
-        102,
-      ),
-    /unique/,
-  );
-  assert.throws(
-    () =>
-      execute(
-        g,
-        { id: g.players[0].id, host: false },
-        { action: 'randomAssign', roles },
-        103,
-      ),
-    /Storyteller/,
-  );
-});
 void test('new tables use requested default phase times and 30-second Add Time', () => {
   const g = lobby();
   assert.deepEqual(g.timers, {
@@ -76,24 +28,6 @@ function lobby(count = 7) {
   );
   return g;
 }
-void test('random assignment balances every supported size including Baron and Drunk', () => {
-  let sawBaron = false,
-    sawDrunk = false;
-  for (let count = 5; count <= 18; count++) {
-    for (let attempt = 0; attempt < 40; attempt++) {
-      const g = lobby(count);
-      g.assignmentSeed = `${count}:${attempt}`;
-      execute(g, host, { action: 'randomAssign' }, 100);
-      assert.deepEqual(setupIssues(g), [], `size ${count}, attempt ${attempt}`);
-      assert.equal(new Set(g.players.map((p) => p.role)).size, count);
-      sawBaron ||= g.players.some((p) => p.role === 'baron');
-      sawDrunk ||= g.players.some((p) => p.role === 'drunk');
-      assert.equal(g.phase, 'lobby');
-      assert.equal(g.messages.length, 0);
-    }
-  }
-  assert.ok(sawBaron && sawDrunk);
-});
 void test('preview and commit assign identical roles; a new deal rotates the seed', () => {
   const g = lobby();
   const original = structuredClone(g);
@@ -117,16 +51,16 @@ void test('manual assignment works before and after random assignment without re
     player: p.id,
     name: p.name,
     seat: 1,
-    role: 'washerwoman',
+    role: 'sheriff',
     alive: true,
     ghost: true,
   };
   execute(g, host, edit, 100);
-  assert.equal(p.role, 'washerwoman');
+  assert.equal(p.role, 'sheriff');
   execute(g, host, { action: 'randomAssign' }, 101);
-  execute(g, host, { ...edit, role: 'drunk', shown: 'soldier' }, 102);
+  execute(g, host, { ...edit, role: 'drunk', shown: 'watchman' }, 102);
   assert.equal(p.role, 'drunk');
-  assert.equal(p.shown, 'soldier');
+  assert.equal(p.shown, 'watchman');
   assert.equal(g.messages.length, 0);
   const v = view(g, { id: p.id, host: false }, 1, 103);
   assert.equal(v.character, null);

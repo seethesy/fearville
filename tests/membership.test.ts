@@ -41,10 +41,10 @@ void test('departed active characters stay in the game but cannot act or receive
   const g = setup();
   g.phase = 'night';
   const p = g.players[0];
-  p.role = 'imp';
+  p.role = 'monster';
   removeMember(g, { id: p.id, host: false }, p.id, 1);
   assert.equal(g.players.length, 3);
-  assert.equal(p.role, 'imp');
+  assert.equal(p.role, 'monster');
   assert.ok(p.alive && p.departed);
   assert.throws(
     () =>

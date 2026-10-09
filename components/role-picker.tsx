@@ -26,16 +26,7 @@ export function RolePicker({
   const ROLES = scriptRoles(game.script);
   const hms = game.script === 'holyMoonStars';
   const atheist = hms && selected.includes('atheist');
-  const extra =
-    game.script === 'horrors'
-      ? 0
-      : hms
-        ? selected.includes('moonshiner')
-          ? 1
-          : 0
-        : selected.includes('baron')
-          ? 2
-          : 0;
+  const extra = hms && selected.includes('moonshiner') ? 1 : 0;
   const expected: Record<Team, number> | null = !counts
     ? null
     : atheist

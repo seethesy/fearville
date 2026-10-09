@@ -59,7 +59,7 @@ async function action(room, command, seat = room.host) {
     call('/api/game', '', { ...command, version: state.version }, seat),
   );
 }
-async function setup(guest = false, script = 'classic') {
+async function setup(guest = false, script = 'horrors') {
   const created = await ok(
     call('/api/session', accounts[0], {
       action: 'create',
@@ -81,16 +81,16 @@ async function setup(guest = false, script = 'classic') {
       call('/api/game', '', { action: 'claimSeat', seat: i }, joined.token),
     );
   }
-  if (script !== 'classic') await action(room, { action: 'setScript', script });
+  if (script !== 'horrors') await action(room, { action: 'setScript', script });
   await action(room, { action: 'randomAssign' });
-  if (script === 'classic') {
+  if (script === 'horrors') {
     const state = await ok(call('/api/game', '', undefined, room.host));
     for (const [i, role] of [
-      'washerwoman',
-      'librarian',
-      'chef',
-      'poisoner',
-      'imp',
+      'sheriff',
+      'hoflibrarian',
+      'teacher',
+      'basilisk',
+      'monster',
     ].entries()) {
       const p = state.players[i];
       await action(room, {
@@ -163,7 +163,7 @@ try {
   assert.equal(me.stats.elo, 363);
   assert.equal(me.stats.progression.xp, 100);
   assert.equal(me.stats.ranked.played, 1);
-  assert.equal(me.stats.scripts[0].script, 'classic');
+  assert.equal(me.stats.scripts[0].script, 'horrors');
   assert.equal(me.stats.roleTypes[0].type, 'townsfolk');
   assert.equal(me.stats.averageOpponentElo, 1000);
   assert.equal(me.stats.averageTeamElo, 1000);
@@ -449,7 +449,7 @@ try {
   const paginationRows = Array.from({ length: 21 }, (_, i) => {
     const game = `${prefix}-history:${i}`,
       ended = Date.now() + i;
-    return `INSERT INTO games(id,code,host_account,host_name,winner,reason,players,days,nights,started,ended) VALUES ('${game}','QATEST','${ids[0]}','History fixture','good','Good',5,1,1,${ended - 60000},${ended}); INSERT INTO game_players(game,player,account,name,role,team,won,alive) VALUES ('${game}','history-player','${ids[6]}','History QA','chef','good',1,1);`;
+    return `INSERT INTO games(id,code,host_account,host_name,winner,reason,players,days,nights,started,ended) VALUES ('${game}','QATEST','${ids[0]}','History fixture','good','Good',5,1,1,${ended - 60000},${ended}); INSERT INTO game_players(game,player,account,name,role,team,won,alive) VALUES ('${game}','history-player','${ids[6]}','History QA','teacher','good',1,1);`;
   });
   sql(paginationRows.join('\n'));
   const firstPage = await ok(call('/api/social/history', accounts[6]));

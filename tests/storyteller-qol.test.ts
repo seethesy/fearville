@@ -6,7 +6,7 @@ import { controls, view } from '../lib/game/view.ts';
 
 const host = { id: 'host', host: true };
 
-function classic(roles: string[]) {
+function horrors(roles: string[]) {
   const g = newGame('QOL', 'Storyteller');
   g.players = roles.map((role, index) => ({
     ...newPlayer(`P${index + 1}`, index + 1),
@@ -17,14 +17,14 @@ function classic(roles: string[]) {
 }
 
 void test('pre-deal popup contains editable script decisions without override reasons', () => {
-  const defaults = classic([
-    'washerwoman',
-    'chef',
-    'empath',
+  const defaults = horrors([
+    'sheriff',
+    'teacher',
+    'judge',
     'drunk',
-    'recluse',
-    'baron',
-    'imp',
+    'hag',
+    'basilisk',
+    'monster',
   ]);
   defaults.players[3].shown = 'drunk';
   const defaultStart = controls(defaults, host).find(
@@ -41,17 +41,17 @@ void test('pre-deal popup contains editable script decisions without override re
     )?.value,
   );
 
-  const g = classic([
-    'washerwoman',
-    'chef',
-    'empath',
+  const g = horrors([
+    'sheriff',
+    'teacher',
+    'judge',
     'drunk',
-    'recluse',
-    'baron',
-    'imp',
+    'hag',
+    'basilisk',
+    'monster',
   ]);
-  g.players[3].shown = 'monk';
-  g.bluffs = ['soldier', 'mayor', 'virgin'];
+  g.players[3].shown = 'doctor';
+  g.bluffs = ['watchman', 'bodyguard', 'hunter'];
   const start = controls(g, host).find(
     (control) => control.action === 'start',
   )!;
@@ -67,10 +67,11 @@ void test('pre-deal popup contains editable script decisions without override re
     host,
     {
       action: 'start',
-      bluff1: 'soldier',
-      bluff2: 'mayor',
-      bluff3: 'virgin',
-      [`shown_${g.players[3].id}`]: 'monk',
+      override: true,
+      bluff1: 'watchman',
+      bluff2: 'bodyguard',
+      bluff3: 'vigilante',
+      [`shown_${g.players[3].id}`]: 'doctor',
     },
     10,
   );
@@ -78,10 +79,10 @@ void test('pre-deal popup contains editable script decisions without override re
 });
 
 void test('night task UI hides its task selector, shows statuses, and defers privately', () => {
-  const g = classic(['washerwoman', 'drunk', 'recluse', 'baron', 'imp']);
-  g.players[1].shown = 'chef';
-  g.bluffs = ['monk', 'soldier', 'mayor'];
-  execute(g, host, { action: 'start' }, 1);
+  const g = horrors(['sheriff', 'drunk', 'hag', 'basilisk', 'monster']);
+  g.players[1].shown = 'teacher';
+  g.bluffs = ['doctor', 'watchman', 'bodyguard'];
+  execute(g, host, { action: 'start', override: true }, 1);
   g.nightChoiceDeadline = 2;
   const first = tasks(g).find((task) => !task.done)!;
   const initialMessages = g.messages.length;
@@ -111,7 +112,7 @@ void test('night task UI hides its task selector, shows statuses, and defers pri
 });
 
 void test('day confirmation automatically executes the ballot leader and checks wins', () => {
-  const g = classic(['washerwoman', 'chef', 'empath', 'baron', 'imp']);
+  const g = horrors(['sheriff', 'teacher', 'judge', 'basilisk', 'monster']);
   g.phase = 'dayReview';
   g.day = 1;
   g.ballots = [
@@ -129,13 +130,15 @@ void test('day confirmation automatically executes the ballot leader and checks 
   )!;
   assert.deepEqual(finish.fields, []);
   execute(g, host, { action: 'finishDay' }, 5);
+  execute(g, host, { action: 'resolveDeath', death: g.hms!.deathQueue[0].id }, 6);
+  execute(g, host, { action: 'finishDay' }, 7);
   assert.equal(g.players[0].alive, false);
   assert.equal(g.execution, g.players[0].id);
   assert.equal(g.phase, 'night');
 });
 
 void test('Storyteller override controls never ask for a reason', () => {
-  const g: Game = classic(['washerwoman', 'chef', 'empath', 'baron', 'imp']);
+  const g: Game = horrors(['sheriff', 'teacher', 'judge', 'basilisk', 'monster']);
   beginNight(g, 1);
   assert.ok(
     controls(g, host)

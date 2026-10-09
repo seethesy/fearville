@@ -7,7 +7,7 @@ const host = { id: 'host', host: true };
 function setup() {
   const g = newGame('RECAPS', 'Storyteller');
   g.sandbox = true;
-  g.players = ['washerwoman', 'chef', 'empath', 'poisoner', 'imp'].map(
+  g.players = ['sheriff', 'teacher', 'judge', 'basilisk', 'monster'].map(
     (r, i) => ({ ...newPlayer(`Player ${i + 1}`, i + 1), role: r, shown: r }),
   );
   return g;
@@ -45,7 +45,7 @@ void test('claiming seats never moves someone else and leaving retains membershi
     () => execute(g, host, { action: 'claimSeat', seat: 1 }, 6),
     /own seats/,
   );
-  for (const seat of [0, 16, 1.2])
+  for (const seat of [0, 19, 1.2])
     assert.throws(
       () => execute(g, actor(p.id), { action: 'claimSeat', seat }, 7),
       /valid seat/,
@@ -140,7 +140,7 @@ void test('notes and direct messages stay private during play and are revealed o
   const g = setup(),
     ids = g.players.map((p) => p.id);
   execute(g, host, { action: 'start' }, 1000);
-  const notebook = { text: 'Secret suspicion', roles: { imp: 2 }, players: {} };
+  const notebook = { text: 'Secret suspicion', roles: { monster: 2 }, players: {} };
   execute(
     g,
     actor(ids[0]),
@@ -180,9 +180,9 @@ void test('notes and direct messages stay private during play and are revealed o
 void test('recap activity links night targets and effects to both actor and target', () => {
   const g = setup();
   execute(g, host, { action: 'start' }, 1000);
-  const poisoner = g.players[3],
+  const basilisk = g.players[3],
     target = g.players[0];
-  const task = tasks(g).find((t) => t.role === 'poisoner')!;
+  const task = tasks(g).find((t) => t.role === 'basilisk')!;
   execute(
     g,
     host,
@@ -190,9 +190,9 @@ void test('recap activity links night targets and effects to both actor and targ
     2000,
   );
   const event = g.decisions?.at(-1);
-  assert.ok(event?.playerIds?.includes(poisoner.id));
+  assert.ok(event?.playerIds?.includes(basilisk.id));
   assert.ok(event?.playerIds?.includes(target.id));
-  assert.match(event?.text ?? '', /poisoned/);
+  assert.match(event?.text ?? '', /fears/);
 });
 void test('multiple rounds retain independent numbered recaps, votes and notes', () => {
   const g = finished(),

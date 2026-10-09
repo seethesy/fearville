@@ -7,11 +7,11 @@ import { NIGHT_QUESTIONS } from '../lib/game/polls.ts';
 const host = { id: 'host', host: true };
 function setup() {
   const g = newGame('POLLED', 'Host');
-  g.players = ['washerwoman', 'imp', 'drunk', 'ravenkeeper', 'soldier'].map(
+  g.players = ['sheriff', 'monster', 'drunk', 'hunter', 'watchman'].map(
     (role, i) => ({
       ...newPlayer('Player ' + i, i + 1),
       role,
-      shown: role === 'drunk' ? 'empath' : role,
+      shown: role === 'drunk' ? 'judge' : role,
     }),
   );
   beginNight(g, 100);

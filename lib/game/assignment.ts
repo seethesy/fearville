@@ -1,6 +1,5 @@
 import {
   COUNTS,
-  ROLES,
   HMS_ROLES,
   HOF_ROLES,
   TEAM_ORDER,
@@ -36,81 +35,7 @@ export function assignRandomRoles(g: Game, requested?: unknown): string {
   }
   if (g.script === 'holyMoonStars')
     return assignHms(g, counts, requested, shuffle);
-  if (g.script === 'horrors') return assignHof(g, requested, shuffle);
-  const pool = (team: string) =>
-    shuffle(ROLES.filter((r) => r.team === team).map((r) => r.id));
-  const minions = pool('minion').slice(0, counts[2]);
-  const extra = minions.includes('baron') ? 2 : 0;
-  const selected = [
-    ...pool('townsfolk').slice(0, counts[0] - extra),
-    ...pool('outsider').slice(0, counts[1] + extra),
-    ...minions,
-    'imp',
-  ];
-  if (requested !== undefined) {
-    if (
-      !Array.isArray(requested) ||
-      requested.length !== g.players.length ||
-      new Set(requested).size !== requested.length ||
-      !requested.every((id) => typeof id === 'string' && role(id))
-    )
-      throw Error('Choose one unique character per player.');
-    const extraOutsiders = requested.includes('baron') ? 2 : 0;
-    const expected = [
-      counts[0] - extraOutsiders,
-      counts[1] + extraOutsiders,
-      counts[2],
-      counts[3],
-    ];
-    if (
-      ['townsfolk', 'outsider', 'minion', 'demon'].some(
-        (team, i) =>
-          requested.filter((id) => role(id)?.team === team).length !==
-          expected[i],
-      )
-    )
-      throw Error(
-        `Choose ${expected[0]} Villagers, ${expected[1]} Fools, ${expected[2]} Haunts and ${expected[3]} Horror for this setup.`,
-      );
-    selected.splice(0, selected.length, ...(requested as string[]));
-  }
-  const deal = shuffle(selected);
-  const drunkShown = pool('townsfolk').find((r) => !selected.includes(r))!;
-  g.players
-    .slice()
-    .sort((a, b) => a.seat - b.seat)
-    .forEach((p, i) => {
-      p.role = deal[i];
-      p.shown = p.role === 'drunk' ? drunkShown : p.role;
-    });
-  g.bluffs = shuffle(
-    ROLES.filter(
-      (r) =>
-        ['townsfolk', 'outsider'].includes(r.team) &&
-        !g.players.some((p) => p.role === r.id || p.shown === r.id),
-    ).map((r) => r.id),
-  ).slice(0, 3);
-  g.redHerring = shuffle(
-    g.players.filter((p) =>
-      ['townsfolk', 'outsider'].includes(role(p.role)!.team),
-    ),
-  )[0].id;
-  return (
-    'Assign this random setup (characters remain private until the game starts):\n' +
-    g.players
-      .slice()
-      .sort((a, b) => a.seat - b.seat)
-      .map(
-        (p) =>
-          `${p.seat}. ${p.name}: ${role(p.role)!.name}${p.role === 'drunk' ? ` (shown ${role(p.shown)!.name})` : ''}`,
-      )
-      .join('\n') +
-    '\nDemon bluffs: ' +
-    g.bluffs.map((r) => role(r)!.name).join(', ') +
-    '\nFortune Teller red herring: ' +
-    g.players.find((p) => p.id === g.redHerring)!.name +
-    '\nYou can change individual assignments in Seats before starting.'
-  );
+  return assignHof(g, requested, shuffle);
 }
 
 // Holy Moon and Stars: never deals an Atheist at random (it replaces the evil

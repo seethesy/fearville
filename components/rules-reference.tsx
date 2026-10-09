@@ -252,8 +252,8 @@ export function RulesReference({ script }: { script?: RoleScript }) {
         <a href="#how-to-play">How to play</a>
         <a href="#glossary">Glossary</a>
         <a href="#using-fearville">Using Fearville</a>
-        {teamsFor(script ?? 'classic').map((team) => (
-          <a key={team.id} href={`#roles-${script ?? 'classic'}-${team.id}`}>
+        {teamsFor(script ?? 'horrors').map((team) => (
+          <a key={team.id} href={`#roles-${script ?? 'horrors'}-${team.id}`}>
             {team.name}
           </a>
         ))}
@@ -382,17 +382,6 @@ export function RulesReference({ script }: { script?: RoleScript }) {
           </li>
         </ol>
       </section>
-      {(!script || script === 'classic') && (
-        <section className="reference-section" aria-labelledby="all-roles">
-          <p className="eyebrow">FEARVILLE CLASSIC</p>
-          <h2 id="all-roles">All 22 roles</h2>
-          <p className="muted">
-            This is the full script, including characters that may not be in
-            your game. These summaries never reveal which roles are assigned.
-          </p>
-          <RoleTeams script="classic" />
-        </section>
-      )}
       {(!script || script === 'holyMoonStars') && <MoonAndStars />}
       {(!script || script === 'horrors') && <HorrorsOfFearville />}
     </div>

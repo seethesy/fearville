@@ -45,13 +45,13 @@ async function action(payload) {
   return r.data;
 }
 const roleIDs = [
-  'washerwoman',
-  'librarian',
-  'chef',
-  'empath',
-  'fortuneteller',
-  'poisoner',
-  'imp',
+  'sheriff',
+  'hoflibrarian',
+  'teacher',
+  'judge',
+  'lostwanderer',
+  'basilisk',
+  'monster',
 ];
 for (let i = 0; i < 7; i++) {
   const p = state.players[i];
@@ -73,9 +73,9 @@ await action({
   nomination: 60,
   defense: 5,
   voting: 5,
-  bluff1: 'monk',
-  bluff2: 'soldier',
-  bluff3: 'mayor',
+  bluff1: 'doctor',
+  bluff2: 'watchman',
+  bluff3: 'bodyguard',
   redHerring: state.players[0].id,
 });
 await action({ action: 'start' });

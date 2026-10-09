@@ -1,6 +1,5 @@
 import { resolvedAvatars } from './avatars.ts';
 import {
-  ROLES,
   scriptRoles,
   SCRIPTS,
   standardCounts,
@@ -19,13 +18,11 @@ import {
   winHints,
   candidate,
   nameOf,
-  healthy,
   eligibleVoters,
   nightChoiceTask,
   alignment,
 } from './engine.ts';
 import {
-  isHms,
   isMoon,
   ST,
   nightChoiceDeadlineFor,
@@ -149,7 +146,7 @@ export function controls(g: Game, a: Actor): Control[] {
             'script',
             'Role script',
             Object.entries(SCRIPTS).map(([value, label]) => ({ value, label })),
-            g.script ?? 'classic',
+            g.script ?? 'horrors',
             true,
           ),
         ],
@@ -187,13 +184,12 @@ export function controls(g: Game, a: Actor): Control[] {
         if (p.role === 'drunk')
           hiddenDefaults.set('shown_' + p.id, hiddenDefault(p.shown));
         if (
-          isHms(g) &&
-          (p.role === 'dazed' ||
-            (g.players.some((q) => q.role === 'moonshiner') &&
-              role(p.role)?.team === 'outsider'))
+          p.role === 'dazed' ||
+          (g.players.some((q) => q.role === 'moonshiner') &&
+            role(p.role)?.team === 'outsider')
         )
           hiddenDefaults.set('shown_' + p.id, hiddenDefault(p.shown));
-        if (isHms(g) && p.role === 'lostsoul')
+        if (p.role === 'lostsoul')
           hiddenDefaults.set('acts_' + p.id, hiddenDefault(p.acts));
       }
       const bluffPool = outOfPlayGood.filter(
@@ -234,10 +230,9 @@ export function controls(g: Game, a: Actor): Control[] {
             ),
           );
         if (
-          isHms(g) &&
-          (p.role === 'dazed' ||
-            (g.players.some((q) => q.role === 'moonshiner') &&
-              role(p.role)?.team === 'outsider'))
+          p.role === 'dazed' ||
+          (g.players.some((q) => q.role === 'moonshiner') &&
+            role(p.role)?.team === 'outsider')
         )
           setupFields.push(
             select(
@@ -248,7 +243,7 @@ export function controls(g: Game, a: Actor): Control[] {
               true,
             ),
           );
-        if (isHms(g) && p.role === 'lostsoul')
+        if (p.role === 'lostsoul')
           setupFields.push(
             select(
               'acts_' + p.id,
@@ -309,39 +304,13 @@ export function controls(g: Game, a: Actor): Control[] {
           );
         }
       }
-      if (
-        !isHms(g) &&
-        g.players.some(
-          (p) => p.role === 'fortuneteller' || p.shown === 'fortuneteller',
-        )
-      )
-        setupFields.push(
-          select(
-            'redHerring',
-            'Fortune Teller red herring',
-            ps.filter((option) =>
-              g.players.some(
-                (p) =>
-                  p.id === option.value &&
-                  ['townsfolk', 'outsider'].includes(role(p.role)?.team ?? ''),
-              ),
-            ),
-            g.redHerring ||
-              g.players.find((p) =>
-                ['townsfolk', 'outsider'].includes(role(p.role)?.team ?? ''),
-              )?.id ||
-              '',
-            true,
-          ),
-        );
+
       add(
         'randomAssign',
         'Randomly assign roles',
         isHof(g)
           ? `Apply the Horrors of Fearville role breakdown for 5–${MAX_PLAYERS} players. Replaces all assigned characters, the Drunk’s shown Villager, Horror bluffs and the Detective’s false positive. You can edit individual roles in Seats afterward.`
-          : isHms(g)
-            ? `Apply a balanced Holy Moon and Stars setup for 5–${MAX_PLAYERS} players (never an Atheist). Replaces all assigned characters, hidden Villagers and Horror bluffs. You can edit individual roles in Seats afterward.`
-            : `Apply a balanced Fearville Classic setup for 5–${MAX_PLAYERS} players. Replaces all assigned characters, Horror bluffs, and the red herring. You can edit individual roles in Seats afterward.`,
+          : `Apply a balanced Holy Moon and Stars setup for 5–${MAX_PLAYERS} players (never an Atheist). Replaces all assigned characters, hidden Villagers and Horror bluffs. You can edit individual roles in Seats afterward.`,
       );
       add(
         'start',
@@ -351,9 +320,9 @@ export function controls(g: Game, a: Actor): Control[] {
         setupFields,
       );
     }
-    const death = isHms(g) ? deathControl(g, ps) : null;
+    const death = deathControl(g, ps);
     if (death) result.push(death);
-    if (g.phase === 'night' && isHms(g) && !death) {
+    if (g.phase === 'night' && !death) {
       const t = tasks(g).find((t) => !t.done);
       if (t) {
         const { fields, description } = hmsNightFields(g, t, ps);
@@ -389,158 +358,7 @@ export function controls(g: Game, a: Actor): Control[] {
           [],
         );
     }
-    if (g.phase === 'night' && !isHms(g)) {
-      const t = tasks(g).find((t) => !t.done);
-      if (t) {
-        const p = g.players.find((p) => p.id === t.player),
-          r = t.role;
-        const fields: Field[] = [
-          { key: 'task', label: '', type: 'hidden', value: t.key },
-        ];
-        let description = 'Review and confirm this step before continuing.';
-        if (p)
-          description += ` ${healthy(p) ? 'Acting player is healthy.' : 'Acting player is drunk or poisoned: simulate the ability; actual effects must fail.'}`;
-        if (
-          [
-            'poisoner',
-            'monk',
-            'imp',
-            'butler',
-            'ravenkeeper',
-            'fortuneteller',
-            'washerwoman',
-            'librarian',
-            'investigator',
-          ].includes(r)
-        )
-          fields.push(
-            select(
-              'target',
-              'Chosen player',
-              optional.concat(
-                ps.filter(
-                  (o) => !['monk', 'butler'].includes(r) || o.value !== p?.id,
-                ),
-              ),
-            ),
-          );
-        if (
-          [
-            'fortuneteller',
-            'washerwoman',
-            'librarian',
-            'investigator',
-          ].includes(r)
-        )
-          fields.push(select('target2', 'Second player', optional.concat(ps)));
-        if (
-          [
-            'washerwoman',
-            'librarian',
-            'investigator',
-            'undertaker',
-            'ravenkeeper',
-          ].includes(r)
-        ) {
-          const team =
-            r === 'washerwoman'
-              ? 'townsfolk'
-              : r === 'librarian'
-                ? 'outsider'
-                : r === 'investigator'
-                  ? 'minion'
-                  : '';
-          fields.push(
-            select(
-              'reveal',
-              'Character to reveal',
-              optional.concat(
-                ROLES.filter((r) => !team || r.team === team).map((r) => ({
-                  value: r.id,
-                  label: r.name,
-                })),
-              ),
-            ),
-          );
-        }
-        if (r === 'librarian')
-          fields.push(check('zero', 'Notify that zero Fools are in play'));
-        if (['chef', 'empath', 'fortuneteller', 'spy'].includes(r))
-          fields.push({
-            ...input(
-              'info',
-              r === 'spy'
-                ? 'Replacement Grimoire (required if poisoned)'
-                : 'Information (leave blank for calculated suggestion)',
-              '',
-              'textarea',
-            ),
-            hint: 'Leave blank to use the calculated information.',
-          });
-        if (r === 'imp')
-          fields.push(
-            select(
-              'redirect',
-              'Mayor redirection (optional)',
-              optional.concat(ps),
-            ),
-            select(
-              'successor',
-              'Imp self-kill successor',
-              optional.concat(
-                ps.filter((o) =>
-                  g.players.some(
-                    (p) =>
-                      p.id === o.value &&
-                      p.alive &&
-                      role(p.role)?.team === 'minion',
-                  ),
-                ),
-              ),
-            ),
-            select(
-              'outcome',
-              'Death ruling',
-              [
-                { value: 'suggested', label: 'Use suggested result' },
-                { value: 'kill', label: 'Death (override if needed)' },
-                { value: 'spare', label: 'No death (override if needed)' },
-              ],
-              'suggested',
-            ),
-          );
-        fields.push(...overrideFields);
-        const choice = g.nightChoices?.[t.key];
-        if (choice) {
-          for (const field of fields) {
-            if (field.key === 'target') field.value = choice.target;
-            if (field.key === 'target2') field.value = choice.target2;
-          }
-          description += ` Player selected ${nameOf(g, choice.target)}${choice.target2 ? ' and ' + nameOf(g, choice.target2) : ''}. Confirm to resolve.`;
-        }
-        add('night', 'Resolve ' + t.name, description, fields);
-        add(
-          'nightDefer',
-          'Do this task later',
-          'Move this task behind the other unresolved night tasks. Nothing is announced to players.',
-          [],
-        );
-        add(
-          'nightSkip',
-          'Skip this task entirely',
-          'Complete this task without sending information or applying its effect. Nothing is announced to players.',
-          [],
-          true,
-        );
-      } else
-        add(
-          'dawn',
-          'Announce dawn',
-          'Publish night deaths and start the Discovery timer. ' +
-            winHints(g).join(' '),
-          [],
-        );
-    }
+
     if (!g.sandbox && g.deadline !== null)
       add('pause', 'Pause timer', 'Pause for everyone.');
     else if (!g.sandbox && g.remaining > 0 && g.timers[g.phase])
@@ -570,7 +388,7 @@ export function controls(g: Game, a: Actor): Control[] {
         [],
         true,
       );
-    if (g.phase === 'dayReview' && isHms(g))
+    if (g.phase === 'dayReview')
       add(
         'finishDay',
         'Confirm day outcome',
@@ -582,49 +400,8 @@ export function controls(g: Game, a: Actor): Control[] {
           ' Confirm to apply the automatic result.',
         [],
       );
-    if (g.phase === 'dayReview' && !isHms(g))
-      add(
-        'finishDay',
-        'Confirm day outcome',
-        `${candidate(g).target ? `${nameOf(g, candidate(g).target)} is the ballot leader and will be executed.` : candidate(g).tied ? 'The vote is tied, so nobody will be executed.' : 'Nobody qualified for execution.'} Character effects and win conditions will be calculated automatically.`,
-        [],
-      );
-    if (
-      !isHms(g) &&
-      g.active &&
-      ['defense', 'voting'].includes(g.phase) &&
-      g.players.find((p) => p.id === g.active?.target)?.role === 'virgin'
-    )
-      add(
-        'virgin',
-        'Resolve Virgin execution',
-        'Only for the Virgin’s first nomination while alive. Review whether the nominator registers as a Villager.',
-        overrideFields,
-        true,
-      );
-    if (!isHms(g) && !['night', 'lobby', 'ended'].includes(g.phase))
-      add(
-        'slayer',
-        'Resolve a Slayer claim',
-        'Allow real and bluffing claims; confirm the public outcome.',
-        [
-          select('player', 'Claiming player', ps, ps[0]?.value),
-          select('target', 'Chosen player', ps, ps[0]?.value),
-          select(
-            'outcome',
-            'Outcome',
-            [
-              { value: 'suggested', label: 'Use suggested result' },
-              { value: 'kill', label: 'Death' },
-              { value: 'spare', label: 'No effect' },
-            ],
-            'suggested',
-          ),
-          ...overrideFields,
-        ],
-      );
   }
-  if (isHms(g)) hmsControls(g, a, ps, add);
+  hmsControls(g, a, ps, add);
   const me = g.players.find((p) => p.id === a.id);
   if (!a.host && me && g.phase === 'night' && g.nightPoll?.night === g.night) {
     add(
@@ -777,7 +554,7 @@ export function controls(g: Game, a: Actor): Control[] {
                 label: r.name,
               })),
             ),
-            isHms(g) && p.shown === p.role ? '' : p.shown,
+            p.shown === p.role ? '' : p.shown,
           ),
           ...(isHof(g)
             ? [
@@ -815,9 +592,6 @@ export function controls(g: Game, a: Actor): Control[] {
           check('alive', 'Alive', p.alive),
           check('ghost', 'Dead vote available', p.ghost),
           check('poisoned', 'Poisoned', p.poisoned),
-          ...(isHms(g)
-            ? []
-            : [check('protected', 'Monk protection', p.protected)]),
           check('used', 'Once-per-game ability used', p.used),
           input('notes', 'Private reminders', p.notes, 'textarea'),
         ],
@@ -981,8 +755,8 @@ export function view(
     code: g.code,
     sandbox: !!g.sandbox,
     sandboxHost,
-    script: g.script ?? 'classic',
-    scriptName: SCRIPTS[g.script ?? 'classic'],
+    script: g.script ?? 'horrors',
+    scriptName: SCRIPTS[g.script ?? 'horrors'],
     // Horrors of Fearville: the Sphinx's glimpse of every role, shown until
     // the night-choice timer ends.
     glimpse: a.host ? null : sphinxGlimpse(g, me, now),
@@ -997,7 +771,7 @@ export function view(
         ? {
             task: choiceTask.key,
             deadline: g.sandbox ? null : nightChoiceDeadlineFor(g, choiceTask),
-            conditional: choiceTask.role === 'ravenkeeper',
+            conditional: false,
             round: choiceTask.round,
             count: choiceTask.count,
             text: 'text' in choiceTask ? !!choiceTask.text : false,

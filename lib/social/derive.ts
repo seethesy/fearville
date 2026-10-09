@@ -49,8 +49,7 @@ export function winnerOf(label: string): Alignment | null {
 // when the game did not actually reach a result worth recording: it must be in
 // the ended phase, have a winning team, and have had at least one night
 // (a session ended from the lobby is an abandoned table, not a game).
-// Alignment is taken from each seat's final role, so a Minion who became the
-// Imp is recorded as the Imp, and a Drunk is recorded as the Drunk (good).
+// Alignment is taken from each seat's final role, including neutral Travelers.
 export function deriveResult(
   g: Game,
   started: number,
@@ -81,7 +80,7 @@ export function deriveResult(
     id: gameID(g.code, started),
     code: g.code,
     hostName: g.hostName,
-    script: g.script ?? 'classic',
+    script: g.script ?? 'horrors',
     ranked: !!g.progression?.ranked,
     winner,
     reason: g.winner,

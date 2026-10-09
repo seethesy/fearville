@@ -86,7 +86,7 @@ struct GameView: View {
             NavigationStack { FlowView(game: game, selected: $selected).navigationTitle(game.phaseLabel).navigationBarTitleDisplayMode(.inline) }.tabItem { Text("Game") }
             NavigationStack { SeatsView(game: game, selected: $selected).navigationTitle("Seats") }.tabItem { Text("Seats") }
             NavigationStack { MessagesView(game: game, selected: $selected).navigationTitle("Messages") }.tabItem { Text("Messages") }
-            NavigationStack { ScriptView(script: game.script ?? "classic").navigationTitle(game.scriptName ?? "Fearville Classic") }.tabItem { Text("Script") }
+            NavigationStack { ScriptView(script: game.script ?? "horrors").navigationTitle(game.scriptName ?? "Horrors of Fearville") }.tabItem { Text("Script") }
             NavigationStack { ControlView(game: game, selected: $selected).navigationTitle(game.host ? "Storyteller" : "Session") }.tabItem { Text("Controls") }
         }
         .sheet(item: $selected) { action in ActionView(action: action).environmentObject(store) }
@@ -113,7 +113,7 @@ struct FlowView: View {
             if let current = game.glimpse { Section("Sphinx") { Text("Your glimpse of every role is open until the night choice timer ends."); Button("View glimpse") { glimpse = current } } }
             Section {
                 HStack(alignment: .top) {
-                    VStack(alignment: .leading, spacing: 6) { Text(game.phase == "night" ? "Night \(game.night)" : game.day > 0 ? "Day \(game.day)" : "Gather your town.").font(.largeTitle.weight(.regular)); Text((game.scriptName ?? "Fearville Classic").uppercased()).font(.caption).tracking(2).foregroundStyle(Color.tableHighlight) }
+                    VStack(alignment: .leading, spacing: 6) { Text(game.phase == "night" ? "Night \(game.night)" : game.day > 0 ? "Day \(game.day)" : "Gather your town.").font(.largeTitle.weight(.regular)); Text((game.scriptName ?? "Horrors of Fearville").uppercased()).font(.caption).tracking(2).foregroundStyle(Color.tableHighlight) }
                     Spacer()
                     TimelineView(.periodic(from: .now, by: 1)) { context in
                         let seconds = max(0, Int(ceil(game.deadline.map { $0 / 1000 - context.date.timeIntervalSince1970 - store.offset } ?? game.remaining)))
@@ -212,7 +212,7 @@ struct ScriptView: View {
     private static let all: [ScriptRole] = {
         guard let url = Bundle.main.url(forResource: "roles", withExtension: "json"), let data = try? Data(contentsOf: url), let roles = try? JSONDecoder().decode([ScriptRole].self, from: data) else { return [] }; return roles
     }()
-    private var roles: [ScriptRole] { ScriptView.all.filter { ($0.script ?? "classic") == script } }
+    private var roles: [ScriptRole] { ScriptView.all.filter { ($0.script ?? "horrors") == script } }
     private func teamName(_ team: String) -> String { ["townsfolk": "Villager", "outsider": "Fool", "traveler": "Traveler · neutral", "minion": "Haunt", "demon": "Horror"][team] ?? team }
     var body: some View { List { Section { Text("All characters on the script, including those not in play. These are short summaries.") }; Section("Glossary") { ForEach(GLOSSARY) { entry in VStack(alignment: .leading, spacing: 6) { Text(entry.term).font(.headline); Text(entry.definition); if let example = entry.example { Text("Example: " + example).font(.callout).italic().foregroundStyle(.secondary) } }.padding(.vertical, 4) } }; ForEach(roles) { role in VStack(alignment: .leading, spacing: 8) { Text(teamName(role.team).uppercased()).font(.caption).foregroundStyle(Color.tableHighlight); Text(role.name).font(.headline); Text(role.description) }.padding(.vertical, 6) } }.scrollContentBackground(.hidden).background(Color.tableBackground) }
 }
