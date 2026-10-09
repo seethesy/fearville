@@ -11,7 +11,7 @@ import {
   resolvedAvatars,
   assignAvatars,
 } from '../lib/game/avatars.ts';
-import { PORTRAIT_FRAMES, DEATH_EFFECTS } from '../lib/game/cosmetics.ts';
+import { DEATH_EFFECTS } from '../lib/game/cosmetics.ts';
 
 void test('cosmetics are validated atomically, public, and preserved between rounds', () => {
   const g = newGame('TEST', 'Host');
@@ -20,30 +20,22 @@ void test('cosmetics are validated atomically, public, and preserved between rou
     { ...newPlayer('Bea', 2), avatar: 'ghost' },
   ];
   const actor = { id: g.players[0].id, host: false };
-  for (const frame of PORTRAIT_FRAMES) {
-    for (const effect of DEATH_EFFECTS) {
-      execute(
-        g,
-        actor,
-        {
-          action: 'setAvatar',
-          avatar: 'moon',
-          portraitFrame: frame.id,
-          deathEffect: effect.id,
-        },
-        1,
-      );
-      const p = view(g, { id: g.players[1].id, host: false }, 1, 1).players[0];
-      assert.equal(p.portraitFrame, frame.id);
-      assert.equal(p.deathEffect, effect.id);
-    }
+  for (const effect of DEATH_EFFECTS) {
+    execute(
+      g,
+      actor,
+      {
+        action: 'setAvatar',
+        avatar: 'moon',
+        deathEffect: effect.id,
+      },
+      1,
+    );
+    const p = view(g, { id: g.players[1].id, host: false }, 1, 1).players[0];
+    assert.equal(p.deathEffect, effect.id);
   }
   const before = structuredClone(g.players[0]);
-  for (const invalid of [
-    { portraitFrame: 'bogus' },
-    { deathEffect: 'bogus' },
-    { portraitFrame: null },
-  ]) {
+  for (const invalid of [{ deathEffect: 'bogus' }]) {
     assert.throws(
       () =>
         execute(
@@ -57,9 +49,7 @@ void test('cosmetics are validated atomically, public, and preserved between rou
     assert.deepEqual(g.players[0], before);
   }
   execute(g, actor, { action: 'setAvatar', avatar: 'cat' }, 3);
-  assert.equal(g.players[0].portraitFrame, before.portraitFrame);
   returnToLobby(g, 4);
-  assert.equal(g.players[0].portraitFrame, before.portraitFrame);
   assert.equal(g.players[0].deathEffect, before.deathEffect);
 });
 
@@ -179,13 +169,7 @@ void test('taken presets cannot be claimed; switching to a photo frees the prese
   const bea = { id: g.players[1].id, host: false };
   const before = structuredClone(g);
   assert.throws(
-    () =>
-      execute(
-        g,
-        bea,
-        { action: 'setAvatar', avatar: 'raven', portraitFrame: 'gilded' },
-        1,
-      ),
+    () => execute(g, bea, { action: 'setAvatar', avatar: 'raven' }, 1),
     /already taken/,
   );
   assert.deepEqual(g, before);
@@ -197,7 +181,7 @@ void test('taken presets cannot be claimed; switching to a photo frees the prese
   assert.equal(g.players[0].avatar, g.players[1].avatar);
 });
 
-void test('every non-lobby phase locks photo, frame, and effect changes, including Sandbox', () => {
+void test('every non-lobby phase locks photo and effect changes, including Sandbox', () => {
   const g = newGame('TEST', 'Host');
   g.sandbox = true;
   g.players = [{ ...newPlayer('Ada', 1), avatar: 'raven' }];
@@ -216,7 +200,6 @@ void test('every non-lobby phase locks photo, frame, and effect changes, includi
     const before = structuredClone(g);
     for (const change of [
       { avatar: 'ghost' },
-      { avatar: 'raven', portraitFrame: 'gilded' },
       { avatar: 'raven', deathEffect: 'embers' },
       { avatar: 'data:image/jpeg;base64,/9j/AA==' },
     ]) {

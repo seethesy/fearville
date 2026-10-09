@@ -179,11 +179,7 @@ export function GameEndPopup({
               onClick={() => void act('mvpVote', p.id)}
               aria-pressed={recap.myVotes.includes(p.id)}
             >
-              <PlayerAvatar
-                avatar={p.avatar}
-                id={p.id}
-                frame={p.portraitFrame}
-              />
+              <PlayerAvatar avatar={p.avatar} id={p.id} />
               <span className="mvp-identity">
                 <strong>
                   {p.name}
@@ -394,7 +390,6 @@ export function SessionRecaps({ game }: { game: GameView }) {
                       <PlayerAvatar
                         avatar={p.avatar}
                         id={p.id}
-                        frame={p.portraitFrame}
                         dead={p.alive === false}
                       />
                       <span className="recap-player-name">

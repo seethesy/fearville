@@ -170,18 +170,13 @@ function HorrorsOfFearville() {
         <article>
           <h3>Fear, visits and saves</h3>
           <p>
-            Choosing a player at night <a href="#glossary-visit">visits</a>{' '}
-            them. A <a href="#glossary-fear">feared</a> player’s ability
-            malfunctions without them knowing. A{' '}
-            <a href="#glossary-save">saved</a> player cannot die that night.
+            <GlossaryText text="Choosing a player at night visits them. A feared player’s ability malfunctions without them knowing. A saved player cannot die that night." />
           </p>
         </article>
         <article>
           <h3>Declarations</h3>
           <p>
-            The Vigilante, the Researcher and a killed Hag act by{' '}
-            <a href="#glossary-declare">declaring</a> publicly during the day,
-            from their Controls. The Storyteller rules on the outcome.
+            <GlossaryText text="The Vigilante, the Researcher and a killed Hag act by declaring publicly during the day, from their Controls. The Storyteller rules on the outcome." />
           </p>
         </article>
         <article>
@@ -348,12 +343,6 @@ export function RulesReference({ script }: { script?: RoleScript }) {
             ends, whichever comes first. You can change your ballot until then.
             A counted Yes spends a dead player’s remaining vote; No does not.
             The Storyteller confirms the day’s outcome.
-          </li>
-          <li>
-            <strong>Answer a night poll.</strong> Everyone can pick a name for
-            fun while waiting. Polls do not use character abilities or count as
-            execution votes. Only the favorite or tied favorites appear after
-            dawn.
           </li>
           <li>
             <strong>Keep your seat.</strong> Closing a tab does not leave the

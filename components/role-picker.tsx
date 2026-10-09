@@ -65,9 +65,7 @@ export function RolePicker({
         {atheist
           ? ' · Atheist: every player is good'
           : extra > 0
-            ? hms
-              ? ' · Moonshiner: one Villager becomes a Fool, and every Fool is drunk'
-              : ' · Baron: two Villagers become Fools (private setup)'
+            ? ' · Moonshiner: one Villager becomes a Fool, and every Fool is drunk'
             : ''}
       </p>
       {!counts && <p>Join 5–18 players to deal a balanced setup.</p>}

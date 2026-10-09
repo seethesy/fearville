@@ -170,7 +170,7 @@ struct SeatsView: View {
                 if player.hasNominated { Text("Nomination used today").font(.caption) }
                 if player.poisoned == true { Text("POISONED").foregroundStyle(.orange) }
                 if player.feared == true { Text("FEARED").foregroundStyle(.orange) }
-                if player.protected == true { Text("MONK PROTECTION").foregroundStyle(Color.tableHighlight) }
+                if player.protected == true { Text("PROTECTED").foregroundStyle(Color.tableHighlight) }
                 if let notes = player.notes, !notes.isEmpty { Text(notes) }
                 if let action = game.controls.first(where: { $0.action == "edit" && $0.fields.first?.value?.text == player.id }) { Button("Edit seat & character") { selected = action }.disabled(!store.online) }
             }.padding(.vertical, 8)

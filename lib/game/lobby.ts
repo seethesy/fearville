@@ -27,7 +27,6 @@ export function recapOf(g: Game, ended: number): SessionRecap {
         team: role(p.role)?.team,
         seat: p.seat,
         avatar: p.avatar,
-        portraitFrame: p.portraitFrame,
         alive: p.alive,
         notebook: g.notebooks?.[p.id],
       })),

@@ -2641,16 +2641,7 @@ h3,
 .atmosphere-control button { font-size: .75rem; padding: .4rem .7rem; }
 .portrait-stage { display: inline-grid; position: relative; vertical-align: middle; line-height: 1; }
 .player-avatar { transition: filter 1s ease, opacity 1s ease, box-shadow .35s ease, border-color .35s ease; }
-.player-avatar.frame-silver { border: 3px double #d1dce8; box-shadow: 0 0 0 2px #536275, 0 0 0 4px #b3c3d333, 0 3px 12px #0006; }
-.player-avatar.frame-thorns { border: 4px dashed #a57a8a; outline: 2px solid #553746; outline-offset: 1px; box-shadow: 0 0 0 5px #38252f, 0 3px 12px #0008; }
-.player-avatar.frame-gilded { border: 4px double #f4d193; outline: 1px solid #987038; outline-offset: 2px; box-shadow: 0 0 0 5px #312a20, 0 0 16px #d6a25233; }
-.player-avatar.frame-spectral { border: 2px solid #c2eee6; box-shadow: 0 0 0 3px #91d9d333, 0 0 0 6px #91d9d311, 0 0 20px #91d9d355; }
 .circle-seat .portrait-stage { display: inline-grid; overflow: visible; }
-.cosmetic-options { border: 0; margin: 1.5rem 0; padding: 0; min-width: 0; }
-.cosmetic-options legend { font-weight: 600; margin-bottom: .8rem; }
-.frame-options { display: grid; grid-template-columns: repeat(auto-fit, minmax(105px, 1fr)); gap: .75rem; }
-.frame-options button { display: grid; justify-items: center; gap: .8rem; padding: 1rem .5rem; font-size: .8rem; }
-.frame-options button[aria-pressed=true] { background: #423c30; border-color: #edcc87; box-shadow: 0 0 0 2px #edcc87; }
 .cosmetic-preview-stage { display: inline-grid; place-items: center; position: relative; padding: 1rem; }
 .avatar-picker > button { margin-right: .6rem; margin-bottom: .6rem; }
 .death-announcement { animation: none; display: flex; flex-wrap: wrap; justify-content: center; gap: 1.5rem; }
@@ -2798,11 +2789,6 @@ h3,
 }
 .sphinx-glimpse li.dead {
   opacity: 0.6;
-}
-.rules-reference a.glossary-link {
-  color: inherit;
-  text-decoration-style: dotted;
-  text-underline-offset: 3px;
 }
 
 /* Inline character glossary definitions. */

@@ -61,7 +61,7 @@ await act({ action: 'overridePhase', phase: 'night' });
 const locked = await call('/api/game', token, {
   action: 'setAvatar',
   avatar: loser.avatar,
-  portraitFrame: 'gilded',
+  deathEffect: 'embers',
   pov: loser.id,
   version: game.version,
 });

@@ -396,7 +396,7 @@ export function standardCounts(
   script: string | undefined,
   players: number,
 ): Record<Team, number> | null {
-  if (script === 'horrors') {
+  if (script !== 'holyMoonStars') {
     const c = HOF_COUNTS[players];
     return c
       ? {
@@ -421,7 +421,6 @@ export function standardCounts(
 }
 export type Player = {
   avatar?: string;
-  portraitFrame?: import('./cosmetics').PortraitFrame;
   deathEffect?: import('./cosmetics').DeathEffectId;
   dummy?: boolean;
   departed?: boolean;
@@ -666,7 +665,6 @@ export type SessionRecap = {
     team?: Team;
     seat?: number;
     avatar?: string;
-    portraitFrame?: Player['portraitFrame'];
     alive?: boolean;
     notebook?: Notebook;
   }[];

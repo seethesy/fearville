@@ -88,12 +88,7 @@ export function TableSeating({
               >
                 {p ? (
                   <>
-                    <PlayerAvatar
-                      avatar={p.avatar}
-                      id={p.id}
-                      frame={p.portraitFrame}
-                      dead={!p.alive}
-                    />
+                    <PlayerAvatar avatar={p.avatar} id={p.id} dead={!p.alive} />
                     <strong>
                       {p.name}
                       {p.id === game.me ? ' · you' : ''}

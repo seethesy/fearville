@@ -1073,7 +1073,6 @@ export default function Table() {
                             avatar={p.avatar}
                             id={p.id}
                             dead={!p.alive}
-                            frame={p.portraitFrame}
                             deathEffect={p.deathEffect}
                             publicDead={!p.publicAlive}
                           />
@@ -1216,7 +1215,6 @@ export default function Table() {
                         avatar={p.avatar}
                         id={p.id}
                         dead={!p.alive}
-                        frame={p.portraitFrame}
                         deathEffect={p.deathEffect}
                         publicDead={!p.publicAlive}
                       />

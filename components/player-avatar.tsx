@@ -22,7 +22,7 @@ import {
   Dog,
 } from 'lucide-react';
 import { AVATARS, defaultAvatar } from '@/lib/game/avatars';
-import type { PortraitFrame, DeathEffectId } from '@/lib/game/cosmetics';
+import type { DeathEffectId } from '@/lib/game/cosmetics';
 import { DeathEffect } from './death-effect';
 
 const icons = {
@@ -96,14 +96,12 @@ export function PlayerAvatar({
   avatar,
   id,
   dead = false,
-  frame = 'simple',
   deathEffect = 'spirit',
   publicDead = false,
 }: {
   avatar?: string;
   id: string;
   dead?: boolean;
-  frame?: PortraitFrame;
   deathEffect?: DeathEffectId;
   publicDead?: boolean;
 }) {
@@ -128,7 +126,7 @@ export function PlayerAvatar({
   return (
     <span className="portrait-stage" aria-hidden="true">
       <span
-        className={`player-avatar frame-${frame} ${dead ? 'is-dead' : ''}`}
+        className={`player-avatar ${dead ? 'is-dead' : ''}`}
         style={{ color: preset.color }}
         aria-hidden="true"
       >

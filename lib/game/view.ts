@@ -924,7 +924,6 @@ export function view(
         name: p.name,
         seat: p.seat,
         avatar: avatars.get(p.id),
-        portraitFrame: p.portraitFrame ?? 'simple',
         deathEffect: p.deathEffect ?? 'spirit',
         publicAlive: p.publicAlive,
         departed: !!p.departed,

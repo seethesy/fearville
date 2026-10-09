@@ -4,7 +4,7 @@ import {
   resolvedAvatars,
   assignAvatars,
 } from './avatars.ts';
-import { validFrame, validDeathEffect } from './cosmetics.ts';
+import { validDeathEffect } from './cosmetics.ts';
 import {
   role,
   scriptRoles,
@@ -474,10 +474,6 @@ function executeCommand(
       'Choose a preset or a small JPEG portrait.',
     );
     requireThat(
-      c.portraitFrame === undefined || validFrame(c.portraitFrame),
-      'Choose a portrait frame.',
-    );
-    requireThat(
       c.deathEffect === undefined || validDeathEffect(c.deathEffect),
       'Choose a death effect.',
     );
@@ -491,7 +487,6 @@ function executeCommand(
     );
     assignAvatars(g.players);
     player.avatar = c.avatar;
-    if (validFrame(c.portraitFrame)) player.portraitFrame = c.portraitFrame;
     if (validDeathEffect(c.deathEffect)) player.deathEffect = c.deathEffect;
     return 'Avatar updated.';
   }

@@ -57,7 +57,7 @@ void test('a finished game records final alignment, roles, and the winner', () =
 });
 
 void test('winner labels with rulings still map to a team', () => {
-  assert.equal(winnerOf('Evil · Saint execution'), 'evil');
+  assert.equal(winnerOf('Evil · Banshee execution'), 'evil');
   assert.equal(winnerOf('Good'), 'good');
   assert.equal(winnerOf(''), null);
 });
