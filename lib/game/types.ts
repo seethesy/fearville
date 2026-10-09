@@ -1,4 +1,7 @@
-export type Team = 'townsfolk' | 'outsider' | 'minion' | 'demon';
+export type Team = 'townsfolk' | 'outsider' | 'traveler' | 'minion' | 'demon';
+// Tables seat 5–18 players in every script.
+export const MIN_PLAYERS = 5;
+export const MAX_PLAYERS = 18;
 export const ROLES = [
   [
     'washerwoman',
@@ -88,7 +91,7 @@ export const ROLES = [
     'drunk',
     'Drunk',
     'outsider',
-    'You are shown an out-of-play Villager character and act as that character, but its ability has no effect.',
+    'You do not know you are the Drunk. Instead, you are shown a random Villager role that you believe yourself to be. That role’s ability will not work as intended, but you will not know that.',
   ],
   [
     'recluse',
@@ -303,7 +306,158 @@ export const HMS_ROLES: RoleDef[] = [
   team: team as Team,
   description,
 }));
-export const ALL_ROLES: RoleDef[] = [...ROLES, ...HMS_ROLES];
+// Horrors of Fearville characters. Wording follows the script sheet; the
+// Vigilante acts once per game by day. The Drunk is shared with Classic.
+export const HOF_ROLES: RoleDef[] = [
+  [
+    'doctor',
+    'Doctor',
+    'townsfolk',
+    'Every night after the first, visit a player to save them.',
+  ],
+  [
+    'detective',
+    'Detective',
+    'townsfolk',
+    'Every night, visit two players to investigate them. You are told “Yes” if one of them is a Horror, or “No” if neither are. One random Villager secretly registers as a false positive, so they may produce a “Yes” despite being a Villager.',
+  ],
+  [
+    'watchman',
+    'Watchman',
+    'townsfolk',
+    'Every night after the first, visit a player to stay on lookout for them. You learn the names of all players who visit them.',
+  ],
+  [
+    'bodyguard',
+    'Bodyguard',
+    'townsfolk',
+    'Every night after the first, learn if someone is killed at night. You will be given the option to die in their place.',
+  ],
+  [
+    'psychic',
+    'Psychic',
+    'townsfolk',
+    'Every night, the Storyteller chooses another player for you to visit. After the first night, that player’s role type will be different from the player you visited the previous night. You will not know their roles.',
+  ],
+  [
+    'judge',
+    'Judge',
+    'townsfolk',
+    'Every night, visit two players. You learn if they are the same alignment.',
+  ],
+  [
+    'mortician',
+    'Mortician',
+    'townsfolk',
+    'Once per game, at night, visit a dead player. Learn which roles have visited them in this game. If they were visited by 3 or more different players, learn 1 of their names.',
+  ],
+  [
+    'vigilante',
+    'Vigilante',
+    'townsfolk',
+    'Once per game, during the day, you may declare a player you want to kill. They may die instantly.',
+  ],
+  [
+    'sheriff',
+    'Sheriff',
+    'townsfolk',
+    'At the start of the game, learn that one of two players is a particular Haunt.',
+  ],
+  [
+    'hoflibrarian',
+    'Librarian',
+    'townsfolk',
+    'At the start of the game, learn that one of two players is a particular Villager.',
+  ],
+  [
+    'teacher',
+    'Teacher',
+    'townsfolk',
+    'At the start of the game, learn that one of your neighbors is a particular role.',
+  ],
+  [
+    'hunter',
+    'Hunter',
+    'townsfolk',
+    'If you are killed at night, a Haunt may die the same night.',
+  ],
+  [
+    'drunk',
+    'Drunk',
+    'outsider',
+    'You do not know you are the Drunk. Instead, you are shown a random Villager role that you believe yourself to be. That role’s ability will not work as intended, but you will not know that.',
+  ],
+  [
+    'hag',
+    'Hag',
+    'outsider',
+    'If you are killed, declare another player to die. If they are Good, they may die that night.',
+  ],
+  [
+    'lostwanderer',
+    'Lost Wanderer',
+    'outsider',
+    'Every night, visit a player. Anyone else who visits them may be redirected to one of their neighbors.',
+  ],
+  [
+    'executioner',
+    'Executioner',
+    'traveler',
+    'At the start of the game, a random player becomes your execution target. You win if this player is executed. This player will never be the Horror.',
+  ],
+  [
+    'researcher',
+    'Researcher',
+    'traveler',
+    'Once per game, you may declare the role of 3 living players. You win if you are correct about all of them.',
+  ],
+  [
+    'guardian',
+    'Guardian',
+    'traveler',
+    'At the start of the game, a random player becomes your ward. Any time this player is meant to die, you will die in their place. You win if your ward lives to the end of the game.',
+  ],
+  [
+    'banshee',
+    'Banshee',
+    'minion',
+    'If you are executed, every Villager is feared that night.',
+  ],
+  [
+    'basilisk',
+    'Basilisk',
+    'minion',
+    'Every night, visit one player to fear them that night.',
+  ],
+  [
+    'sphinx',
+    'Sphinx',
+    'minion',
+    'Every night, receive a glimpse of every player’s role for the game.',
+  ],
+  [
+    'monster',
+    'Monster',
+    'demon',
+    'Every night after the first, visit one player to kill them that night. If they die, one of their living neighbors is feared the following night.',
+  ],
+  [
+    'wraith',
+    'Wraith',
+    'demon',
+    'Every night after the first, visit one player to kill them that night. You may choose whether or not you are detected visiting this player.',
+  ],
+].map(([id, name, team, description]) => ({
+  id,
+  name,
+  team: team as Team,
+  description,
+}));
+export const ALL_ROLES: RoleDef[] = [
+  ...ROLES,
+  ...HMS_ROLES,
+  ...HOF_ROLES.filter((r) => !ROLES.some((x) => x.id === r.id)),
+];
 export const role = (id: string) => ALL_ROLES.find((r) => r.id === id);
 // Night order for Fearville Classic.
 export const FIRST = [
@@ -363,7 +517,72 @@ export const COUNTS: Record<number, number[]> = {
   13: [9, 0, 3, 1],
   14: [9, 1, 3, 1],
   15: [9, 2, 3, 1],
+  // The official sheet stops at 15 players; Fearville extends it to 18.
+  16: [10, 2, 3, 1],
+  17: [11, 2, 3, 1],
+  18: [11, 2, 4, 1],
 };
+// Horrors of Fearville role breakdown, in TEAM_ORDER:
+// Villagers, Fools, Travelers, Haunts, Horrors.
+export const HOF_COUNTS: Record<number, number[]> = {
+  5: [3, 0, 0, 1, 1],
+  6: [4, 0, 0, 1, 1],
+  7: [4, 1, 0, 1, 1],
+  8: [5, 1, 0, 1, 1],
+  9: [5, 1, 1, 1, 1],
+  10: [6, 0, 1, 2, 1],
+  11: [6, 1, 1, 2, 1],
+  12: [6, 1, 2, 2, 1],
+  13: [6, 2, 2, 2, 1],
+  14: [7, 2, 2, 2, 1],
+  15: [8, 1, 2, 3, 1],
+  16: [8, 2, 2, 3, 1],
+  17: [9, 2, 2, 3, 1],
+  18: [10, 2, 2, 3, 1],
+};
+export const TEAM_ORDER: Team[] = [
+  'townsfolk',
+  'outsider',
+  'traveler',
+  'minion',
+  'demon',
+];
+export const TEAM_NAMES: Record<Team, string> = {
+  townsfolk: 'Villagers',
+  outsider: 'Fools',
+  traveler: 'Travelers',
+  minion: 'Haunts',
+  demon: 'Horrors',
+};
+// Standard team sizes for a table, keyed by team. Classic and Holy Moon and
+// Stars have no Travelers.
+export function standardCounts(
+  script: string | undefined,
+  players: number,
+): Record<Team, number> | null {
+  if (script === 'horrors') {
+    const c = HOF_COUNTS[players];
+    return c
+      ? {
+          townsfolk: c[0],
+          outsider: c[1],
+          traveler: c[2],
+          minion: c[3],
+          demon: c[4],
+        }
+      : null;
+  }
+  const c = COUNTS[players];
+  return c
+    ? {
+        townsfolk: c[0],
+        outsider: c[1],
+        traveler: 0,
+        minion: c[2],
+        demon: c[3],
+      }
+    : null;
+}
 export type Player = {
   avatar?: string;
   portraitFrame?: import('./cosmetics').PortraitFrame;
@@ -394,6 +613,10 @@ export type Player = {
   misses?: number; // Dreameater wrong guesses
   marked?: boolean; // Grim Reaper mark
   pref?: string; // Fateweaver's preferred redirect
+  // Horrors of Fearville status.
+  feared?: boolean; // ability malfunctions tonight (like poison)
+  fearNight?: number; // carried fear: feared when this night begins
+  charge?: string; // Executioner's target or Guardian's ward
 };
 export type Nomination = {
   id: string;
@@ -428,6 +651,7 @@ export type NightChoice = {
   text?: string;
   guesses?: { player: string; role: string }[];
   pass?: boolean;
+  flag?: boolean; // optional yes/no (Wraith: stay hidden)
 };
 export type DeathItem = {
   id: string;
@@ -438,6 +662,8 @@ export type DeathItem = {
   night: boolean;
   impaired?: boolean; // the killing ability was drunk or poisoned
   redirected?: boolean; // already moved by a Fateweaver
+  by?: string; // killing character (Horrors of Fearville)
+  spare?: string; // suggested reason the death does not happen
 };
 export type DawnChange = {
   id: string;
@@ -446,8 +672,15 @@ export type DawnChange = {
   role: string;
   by: string;
 };
+export type Visit = {
+  from: string;
+  to: string;
+  role: string;
+  night?: number;
+  hidden?: boolean; // a Wraith chose not to be detected
+};
 export type HmsState = {
-  visits: { from: string; to: string; role: string }[];
+  visits: Visit[];
   nightStartDead: string[];
   deathQueue: DeathItem[];
   dawnChanges: DawnChange[];
@@ -468,14 +701,68 @@ export type HmsState = {
   nightmareRedirectTarget?: string;
   prophetReveal?: string[]; // players queued by a Prophet reveal tonight
   questions: Record<string, string>; // Diviner questions this night
+  // Horrors of Fearville. All optional so older saves load.
+  history?: Visit[]; // every visit this game (Mortician)
+  saves?: string[]; // players saved tonight
+  wanderer?: { player: string; target: string }; // tonight's Lost Wanderer
+  psychic?: Record<string, string>; // Psychic → role type visited last night
+  hag?: Record<string, boolean>; // killed Hag → declaration still owed
+  vigilante?: { player: string; target: string }; // declaration awaiting ruling
+  research?: Record<
+    string,
+    { guesses: { player: string; role: string }[]; correct: boolean }
+  >;
+  executed?: string[]; // everyone executed this game (Executioner)
+  travelerWins?: string[]; // Travelers who met their win condition
 };
 export const SCRIPTS = {
   classic: 'Fearville Classic',
   holyMoonStars: 'Holy Moon and Stars',
+  horrors: 'Horrors of Fearville',
 } as const;
 export type RoleScript = keyof typeof SCRIPTS;
 export const scriptRoles = (script?: string) =>
-  script === 'holyMoonStars' ? HMS_ROLES : ROLES;
+  script === 'holyMoonStars'
+    ? HMS_ROLES
+    : script === 'horrors'
+      ? HOF_ROLES
+      : ROLES;
+// Horrors of Fearville night orders. Steps that are not characters:
+// minioninfo/demoninfo — evil introductions (7+ players)
+// fear — Banshee and Monster fear carried from the day or previous night
+//        takes effect (automatic, no Storyteller task)
+// deaths — resolve queued night deaths
+// The Sphinx's glimpse is an automatic popup during the night-choice window.
+export const HOF_FIRST = [
+  'minioninfo',
+  'demoninfo',
+  'basilisk',
+  'lostwanderer',
+  'sheriff',
+  'hoflibrarian',
+  'teacher',
+  'psychic',
+  'detective',
+  'judge',
+  'sphinx',
+  'deaths',
+];
+export const HOF_OTHER = [
+  'fear',
+  'basilisk',
+  'lostwanderer',
+  'doctor',
+  'monster',
+  'wraith',
+  'bodyguard',
+  'detective',
+  'judge',
+  'psychic',
+  'mortician',
+  'sphinx',
+  'watchman',
+  'deaths',
+];
 // Holy Moon and Stars night orders. Steps that are not characters:
 // minioninfo/demoninfo — evil introductions (7+ players; none with an Atheist)
 // plague — resolve last night's Miasma infection before anyone acts

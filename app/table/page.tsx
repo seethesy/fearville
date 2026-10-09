@@ -11,6 +11,7 @@ import { StorytellerVote } from '@/components/storyteller-vote';
 import { TableNightChoice } from '@/components/table-night-choice';
 import { NightPuzzles } from '@/components/night-puzzles';
 import { NightIntroduction } from '@/components/night-introduction';
+import { SphinxGlimpse } from '@/components/sphinx-glimpse';
 import { TableDawn } from '@/components/table-dawn';
 import { GameEndPopup, SessionRecaps } from '@/components/session-recap';
 import { TableSeating } from '@/components/table-seating';
@@ -31,7 +32,7 @@ import {
 } from 'lucide-react';
 import type { GameView } from '@/lib/game/view';
 import type { Control, Field } from '@/lib/game/types';
-import { role } from '@/lib/game/types';
+import { role, TEAM_ORDER, TEAM_NAMES } from '@/lib/game/types';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import {
   Dialog,
@@ -618,6 +619,13 @@ export default function Table() {
             }}
           />
         )}
+        {game.glimpse && (
+          <SphinxGlimpse
+            key={game.glimpse.id}
+            glimpse={game.glimpse}
+            now={now + offset}
+          />
+        )}
         {game.nightIntroduction && (
           <NightIntroduction
             key={game.nightIntroduction.id}
@@ -641,9 +649,14 @@ export default function Table() {
           >
             <strong>Standard setup · {game.players.length} players</strong>
             <p>
-              {game.standardCounts[0]} Villagers · {game.standardCounts[1]}{' '}
-              Fools · {game.standardCounts[2]} Haunts · {game.standardCounts[3]}{' '}
-              Horror
+              {TEAM_ORDER.filter(
+                (t) => t !== 'traveler' || game.script === 'horrors',
+              )
+                .map(
+                  (t) =>
+                    `${game.standardCounts![t]} ${game.standardCounts![t] === 1 ? TEAM_NAMES[t].replace(/s$/, '') : TEAM_NAMES[t]}`,
+                )
+                .join(' · ')}
             </p>
             <p className="hint">
               Starting counts before character abilities. Actual changes stay
@@ -1270,6 +1283,7 @@ export default function Table() {
                         <>
                           <p className="tags">
                             {p.poisoned ? 'POISONED ' : ''}
+                            {p.feared ? 'FEARED ' : ''}
                             {p.protected ? 'PROTECTED ' : ''}
                             {p.used ? 'ABILITY USED' : ''}
                           </p>

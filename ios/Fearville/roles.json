@@ -101,7 +101,7 @@
     "id": "drunk",
     "name": "Drunk",
     "team": "outsider",
-    "description": "You are shown an out-of-play Villager character and act as that character, but its ability has no effect.",
+    "description": "You do not know you are the Drunk. Instead, you are shown a random Villager role that you believe yourself to be. That role’s ability will not work as intended, but you will not know that.",
     "script": "classic"
   },
   {
@@ -213,7 +213,7 @@
     "id": "spirit",
     "name": "Spirit",
     "team": "townsfolk",
-    "description": "Each night, choose a player. Learn how many of their visitors are good and evil. If nobody visited, learn ‘0 people.’ If you die, learn only the number of visitors.",
+    "description": "Each night, choose a player. Learn how many of their visitors are good and evil. If nobody visited, learn “0 people.” If you die, learn only the number of visitors.",
     "script": "holyMoonStars"
   },
   {
@@ -334,5 +334,166 @@
     "team": "demon",
     "description": "Each night, infect a player with the plague. The next night they die and both of their living neighbors are poisoned that night.",
     "script": "holyMoonStars"
+  },
+  {
+    "id": "doctor",
+    "name": "Doctor",
+    "team": "townsfolk",
+    "description": "Every night after the first, visit a player to save them.",
+    "script": "horrors"
+  },
+  {
+    "id": "detective",
+    "name": "Detective",
+    "team": "townsfolk",
+    "description": "Every night, visit two players to investigate them. You are told “Yes” if one of them is a Horror, or “No” if neither are. One random Villager secretly registers as a false positive, so they may produce a “Yes” despite being a Villager.",
+    "script": "horrors"
+  },
+  {
+    "id": "watchman",
+    "name": "Watchman",
+    "team": "townsfolk",
+    "description": "Every night after the first, visit a player to stay on lookout for them. You learn the names of all players who visit them.",
+    "script": "horrors"
+  },
+  {
+    "id": "bodyguard",
+    "name": "Bodyguard",
+    "team": "townsfolk",
+    "description": "Every night after the first, learn if someone is killed at night. You will be given the option to die in their place.",
+    "script": "horrors"
+  },
+  {
+    "id": "psychic",
+    "name": "Psychic",
+    "team": "townsfolk",
+    "description": "Every night, the Storyteller chooses another player for you to visit. After the first night, that player’s role type will be different from the player you visited the previous night. You will not know their roles.",
+    "script": "horrors"
+  },
+  {
+    "id": "judge",
+    "name": "Judge",
+    "team": "townsfolk",
+    "description": "Every night, visit two players. You learn if they are the same alignment.",
+    "script": "horrors"
+  },
+  {
+    "id": "mortician",
+    "name": "Mortician",
+    "team": "townsfolk",
+    "description": "Once per game, at night, visit a dead player. Learn which roles have visited them in this game. If they were visited by 3 or more different players, learn 1 of their names.",
+    "script": "horrors"
+  },
+  {
+    "id": "vigilante",
+    "name": "Vigilante",
+    "team": "townsfolk",
+    "description": "Once per game, during the day, you may declare a player you want to kill. They may die instantly.",
+    "script": "horrors"
+  },
+  {
+    "id": "sheriff",
+    "name": "Sheriff",
+    "team": "townsfolk",
+    "description": "At the start of the game, learn that one of two players is a particular Haunt.",
+    "script": "horrors"
+  },
+  {
+    "id": "hoflibrarian",
+    "name": "Librarian",
+    "team": "townsfolk",
+    "description": "At the start of the game, learn that one of two players is a particular Villager.",
+    "script": "horrors"
+  },
+  {
+    "id": "teacher",
+    "name": "Teacher",
+    "team": "townsfolk",
+    "description": "At the start of the game, learn that one of your neighbors is a particular role.",
+    "script": "horrors"
+  },
+  {
+    "id": "hunter",
+    "name": "Hunter",
+    "team": "townsfolk",
+    "description": "If you are killed at night, a Haunt may die the same night.",
+    "script": "horrors"
+  },
+  {
+    "id": "drunk",
+    "name": "Drunk",
+    "team": "outsider",
+    "description": "You do not know you are the Drunk. Instead, you are shown a random Villager role that you believe yourself to be. That role’s ability will not work as intended, but you will not know that.",
+    "script": "horrors"
+  },
+  {
+    "id": "hag",
+    "name": "Hag",
+    "team": "outsider",
+    "description": "If you are killed, declare another player to die. If they are Good, they may die that night.",
+    "script": "horrors"
+  },
+  {
+    "id": "lostwanderer",
+    "name": "Lost Wanderer",
+    "team": "outsider",
+    "description": "Every night, visit a player. Anyone else who visits them may be redirected to one of their neighbors.",
+    "script": "horrors"
+  },
+  {
+    "id": "executioner",
+    "name": "Executioner",
+    "team": "traveler",
+    "description": "At the start of the game, a random player becomes your execution target. You win if this player is executed. This player will never be the Horror.",
+    "script": "horrors"
+  },
+  {
+    "id": "researcher",
+    "name": "Researcher",
+    "team": "traveler",
+    "description": "Once per game, you may declare the role of 3 living players. You win if you are correct about all of them.",
+    "script": "horrors"
+  },
+  {
+    "id": "guardian",
+    "name": "Guardian",
+    "team": "traveler",
+    "description": "At the start of the game, a random player becomes your ward. Any time this player is meant to die, you will die in their place. You win if your ward lives to the end of the game.",
+    "script": "horrors"
+  },
+  {
+    "id": "banshee",
+    "name": "Banshee",
+    "team": "minion",
+    "description": "If you are executed, every Villager is feared that night.",
+    "script": "horrors"
+  },
+  {
+    "id": "basilisk",
+    "name": "Basilisk",
+    "team": "minion",
+    "description": "Every night, visit one player to fear them that night.",
+    "script": "horrors"
+  },
+  {
+    "id": "sphinx",
+    "name": "Sphinx",
+    "team": "minion",
+    "description": "Every night, receive a glimpse of every player’s role for the game.",
+    "script": "horrors"
+  },
+  {
+    "id": "monster",
+    "name": "Monster",
+    "team": "demon",
+    "description": "Every night after the first, visit one player to kill them that night. If they die, one of their living neighbors is feared the following night.",
+    "script": "horrors"
+  },
+  {
+    "id": "wraith",
+    "name": "Wraith",
+    "team": "demon",
+    "description": "Every night after the first, visit one player to kill them that night. You may choose whether or not you are detected visiting this player.",
+    "script": "horrors"
   }
 ]

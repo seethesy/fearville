@@ -72,6 +72,9 @@ export function returnToLobby(g: Game, now: number) {
       misses: undefined,
       marked: undefined,
       pref: undefined,
+      feared: undefined,
+      fearNight: undefined,
+      charge: undefined,
     }));
   assignAvatars(fresh.players);
   for (const key of Object.keys(g))

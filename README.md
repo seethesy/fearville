@@ -26,6 +26,7 @@ node tests/accounts-integration.mjs
 node tests/social-integration.mjs
 node tests/progression-integration.mjs
 node tests/hms-integration.mjs
+node tests/hof-integration.mjs
 node tests/introductions-integration.mjs
 node tests/nightmare-integration.mjs
 node tests/sandbox-lobby-integration.mjs
@@ -41,7 +42,7 @@ Integration tests require the development server and create test sessions and fi
 Account progression, ranked Elo, statistics, social privacy, and migration details are documented in [SOCIAL-SYSTEM.md](SOCIAL-SYSTEM.md).
 
 - **Rules & roles** is available publicly at `/rules`, linked from the entry page. Players and Storytellers can also open the **Rules** tab inside a lobby or active game. Both use the same rules summary, Fearville instructions, and all 22 Fearville Classic character descriptions, grouped by team; the reference never reveals assigned roles. A Glossary defines Fear, Visit, Save, Learn, Declare and Neighbor; the iPhone Script tab shows the same glossary. Links back to the table preserve the browser’s session.
-- Create a room; 5–15 players join using its six-letter code. Names are unique within the room. Joining locks when the game starts; existing players reconnect using the device session or a private recovery key.
+- Create a room; 5–18 players join using its six-letter code. Names are unique within the room. Joining locks when the game starts; existing players reconnect using the device session or a private recovery key.
 - Players claim and release their own seats in the lobby. New arrivals are unseated; every player must choose a seat before roles are dealt. Storytellers assign roles, configure timers, three Demon bluffs (7+ players), and the Fortune Teller red herring. Setup checks include the Baron and the Drunk’s shown role.
 - In the lobby, Storytellers can use **Randomly assign roles** to apply a balanced setup, or **Manually assign roles** to edit each seat. Random setup handles the Baron, the Drunk’s shown character, three out-of-play good bluffs, and a good red herring. Randomizing again replaces the setup; manual edits and undo remain available before starting. No role information is delivered to players until the game starts.
 - The entry page detects an existing browser session and offers **Rejoin lobby** or **Return to game** for both players and Storytellers. Re-entering the same session code with a valid device cookie also resumes the original identity without adding a seat, including after play begins. On mobile, returning to the browser or reconnecting immediately refreshes the table. Normal browser storage retains credentials for up to 30 days; clearing data, private browsing, or switching devices requires a saved recovery key (entry page → **Rejoin**) or an account-linked seat. Use **Save recovery key** at the table before leaving if you need a backup. A room code and player name alone never grant access to an existing seat.
@@ -81,6 +82,20 @@ Choose the script in the lobby (**Change role script**). Classic games are uncha
 - **Atheist.** Every player is good. Players may nominate the Storyteller; executing the Storyteller with an Atheist in play wins for good, and two players remaining wins for evil (the Storyteller). Without an Atheist, the Storyteller chooses whether the nominator is executed instead.
 - **iPhone.** The native client shows the script name and all Storyteller and day controls. Players on iPhone send night choices to the Storyteller by message.
 
+## Horrors of Fearville
+
+Choose **Horrors of Fearville** in the lobby (**Change role script**). It uses the role breakdown on the script sheet for 5–18 players, including a fifth team: **Travelers** (Executioner, Researcher, Guardian), who are neutral and win in addition to the team result. Key terms (fear, visit, save, learn, declare, neighbor) are defined in the Rules glossary and linked from each role.
+
+- **Night order.** Night 1: evil introductions (7+ players) → Basilisk → Lost Wanderer → Sheriff → Librarian → Teacher → Psychic → Detective → Judge → Sphinx. Later nights: carried fear (Banshee, Monster) takes effect → Basilisk → Lost Wanderer → Doctor → Monster → Wraith → Bodyguard → Detective → Judge → Psychic → Mortician → Sphinx → Watchman → queued deaths.
+- **Fear** works like poison: the ability fails silently and information may be false. Basilisk fear lasts the night; an executed Banshee fears every Villager the following night; a Monster kill fears one living neighbor (Storyteller’s choice) the following night. Fear ends at dawn.
+- **Visits** are recorded for the whole game. The Watchman sees tonight’s visitors and the Mortician every visitor’s role; a Wraith may choose to stay hidden. The Psychic’s visit is chosen by the Storyteller and must change role type each night (Villager, Fool, Traveler, Haunt, Horror). Visits to the Lost Wanderer’s player may be redirected to one of that player’s neighbors.
+- **Deaths.** A Doctor’s save stops every night death on that player (never themselves). The Bodyguard offers their life during the choice window and learns who is attacked; the Storyteller moves one death to them. The Guardian dies in place of their ward, by night or by execution. A Hunter killed at night may take a Haunt with them.
+- **Declarations** are public and made from Controls by day: the Vigilante (once per game; the Storyteller rules, the target may die instantly), the Researcher (three living players’ roles; only the Storyteller learns the result until the game ends) and a killed Hag (killed at night → declares the next morning; executed → declares right away). The Hag’s target may die that night only if Good. The Storyteller can record any declaration made aloud.
+- **Sphinx.** Each night the Sphinx gets a popup with every player’s role. It disappears when the night-choice timer ends; a feared Sphinx sees a scrambled glimpse.
+- **Setup.** The Drunk is shown an out-of-play Villager. The Storyteller confirms the Detective’s false-positive Villager, the Executioner’s target (never the Horror) and the Guardian’s ward when dealing roles.
+- **Endings.** Good wins when the Horror dies; evil wins with two players left. Traveler wins are added to the result (for example `Good · Travelers: Sam (Executioner) also win`) and recorded as neutral seats in account stats.
+- **iPhone.** The Script tab follows the table’s script, the glossary and role list included; the Sphinx’s glimpse opens as a sheet. Declarations appear in Controls.
+
 ## Social system
 
 Signed-in players get a public handle, a friends list, table invitations, a Storyteller rating, and a record of finished games. Guests can still play; everything below requires an account.
@@ -118,7 +133,7 @@ Every seated web player can open **Game flow → Night puzzles** during the nigh
 
 ## Validation on the authoring host
 
-- Role assignment and rejoin updates: all 42 unit tests passed, including random setup validation across 5–15 players. Session integration checks passed for preview consistency, manual edits, same-device rejoin, cross-browser recovery, preserved Storyteller permissions, and impersonation rejection. Mobile browser automation verified both users returning after browser closure, both recovery forms, and the Storyteller’s random/manual controls at 320px width. Physical iPhone/Safari checks remain outstanding.
+- Role assignment and rejoin updates: all 42 unit tests passed, including random setup validation across 5–18 players. Session integration checks passed for preview consistency, manual edits, same-device rejoin, cross-browser recovery, preserved Storyteller permissions, and impersonation rejection. Mobile browser automation verified both users returning after browser closure, both recovery forms, and the Storyteller’s random/manual controls at 320px width. Physical iPhone/Safari checks remain outstanding.
 - 18 engine tests, 7 account cryptography tests, and 6 social result-derivation tests passed.
 - Multi-client API integration tests (session, accounts, social) passed against the local D1-backed server.
 - TypeScript checking, app/domain lint, and the production build passed.

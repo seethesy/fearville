@@ -1,10 +1,22 @@
-import { COUNTS, ROLES, HMS_ROLES, role, type Game } from './types.ts';
+import {
+  COUNTS,
+  ROLES,
+  HMS_ROLES,
+  HOF_ROLES,
+  TEAM_ORDER,
+  TEAM_NAMES,
+  MAX_PLAYERS,
+  standardCounts,
+  role,
+  type Game,
+} from './types.ts';
 
 // A saved seed makes previews and confirmation deal exactly the same roles.
 // The engine rotates it only when a deal is committed to the saved game.
 export function assignRandomRoles(g: Game, requested?: unknown): string {
   const counts = COUNTS[g.players.length];
-  if (!counts) throw Error('Join 5–15 players before assigning roles.');
+  if (!counts)
+    throw Error(`Join 5–${MAX_PLAYERS} players before assigning roles.`);
   let seed = 2166136261;
   for (const char of g.assignmentSeed ?? g.players.map((p) => p.id).join(''))
     seed = Math.imul(seed ^ char.charCodeAt(0), 16777619) >>> 0;
@@ -24,6 +36,7 @@ export function assignRandomRoles(g: Game, requested?: unknown): string {
   }
   if (g.script === 'holyMoonStars')
     return assignHms(g, counts, requested, shuffle);
+  if (g.script === 'horrors') return assignHof(g, requested, shuffle);
   const pool = (team: string) =>
     shuffle(ROLES.filter((r) => r.team === team).map((r) => r.id));
   const minions = pool('minion').slice(0, counts[2]);
@@ -194,6 +207,81 @@ function assignHms(
       .join('\n') +
     (g.bluffs.length
       ? '\nHorror bluffs: ' + g.bluffs.map((r) => role(r)!.name).join(', ')
+      : '') +
+    '\nYou can change individual assignments in Seats before starting.'
+  );
+}
+
+// Horrors of Fearville: the script's role breakdown, with Travelers. The
+// Drunk is shown an out-of-play Villager; one Villager is the Detective's
+// false positive. Executioner targets and Guardian wards are chosen when the
+// game starts (and can be changed in the start form).
+function assignHof(
+  g: Game,
+  requested: unknown,
+  shuffle: <T>(items: T[]) => T[],
+): string {
+  const expected = standardCounts('horrors', g.players.length)!;
+  const team = (id: string) => role(id)?.team;
+  const pool = (t: string) =>
+    shuffle(HOF_ROLES.filter((r) => r.team === t).map((r) => r.id));
+  let selected: string[];
+  if (requested !== undefined) {
+    if (
+      !Array.isArray(requested) ||
+      requested.length !== g.players.length ||
+      new Set(requested).size !== requested.length ||
+      !requested.every(
+        (id) => typeof id === 'string' && HOF_ROLES.some((r) => r.id === id),
+      )
+    )
+      throw Error('Choose one unique character per player.');
+    if (
+      TEAM_ORDER.some(
+        (t) =>
+          (requested as string[]).filter((id) => team(id) === t).length !==
+          expected[t],
+      )
+    )
+      throw Error(
+        'Choose ' +
+          TEAM_ORDER.map((t) => `${expected[t]} ${TEAM_NAMES[t]}`).join(', ') +
+          ' for this setup.',
+      );
+    selected = (requested as string[]).slice();
+  } else selected = TEAM_ORDER.flatMap((t) => pool(t).slice(0, expected[t]));
+  const deal = shuffle(selected);
+  const shown = pool('townsfolk').find((r) => !selected.includes(r)) ?? '';
+  const ordered = g.players.slice().sort((a, b) => a.seat - b.seat);
+  ordered.forEach((p, i) => {
+    p.role = deal[i];
+    p.shown = p.role === 'drunk' ? shown : p.role;
+    delete p.acts;
+    delete p.charge;
+  });
+  g.bluffs = shuffle(
+    HOF_ROLES.filter(
+      (r) =>
+        ['townsfolk', 'outsider'].includes(r.team) &&
+        !g.players.some((p) => p.role === r.id || p.shown === r.id),
+    ).map((r) => r.id),
+  ).slice(0, 3);
+  const villagers = g.players.filter((p) => team(p.role) === 'townsfolk');
+  g.redHerring = shuffle(villagers)[0]?.id ?? '';
+  return (
+    'Assign this random setup (characters remain private until the game starts):\n' +
+    ordered
+      .map(
+        (p) =>
+          `${p.seat}. ${p.name}: ${role(p.role)!.name}${p.role === 'drunk' ? ` (shown ${role(p.shown)?.name})` : ''}`,
+      )
+      .join('\n') +
+    (g.bluffs.length
+      ? '\nHorror bluffs: ' + g.bluffs.map((r) => role(r)!.name).join(', ')
+      : '') +
+    (g.redHerring
+      ? '\nDetective’s false positive: ' +
+        g.players.find((p) => p.id === g.redHerring)!.name
       : '') +
     '\nYou can change individual assignments in Seats before starting.'
   );

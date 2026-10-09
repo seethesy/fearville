@@ -277,8 +277,8 @@ void test('setup checks counts, the Moonshiner, hidden Villagers, and the script
 });
 
 void test('random assignment deals valid setups for every size', () => {
-  for (let n = 5; n <= 15; n++)
-    for (let k = 0; k < 6; k++) {
+  for (let n = 5; n <= 18; n++)
+    for (let k = 0; k < 12; k++) {
       const g = newGame('HMS', 'Host');
       g.script = 'holyMoonStars';
       g.assignmentSeed = `seed-${n}-${k}`;

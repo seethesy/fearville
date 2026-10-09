@@ -27,6 +27,8 @@ import {
   ST,
   type Task,
 } from './hms.ts';
+import { isHof } from './hof.ts';
+import { hofNightFields, hofDeathFields, hofControls } from './hof-view.ts';
 
 const select = (
   key: string,
@@ -101,7 +103,9 @@ export function hmsNightFields(g: Game, t: Task, ps: Option[]) {
   )
     chosen[0] = s.nightmareRedirectTarget;
   if (count) {
-    const once = ['gravedigger', 'priest', 'necromancer'].includes(r);
+    const once = ['gravedigger', 'priest', 'necromancer', 'mortician'].includes(
+      r,
+    );
     for (let i = 0; i < count; i++)
       fields.push(
         select(
@@ -140,6 +144,14 @@ export function hmsNightFields(g: Game, t: Task, ps: Option[]) {
     }
   }
   if (choice?.pass) notes.push('The player passed.');
+  if (isHof(g)) {
+    hofNightFields(g, t, ps, fields, notes);
+    if (choice && count && !choice.pass)
+      notes.push(
+        `Player selected ${chosen.map((id) => nameOf(g, id ?? '')).join(', ')}.`,
+      );
+    return { fields, description: notes.join(' ') };
+  }
   switch (r) {
     case 'astrologist': {
       const sug = choice
@@ -411,6 +423,7 @@ export function deathControl(g: Game, ps: Option[]): Control | null {
     );
   const notes = [`${v.name} (${role(v.role)?.name}) · ${d.cause}.`];
   if (reason) notes.push(`Prevented by ${reason}.`);
+  if (isHof(g)) hofDeathFields(g, d, v, ps, fields, notes);
   if (weaver)
     notes.push(
       `${weaver.name} is the Fateweaver next to them and may redirect this death once.`,
@@ -439,6 +452,7 @@ export function hmsControls(
     danger?: boolean,
   ) => void,
 ) {
+  if (isHof(g)) return hofControls(g, a, ps, add);
   const s = g.hms;
   const running = g.phase !== 'lobby' && g.phase !== 'ended';
   const day = [

@@ -1,6 +1,13 @@
 'use client';
 import { useState } from 'react';
-import { COUNTS, scriptRoles, role } from '@/lib/game/types';
+import {
+  standardCounts,
+  scriptRoles,
+  role,
+  TEAM_ORDER,
+  TEAM_NAMES,
+  type Team,
+} from '@/lib/game/types';
 import type { GameView } from '@/lib/game/view';
 import { RoleIcon } from './role-icon';
 export function RolePicker({
@@ -15,29 +22,42 @@ export function RolePicker({
   );
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  const counts = COUNTS[game.players.length];
+  const counts = standardCounts(game.script, game.players.length);
   const ROLES = scriptRoles(game.script);
   const hms = game.script === 'holyMoonStars';
   const atheist = hms && selected.includes('atheist');
-  const extra = hms
-    ? selected.includes('moonshiner')
-      ? 1
-      : 0
-    : selected.includes('baron')
-      ? 2
-      : 0;
-  const expected = !counts
+  const extra =
+    game.script === 'horrors'
+      ? 0
+      : hms
+        ? selected.includes('moonshiner')
+          ? 1
+          : 0
+        : selected.includes('baron')
+          ? 2
+          : 0;
+  const expected: Record<Team, number> | null = !counts
     ? null
     : atheist
-      ? [game.players.length - counts[1], counts[1], 0, 0]
-      : [counts[0] - extra, counts[1] + extra, counts[2], counts[3]];
-  const teams = ['townsfolk', 'outsider', 'minion', 'demon'];
+      ? {
+          ...counts,
+          townsfolk: game.players.length - counts.outsider,
+          minion: 0,
+          demon: 0,
+        }
+      : {
+          ...counts,
+          townsfolk: counts.townsfolk - extra,
+          outsider: counts.outsider + extra,
+        };
+  const teams = TEAM_ORDER.filter((t) => ROLES.some((r) => r.team === t));
   const valid =
     expected &&
     selected.length === game.players.length &&
-    teams.every(
-      (team, i) =>
-        selected.filter((id) => role(id)?.team === team).length === expected[i],
+    TEAM_ORDER.every(
+      (team) =>
+        selected.filter((id) => role(id)?.team === team).length ===
+        expected[team],
     );
   return (
     <section className="panel role-picker">
@@ -58,19 +78,13 @@ export function RolePicker({
               : ' · Baron: two Villagers become Fools (private setup)'
             : ''}
       </p>
-      {!counts && <p>Join 5–15 players to deal a balanced setup.</p>}
-      {teams.map((team, i) => (
+      {!counts && <p>Join 5–18 players to deal a balanced setup.</p>}
+      {teams.map((team) => (
         <section key={team}>
           <h3>
-            {team === 'townsfolk'
-              ? 'Villagers'
-              : team === 'outsider'
-                ? 'Fools'
-                : team === 'minion'
-                  ? 'Haunts'
-                  : 'Horrors'}{' '}
-            · {selected.filter((id) => role(id)?.team === team).length}
-            {expected ? ` / ${expected[i]}` : ''}
+            {TEAM_NAMES[team]} ·{' '}
+            {selected.filter((id) => role(id)?.team === team).length}
+            {expected ? ` / ${expected[team]}` : ''}
           </h3>
           <div className="role-pick-grid">
             {ROLES.filter((r) => r.team === team).map((r) => (

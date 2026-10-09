@@ -79,7 +79,7 @@ function lobby(count = 7) {
 void test('random assignment balances every supported size including Baron and Drunk', () => {
   let sawBaron = false,
     sawDrunk = false;
-  for (let count = 5; count <= 15; count++) {
+  for (let count = 5; count <= 18; count++) {
     for (let attempt = 0; attempt < 40; attempt++) {
       const g = lobby(count);
       g.assignmentSeed = `${count}:${attempt}`;
@@ -150,10 +150,10 @@ void test('only the Storyteller may randomize, only in a supported lobby', () =>
       ),
     /Storyteller/,
   );
-  for (const count of [0, 4, 16])
+  for (const count of [0, 4, 19])
     assert.throws(
       () => execute(lobby(count), host, { action: 'randomAssign' }, 100),
-      /5–15/,
+      /5–18/,
     );
   execute(g, host, { action: 'randomAssign' }, 100);
   execute(g, host, { action: 'start' }, 101);

@@ -1,5 +1,5 @@
 import { database } from '@/db';
-import { newPlayer } from './types';
+import { newPlayer, MAX_PLAYERS } from './types';
 import { assignAvatars } from './avatars';
 import { requireThat, log } from './engine';
 import { read, cookieName } from './store';
@@ -28,7 +28,7 @@ export async function joinSession(
       game.phase === 'lobby',
       'This game has started. Use your recovery key to reconnect.',
     );
-    requireThat(game.players.length < 15, 'This table is full.');
+    requireThat(game.players.length < MAX_PLAYERS, 'This table is full.');
     requireThat(
       !game.players.some((p) => p.name.toLowerCase() === name.toLowerCase()),
       'That name is taken. Use a different name, or restore your session.',

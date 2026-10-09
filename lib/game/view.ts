@@ -3,7 +3,8 @@ import {
   ROLES,
   scriptRoles,
   SCRIPTS,
-  COUNTS,
+  standardCounts,
+  MAX_PLAYERS,
   role,
   phaseName,
   type Game,
@@ -21,9 +22,11 @@ import {
   healthy,
   eligibleVoters,
   nightChoiceTask,
+  alignment,
 } from './engine.ts';
 import {
   isHms,
+  isMoon,
   ST,
   nightChoiceDeadlineFor,
   nightChoiceWindowDeadline,
@@ -32,6 +35,7 @@ import { hmsNightFields, deathControl, hmsControls } from './hms-view.ts';
 import { recapOf } from './lobby.ts';
 import { alignmentOf, winnerOf } from '../social/derive.ts';
 import { BASE_XP, mvpShares } from '../social/progression.ts';
+import { isHof, sphinxGlimpse, defaultCharge } from './hof.ts';
 const select = (
   key: string,
   label: string,
@@ -255,6 +259,56 @@ export function controls(g: Game, a: Actor): Control[] {
             ),
           );
       }
+      if (isHof(g)) {
+        if (
+          g.players.some(
+            (p) => p.role === 'detective' || p.shown === 'detective',
+          )
+        ) {
+          const villagers = ps.filter((option) =>
+            g.players.some(
+              (p) =>
+                p.id === option.value && role(p.role)?.team === 'townsfolk',
+            ),
+          );
+          setupFields.push(
+            select(
+              'redHerring',
+              'Detective’s false positive (a Villager)',
+              villagers,
+              villagers.some((o) => o.value === g.redHerring)
+                ? g.redHerring
+                : (villagers[0]?.value ?? ''),
+              true,
+            ),
+          );
+        }
+        for (const p of g.players.filter((p) =>
+          ['executioner', 'guardian'].includes(p.role),
+        )) {
+          const options = ps.filter(
+            (o) =>
+              o.value !== p.id &&
+              (p.role !== 'executioner' ||
+                g.players.some(
+                  (q) => q.id === o.value && role(q.role)?.team !== 'demon',
+                )),
+          );
+          setupFields.push(
+            select(
+              'charge_' + p.id,
+              p.role === 'executioner'
+                ? `${p.name} · Executioner’s target (never the Horror)`
+                : `${p.name} · Guardian’s ward`,
+              options,
+              p.charge && options.some((o) => o.value === p.charge)
+                ? p.charge
+                : defaultCharge(g, p),
+              true,
+            ),
+          );
+        }
+      }
       if (
         !isHms(g) &&
         g.players.some(
@@ -283,9 +337,11 @@ export function controls(g: Game, a: Actor): Control[] {
       add(
         'randomAssign',
         'Randomly assign roles',
-        isHms(g)
-          ? 'Apply a balanced Holy Moon and Stars setup for 5–15 players (never an Atheist). Replaces all assigned characters, hidden Villagers and Horror bluffs. You can edit individual roles in Seats afterward.'
-          : 'Apply a balanced Fearville Classic setup for 5–15 players. Replaces all assigned characters, Horror bluffs, and the red herring. You can edit individual roles in Seats afterward.',
+        isHof(g)
+          ? `Apply the Horrors of Fearville role breakdown for 5–${MAX_PLAYERS} players. Replaces all assigned characters, the Drunk’s shown Villager, Horror bluffs and the Detective’s false positive. You can edit individual roles in Seats afterward.`
+          : isHms(g)
+            ? `Apply a balanced Holy Moon and Stars setup for 5–${MAX_PLAYERS} players (never an Atheist). Replaces all assigned characters, hidden Villagers and Horror bluffs. You can edit individual roles in Seats afterward.`
+            : `Apply a balanced Fearville Classic setup for 5–${MAX_PLAYERS} players. Replaces all assigned characters, Horror bluffs, and the red herring. You can edit individual roles in Seats afterward.`,
       );
       add(
         'start',
@@ -625,7 +681,7 @@ export function controls(g: Game, a: Actor): Control[] {
         select(
           'target',
           'Nominee',
-          (isHms(g) && !g.nominees.includes(ST)
+          (isMoon(g) && !g.nominees.includes(ST)
             ? [{ value: ST, label: 'The Storyteller' }]
             : []
           ).concat(
@@ -712,7 +768,7 @@ export function controls(g: Game, a: Actor): Control[] {
           select('role', 'Actual character', roleOptions, p.role),
           select(
             'shown',
-            isHms(g)
+            isMoon(g)
               ? 'Shown Villager (Dazed, Moonshiner Fools, drunk players)'
               : 'Shown Villager (Drunk only)',
             optional.concat(
@@ -723,7 +779,18 @@ export function controls(g: Game, a: Actor): Control[] {
             ),
             isHms(g) && p.shown === p.role ? '' : p.shown,
           ),
-          ...(isHms(g)
+          ...(isHof(g)
+            ? [
+                check('feared', 'Feared tonight', !!p.feared),
+                select(
+                  'charge',
+                  'Executioner’s target or Guardian’s ward',
+                  optional.concat(ps.filter((o) => o.value !== p.id)),
+                  p.charge ?? '',
+                ),
+              ]
+            : []),
+          ...(isMoon(g)
             ? [
                 select(
                   'acts',
@@ -794,20 +861,23 @@ export function controls(g: Game, a: Actor): Control[] {
             g.bluffs[i] || '',
           ),
         ),
-        ...(isHms(g)
+        ...(isMoon(g)
           ? []
           : [
               select(
                 'redHerring',
-                'Fortune Teller red herring',
+                isHof(g)
+                  ? 'Detective’s false positive (a Villager)'
+                  : 'Fortune Teller red herring',
                 optional.concat(
                   ps.filter((o) =>
                     g.players.some(
                       (p) =>
                         p.id === o.value &&
-                        ['townsfolk', 'outsider'].includes(
-                          role(p.role)?.team ?? '',
-                        ),
+                        (isHof(g)
+                          ? ['townsfolk']
+                          : ['townsfolk', 'outsider']
+                        ).includes(role(p.role)?.team ?? ''),
                     ),
                   ),
                 ),
@@ -913,6 +983,9 @@ export function view(
     sandboxHost,
     script: g.script ?? 'classic',
     scriptName: SCRIPTS[g.script ?? 'classic'],
+    // Horrors of Fearville: the Sphinx's glimpse of every role, shown until
+    // the night-choice timer ends.
+    glimpse: a.host ? null : sphinxGlimpse(g, me, now),
     nightIntroduction:
       !a.host && me && !me.departed && g.phase === 'night' && g.night === 1
         ? (g.nightIntroductions?.[a.id] ?? null)
@@ -938,6 +1011,7 @@ export function view(
                   }))
                 : [],
             optional: 'optional' in choiceTask ? !!choiceTask.optional : false,
+            flag: 'flag' in choiceTask ? (choiceTask.flag ?? null) : null,
             label: 'label' in choiceTask ? (choiceTask.label ?? '') : '',
             options: choiceTask.options.map((p) => ({
               ...p,
@@ -964,6 +1038,7 @@ export function view(
                 : ''),
             statuses: [
               { name: 'Poisoned', active: !!actingPlayer?.poisoned },
+              { name: 'Feared', active: !!actingPlayer?.feared },
               {
                 name: 'Drunk',
                 active: !!actingPlayer?.drunk || actingPlayer?.role === 'drunk',
@@ -996,7 +1071,7 @@ export function view(
             choice: g.nightChoices?.[currentTask.key] ?? null,
           }
         : null,
-    standardCounts: COUNTS[g.players.length] ?? null,
+    standardCounts: standardCounts(g.script, g.players.length),
     channel:
       !a.host &&
       g.phase === 'night' &&
@@ -1127,6 +1202,7 @@ export function view(
               poisoned: p.poisoned,
               protected: p.protected,
               used: p.used,
+              feared: !!p.feared,
             }
           : {}),
         nominated: g.nominees.includes(p.id),
@@ -1137,11 +1213,7 @@ export function view(
         ? {
             name: role(me.shown || me.role)?.name,
             description: role(me.shown || me.role)?.description,
-            alignment: ['minion', 'demon'].includes(
-              role(me.shown || me.role)?.team || '',
-            )
-              ? 'evil'
-              : 'good',
+            alignment: alignment({ ...me, role: me.shown || me.role }),
           }
         : null,
     tasks: a.host && g.phase === 'night' ? tasks(g) : [],

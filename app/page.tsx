@@ -203,7 +203,7 @@ export default function Home() {
             <TabsContent value="host">
               <h2>Bring the town together.</h2>
               <p className="muted">
-                Create a private session, invite 5–15 players, then assign
+                Create a private session, invite 5–18 players, then assign
                 characters and set your timers.
               </p>
               <button

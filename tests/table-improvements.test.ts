@@ -52,7 +52,13 @@ void test('public counts never expose a Baron adjustment or actual roles', () =>
   const g = setup();
   g.players[3].role = 'baron';
   const v = view(g, { id: g.players[0].id, host: false }, 1, 1);
-  assert.deepEqual(v.standardCounts, [3, 0, 1, 1]);
+  assert.deepEqual(v.standardCounts, {
+    townsfolk: 3,
+    outsider: 0,
+    traveler: 0,
+    minion: 1,
+    demon: 1,
+  });
   assert.ok(v.players.every((p) => !('role' in p)));
 });
 void test('Investigator choices match eligible minions and distinct targets while allowing misinformation', () => {
