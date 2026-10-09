@@ -37,6 +37,8 @@ npm run build
 
 Integration tests require the development server and create test sessions and fixture accounts in the local database. They test simultaneous joins and votes, privacy, authorization, timer advancement, recovery, account scoping, and the whole social flow (handles, friend requests, invitations, recorded results, ratings, rewind withdrawal, and deletion). The social suite sends many requests; if a run trips the per-minute rate limit, wait for the next minute and run it again.
 
+For API verification on Windows, build first and run `node scripts/local-api-test-server.mjs`. This serves the compiled worker directly at `http://127.0.0.1:3001`, avoiding development proxy restarts. Set `CT_TEST_URL` to that URL when running HTTP suites (`$env:CT_TEST_URL='http://127.0.0.1:3001'` in PowerShell). The fixture database stays local. Use the normal development server for browser checks.
+
 ## Session behavior
 
 Account progression, ranked Elo, statistics, social privacy, and migration details are documented in [SOCIAL-SYSTEM.md](SOCIAL-SYSTEM.md).
