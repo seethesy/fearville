@@ -1,4 +1,5 @@
 'use client';
+import { GlossaryText } from '@/components/glossary-text';
 import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { PlayerNotes } from '@/components/player-notes';
@@ -1070,7 +1071,7 @@ export default function Table() {
                           <p className="alignment">
                             {game.character.alignment} team
                           </p>
-                          <p>{game.character.description}</p>
+                          <p><GlossaryText text={game.character.description} /></p>
                         </>
                       )}
                       <button
@@ -1173,7 +1174,7 @@ export default function Table() {
                               })}
                             </small>
                           </div>
-                          <p>{m.text}</p>
+                          <p>{m.kind === 'info' ? <GlossaryText text={m.text} /> : m.text}</p>
                         </article>
                       ))
                   )}
@@ -1350,7 +1351,7 @@ export default function Table() {
                       )
                       .map((c) => (
                         <div key={c.action}>
-                          <p>{c.description}</p>
+                          <p><GlossaryText text={c.description} /></p>
                           {button(c)}
                         </div>
                       ))}
@@ -1412,7 +1413,7 @@ export default function Table() {
             <DialogHeader>
               <DialogTitle>{actionControl?.title}</DialogTitle>
               <DialogDescription>
-                {actionControl?.description}
+                {actionControl && <GlossaryText text={actionControl.description} />}
               </DialogDescription>
             </DialogHeader>
             <form
@@ -1428,7 +1429,7 @@ export default function Table() {
                       <strong>
                         {confirmation.playerName || 'Night task'} ability
                       </strong>
-                      <p>{confirmation.ability}</p>
+                      <p><GlossaryText text={confirmation.ability} /></p>
                     </div>
                   )}
                   <div className="status-bubbles" aria-label="Player status">

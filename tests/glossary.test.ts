@@ -1,7 +1,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { GLOSSARY, glossarySegments } from '../lib/game/glossary.ts';
+import {
+  GLOSSARY,
+  GLOSSARY_FORMS,
+  glossarySegments,
+} from '../lib/game/glossary.ts';
 
 void test('glossary defines the six key terms', () => {
   assert.deepEqual(
@@ -11,18 +15,47 @@ void test('glossary defines the six key terms', () => {
 });
 
 void test('the iPhone glossary matches the web glossary', () => {
-  const swift = readFileSync(
-    new URL('../ios/Fearville/FearvilleApp.swift', import.meta.url),
-    'utf8',
+  const native = JSON.parse(
+    readFileSync(
+      new URL('../ios/Fearville/glossary.json', import.meta.url),
+      'utf8',
+    ),
   );
-  for (const t of GLOSSARY) {
-    assert.ok(
-      swift.includes(
-        `GlossaryEntry(term: ${JSON.stringify(t.term)}, definition: ${JSON.stringify(t.definition)}, example: ${t.example ? JSON.stringify(t.example) : 'nil'})`,
-      ),
-      `${t.term} is out of date in FearvilleApp.swift`,
-    );
-  }
+  assert.deepEqual(native, { terms: GLOSSARY, forms: GLOSSARY_FORMS });
+});
+
+void test('only the first form of each term links, case insensitively', () => {
+  assert.deepEqual(
+    glossarySegments(
+      'FEARED players fear Fear; visits visit visiting. Neighbors neighbor.',
+    ),
+    [
+      { text: 'FEARED', id: 'fear' },
+      ' players fear Fear; ',
+      { text: 'visits', id: 'visit' },
+      ' visit visiting. ',
+      { text: 'Neighbors', id: 'neighbor' },
+      ' neighbor.',
+    ],
+  );
+});
+void test('whole words, overlapping forms, unknown inflections and empty text are handled', () => {
+  assert.deepEqual(
+    glossarySegments('fearful revisit savedata learned neighborhood'),
+    ['fearful revisit savedata learned neighborhood'],
+  );
+  assert.deepEqual(glossarySegments('éfear fear_1 SAVE saved'), [
+    'éfear fear_1 ',
+    { text: 'SAVE', id: 'save' },
+    ' saved',
+  ]);
+  assert.deepEqual(glossarySegments('An ordinary character.'), [
+    'An ordinary character.',
+  ]);
+  assert.deepEqual(glossarySegments(''), []);
+  assert.deepEqual(glossarySegments('Declare a declaration.', 'declare'), [
+    'Declare a declaration.',
+  ]);
 });
 
 void test('glossary words in role text link to their entry', () => {

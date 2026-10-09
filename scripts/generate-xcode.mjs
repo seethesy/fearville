@@ -21,6 +21,7 @@ const files = [
   ['Models.swift', 'sourcecode.swift', 'source'],
   ['TableStore.swift', 'sourcecode.swift', 'source'],
   ['roles.json', 'text.json', 'resource'],
+  ['glossary.json', 'text.json', 'resource'],
   ['Assets.xcassets', 'folder.assetcatalog', 'resource'],
   ['PrivacyInfo.xcprivacy', 'text.xml', 'resource'],
   ['Info.plist', 'text.plist.xml', 'none'],

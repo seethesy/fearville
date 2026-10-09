@@ -2877,3 +2877,12 @@ h3,
   text-decoration-style: dotted;
   text-underline-offset: 3px;
 }
+
+/* Inline character glossary definitions. */
+button.glossary-trigger { display: inline; padding: 0; min-height: 0; border: 0; border-radius: 2px; background: transparent; color: inherit; font: inherit; line-height: inherit; cursor: pointer; text-decoration: underline dotted; text-underline-offset: 3px; }
+button.glossary-trigger:hover { text-decoration-style: solid; background: transparent; }
+button.glossary-trigger:focus-visible { outline: 2px solid currentColor; outline-offset: 3px; }
+.glossary-bubble { width: min(320px, calc(100vw - 24px)); max-width: var(--available-width); max-height: min(70dvh, var(--available-height)); overflow-y: auto; background: #fff7e9; color: #26211e; border: 1px solid #bfa880; padding: 14px; font-size: 15px; line-height: 1.5; }
+.glossary-bubble [data-slot='popover-description'] { color: inherit; }
+.role-pick-card { display: flex; flex-direction: column; gap: 8px; border: 1px solid var(--border); padding: 10px; border-radius: 10px; }
+.role-pick-card > small { display: block; line-height: 1.5; }

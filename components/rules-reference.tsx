@@ -1,3 +1,4 @@
+import { GlossaryText } from '@/components/glossary-text';
 import { RoleIcon } from './role-icon';
 import {
   HMS_ROLES,
@@ -11,7 +12,7 @@ import {
   role,
   type RoleScript,
 } from '@/lib/game/types';
-import { GLOSSARY, glossarySegments } from '@/lib/game/glossary';
+import { GLOSSARY } from '@/lib/game/glossary';
 
 const teams = [
   {
@@ -59,23 +60,6 @@ const STEP_NAMES: Record<string, string> = {
 };
 const teamsFor = (script: RoleScript) =>
   teams.filter((team) => scriptRoles(script).some((r) => r.team === team.id));
-// Role text with glossary terms linked to their definitions.
-function Described({ text, linked }: { text: string; linked: boolean }) {
-  if (!linked) return <>{text}</>;
-  return (
-    <>
-      {glossarySegments(text).map((part, i) =>
-        typeof part === 'string' ? (
-          part
-        ) : (
-          <a key={i} className="glossary-link" href={`#glossary-${part.id}`}>
-            {part.text}
-          </a>
-        ),
-      )}
-    </>
-  );
-}
 function RoleTeams({ script }: { script: RoleScript }) {
   const list = scriptRoles(script);
   return (
@@ -99,10 +83,7 @@ function RoleTeams({ script }: { script: RoleScript }) {
                     <RoleIcon role={r.id} /> {r.name}
                   </h4>
                   <p>
-                    <Described
-                      text={r.description}
-                      linked={script === 'horrors'}
-                    />
+                    <GlossaryText text={r.description} />
                   </p>
                 </article>
               ))}

@@ -1,4 +1,5 @@
 'use client';
+import { GlossaryText } from '@/components/glossary-text';
 import { useEffect, useState } from 'react';
 import {
   Dialog,
@@ -45,7 +46,7 @@ export function NightIntroduction({
               yourself.
             </DialogDescription>
           </DialogHeader>
-          <p className="night-team-information">{information.text}</p>
+          <p className="night-team-information"><GlossaryText text={information.text} /></p>
           <button
             className="primary"
             onClick={() => {
