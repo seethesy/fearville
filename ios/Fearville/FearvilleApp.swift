@@ -136,7 +136,18 @@ struct FlowView: View {
                 }
             }
             if !game.tasks.isEmpty {
-                Section("Night order") { ForEach(game.tasks) { task in HStack { Text(task.done ? "✓" : "·"); Text(task.name).foregroundStyle(task.done ? .secondary : .primary); Spacer(); if task.id == game.tasks.first(where: { !$0.done })?.id { Text("NEXT").font(.caption).foregroundStyle(Color.tableHighlight) } } }
+                Section("Night order") {
+                    ForEach(game.tasks) { task in
+                        HStack {
+                            Text(task.done ? "✓" : "·")
+                            Text(task.name).foregroundStyle(task.done ? .secondary : .primary)
+                            Spacer()
+                            if task.id == game.tasks.first(where: { !$0.done })?.id {
+                                Text("NEXT").font(.caption).foregroundStyle(Color.tableHighlight)
+                            }
+                        }
+                    }
+                }
             }
             Section("Actions") {
                 ForEach(game.controls.filter { !["chat","edit","configure","undo","rewind","end","overridePhase"].contains($0.action) }) { action in Button(action.title) { selected = action }.disabled(!store.online) }
