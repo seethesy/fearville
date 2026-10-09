@@ -186,11 +186,21 @@ struct MessagesView: View {
         }.scrollContentBackground(.hidden).background(Color.tableBackground)
     }
 }
+struct GlossaryEntry: Identifiable { let term: String; let definition: String; let example: String?; var id: String { term } }
+// Keep in sync with lib/game/glossary.ts (checked by tests/glossary.test.ts).
+let GLOSSARY: [GlossaryEntry] = [
+    GlossaryEntry(term: "Fear", definition: "A feared player’s ability malfunctions, exactly as if they were poisoned or drunk. They are not told. They still wake and make choices, but their ability has no effect and anything they learn may be false. Fear lasts only as long as the ability that caused it says.", example: nil),
+    GlossaryEntry(term: "Visit", definition: "When a player with a night ability chooses another player, they visit that player, unless the ability says otherwise. A feared player still visits. If a visit is redirected, it lands on the new player instead.", example: nil),
+    GlossaryEntry(term: "Save", definition: "A saved player cannot die that night. A save stops every attempt to kill that player that night, even several at once. Saves only work at night, and players can never save themselves.", example: nil),
+    GlossaryEntry(term: "Learn", definition: "The Storyteller privately tells you information that players cannot normally access. This is the main ability of information roles. If you are feared, poisoned or drunk, what you learn may be false.", example: nil),
+    GlossaryEntry(term: "Declare", definition: "An official public statement made during the day. If you are asked to declare at night, wait until morning to make your declaration.", example: "“I am the Vigilante and I declare that I want to kill Player A.”"),
+    GlossaryEntry(term: "Neighbor", definition: "A player sitting directly next to you; everyone has two. Neighbors include both living and dead players unless an ability says otherwise, for example “living neighbors”.", example: nil)
+]
 struct ScriptView: View {
     private let roles: [ScriptRole] = {
         guard let url = Bundle.main.url(forResource: "roles", withExtension: "json"), let data = try? Data(contentsOf: url), let roles = try? JSONDecoder().decode([ScriptRole].self, from: data) else { return [] }; return roles
     }()
-    var body: some View { List { Section { Text("All characters on the script, including those not in play. These are short summaries.") }; ForEach(roles) { role in VStack(alignment: .leading, spacing: 8) { Text(role.team.uppercased()).font(.caption).foregroundStyle(Color.tableHighlight); Text(role.name).font(.headline); Text(role.description) }.padding(.vertical, 6) } }.scrollContentBackground(.hidden).background(Color.tableBackground) }
+    var body: some View { List { Section { Text("All characters on the script, including those not in play. These are short summaries.") }; Section("Glossary") { ForEach(GLOSSARY) { entry in VStack(alignment: .leading, spacing: 6) { Text(entry.term).font(.headline); Text(entry.definition); if let example = entry.example { Text("Example: " + example).font(.callout).italic().foregroundStyle(.secondary) } }.padding(.vertical, 4) } }; ForEach(roles) { role in VStack(alignment: .leading, spacing: 8) { Text(role.team.uppercased()).font(.caption).foregroundStyle(Color.tableHighlight); Text(role.name).font(.headline); Text(role.description) }.padding(.vertical, 6) } }.scrollContentBackground(.hidden).background(Color.tableBackground) }
 }
 struct ControlView: View {
     @EnvironmentObject var store: TableStore
