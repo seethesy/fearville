@@ -45,7 +45,7 @@ const race = await Promise.all(
     }),
   ),
 );
-assert.deepEqual(race.map((r) => r.status).sort(), [200, 409]);
+assert.deepEqual(race.map((r) => r.status).sort((a, b) => a - b), [200, 409]);
 game = (await call('/api/game', token)).data;
 assert.equal(game.players.filter((p) => p.avatar === free).length, 1);
 const loser = game.players.find((p) => p.avatar !== free);

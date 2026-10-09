@@ -20,6 +20,7 @@ const colors: Record<Team, string> = {
   demon: '#900D09',
   townsfolk: '#0B6623',
   outsider: '#1E90FF',
+  traveler: '#9673c4',
 };
 function roleColor(p: RecapPlayer) {
   return colors[

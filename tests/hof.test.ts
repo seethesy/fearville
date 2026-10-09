@@ -590,7 +590,7 @@ void test('the iPhone role list matches every script', async () => {
   const { ROLES, HMS_ROLES } = await import('../lib/game/types.ts');
   const rows = JSON.parse(
     readFileSync(
-      new URL('../ios/ClocktowerTable/roles.json', import.meta.url),
+      new URL('../ios/Fearville/roles.json', import.meta.url),
       'utf8',
     ),
   ) as { id: string; description: string; script: string }[];

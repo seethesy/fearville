@@ -12,7 +12,7 @@ void test('glossary defines the six key terms', () => {
 
 void test('the iPhone glossary matches the web glossary', () => {
   const swift = readFileSync(
-    new URL('../ios/ClocktowerTable/ClocktowerTableApp.swift', import.meta.url),
+    new URL('../ios/Fearville/FearvilleApp.swift', import.meta.url),
     'utf8',
   );
   for (const t of GLOSSARY) {
@@ -20,7 +20,7 @@ void test('the iPhone glossary matches the web glossary', () => {
       swift.includes(
         `GlossaryEntry(term: ${JSON.stringify(t.term)}, definition: ${JSON.stringify(t.definition)}, example: ${t.example ? JSON.stringify(t.example) : 'nil'})`,
       ),
-      `${t.term} is out of date in ClocktowerTableApp.swift`,
+      `${t.term} is out of date in FearvilleApp.swift`,
     );
   }
 });

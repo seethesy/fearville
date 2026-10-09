@@ -35,6 +35,8 @@ export async function prepareProgression(g: Game) {
     };
   });
   if (g.ranked) {
+    if (seats.some((p) => p.team === 'neutral'))
+      throw Error('Games with neutral Travelers must be casual.');
     if (
       rows.results.some(
         (r) =>
