@@ -150,8 +150,8 @@ export function TableMembership({
         ))}
       {!cosmetic && (
         <p className="hint">
-          Return home keeps your seat and recovery key. Leave lobby removes your
-          seat and access. During a game, Return home lets you rejoin later.
+          Return home keeps your seat. Leave lobby removes your seat and access.
+          During a game, Return home lets you rejoin later.
         </p>
       )}
       <AlertDialog

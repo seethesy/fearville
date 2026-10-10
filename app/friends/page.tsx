@@ -116,7 +116,7 @@ export default function Friends() {
       subtitle="Friends, invitations, and familiar faces."
     >
       {!loaded ? null : !account ? (
-        <section className="panel recovery-panel">
+        <section className="panel entry-panel">
           <h1>Find your people.</h1>
           <p className="muted">
             Sign in to choose a handle, add friends, and invite them to your

@@ -148,7 +148,7 @@ export function errorResponse(e: unknown) {
     return json(
       {
         error:
-          'Your session has expired. Join again or restore with your recovery key.',
+          'Your session has expired. Join again or open your account’s saved lobbies.',
       },
       401,
     );

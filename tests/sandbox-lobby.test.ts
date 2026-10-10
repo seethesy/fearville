@@ -2,9 +2,21 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execute } from '../lib/game/engine.ts';
 import { newGame } from '../lib/game/types.ts';
+import { newSandboxGame } from '../lib/game/sandbox.ts';
 import { view } from '../lib/game/view.ts';
 
 const host = { id: 'host', host: true };
+
+void test('new Sandbox lobbies start with six distinct dummy seats', () => {
+  const game = newSandboxGame('SANDBX', 'Tester');
+  assert.equal(game.players.length, 6);
+  assert.deepEqual(
+    game.players.map((player) => player.seat),
+    [1, 2, 3, 4, 5, 6],
+  );
+  assert.ok(game.players.every((player) => player.dummy));
+  assert.equal(new Set(game.players.map((player) => player.avatar)).size, 6);
+});
 
 void test('Sandbox adds dummy players, disables timers, and supports private POVs', () => {
   const g = newGame('SANDBX', 'Tester');

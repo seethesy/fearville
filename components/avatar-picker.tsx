@@ -3,8 +3,8 @@ import { useState } from 'react';
 import { AVATARS, defaultAvatar } from '@/lib/game/avatars';
 import type { GameView } from '@/lib/game/view';
 import { PlayerAvatar } from './player-avatar';
-import { DEATH_EFFECTS, type DeathEffectId } from '@/lib/game/cosmetics';
-import { DeathEffect } from './death-effect';
+import { type DeathEffectId } from '@/lib/game/cosmetics';
+import { DeathEffectPicker } from './death-effect-picker';
 
 export async function portrait(file: File) {
   if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type))
@@ -51,7 +51,6 @@ export function AvatarPicker({
   const me = game.players.find((p) => p.id === game.me);
   const [choice, setChoice] = useState<string | null>(null);
   const [effect, setEffect] = useState<DeathEffectId | null>(null);
-  const [preview, setPreview] = useState(0);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
@@ -168,48 +167,19 @@ export function AvatarPicker({
         JPG, PNG, or WebP, up to 8 MB. Photos are center-cropped; only the small
         portrait is saved. Pick a preset to replace your photo.
       </p>
-      <label className="field">
-        Death effect
-        <select
+      <fieldset>
+        <legend>Death animation</legend>
+        <DeathEffectPicker
           value={selectedEffect}
-          disabled={busy}
-          onChange={(event) => {
-            setEffect(event.target.value as DeathEffectId);
-            setPreview(0);
+          onChange={(value) => {
+            setEffect(value);
             setNotice('');
           }}
-        >
-          {DEATH_EFFECTS.map((item) => (
-            <option key={item.id} value={item.id}>
-              {item.name}
-            </option>
-          ))}
-        </select>
-      </label>
-      <p className="hint">
-        {DEATH_EFFECTS.find((item) => item.id === selectedEffect)?.description}{' '}
-        Plays when your death becomes public.
-      </p>
-      <div className="farewell-preview">
-        <div className="cosmetic-preview-stage">
-          <PlayerAvatar avatar={selected} id={me.id} />
-          {preview > 0 && <DeathEffect key={preview} effect={selectedEffect} />}
-        </div>
-        <div>
-          <button
-            type="button"
-            className="secondary"
-            disabled={busy || selectedEffect === 'none'}
-            onClick={() => setPreview(preview + 1)}
-          >
-            Preview death effect
-          </button>
-          <p className="hint">
-            Motion follows your device’s reduced-motion setting and the table’s
-            visual effects switch.
-          </p>
-        </div>
-      </div>
+          avatar={selected}
+          playerId={me.id}
+          disabled={busy}
+        />
+      </fieldset>
       <button
         className="primary"
         disabled={

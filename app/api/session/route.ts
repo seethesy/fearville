@@ -2,6 +2,7 @@ import { database } from '@/db';
 import { accountAuth, attachMember } from '@/lib/accounts/service';
 import { profileDefaults } from '@/lib/accounts/profile';
 import { newGame, uuid } from '@/lib/game/types';
+import { newSandboxGame } from '@/lib/game/sandbox';
 import { requireThat } from '@/lib/game/engine';
 import { renameMember, removeMember } from '@/lib/game/membership';
 import {
@@ -31,7 +32,6 @@ export async function GET(r: Request) {
       host: actor.host,
       name: actor.host ? game.hostName : player!.name,
       phase: game.phase,
-      recoveryKey: tokenOf(r),
     });
   } catch (e) {
     return errorResponse(e);
@@ -52,8 +52,7 @@ export async function POST(r: Request) {
     const tokenHash = await hash(token);
     const db = database();
     if (body.action === 'leave') {
-      // Leaving the screen is reversible. Keep the seat, account association,
-      // and recovery credential; only Storyteller removal revokes membership.
+      // Leaving the screen keeps the seat and account association.
       await auth(r);
       return json({ ok: true }, 200, { 'Set-Cookie': cookie(r, tokenOf(r)) });
     }
@@ -143,21 +142,6 @@ export async function POST(r: Request) {
         { error: 'Sign in to create a lobby or open the sandbox.' },
         401,
       );
-    if (body.action === 'restore') {
-      requireThat(
-        typeof body.recoveryKey === 'string' && body.recoveryKey.length < 200,
-        'Enter a recovery key.',
-      );
-      const restored = await auth(
-        new Request(r.url, {
-          headers: { authorization: 'Bearer ' + body.recoveryKey },
-        }),
-      );
-      if (account) await attachMember(await hash(body.recoveryKey), account.id);
-      return json({ code: restored.code, token: body.recoveryKey }, 200, {
-        'Set-Cookie': cookie(r, body.recoveryKey),
-      });
-    }
     // A returning device keeps its existing identity, including Storyteller
     // permissions, instead of creating another seat or failing after start.
     if (body.action === 'join' && tokenOf(r)) {
@@ -180,13 +164,9 @@ export async function POST(r: Request) {
           'This seat is no longer available.',
         );
         if (account) await attachMember(await hash(tokenOf(r)), account.id);
-        return json(
-          { code: current.code, token: tokenOf(r), resumed: true },
-          200,
-          {
-            'Set-Cookie': cookie(r, tokenOf(r)),
-          },
-        );
+        return json({ code: current.code, token: tokenOf(r), resumed: true }, 200, {
+          'Set-Cookie': cookie(r, tokenOf(r)),
+        });
       }
     }
     const defaults = account
@@ -210,8 +190,10 @@ export async function POST(r: Request) {
           .bind(code)
           .first();
         if (exists) continue;
-        const game = newGame(code, name);
-        game.sandbox = body.action === 'createSandbox';
+        const game =
+          body.action === 'createSandbox'
+            ? newSandboxGame(code, name)
+            : newGame(code, name);
         await db.batch([
           db
             .prepare(

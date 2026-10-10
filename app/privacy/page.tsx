@@ -20,8 +20,8 @@ export default function Privacy() {
           network addresses for rate limiting and operation.
         </p>
         <p>
-          Account sessions and guest recovery keys expire after 30 days. Game
-          records persist for recovery and Storyteller corrections. Apple
+          Account sessions expire after 30 days. Game records persist for
+          account access and Storyteller corrections. Apple
           refresh credentials, when supplied, are encrypted and used only to
           revoke the Apple connection when deleting an account.
         </p>

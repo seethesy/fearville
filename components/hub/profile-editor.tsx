@@ -3,10 +3,10 @@ import { useState } from 'react';
 import { Upload } from 'lucide-react';
 import { useAccount, accountAction } from './account-context';
 import { AVATARS } from '@/lib/game/avatars';
-import { DEATH_EFFECTS, type DeathEffectId } from '@/lib/game/cosmetics';
+import { type DeathEffectId } from '@/lib/game/cosmetics';
 import { HANDLE_COOLDOWN } from '@/lib/accounts/preferences';
 import { PlayerAvatar } from '@/components/player-avatar';
-import { DeathEffect } from '@/components/death-effect';
+import { DeathEffectPicker } from '@/components/death-effect-picker';
 import { portrait } from '@/components/avatar-picker';
 export function ProfileEditor() {
   const { state, refresh } = useAccount();
@@ -20,8 +20,7 @@ export function ProfileEditor() {
   const [handle, setHandle] = useState(state?.account?.handle || '');
   const [error, setError] = useState(''),
     [notice, setNotice] = useState(''),
-    [busy, setBusy] = useState(false),
-    [preview, setPreview] = useState(0);
+    [busy, setBusy] = useState(false);
   const nextChange = state?.account?.handleChangedAt
     ? state.account.handleChangedAt + HANDLE_COOLDOWN
     : 0;
@@ -50,7 +49,6 @@ export function ProfileEditor() {
       <div className="profile-identity">
         <div className="profile-portrait">
           <PlayerAvatar avatar={avatar} id="profile-preview" />
-          {preview > 0 && <DeathEffect key={preview} effect={deathEffect} />}
         </div>
         <div>
           <p className="eyebrow">YOUR IDENTITY</p>
@@ -176,34 +174,13 @@ export function ProfileEditor() {
           </fieldset>
           <fieldset>
             <legend>Death animation</legend>
-            <div className="effect-options">
-              {DEATH_EFFECTS.map((effect) => (
-                <label
-                  aria-label={effect.name}
-                  key={effect.id}
-                  className={deathEffect === effect.id ? 'selected' : ''}
-                >
-                  <input
-                    type="radio"
-                    name="death-effect"
-                    checked={deathEffect === effect.id}
-                    onChange={() => setDeathEffect(effect.id)}
-                  />
-                  <span>
-                    <strong>{effect.name}</strong>
-                    <small>{effect.description}</small>
-                  </span>
-                </label>
-              ))}
-            </div>
-            <button
-              type="button"
-              className="secondary"
-              disabled={deathEffect === 'none'}
-              onClick={() => setPreview((v) => v + 1)}
-            >
-              Preview animation
-            </button>
+            <DeathEffectPicker
+              value={deathEffect}
+              onChange={setDeathEffect}
+              avatar={avatar}
+              playerId="profile-preview"
+              disabled={busy}
+            />
           </fieldset>
           <button className="primary" disabled={busy || !lobbyName.trim()}>
             {busy ? 'Saving…' : 'Save profile'}

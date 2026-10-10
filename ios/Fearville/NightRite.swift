@@ -10,6 +10,23 @@ private let riteSymbols = ["☠", "☠ ⚔", "☾", "☽", "🕊", "🐦", "⋈"
 private let riteLiquids: [Color] = [.green, .red, .blue, .purple, .yellow, .teal, .pink, Color(red:0.16, green:0.13, blue:0.25)]
 private let riteSubstances = ["◉", "○", "✦", "∿", "ϟ", "⋊", "◎", "ᛟ"]
 private let riteLiquidNames = ["Green with eyes", "Red with bubbles", "Blue with stars", "Purple with smoke", "Yellow with lightning", "Teal with fish", "Pink with spirals", "Black ink with runes"]
+private struct NativeRiteWindowClocks: View {
+    let lockUntil: Double; let windowEnd: Double; let offset: Double
+    private func clock(_ deadline: Double, _ now: Double) -> String {
+        let seconds = max(0, Int(ceil((deadline - now) / 1000)))
+        return String(format: "%02d:%02d", seconds / 60, seconds % 60)
+    }
+    var body: some View {
+        TimelineView(.periodic(from: .now, by: 1)) { context in
+            let now = (context.date.timeIntervalSince1970 + offset) * 1000
+            HStack {
+                VStack(alignment: .leading) { Text("UNLOCKS IN").font(.caption2); Text(clock(lockUntil, now)).font(.title2.monospacedDigit()) }
+                Spacer()
+                VStack(alignment: .trailing) { Text("CLOSES IN").font(.caption2); Text(clock(windowEnd, now)).font(.title2.monospacedDigit()) }
+            }.foregroundStyle(riteGold)
+        }
+    }
+}
 
 extension HubJSON {
     var riteValue: FieldValue {
@@ -55,8 +72,6 @@ struct NativeRiteView: View {
     @State private var busy = false
     @State private var message = ""
     @State private var flash = false
-    @State private var previousPhase = ""
-    @State private var lastAction = Date.distantPast
     private var rite: HubJSON { store.riteState ?? .null }
     private var puzzle: HubJSON { rite["puzzle"] }
     var body: some View {
@@ -64,21 +79,14 @@ struct NativeRiteView: View {
             if game.host { NativeRiteSetup(game: game) }
             else if !rite.isNull && rite["enabled"].flag {
                 VStack(spacing: 16) {
+                    if game.phase == "night" && !rite["lockUntil"].isNull && !rite["windowEnd"].isNull { NativeRiteWindowClocks(lockUntil: rite["lockUntil"].number, windowEnd: rite["windowEnd"].number, offset: store.offset) }
                     Text(rite["status"].text == "complete" ? "The Rite is complete." : rite["squad"]["title"].text).font(.system(.title2, design: .serif)).tracking(2).multilineTextAlignment(.center)
                     Text("Night \(game.night) · Your vigil").font(.caption).tracking(2)
                     HStack { ForEach(rite["squad"]["members"].items) { member in Text(member["id"].text == game.me ? "You" : member["name"].text).font(.caption).padding(7).overlay(Capsule().stroke(riteGold)) } }
                     if puzzle.isNull { Text(rite["redealing"].flag ? "Your puzzle is preparing. Plan with your vigil." : "Your puzzle opens on night \(Int(rite["opensNight"].number)). Meet your vigil and plan together.") }
                     else {
-                        TimelineView(.periodic(from: .now, by: 0.1)) { context in
-                            let now = (context.date.timeIntervalSince1970 + store.offset) * 1000
-                            if puzzle["phase"].text == "lock" { Text("View only · Opens in \(max(0, Int(ceil((rite["lockUntil"].number-now)/1000)))) seconds. Make your night choices first.").font(.caption) }
-                            if !puzzle["deadline"].isNull && puzzle["phase"].text == "turn" {
-                                if puzzle["type"].text == "lab" {
-                                    ZStack {Circle().stroke(Color.gray.opacity(0.3),lineWidth:5);Circle().trim(from:0,to:min(1,max(0,(puzzle["deadline"].number-now)/8000))).stroke(riteGold,lineWidth:5).rotationEffect(.degrees(-90));Text("\(min(8,max(0,Int(ceil((puzzle["deadline"].number-now)/1000)))))").font(.title.monospacedDigit())}.frame(width:64,height:64)
-                                }else {VStack {Text("\(min(5,max(0,Int(ceil((puzzle["deadline"].number-now)/1000)))))").font(.largeTitle.monospacedDigit());ProgressView(value:min(5000,max(0,puzzle["deadline"].number-now)),total:5000).tint(riteGold)}}
-                            }
-                        }
-                        if puzzle["phase"].text == "wait" { Text("Waiting for your turn. Keep this screen open.").font(.caption) }
+                        if puzzle["phase"].text == "lock" { Text("View only · Make your night choices first.").font(.caption) }
+                        if puzzle["phase"].text == "wait" { Text("The vigil is voting. Keep this screen open.").font(.caption) }
                         if puzzle["phase"].text == "locked" { Text("Sealed for tonight. Wait for dawn.").font(.caption) }
                         if puzzle["phase"].text == "day" { Text("Plan together by day. Act at night.").font(.caption) }
                         if puzzle["phase"].text == "done" { Text("Your vigil’s puzzle is complete.").foregroundStyle(riteGold) }
@@ -96,11 +104,11 @@ struct NativeRiteView: View {
                     .offset(x: flash && !(reduceMotion || store.preferences.reducedMotion) ? 2 : 0)
             }
         }
-        .onChange(of: puzzle["phase"].text) { old, next in
-            if old == "turn" && next == "locked" && Date().timeIntervalSince(lastAction) > 1 { failed("That action could not be completed.") }
-            previousPhase = next
-        }
         .onChange(of: puzzle["ruined"].text) { old, next in if !next.isEmpty && old != next { failed("The brew is ruined. The laboratory resets to the start of tonight.") } }
+        .task(id: game.host ? game.code : "") {
+            guard game.host else { return }
+            while !Task.isCancelled { await store.refreshRite(); do { try await Task.sleep(for: .seconds(1)) } catch { return } }
+        }
     }
     private func failed(_ text: String) {
         message = text; flash = true; NativeAudio.shared.cue(error: true)
@@ -110,7 +118,7 @@ struct NativeRiteView: View {
         guard !busy else { return }; busy = true
         Task {
             defer { busy = false }
-            do { lastAction = Date(); let text = try await store.riteAction(action, fields); message = text; if text.contains("falters") || text.contains("ruined") { failed(text) } }
+            do { let text = try await store.riteAction(action, fields); message = text; if text.contains("falters") || text.contains("ruined") { failed(text) } }
             catch { failed(error.localizedDescription) }
         }
     }
@@ -143,7 +151,6 @@ private struct NativeEscape: View {
             }.aspectRatio(1,contentMode:.fit)
             Text("Get the red carriage through the gate. Slide one piece along its length.").font(.caption)
             if let b=puzzle["blocks"].items.first(where:{$0.id==selected}) { HStack { Button("←"){move(b,-1,0)};Button("→"){move(b,1,0)};Button("↑"){move(b,0,-1)};Button("↓"){move(b,0,1)} }.buttonStyle(.bordered).disabled(busy || puzzle["phase"].text != "turn") }
-            if puzzle["phase"].text=="turn" { Button("Pass"){send("ritePass",["turn":.string(puzzle["turn"].text)])}.disabled(busy) }
         }
     }
     private func move(_ b:HubJSON,_ dx:Int,_ dy:Int){guard !busy && puzzle["phase"].text == "turn" else {return};send("riteBoardMove",["block":.string(b.id),"x":.number(b["x"].number+Double(dx)),"y":.number(b["y"].number+Double(dy)),"turn":.string(puzzle["turn"].text)])}
@@ -184,7 +191,7 @@ private struct NativeLaboratory: View {
                 }
             }.padding(.vertical,10).background(Color.brown.opacity(0.10))
             Text("Tap a vial, then where to pour it. Match color and substance.").font(.caption)
-            if puzzle["phase"].text=="turn" {HStack {Button("Undo / Reset"){sheet=true};Button("Pass"){send("ritePass",["turn":.string(puzzle["turn"].text)])}}.buttonStyle(.bordered).disabled(busy)}
+            if puzzle["phase"].text=="turn" {Button("Undo / Reset"){sheet=true}.buttonStyle(.bordered).disabled(busy)}
             if !puzzle["vote"].isNull {
                 VStack {Text("A vote has been called").font(.headline);Text(puzzle["vote"]["kind"].text=="undo" ? "Undo tonight’s last pour?" : "Reset the original puzzle?")
                     TimelineView(.periodic(from:.now,by:0.1)){c in Text("\(max(0,Int(ceil(puzzle["vote"]["deadline"].number/1000-c.date.timeIntervalSince1970-store.offset))))").font(.largeTitle)}
@@ -193,7 +200,7 @@ private struct NativeLaboratory: View {
                 }.padding().overlay(RoundedRectangle(cornerRadius:14).stroke(riteGold))
             }
             if !puzzle["voteResult"].isNull {Text(puzzle["voteResult"]["passed"].flag ? "The vote passed." : "The vote failed.").font(.caption)}
-        }.confirmationDialog("Call a vote · This uses your turn",isPresented:$sheet) {Button("Undo the last pour tonight"){call("undo")}.disabled(!puzzle["canUndo"].flag);Button("Reset the original puzzle"){call("reset")};Button("Never mind",role:.cancel){}}
+        }.confirmationDialog("Call a vote",isPresented:$sheet) {Button("Undo the last pour tonight"){call("undo")}.disabled(!puzzle["canUndo"].flag);Button("Reset the original puzzle"){call("reset")};Button("Never mind",role:.cancel){}}
             .onChange(of:puzzle["turn"].text){_,_ in from="";sheet=false}
     }
     private func call(_ kind:String){send("riteLabCall",["kind":.string(kind),"turn":.string(puzzle["turn"].text)])}
@@ -203,6 +210,8 @@ private struct NativeRiddles: View {
     let puzzle:HubJSON;let busy:Bool;let send:RiteSend
     @State private var characters=[Int](repeating:-1,count:5)
     @State private var activities=[Int](repeating:-1,count:5)
+    @State private var saveTask: Task<Void,Never>?
+    @State private var lastSaved: FieldValue?
     @State private var kind="character";@State private var token = -1
     private let colors:[Color]=[.purple,.red,.blue,.yellow,.gray]
     private let characterIcons=["eye","cross.case","books.vertical","magnifyingglass","person.crop.circle.badge.xmark"]
@@ -217,9 +226,18 @@ private struct NativeRiddles: View {
                 HStack {place(3);place(4)}
             }.padding(12).background(Color(red:0.1,green:0.22,blue:0.16)).clipShape(RoundedRectangle(cornerRadius:16)).overlay(RoundedRectangle(cornerRadius:16).stroke(riteGold,lineWidth:2))
             Text("Choose a token, then a place. Tap a filled spot to clear it.").font(.caption)
-            HStack {ForEach(0..<5,id:\.self){i in Button {kind="character";token=i} label:{VStack {Image(systemName:characterIcons[i]).font(.title2).frame(width:40,height:40).foregroundStyle(colors[i]).background(colors[i].opacity(0.2),in:Circle());Text(riteCharacters[i]).font(.system(size:9))}.opacity(characters.contains(i) ? 0.45:1)}.buttonStyle(.plain).disabled(!editable)}}
+            HStack {ForEach(0..<5,id:\.self){i in
+                let location = characters.firstIndex(of:i)
+                VStack(spacing:4) {
+                    HStack(spacing:3) {
+                        Button {kind="character";token=i} label:{Image(systemName:characterIcons[i]).font(.title2).frame(width:40,height:40).foregroundStyle(colors[i]).background(colors[i].opacity(0.2),in:Circle())}.disabled(!editable)
+                        Button {if let location {choose(location,"activity")}} label:{ZStack {RoundedRectangle(cornerRadius:6).stroke(riteGold,style:StrokeStyle(dash:[4,3]));if let location, activities[location]>=0 {Image(systemName:activityIcons[activities[location]])} else {Image(systemName:"plus").font(.caption)}}.frame(width:31,height:31)}.disabled(!editable || location == nil)
+                    }
+                    Text(riteCharacters[i]).font(.system(size:9))
+                }.buttonStyle(.plain)
+            }}
             HStack {ForEach(0..<5,id:\.self){i in Button {kind="activity";token=i} label:{VStack {Image(systemName:activityIcons[i]).font(.title2);Text(riteActivities[i]).font(.system(size:9))}.frame(maxWidth:.infinity).opacity(activities.contains(i) ? 0.45:1)}.buttonStyle(.plain).disabled(!editable)}}
-            HStack {Button("Save working board"){send("riteNotes",["placements":board])}.disabled(!editable || busy);Button("Submit for tonight"){send("riteGridSubmit",["solution":board])}.disabled(!complete || busy || puzzle["phase"].text != "turn")}.buttonStyle(.bordered)
+            Button("Submit for tonight"){send("riteGridSubmit",["solution":board])}.disabled(!complete || busy || puzzle["phase"].text != "turn").buttonStyle(.bordered)
             VStack(alignment:.leading,spacing:14) {
                 Text("YOUR CLUES").font(.system(.headline,design:.serif)).tracking(2)
                 ForEach(puzzle["clues"].items.filter{!$0["forged"].flag}) {clue in HStack {Image(systemName:clue["hidden"].flag ? "lock":"sparkle");Text(clue["hidden"].flag ? "Revealed night \(Int(clue["revealNight"].number))" : clue["text"].text)}.font(.callout);Divider()}
@@ -227,8 +245,24 @@ private struct NativeRiddles: View {
                 if !forged.isEmpty {VStack(alignment:.leading){Text("EXTRA CLUES · EVIL ONLY").font(.caption);ForEach(forged){clue in Text("FORGED · "+clue["text"].text)}}.padding(12).foregroundStyle(.pink).overlay(RoundedRectangle(cornerRadius:12).stroke(Color.red,style:StrokeStyle(dash:[5,3])))}
             }.padding(14).background(Color.black.opacity(0.15),in:RoundedRectangle(cornerRadius:14))
         }.onAppear {for p in puzzle["placements"].items {let i=Int(p["location"].number);if (0..<5).contains(i){characters[i]=Int(p["character"].number);activities[i]=Int(p["activity"].number)}}}
+            .onChange(of:characters) {_,_ in scheduleSave() }
+            .onChange(of:activities) {_,_ in scheduleSave() }
+            .onChange(of:busy) {_,isBusy in if !isBusy { scheduleSave() } }
     }
     private var board:FieldValue {.array((0..<5).map{i in .object(["location":.number(Double(i)),"character":.number(Double(characters[i])),"activity":.number(Double(activities[i]))])})}
+    private func scheduleSave() {
+        guard editable else { return }
+        saveTask?.cancel()
+        let snapshot = board
+        guard snapshot != lastSaved else { return }
+        saveTask = Task {
+            try? await Task.sleep(for: .milliseconds(500))
+            if !Task.isCancelled && !busy {
+                lastSaved = snapshot
+                send("riteNotes",["placements":snapshot])
+            }
+        }
+    }
     private func choose(_ i:Int,_ spot:String){
         if token>=0 {if kind=="character" {for j in 0..<5 where characters[j]==token {characters[j] = -1};characters[i]=token}else{for j in 0..<5 where activities[j]==token {activities[j] = -1};activities[i]=token};token = -1}
         else if spot=="character" {characters[i] = -1}else{activities[i] = -1}
@@ -348,6 +382,7 @@ private struct NativeRiteSetup:View {
     private var rite:HubJSON {store.riteState ?? .null}
     var body:some View {
         VStack(alignment:.leading,spacing:14) {
+            if game.phase == "night" && !rite["lockUntil"].isNull && !rite["windowEnd"].isNull { NativeRiteWindowClocks(lockUntil: rite["lockUntil"].number, windowEnd: rite["windowEnd"].number, offset: store.offset) }
             if game.phase=="lobby" || (rite["status"].text=="dormant" && game.night<Int(rite["config"]["opensNight"].number)) {
                 Toggle("Enable Night Rite",isOn:$enabled)
                 ForEach(ritePatterns,id:\.0){kind,name in Toggle(name,isOn:Binding(get:{patterns.contains(kind)},set:{if $0 {patterns.insert(kind)}else{patterns.remove(kind)}}))}
@@ -388,8 +423,8 @@ private struct NativeHostVigil:View {
                 Text(squad["completeNight"].isNull ? "In progress":"Complete")
                 if state["type"].text=="board" || state["type"].text=="lab" {
                     Text("Par: "+state["par"].text+" · Distance: "+(state["distance"].isNull ? "Uncertified":state["distance"].text))
-                    let turn=state["turn"],cursor=Int(state["turn"]["cursor"].number)
-                    Text("Current turn: "+(cursor<turn["order"].items.count ? game.name(turn["order"].items[cursor].text):"Finished"))
+                    let turn=state["turn"]
+                    Text("Moves are open to every vigil member until the window closes.")
                     if state["type"].text=="board" {NativeEscape(puzzle:display,busy:true,send:{_,_ in})}
                     else {NativeLaboratory(puzzle:display,busy:true,send:{_,_ in})}
                     ForEach(Array(turn["log"].items.enumerated()),id:\.offset){_,l in Text(game.name(l["player"].text)+": "+l["kind"].text+" "+l["detail"].text).font(.caption)}
