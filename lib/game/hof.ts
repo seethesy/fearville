@@ -1,3 +1,4 @@
+import { refreshedInfoRoles } from '../rite/engine.ts';
 // Horrors of Fearville rules. Holy
 // Moon and Stars and Horrors of Fearville share the queued engine in hms.ts,
 // which calls in here for everything specific to this script.
@@ -100,7 +101,7 @@ function canAct(g: Game, p: Player, r: string) {
 }
 export function hofTasks(g: Game): Task[] {
   const s = hms(g);
-  const order = g.night === 1 ? HOF_FIRST : HOF_OTHER;
+  const order = g.night === 1 ? HOF_FIRST : [...refreshedInfoRoles(g), ...HOF_OTHER];
   const out: Task[] = [];
   const special = (key: string, name: string) =>
     out.push({ key, role: key, player: '', name, done: g.done.includes(key) });

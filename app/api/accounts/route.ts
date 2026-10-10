@@ -17,6 +17,8 @@ import {
   revokeApple,
 } from '@/lib/accounts/service';
 import { random } from '@/lib/accounts/oidc';
+import { savePreferences, saveProfile } from '@/lib/accounts/profile';
+import { setHandle } from '@/lib/social/friends';
 export async function GET(r: Request) {
   try {
     return json(await accountView(r));
@@ -29,12 +31,29 @@ export async function POST(r: Request) {
     checkOrigin(r);
     const a = await accountAuth(r);
     if (!a) return json({ error: 'Sign in to access your account.' }, 401);
-    const body = (await r.json()) as {
+    const raw = await r.text();
+    if (raw.length > 24000) throw Error('Request is too large.');
+    const body = JSON.parse(raw) as {
       action?: string;
       seat?: string;
       confirm?: string;
+      handle?: string;
+      settings?: unknown;
+      [key: string]: unknown;
     };
     const db = database();
+    if (body.action === 'profile') {
+      await saveProfile(a.id, body);
+      return json(await accountView(r));
+    }
+    if (body.action === 'preferences') {
+      await savePreferences(a.id, body.settings);
+      return json(await accountView(r));
+    }
+    if (body.action === 'handle') {
+      await setHandle(a.id, body.handle);
+      return json(await accountView(r));
+    }
     if (body.action === 'attach') {
       await attachSeat(r, a.id);
       return json(await accountView(r));
@@ -65,6 +84,10 @@ export async function POST(r: Request) {
       });
     }
     if (body.action === 'signout') {
+      await db
+        .prepare('UPDATE account_profiles SET last_seen=0 WHERE account=?')
+        .bind(a.id)
+        .run();
       await db
         .prepare('DELETE FROM account_sessions WHERE hash=?')
         .bind(await hash(accountToken(r)))

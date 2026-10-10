@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import AppLink from '@/components/app-link';
 export default function Privacy() {
   return (
     <main className="entry">
@@ -37,9 +37,9 @@ export default function Privacy() {
           This is an in-person game companion. It is not affiliated with Google
           or Apple.
         </p>
-        <Link href="/account" className="quiet-link">
+        <AppLink href="/account" className="quiet-link">
           Manage your account →
-        </Link>
+        </AppLink>
       </section>
     </main>
   );

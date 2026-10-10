@@ -1,6 +1,11 @@
 'use client';
 // Small client helpers shared by the social UI.
-export type PublicAccount = { id: string; name: string; handle: string | null };
+export type PublicAccount = {
+  id: string;
+  name: string;
+  handle: string | null;
+  avatar?: string;
+};
 export type TableSocial = {
   account: string | null;
   error?: string;
@@ -12,7 +17,11 @@ export type TableSocial = {
   })[];
   rating: {
     game: string | null;
-    storyteller: { name: string; handle: string | null } | null;
+    storyteller: {
+      name: string;
+      handle: string | null;
+      avatar?: string;
+    } | null;
     hostName?: string;
     canRate: boolean;
     reason: string;

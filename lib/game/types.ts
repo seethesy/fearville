@@ -673,6 +673,7 @@ export type SessionRecap = {
   votes?: Record<string, string[]>;
 };
 export type Game = {
+  rite?: import('../rite/types.ts').RiteState;
   ranked?: boolean;
   progression?: import('../social/progression.ts').ProgressionSnapshot;
   deferredNightTasks?: string[];

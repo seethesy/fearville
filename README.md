@@ -12,6 +12,7 @@ npx wrangler d1 execute site-creator-d1 --local --config wrangler.local.json --f
 npx wrangler d1 execute site-creator-d1 --local --config wrangler.local.json --file drizzle/0001_fine_komodo.sql
 npx wrangler d1 execute site-creator-d1 --local --config wrangler.local.json --file drizzle/0002_smiling_northstar.sql
 npx wrangler d1 execute site-creator-d1 --local --config wrangler.local.json --file drizzle/0003_new_elektra.sql
+npx wrangler d1 execute site-creator-d1 --local --config wrangler.local.json --file drizzle/0004_fearville_profiles.sql
 npm run dev
 ```
 
@@ -108,7 +109,7 @@ Signed-in players get a public handle, a friends list, table invitations, a Stor
 - **Rating the Storyteller.** After a game ends, seated players whose seat is saved to an account can rate the Storyteller 1–5 stars with an optional comment (Game flow tab). Ratings are credited only when the Storyteller's seat is linked to an account, can be revised for 14 days, and count once per player per game. The Storyteller sees stars and comments on `/stats`; comments are never shown to anyone else. Friends see the average.
 - **Records.** `/stats` shows progression, character and script results, team results, MVP awards, ranked Elo, and Storyteller feedback. Profiles honor each account’s privacy settings. Neutral Travelers have personal win conditions and their games must be casual.
 - **Deletion.** Deleting an account removes its handle, friendships, ratings given and received, invitations, and seat links. Finished games remain in other players' records with that seat no longer linked to any account.
-- **API.** `GET/POST /api/social` (actions: `handle`, `request`, `accept`, `dismiss`, `remove`, `block`, `unblock`, `invite`, `acceptInvite`, `declineInvite`, `revokeInvite`, `rate`), `GET /api/social/profile?handle=`, and `GET /api/social/table?code=`. All accept the same account and seat credentials as the existing routes, so the iOS client can adopt them; the SwiftUI app has not been updated for these screens yet.
+- **API.** `GET/POST /api/social` (actions: `handle`, `request`, `accept`, `dismiss`, `remove`, `block`, `unblock`, `invite`, `acceptInvite`, `declineInvite`, `revokeInvite`, `rate`), `GET /api/social/profile?handle=`, and `GET /api/social/table?code=`. All accept the same account and seat credentials as the existing routes, and are used by the SwiftUI Play, Social, Rules, and Account screens.
 
 ## iOS and TestFlight
 
@@ -137,3 +138,18 @@ Tables saved with a retired or missing script identifier are rejected with a cle
 ## Horrors of Fearville
 
 New tables use this script automatically. Select Holy Moon and Stars with **Change role script** before starting. Horrors uses Fear, Visit, Save, Learn, Declare and Neighbor as defined in the glossary; the Drunk follows an out-of-play shown Villager. Its Sphinx glimpse is private and closes when the night choice window ends. Doctor saves, hidden Wraith visits, carried Monster fear, neutral Traveler goals, and public declarations use the shared queued engine.
+
+
+## Account hub and responsive navigation
+
+The public website separates sign-in from joining and includes Play, What is Fearville?, Rules, and Scripts sections. Signed-in players start on Play. Mobile web and iOS use an icon-only bottom bar; desktop uses a top navigation bar. Standard, Quickplay, and Rated entry modes are disabled until available. Custom opens account-only lobby creation and sandbox; guests can join using a session code. New codes are six digits; existing six-letter codes still work.
+
+Metal Mania is bundled with its OFL license for both web and iOS. Body copy and controls retain a readable system/Manrope font. The supplied Fearville logo is the favicon and app branding. Web document navigation uses `AppLink` (native anchors) so ordinary clicks and new-tab navigation follow the same route.
+
+Profile supports a unique, case-insensitive username (3–20 letters, digits, underscores; 30-day cooldown), a nonunique default lobby name, an uploaded image or preset avatar, and an independent death animation. Defaults apply on join and invitation acceptance; explicit lobby names sent by older clients still override the default. If a preset is taken, only the arriving player receives a random unused preset for that lobby. Photos may repeat. Settings include music/SFX levels, background muting, reduced motion, larger text, online visibility, and social privacy. The music bed and sound cue are synthesized locally; music starts muted and browser playback waits for a gesture.
+
+Apply **0004_fearville_profiles.sql** before running the updated server against an existing database. It adds profile preferences, the username-change timestamp, friend presence, and durable participant-only recap snapshots. Older games without saved detail retain their statistics and show an explanatory message. New recaps survive leaving or closing a lobby. Presence is refreshed while the app is active and expires after 90 seconds; hiding online status is respected server-side.
+
+Local verification: `node --experimental-strip-types --test "tests/*.test.ts"`, `node tests/hub-integration.mjs`, and the existing integration scripts. Integration fixtures only target localhost and local D1. `host-fixture.mjs` supplies isolated storyteller accounts for the game-flow tests and cleans them up on exit. Actual Google/Apple sign-in still requires the provider configuration in ACCOUNT-SETUP.md. Native SwiftUI compilation and simulator/device validation require Xcode on macOS.
+
+Overhaul verification: 133 unit tests and all 14 HTTP integration suites passed. TypeScript, lint for changed application/test sources, and the production web build passed. Browser checks covered desktop and 390px mobile navigation, profile save/reload, settings save/reload, both rule scripts, saved-game recaps, and lobby return/close controls. All seven Swift files passed syntax parsing and the bundled font registration was validated; these checks do not replace an Xcode build. Full-repository lint still reports the 19 existing starter-component findings.

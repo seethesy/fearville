@@ -1,3 +1,4 @@
+import { hostFixtureFetch } from './host-fixture.mjs';
 // Horrors of Fearville over HTTP: an 18-player table, script selection,
 // private night choices (the Wraith's hidden visit), the Sphinx's glimpse,
 // Storyteller resolution, dawn, and a public Vigilante declaration.
@@ -6,7 +7,7 @@ import assert from 'node:assert/strict';
 import { claimSeats } from './claim-seats.mjs';
 const base = process.env.CT_TEST_URL || 'http://localhost:3000';
 async function call(path, token, body) {
-  const r = await fetch(base + path, {
+  const r = await hostFixtureFetch(base + path, {
     method: body ? 'POST' : 'GET',
     headers: {
       'Content-Type': 'application/json',

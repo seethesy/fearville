@@ -1,13 +1,16 @@
 'use client';
+import AppLink from '@/components/app-link';
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
+import type { ProfileDefaults } from '@/lib/accounts/preferences';
 export type AccountView = {
   account: {
     id: string;
     name: string;
     email: string;
     handle: string | null;
+    handleChangedAt: number | null;
   } | null;
+  profile?: ProfileDefaults;
   providers: { google: boolean; apple: boolean };
   connections: string[];
   seats: {
@@ -61,7 +64,7 @@ export function AccountPanel({ compact = false }: { compact?: boolean }) {
   return (
     <div className="account-panel">
       <p className="eyebrow">
-        {state?.account ? 'YOUR ACCOUNT' : 'KEEP YOUR SEAT'}
+        {state?.account ? 'YOUR ACCOUNT' : 'SIGN IN OR CREATE AN ACCOUNT'}
       </p>
       {state?.account ? (
         <>
@@ -72,10 +75,10 @@ export function AccountPanel({ compact = false }: { compact?: boolean }) {
             )}
           </p>
           <div className="social-links">
-            <Link href="/account" className="quiet-link">
+            <AppLink href="/account" className="quiet-link">
               Account & saved games →
-            </Link>
-            <Link href="/friends" className="quiet-link">
+            </AppLink>
+            <AppLink href="/friends" className="quiet-link">
               Friends
               {state.pending.invites + state.pending.requests > 0 && (
                 <span className="count">
@@ -83,19 +86,19 @@ export function AccountPanel({ compact = false }: { compact?: boolean }) {
                 </span>
               )}{' '}
               →
-            </Link>
-            <Link href="/stats" className="quiet-link">
+            </AppLink>
+            <AppLink href="/stats" className="quiet-link">
               Your record →
-            </Link>
+            </AppLink>
           </div>
           {state.pending.invites > 0 && (
             <p className="invite-callout">
-              <Link href="/friends">
+              <AppLink href="/friends">
                 {state.pending.invites === 1
                   ? 'A friend invited you to a table.'
                   : `${state.pending.invites} friends invited you to tables.`}{' '}
                 Join →
-              </Link>
+              </AppLink>
             </p>
           )}
         </>

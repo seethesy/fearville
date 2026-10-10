@@ -1,8 +1,9 @@
+import { hostFixtureFetch } from './host-fixture.mjs';
 import assert from 'node:assert/strict';
 import { AVATARS } from '../lib/game/avatars.ts';
 const base = process.env.CT_TEST_URL || 'http://localhost:3000';
 async function call(path, token, body) {
-  const r = await fetch(base + path, {
+  const r = await hostFixtureFetch(base + path, {
     method: body ? 'POST' : 'GET',
     headers: {
       'Content-Type': 'application/json',

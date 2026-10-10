@@ -14,12 +14,14 @@ function setup() {
   ];
   return g;
 }
-void test('players can rename only themselves and names remain unique', () => {
+void test('players rename their own seats and lobby names may repeat', () => {
   const g = setup();
   const actor = { id: g.players[0].id, host: false };
   renameMember(g, actor, ' New Alice ', 1);
   assert.equal(g.players[0].name, 'New Alice');
-  assert.throws(() => renameMember(g, actor, 'bob', 2), /taken/);
+  renameMember(g, actor, 'bob', 2);
+  assert.equal(g.players[0].name, 'bob');
+  assert.equal(g.players[1].name, 'Bob');
   assert.throws(() => renameMember(g, actor, ' ', 2), /1–32/);
   renameMember(g, host, 'New Host', 2);
   assert.equal(g.hostName, 'New Host');

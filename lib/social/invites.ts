@@ -1,8 +1,9 @@
 import { database } from '@/db';
+import { profileDefaults } from '@/lib/accounts/profile';
 import { joinSession } from '@/lib/game/join';
 import { read, hash, tokenOf } from '@/lib/game/store';
 import { requireThat } from '@/lib/game/engine';
-import { uuid } from '@/lib/game/types';
+import { uuid, MAX_PLAYERS } from '@/lib/game/types';
 import { areFriends, accountByID, type PublicAccount } from './friends';
 import { text } from './derive';
 import { privacyFor } from './privacy';
@@ -35,7 +36,7 @@ export async function sendInvite(
   now: number,
 ) {
   const code = text(codeValue, 10).toUpperCase();
-  requireThat(/^[A-Z]{6}$/.test(code), 'Choose a session.');
+  requireThat(/^(?:[0-9]{6}|[A-Z]{6})$/.test(code), 'Choose a session.');
   requireThat(
     typeof recipient === 'string' && recipient.length < 100,
     'Choose a friend.',
@@ -55,7 +56,7 @@ export async function sendInvite(
     'This friend has disabled game invitations.',
   );
   requireThat(game.phase === 'lobby', 'This game has already started.');
-  requireThat(game.players.length < 15, 'This table is full.');
+  requireThat(game.players.length < MAX_PLAYERS, 'This table is full.');
   const db = database();
   const seated = await db
     .prepare('SELECT id FROM account_seats WHERE account=? AND code=?')
@@ -149,16 +150,23 @@ export async function acceptInvite(
     'Game invitations are disabled.',
   );
   const self = await accountByID(me);
-  const name = text(nameValue, 32) || text(self?.name, 32) || 'Player';
+  const defaults = await profileDefaults(me, self?.name || 'Player');
+  const name = text(nameValue, 32) || defaults.lobbyName || 'Player';
   requireThat(name, 'Enter your name.');
   const token = uuid() + uuid();
   const tokenHash = await hash(token);
-  const joined = await joinSession(invite.code, name, tokenHash, {
-    id: invite.id,
-    account: me,
-    sender: invite.sender,
-    now,
-  });
+  const joined = await joinSession(
+    invite.code,
+    name,
+    tokenHash,
+    {
+      id: invite.id,
+      account: me,
+      sender: invite.sender,
+      now,
+    },
+    defaults,
+  );
   requireThat(joined, 'The table changed. Please try again.');
   return { code: invite.code, token };
 }

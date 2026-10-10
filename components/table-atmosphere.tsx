@@ -3,13 +3,17 @@ import {
   createContext,
   useContext,
   useState,
+  useEffect,
   type ReactNode,
   type CSSProperties,
 } from 'react';
+import { useAccount } from './hub/account-context';
+import { ambientAudio } from './hub/audio';
 
 const EffectsContext = createContext(true);
 export function useCosmeticMotion() {
-  return useContext(EffectsContext);
+  const { preferences } = useAccount();
+  return useContext(EffectsContext) && !preferences.reducedMotion;
 }
 
 export function TableAtmosphere({
@@ -20,9 +24,21 @@ export function TableAtmosphere({
   children: ReactNode;
 }) {
   const [enabled, setEnabled] = useState(true);
+  const { preferences } = useAccount();
+  const motion = enabled && !preferences.reducedMotion;
+  useEffect(() => {
+    const start = () => ambientAudio(true);
+    document.addEventListener('pointerdown', start, { once: true });
+    document.addEventListener('keydown', start, { once: true });
+    return () => {
+      document.removeEventListener('pointerdown', start);
+      document.removeEventListener('keydown', start);
+      ambientAudio(false);
+    };
+  }, []);
   return (
-    <EffectsContext.Provider value={enabled}>
-      <div className={`cosmetic-table ${enabled ? '' : 'cosmetic-motion-off'}`}>
+    <EffectsContext.Provider value={motion}>
+      <div className={`cosmetic-table ${motion ? '' : 'cosmetic-motion-off'}`}>
         <div
           className={`table-atmosphere ${night ? 'atmosphere-night' : 'atmosphere-day'}`}
           aria-hidden="true"

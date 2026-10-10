@@ -1,5 +1,6 @@
 import { database } from '@/db';
 import { accountAuth, attachMember } from '@/lib/accounts/service';
+import { profileDefaults } from '@/lib/accounts/profile';
 import { newGame, uuid } from '@/lib/game/types';
 import { requireThat } from '@/lib/game/engine';
 import { renameMember, removeMember } from '@/lib/game/membership';
@@ -134,6 +135,14 @@ export async function POST(r: Request) {
       return json({ error: 'The table changed. Please try again.' }, 409);
     }
     const account = await accountAuth(r);
+    if (
+      (body.action === 'create' || body.action === 'createSandbox') &&
+      !account
+    )
+      return json(
+        { error: 'Sign in to create a lobby or open the sandbox.' },
+        401,
+      );
     if (body.action === 'restore') {
       requireThat(
         typeof body.recoveryKey === 'string' && body.recoveryKey.length < 200,
@@ -180,13 +189,16 @@ export async function POST(r: Request) {
         );
       }
     }
-    const name = String(body.name || '')
+    const defaults = account
+      ? await profileDefaults(account.id, account.name)
+      : undefined;
+    const name = String(body.name || defaults?.lobbyName || '')
       .trim()
       .slice(0, 32);
     requireThat(name, 'Enter your name.');
     if (body.action === 'create' || body.action === 'createSandbox') {
       await limited(r, 'create', 5);
-      const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+      const alphabet = '0123456789';
       for (let attempt = 0; attempt < 5; attempt++) {
         const bytes = crypto.getRandomValues(new Uint8Array(6));
         const code = Array.from(
@@ -221,7 +233,32 @@ export async function POST(r: Request) {
     const code = String(body.code || '')
       .trim()
       .toUpperCase();
-    if (await joinSession(code, name, tokenHash)) {
+    if (account) {
+      const saved = await db
+        .prepare(
+          'SELECT player,host FROM account_seats WHERE account=? AND code=?',
+        )
+        .bind(account.id, code)
+        .first<{ player: string; host: number }>();
+      if (saved) {
+        const { game } = await read(code);
+        if (
+          saved.host ||
+          game.players.some((p) => p.id === saved.player && !p.departed)
+        ) {
+          await db
+            .prepare(
+              'INSERT INTO members(token_hash,code,player,host,expires) VALUES (?,?,?,?,?)',
+            )
+            .bind(tokenHash, code, saved.player, saved.host, memberExpiry())
+            .run();
+          return json({ code, token, resumed: true }, 200, {
+            'Set-Cookie': cookie(r, token),
+          });
+        }
+      }
+    }
+    if (await joinSession(code, name, tokenHash, undefined, defaults)) {
       if (account) await attachMember(tokenHash, account.id);
       return json({ code, token }, 200, { 'Set-Cookie': cookie(r, token) });
     }

@@ -1,5 +1,8 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
+import './hub.css';
+import './rite.css';
+import { AccountProvider } from '@/components/hub/account-context';
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
@@ -8,6 +11,7 @@ export const viewport: Viewport = {
 };
 export const metadata: Metadata = {
   title: 'Fearville',
+  icons: { icon: '/fearville-logo.png', apple: '/fearville-logo.png' },
   description:
     'An in-person Horrors of Fearville companion for Storytellers and players.',
 };
@@ -16,7 +20,9 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" className="dark">
-      <body>{children}</body>
+      <body>
+        <AccountProvider>{children}</AccountProvider>
+      </body>
     </html>
   );
 }

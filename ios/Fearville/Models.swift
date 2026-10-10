@@ -2,18 +2,20 @@ import Foundation
 
 struct Choice: Decodable, Hashable { let value: String; let label: String }
 enum FieldValue: Codable, Hashable {
-    case string(String), number(Double), bool(Bool)
+    case string(String), number(Double), bool(Bool), object([String: FieldValue]), array([FieldValue])
     init(from decoder: Decoder) throws {
         let c = try decoder.singleValueContainer()
         if let v = try? c.decode(Bool.self) { self = .bool(v) }
         else if let v = try? c.decode(Double.self) { self = .number(v) }
+        else if let v = try? c.decode([String: FieldValue].self) { self = .object(v) }
+        else if let v = try? c.decode([FieldValue].self) { self = .array(v) }
         else { self = .string(try c.decode(String.self)) }
     }
     func encode(to encoder: Encoder) throws {
         var c = encoder.singleValueContainer()
-        switch self { case .string(let s): try c.encode(s); case .number(let n): try c.encode(n); case .bool(let b): try c.encode(b) }
+        switch self { case .string(let s): try c.encode(s); case .number(let n): try c.encode(n); case .bool(let b): try c.encode(b); case .object(let o): try c.encode(o); case .array(let a): try c.encode(a) }
     }
-    var text: String { switch self { case .string(let s): return s; case .number(let n): return n.rounded() == n ? String(Int(n)) : String(n); case .bool(let b): return String(b) } }
+    var text: String { switch self { case .string(let s): return s; case .number(let n): return n.rounded() == n ? String(Int(n)) : String(n); case .bool(let b): return String(b); case .object, .array: return "" } }
     var flag: Bool { if case .bool(let b) = self { return b }; return false }
 }
 struct ActionField: Decodable, Identifiable {
@@ -25,7 +27,7 @@ struct GameAction: Decodable, Identifiable {
     var id: String { action + title }
 }
 struct Seat: Decodable, Identifiable {
-    let id: String; let name: String; let seat: Int; let alive: Bool; let ghost: Bool; let role: String?; let shown: String?; let notes: String?; let poisoned: Bool?; let feared: Bool?; let protected: Bool?; let used: Bool?; let nominated: Bool; let hasNominated: Bool
+    let id: String; let name: String; let seat: Int; let alive: Bool; let ghost: Bool; let role: String?; let shown: String?; let notes: String?; let poisoned: Bool?; let feared: Bool?; let protected: Bool?; let used: Bool?; let nominated: Bool; let hasNominated: Bool; let avatar: String?; let deathEffect: String?; let publicAlive: Bool?
 }
 struct Character: Decodable { let name: String; let description: String; let alignment: String }
 struct NightTask: Decodable, Identifiable { let key: String; let role: String; let player: String; let name: String; let done: Bool; var id: String { key } }
@@ -46,10 +48,10 @@ struct SessionReply: Decodable { let code: String; let token: String }
 struct ActionReply: Decodable { let summary: String; let version: Int?; let game: GameState? }
 struct APIError: Decodable { let error: String }
 struct ScriptRole: Decodable, Identifiable { let id: String; let name: String; let team: String; let description: String; let script: String? }
-struct AccountProfile: Decodable { let id: String; let name: String; let email: String }
+struct AccountProfile: Decodable { let id: String; let name: String; let email: String; let handle: String?; let handleChangedAt: Double? }
 struct ProviderAvailability: Decodable { let google: Bool; let apple: Bool }
 struct SavedSeat: Decodable, Identifiable { let id: String; let code: String; let player: String; let host: Int; let phase: String; let hostName: String }
-struct AccountState: Decodable { let account: AccountProfile?; let providers: ProviderAvailability; let connections: [String]; let seats: [SavedSeat] }
+struct AccountState: Decodable { let account: AccountProfile?; let providers: ProviderAvailability; let connections: [String]; let seats: [SavedSeat]; let profile: NativeProfileDefaults? }
 struct SignInStart: Decodable { let url: String }
 struct SignInExchange: Decodable { let accountToken: String }
 struct OKReply: Decodable { let ok: Bool }
