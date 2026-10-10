@@ -1,19 +1,29 @@
 import { database } from '@/db';
 import { normalizeHandle } from './derive';
 import { privacyFor } from './privacy';
+import { HANDLE_COOLDOWN } from '@/lib/accounts/preferences';
 
-export type PublicAccount = { id: string; name: string; handle: string | null };
+export type PublicAccount = {
+  id: string;
+  name: string;
+  handle: string | null;
+  avatar?: string;
+};
 type Relation = { requester: string; addressee: string; status: string };
 
 export async function accountByHandle(handle: string) {
   return database()
-    .prepare('SELECT id,name,handle FROM accounts WHERE handle=?')
+    .prepare(
+      'SELECT a.id,a.name,a.handle,p.avatar FROM accounts a LEFT JOIN account_profiles p ON p.account=a.id WHERE a.handle=?',
+    )
     .bind(handle)
     .first<PublicAccount>();
 }
 export async function accountByID(id: string) {
   return database()
-    .prepare('SELECT id,name,handle FROM accounts WHERE id=?')
+    .prepare(
+      'SELECT a.id,a.name,a.handle,p.avatar FROM accounts a LEFT JOIN account_profiles p ON p.account=a.id WHERE a.id=?',
+    )
     .bind(id)
     .first<PublicAccount>();
 }
@@ -54,10 +64,40 @@ export async function setHandle(account: string, value: unknown) {
     .bind(handle, account)
     .first();
   if (taken) throw Error('That handle is already taken.');
-  await db
-    .prepare('UPDATE accounts SET handle=? WHERE id=?')
-    .bind(handle, account)
-    .run();
+  const current = await db
+    .prepare(
+      'SELECT handle,handle_changed_at AS changed FROM accounts WHERE id=?',
+    )
+    .bind(account)
+    .first<{
+      handle: string | null;
+      avatar?: string;
+      changed: number | null;
+    }>();
+  if (current?.handle === handle) return handle;
+  const now = Date.now();
+  if (current?.changed && current.changed + HANDLE_COOLDOWN > now)
+    throw Error(
+      'You can change your username again on ' +
+        new Date(current.changed + HANDLE_COOLDOWN).toISOString().slice(0, 10) +
+        '.',
+    );
+  try {
+    const result = await db
+      .prepare(
+        'UPDATE accounts SET handle=?,handle_changed_at=? WHERE id=? AND (handle_changed_at IS NULL OR handle_changed_at<=?)',
+      )
+      .bind(handle, now, account, now - HANDLE_COOLDOWN)
+      .run();
+    if (!result.meta.changes)
+      throw Error(
+        'Your username was just changed. Please refresh your profile.',
+      );
+  } catch (error) {
+    if (error instanceof Error && /UNIQUE/i.test(error.message))
+      throw Error('That username is already taken.');
+    throw error;
+  }
   return handle;
 }
 

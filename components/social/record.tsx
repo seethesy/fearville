@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { load, when } from './api';
 import { SCRIPTS } from '@/lib/game/types';
+import { HistoryRecap } from '@/components/hub/history-recap';
 import type { Stats, RecentGame, Breakdown } from '@/lib/social/stats';
 export type { Stats, RecentGame } from '@/lib/social/stats';
 const names: Record<string, string> = {
@@ -292,6 +293,7 @@ function History({ games, handle }: { games: RecentGame[]; handle?: string }) {
                 </small>
               )}
             </div>
+            {!handle && <HistoryRecap id={g.id} />}
             <span
               className={
                 'status-pill ' + (g.storyteller ? '' : g.won ? 'win' : 'loss')

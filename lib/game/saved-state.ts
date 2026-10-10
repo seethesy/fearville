@@ -4,6 +4,7 @@ import { SCRIPTS, type Game, type Player, type SessionRecap } from './types.ts';
 // Keep them intact in storage; changing a live table's rules would be unsafe.
 const GAME_KEYS = new Set<string>(
   Object.keys({
+    rite: true,
     ranked: true,
     progression: true,
     deferredNightTasks: true,

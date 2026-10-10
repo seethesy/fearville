@@ -13,12 +13,6 @@ export function renameMember(
     name.length > 0 && name.length <= 32,
     'Use a name of 1–32 characters.',
   );
-  requireThat(
-    !g.players.some(
-      (p) => p.id !== actor.id && p.name.toLowerCase() === name.toLowerCase(),
-    ),
-    'That name is already taken.',
-  );
   if (actor.host) g.hostName = name;
   else {
     const p = g.players.find((p) => p.id === actor.id && !p.departed);

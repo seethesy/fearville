@@ -17,6 +17,8 @@ export type Friend = PublicAccount & {
   since: number;
   together: number;
   lastPlayed: number | null;
+  online: boolean;
+  avatar?: string;
 };
 
 // The signed-in player's whole social picture, for the Friends page.
@@ -31,9 +33,17 @@ export async function socialView(me: string, now: number) {
       receivedRatings(me),
       privacyFor(me),
     ]);
+  const presence = await database()
+    .prepare(
+      "SELECT p.account,p.avatar,CASE WHEN p.online_visible=1 AND p.last_seen>? THEN 1 ELSE 0 END AS online FROM account_profiles p WHERE p.account IN (SELECT CASE WHEN requester=? THEN addressee ELSE requester END FROM friendships WHERE status='accepted' AND (requester=? OR addressee=?))",
+    )
+    .bind(now - 90000, me, me, me)
+    .all<{ account: string; avatar: string; online: number }>();
   return {
     friends: lists.friends.map<Friend>((f) => ({
       ...f,
+      avatar: presence.results.find((p) => p.account === f.id)?.avatar,
+      online: !!presence.results.find((p) => p.account === f.id)?.online,
       together: together.get(f.id)?.games || 0,
       lastPlayed: together.get(f.id)?.last ?? null,
     })),

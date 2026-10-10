@@ -42,6 +42,7 @@ export function returnToLobby(g: Game, now: number) {
   fresh.sandbox = g.sandbox;
   fresh.script = g.script;
   fresh.ranked = g.ranked;
+  if(g.rite) fresh.rite = {...structuredClone(g.rite),status:'dormant',squads:[],prepared:undefined,preparing:undefined,pendingRedeal:undefined,resolvedNight:0,completedNight:undefined,infoNight:undefined,rewardApplied:undefined,refreshPlayers:undefined,lockUntil:undefined,windowEnd:undefined,seed:crypto.randomUUID(),epoch:crypto.randomUUID()};
   fresh.timers = { ...g.timers };
   fresh.recaps = [...(g.recaps ?? []), structuredClone(recap)];
   fresh.sessionNumber = (recap.number ?? fresh.recaps.length) + 1;

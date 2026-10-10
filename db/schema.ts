@@ -42,6 +42,7 @@ export const accounts = sqliteTable(
     created: integer('created').notNull(),
     // Public, unique, lowercase handle chosen by the player. Null until set.
     handle: text('handle'),
+    handleChangedAt: integer('handle_changed_at'),
   },
   (t) => [uniqueIndex('idx_accounts_handle').on(t.handle)],
 );
@@ -166,6 +167,7 @@ export const games = sqliteTable(
     script: text('script').notNull().default('unknown'),
     ranked: integer('ranked').notNull().default(0),
     hostXp: integer('host_xp').notNull().default(0),
+    recap: text('recap'),
     code: text('code').notNull(),
     hostAccount: text('host_account').references(() => accounts.id, {
       onDelete: 'set null',
@@ -248,6 +250,17 @@ export const accountSettings = sqliteTable('account_settings', {
   friendRequests: text('friend_requests').notNull().default('everyone'),
   gameInvites: text('game_invites').notNull().default('friends'),
 });
+export const accountProfiles = sqliteTable('account_profiles', {
+  account: text('account')
+    .primaryKey()
+    .references(() => accounts.id, { onDelete: 'cascade' }),
+  lobbyName: text('lobby_name').notNull().default(''),
+  avatar: text('avatar').notNull().default('ghost'),
+  deathEffect: text('death_effect').notNull().default('spirit'),
+  settings: text('settings').notNull().default('{}'),
+  lastSeen: integer('last_seen').notNull().default(0),
+  onlineVisible: integer('online_visible').notNull().default(1),
+});
 // Prevent one account from starting two rated matches with the same rating.
 export const rankedSeats = sqliteTable(
   'ranked_seats',
@@ -261,4 +274,19 @@ export const rankedSeats = sqliteTable(
     game: text('game').notNull(),
   },
   (t) => [index('idx_ranked_seats_code').on(t.code)],
+);
+
+// Tutorials a signed-in account has finished or skipped (FEAR-16). Guests are
+// never stored. status: completed | skipped
+export const tutorialProgress = sqliteTable(
+  'tutorial_progress',
+  {
+    account: text('account')
+      .notNull()
+      .references(() => accounts.id, { onDelete: 'cascade' }),
+    tutorial: text('tutorial').notNull(),
+    status: text('status').notNull(),
+    updated: integer('updated').notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.account, t.tutorial] })],
 );

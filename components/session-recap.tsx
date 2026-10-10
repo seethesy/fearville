@@ -4,6 +4,7 @@ import { ChevronRight, Crown } from 'lucide-react';
 import type { GameView } from '@/lib/game/view';
 import { ALL_ROLES, SCRIPTS, type Team } from '@/lib/game/types';
 import { PlayerAvatar } from './player-avatar';
+import { TutorialHold } from './tutorials/provider';
 import {
   Dialog,
   DialogContent,
@@ -121,6 +122,8 @@ export function GameEndPopup({
         className="action-dialog mvp-dialog"
         showCloseButton={false}
       >
+        {/* Mounted only while open: holds tutorial popups. */}
+        <TutorialHold name="game-end" active />
         <DialogHeader>
           <div className="recap-heading">
             <DialogTitle>{recap.winner} wins</DialogTitle>
@@ -209,7 +212,7 @@ export function GameEndPopup({
             disabled={busy}
             onClick={() => void act('leaveLobby')}
           >
-            Leave Lobby
+            {game.host ? 'Return home (keep lobby)' : 'Leave lobby'}
           </button>
           <button
             className="primary"
@@ -321,7 +324,13 @@ function PlayerDetails({
   );
 }
 
-export function SessionRecaps({ game }: { game: GameView }) {
+export function SessionRecaps({
+  game,
+  expanded = false,
+}: {
+  game: Pick<GameView, 'recaps' | 'me' | 'host'>;
+  expanded?: boolean;
+}) {
   const [selected, setSelected] = useState<{
     recap: string;
     player: string;
@@ -339,7 +348,11 @@ export function SessionRecaps({ game }: { game: GameView }) {
       {game.recaps.map((r, index) => {
         const mine = r.players.find((p) => p.id === game.me);
         return (
-          <details className="panel session-recap" key={r.id}>
+          <details
+            className="panel session-recap"
+            key={r.id}
+            open={expanded || undefined}
+          >
             <summary>
               <ChevronRight className="recap-arrow" size={20} />
               <strong>Session {r.number ?? index + 1}</strong>

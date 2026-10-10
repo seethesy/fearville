@@ -150,9 +150,8 @@ export function TableMembership({
         ))}
       {!cosmetic && (
         <p className="hint">
-          Leaving saves your seat. Return from the home page on this device,
-          your saved account, or with your recovery key. Only Storyteller
-          removal ends access.
+          Return home keeps your seat and recovery key. Leave lobby removes your
+          seat and access. During a game, Return home lets you rejoin later.
         </p>
       )}
       <AlertDialog

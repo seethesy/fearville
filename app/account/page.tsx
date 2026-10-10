@@ -1,8 +1,21 @@
 'use client';
-import { useCallback, useEffect, useState } from 'react';
-import Link from 'next/link';
-import { AccountPanel, type AccountView } from '@/components/account-panel';
-import { PrivacySettings } from '@/components/social/privacy-settings';
+import AppLink from '@/components/app-link';
+import { useEffect, useState } from 'react';
+import { HubShell } from '@/components/hub/shell';
+import { AccountPanel } from '@/components/account-panel';
+import { useAccount, accountAction } from '@/components/hub/account-context';
+import { ProfileEditor } from '@/components/hub/profile-editor';
+import { SettingsPanel } from '@/components/hub/settings';
+import { useSectionTutorial } from '@/components/tutorials/provider';
+import { ResetTutorials } from '@/components/tutorials/help-menu';
+import {
+  Record,
+  RecentGames,
+  stars,
+  type Stats,
+  type RecentGame,
+} from '@/components/social/record';
+import { load, when } from '@/components/social/api';
 import {
   AlertDialog,
   AlertDialogContent,
@@ -12,165 +25,242 @@ import {
   AlertDialogFooter,
   AlertDialogCancel,
 } from '@/components/ui/alert-dialog';
+type View = {
+  stats: Stats;
+  recent: RecentGame[];
+  ratings: {
+    stars: number;
+    comment: string;
+    created: number;
+    code: string;
+    players: number;
+  }[];
+};
 export default function Account() {
-  const [state, setState] = useState<AccountView | null>(null),
+  const { state, refresh, error: accountError } = useAccount();
+  const [view, setView] = useState<View | null>(null),
+    [tab, setTab] = useState('profile'),
     [error, setError] = useState(''),
     [busy, setBusy] = useState(false),
     [deleting, setDeleting] = useState(false),
     [confirm, setConfirm] = useState('');
-  const load = useCallback(async () => {
-    try {
-      const r = await fetch('/api/accounts');
-      if (!r.ok) throw Error('Could not load your account.');
-      setState((await r.json()) as AccountView);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Connection failed.');
-    }
-  }, []);
+  // /stats opens the History tab of this page.
+  useSectionTutorial(tab === 'history' ? 'stats' : 'account');
   useEffect(() => {
     const timer = setTimeout(() => {
-      void load();
-      const reason = new URLSearchParams(location.search).get('error');
-      if (reason) {
-        setError(reason);
-        history.replaceState(null, '', '/account');
-      }
+      const query = new URLSearchParams(location.search);
+      setTab(
+        query.get('tab') === 'history'
+          ? 'history'
+          : query.get('tab') === 'settings'
+            ? 'settings'
+            : 'profile',
+      );
+      if (query.get('error')) setError(query.get('error')!);
     }, 0);
     return () => clearTimeout(timer);
-  }, [load]);
-  async function performAction(operation: string, seat?: string) {
+  }, []);
+  const accountId = state?.account?.id;
+  useEffect(() => {
+    let live = true;
+    if (accountId)
+      void load<View>('/api/social')
+        .then((data) => {
+          if (live) setView(data);
+        })
+        .catch((e) => {
+          if (live) setError(e.message);
+        });
+    return () => {
+      live = false;
+    };
+  }, [accountId]);
+  async function act(action: string, seat?: string) {
     setBusy(true);
     setError('');
     try {
-      const r = await fetch('/api/accounts', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: operation, seat, confirm }),
-      });
-      const d = (await r.json()) as { error?: string };
-      if (!r.ok) throw Error(d.error || 'Account update failed.');
-      if (operation === 'resume') location.assign('/table');
-      else if (operation === 'signout' || operation === 'delete')
+      await accountAction({ action, seat, confirm });
+      if (action === 'resume') location.assign('/table');
+      else if (action === 'signout' || action === 'delete')
         location.assign('/');
-      else await load();
+      else await refresh();
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Request failed.');
+      setError(e instanceof Error ? e.message : 'Unable to update account.');
     } finally {
       setBusy(false);
     }
   }
+  function selectTab(value: string) {
+    setTab(value);
+    history.replaceState(null, '', '/account?tab=' + value);
+  }
   return (
-    <main className="entry">
-      <header className="brand">
-        <Link className="brand-mark" href="/">
-          CT
-        </Link>
-        <span>FEARVILLE</span>
-      </header>
-      <div className="account-layout">
+    <HubShell
+      active="Account"
+      title={
+        tab === 'settings' ? 'Your preferences.' : 'Your place in the town.'
+      }
+      settings
+    >
+      <fieldset className="account-tabs" aria-label="Account sections">
+        <button
+          className={tab === 'profile' ? 'active' : ''}
+          onClick={() => selectTab('profile')}
+        >
+          Profile
+        </button>
+        <button
+          className={tab === 'history' ? 'active' : ''}
+          onClick={() => selectTab('history')}
+        >
+          History
+        </button>
+        {tab === 'settings' && (
+          <button className="active" onClick={() => selectTab('settings')}>
+            Settings
+          </button>
+        )}
+      </fieldset>
+      {(error || accountError) && (
+        <p className="error" role="alert">
+          {error || accountError}
+        </p>
+      )}
+      {!state ? (
+        <output>Loading your account…</output>
+      ) : !state.account ? (
         <section className="panel">
-          <h1>Your place in the town.</h1>
+          <h2>Make yourself at home.</h2>
           <AccountPanel />
-          {state?.account && (
+          <AppLink className="quiet-link" href="/">
+            Continue as guest →
+          </AppLink>
+        </section>
+      ) : (
+        <>
+          {tab === 'profile' && (
             <>
-              <p className="muted">
-                {state.account.email}
-                {state.account.handle ? ' · @' + state.account.handle : ''}
-              </p>
-              <div className="social-links">
-                <Link className="quiet-link" href="/friends">
-                  Friends & invitations
-                  {state.pending.invites + state.pending.requests > 0 && (
-                    <span className="count">
-                      {state.pending.invites + state.pending.requests}
-                    </span>
-                  )}{' '}
-                  →
-                </Link>
-                <Link className="quiet-link" href="/stats">
-                  Your record →
-                </Link>
-              </div>
-              <div className="actions">
-                <button
-                  className="secondary"
-                  disabled={busy}
-                  onClick={() => void performAction('attach')}
-                >
-                  Save current seat to account
-                </button>
-                <button
-                  className="secondary"
-                  disabled={busy}
-                  onClick={() => void performAction('signout')}
-                >
-                  Sign out
-                </button>
-                <button
-                  className="danger"
-                  disabled={busy}
-                  onClick={() => setDeleting(true)}
-                >
-                  Delete account
-                </button>
-              </div>
+              <ProfileEditor key={state.account.id} />
+              {view && (
+                <section className="panel section-gap">
+                  <h2>Your record</h2>
+                  <Record stats={view.stats} />
+                  <p className="hint">
+                    Completed games count once. MVP rewards update as votes
+                    arrive.
+                  </p>
+                </section>
+              )}
             </>
           )}
-          {error && (
-            <p className="error" role="alert">
-              {error}
-            </p>
-          )}
-          <Link className="quiet-link" href="/">
-            Create or join a game →
-          </Link>
-        </section>
-        {state?.account && (
-          <section className="panel">
-            <p className="eyebrow">SAVED GAMES</p>
-            <h2>Return to your seat.</h2>
-            {state.seats.length === 0 ? (
-              <p className="muted">
-                Your next game will be saved here. You can also save the seat
-                open on this device.
-              </p>
-            ) : (
-              state.seats.map((s) => (
-                <article key={s.id} className="saved-game">
-                  <div>
-                    <strong>{s.code}</strong>
-                    <p>
-                      {s.host ? 'Storyteller' : s.hostName + '’s game'} ·{' '}
-                      {s.phase}
+          {tab === 'history' && (
+            <div className="stack">
+              <section className="panel">
+                <h2>Saved lobbies</h2>
+                <button
+                  className="secondary"
+                  disabled={busy}
+                  onClick={() => void act('attach')}
+                >
+                  Save the seat on this device
+                </button>
+                {state.seats.length ? (
+                  state.seats.map((s) => (
+                    <article className="saved-game" key={s.id}>
+                      <div>
+                        <strong>{s.code}</strong>
+                        <small>
+                          {s.host ? 'Storyteller' : s.hostName + '’s table'} ·{' '}
+                          {s.phase}
+                        </small>
+                      </div>
+                      <button
+                        className="primary"
+                        disabled={busy}
+                        onClick={() => void act('resume', s.id)}
+                      >
+                        Rejoin
+                      </button>
+                    </article>
+                  ))
+                ) : (
+                  <p className="muted">No saved lobbies yet.</p>
+                )}
+              </section>
+              <section className="panel">
+                <h2>Past games</h2>
+                {view ? (
+                  <RecentGames games={view.recent} />
+                ) : (
+                  <p>Loading game history…</p>
+                )}
+              </section>
+              {view && (
+                <section className="panel">
+                  <h2>Storyteller feedback</h2>
+                  <p>
+                    {stars(view.stats.storyteller.rating)} from{' '}
+                    {view.stats.storyteller.ratings} ratings
+                  </p>
+                  {view.ratings.length ? (
+                    view.ratings.map((r, i) => (
+                      <article className="friend-row" key={i}>
+                        <div>
+                          <strong>{'★'.repeat(r.stars)}</strong>
+                          <small>
+                            {when(r.created)} · {r.code} · {r.players} players
+                          </small>
+                          {r.comment && <p>{r.comment}</p>}
+                        </div>
+                      </article>
+                    ))
+                  ) : (
+                    <p className="muted">
+                      Player feedback appears after you storytell. Comments are
+                      visible only to you.
                     </p>
-                  </div>
+                  )}
+                </section>
+              )}
+            </div>
+          )}
+          {tab === 'settings' && (
+            <div className="settings-layout">
+              <SettingsPanel />
+              <ResetTutorials />
+              <section className="panel">
+                <h2>Account & connections</h2>
+                <p className="muted">{state.account.email}</p>
+                <AccountPanel />
+                <div className="stack section-gap">
                   <button
-                    className="primary"
+                    className="secondary"
                     disabled={busy}
-                    onClick={() => void performAction('resume', s.id)}
+                    onClick={() => void act('signout')}
                   >
-                    Resume
+                    Sign out
                   </button>
-                </article>
-              ))
-            )}
-          </section>
-        )}
-      </div>
-      {state?.account && <PrivacySettings />}
-      <footer>
-        <Link href="/">Back to the table</Link>
-        <Link href="/privacy">Privacy</Link>
-      </footer>
+                  <button
+                    className="danger"
+                    disabled={busy}
+                    onClick={() => setDeleting(true)}
+                  >
+                    Delete account
+                  </button>
+                </div>
+              </section>
+            </div>
+          )}
+        </>
+      )}
       <AlertDialog open={deleting} onOpenChange={setDeleting}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete your account?</AlertDialogTitle>
             <AlertDialogDescription>
-              This removes your profile, handle, friendships, ratings you gave
-              or received, sign-in connections, and saved seat access, and ends
-              any games you host. Finished games stay in other players’ records,
-              no longer linked to your account. This cannot be undone.
+              This permanently removes your profile, friends, saved seats, and
+              sign-in connections, and closes games you host. Finished games
+              remain in other players’ records without your account link.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <label className="field">
@@ -191,13 +281,13 @@ export default function Account() {
             <button
               className="danger"
               disabled={busy || confirm !== 'DELETE'}
-              onClick={() => void performAction('delete')}
+              onClick={() => void act('delete')}
             >
               Delete account
             </button>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </main>
+    </HubShell>
   );
 }

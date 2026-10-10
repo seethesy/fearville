@@ -43,6 +43,7 @@ import {
 } from './hms.ts';
 import { isHof, hofFinish, hofAnnounceCharges } from './hof.ts';
 import { savedGame } from './saved-state.ts';
+import { beginRiteNight, tickRite, riteReady, resolveRite, riteAction, riteSetupCheck } from '../rite/engine.ts';
 export function requireThat(ok: unknown, message: string): asserts ok {
   if (!ok) throw new Error(message);
 }
@@ -132,6 +133,14 @@ export function beginNight(g: Game, at: number) {
     : at + (g.timers.nightChoice ?? 60) * 1000;
   hmsBeginNight(g);
   g.nightChoiceTasks = choiceTasks(g);
+  beginRiteNight(g, at);
+  if(g.rite?.infoNight===g.night) {
+    for(const p of g.players.filter(p=>p.alive && !p.departed)) {
+      const target=g.players.find(q=>q.id===p.charge);
+      const text=target && (p.role==='executioner'||p.role==='guardian') ? `Your ${p.role==='guardian'?'ward':'execution target'} remains ${target.name}.` : g.hms?.constellation?.owner===p.id ? `Your Constellation remains ${g.hms.constellation.members.map(id=>nameOf(g,id)).join(', ')}. Its link ${g.hms.constellation.linked?'is active':'remains broken'}.` : '';
+      if(text) g.messages.push({id:uuid(),from:'host',to:p.id,text,at,kind:'info'});
+    }
+  }
 }
 
 export function tasks(g: Game) {
@@ -276,7 +285,8 @@ export function tally(g: Game, at: number) {
   if (g.nominationRemaining <= 0) setPhase(g, 'dayReview', at);
 }
 export function tick(g: Game, now: number) {
-  if (g.sandbox) return false;
+  const riteChanged = tickRite(g, now);
+  if (g.sandbox) return riteChanged;
   let changed =
     g.deadline !== null && g.deadline > now && finishVotingIfReady(g, now);
   for (let n = 0; n < 8 && g.deadline !== null && g.deadline <= now; n++) {
@@ -303,7 +313,7 @@ export function tick(g: Game, now: number) {
         g.deadline = null;
     }
   }
-  return changed;
+  return changed || riteChanged;
 }
 function clean(x: unknown, max = 500) {
   return (
@@ -333,6 +343,10 @@ function executeCommand(
     actor.host || g.players.some((p) => p.id === actor.id && !p.departed),
     'This seat is no longer available.',
   );
+  if(c.action === 'configureRite' || c.action.startsWith('rite')) {
+    if (['configureRite', 'riteForce', 'riteRedeal'].includes(c.action) && actor.host) snapshot(g, 'Night Rite: ' + c.action, now);
+    return riteAction(g, actor, c, now)!;
+  }
   const hostActions = [
     'addDummy',
     'removeDummy',
@@ -610,6 +624,7 @@ function executeCommand(
     delete g.hms;
     delete g.gameEndedAt;
     delete g.mvpVotes;
+    delete g.rite;
     Object.assign(g, state);
     g.history = g.history.slice(0, index);
     if (g.deadline !== null) {
@@ -666,10 +681,6 @@ function executeCommand(
       requireThat(g.players.length < MAX_PLAYERS, 'This table is full.');
       const name = clean(c.name, 32);
       requireThat(name, 'Enter a dummy player name.');
-      requireThat(
-        !g.players.some((p) => p.name.toLowerCase() === name.toLowerCase()),
-        'Seat names must be unique.',
-      );
       assignAvatars(g.players);
       const player = newPlayer(name, g.players.length + 1);
       player.dummy = true;
@@ -740,12 +751,6 @@ function executeCommand(
       const p = person(g, c.player);
       const name = clean(c.name, 32);
       requireThat(name, 'Enter a seat name.');
-      requireThat(
-        !g.players.some(
-          (q) => q.id !== p.id && q.name.toLowerCase() === name.toLowerCase(),
-        ),
-        'Seat names must be unique.',
-      );
       requireThat(
         c.seat === undefined || Number(c.seat) === p.seat,
         'Players choose their own seats.',
@@ -824,6 +829,7 @@ function executeCommand(
       return g.ranked ? 'Set this game to ranked.' : 'Set this game to casual.';
     }
     case 'start': {
+      riteSetupCheck(g);
       requireThat(
         g.players.every((p) => p.seat > 0),
         'Every player must claim a seat before roles are dealt.',
@@ -952,12 +958,14 @@ function executeCommand(
     }
     case 'dawn':
       requireThat(g.phase === 'night', 'It is not night.');
+      requireThat(riteReady(g, now), 'The Night Rite window is still open.');
       enforce(
         tasks(g).every((t) => t.done),
         'Night tasks remain.',
         c,
       );
       hmsDawn(g, now);
+      resolveRite(g, now);
       g.dawnAnnouncement = {
         id: uuid(),
         night: g.night,
@@ -1231,6 +1239,7 @@ export function execute(
   const day = g.day,
     night = g.night;
   const summary = executeCommand(g, actor, c, now);
+  if((c.action==='undo'||c.action==='rewind') && g.rite) g.rite.epoch=uuid();
   if (
     [
       'chat',

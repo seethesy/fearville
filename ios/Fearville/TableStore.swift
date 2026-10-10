@@ -31,6 +31,13 @@ private enum Keychain {
     @Published var notice = ""
     @Published var authenticated = false
     @Published var accountState: AccountState?
+    @Published var showingTable = false
+    @Published var socialState: HubJSON?
+    @Published var preferences = NativePreferences()
+    @Published var riteState: HubJSON?
+    @Published var riteVersion = 0
+    @Published var riteServerNow: Double = 0
+    var riteScope = ""
     private var accountCredential = ""
     private var webAuthentication: ASWebAuthenticationSession?
     private let authPresenter = OAuthPresenter()
@@ -47,8 +54,8 @@ private enum Keychain {
         accountCredential = Keychain.load(account: "account") ?? ""
         authenticated = !token.isEmpty
     }
-    private func request<T: Decodable>(_ path: String, body: [String: FieldValue]? = nil) async throws -> T {
-        var req = URLRequest(url: baseURL.appendingPathComponent(path))
+    func request<T: Decodable>(_ path: String, body: [String: FieldValue]? = nil) async throws -> T {
+        var req = URLRequest(url: URL(string: path, relativeTo: baseURL.appendingPathComponent("/"))!.absoluteURL)
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
         if !token.isEmpty { req.setValue("Bearer " + token, forHTTPHeaderField: "Authorization") }
         if !accountCredential.isEmpty { req.setValue("Bearer " + accountCredential, forHTTPHeaderField: "X-Account-Authorization") }
@@ -68,7 +75,7 @@ private enum Keychain {
         defer { working = false }
         do {
             let reply: SessionReply = try await request("api/session", body: ["action": .string(action), "name": .string(name), "code": .string(code.uppercased()), "recoveryKey": .string(recovery)])
-            try Keychain.save(reply.token); token = reply.token; authenticated = true
+            try Keychain.save(reply.token); token = reply.token; authenticated = true; showingTable = true
             await refresh()
         } catch { self.error = error.localizedDescription }
     }
@@ -79,6 +86,9 @@ private enum Keychain {
             if let previous = game, let message = next.messages.last, previous.messages.last?.id != message.id {
                 notice = message.from == "host" ? "New message from your Storyteller." : "New player message."
             }
+            if let previous = game, previous.phase != next.phase { NativeAudio.shared.cue() }
+            let scope = next.code + ":" + next.me
+            if scope != riteScope { riteScope = scope; riteState = nil; riteVersion = 0; riteServerNow = 0 }
             game = next; offset = next.serverNow / 1000 - Date().timeIntervalSince1970; online = true
         } catch { online = false; self.error = error.localizedDescription }
     }
@@ -89,7 +99,8 @@ private enum Keychain {
         return reply
     }
     var recoveryKey: String { token }
-    func leave() { Keychain.clear(); token = ""; game = nil; authenticated = false; online = false; error = "" }
+    func leave() { showingTable = false; online = false; error = ""; NativeAudio.shared.ambient(false) }
+    func forgetSeat() { leave(); Keychain.clear(); token = ""; game = nil; authenticated = false; riteState = nil; riteScope = ""; riteVersion = 0; riteServerNow = 0 }
 }
 
 
@@ -100,7 +111,7 @@ private enum Keychain {
 }
 extension TableStore {
     func refreshAccount() async {
-        do { let next: AccountState = try await request("api/accounts"); accountState = next }
+        do { let next: AccountState = try await request("api/accounts"); accountState = next; preferences = next.profile?.settings ?? NativePreferences(); NativeAudio.shared.apply(preferences) }
         catch { self.error = error.localizedDescription }
     }
     func signIn(provider: String, link: Bool = false) async {
@@ -133,18 +144,32 @@ extension TableStore {
         working = true; error = ""; defer { working = false }
         do {
             let reply: SessionReply = try await request("api/accounts", body: ["action": .string("resume"), "seat": .string(seat.id)])
-            try Keychain.save(reply.token); token = reply.token; authenticated = true; await refresh()
+            try Keychain.save(reply.token); token = reply.token; authenticated = true; showingTable = true; await refresh()
         } catch { self.error = error.localizedDescription }
     }
+    func acceptNativeSeat(_ data: HubJSON) throws {
+        let value = data["token"].text
+        guard !value.isEmpty else { throw URLError(.badServerResponse) }
+        try Keychain.save(value); token = value; authenticated = true; showingTable = true
+    }
     func attachCurrentSeat() async {
-        do { let next: AccountState = try await request("api/accounts", body: ["action": .string("attach")]); accountState = next }
+        do { let next: AccountState = try await request("api/accounts", body: ["action": .string("attach")]); accountState = next; preferences = next.profile?.settings ?? NativePreferences(); NativeAudio.shared.apply(preferences) }
         catch { self.error = error.localizedDescription }
     }
     func endAccount(delete: Bool = false) async {
         working = true; error = ""; defer { working = false }
         do {
             let _: OKReply = try await request("api/accounts", body: ["action": .string(delete ? "delete" : "signout"), "confirm": .string(delete ? "DELETE" : "")])
-            Keychain.clear(account: "account"); accountCredential = ""; accountState = nil; leave(); await refreshAccount()
+            Keychain.clear(account: "account"); accountCredential = ""; accountState = nil; forgetSeat(); await refreshAccount()
         } catch { self.error = error.localizedDescription }
     }
+}
+// Tutorial progress (FEAR-16). Guests get { account: false } and keep
+// progress on the device.
+extension TableStore {
+    func tutorialProgress() async throws -> TutorialProgressReply { try await request("api/tutorials") }
+    func markTutorial(_ id: String, status: String) async throws -> TutorialProgressReply {
+        try await request("api/tutorials", body: ["action": .string("mark"), "id": .string(id), "status": .string(status)])
+    }
+    func resetTutorials() async throws -> TutorialProgressReply { try await request("api/tutorials", body: ["action": .string("reset")]) }
 }

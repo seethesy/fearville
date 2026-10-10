@@ -1,6 +1,6 @@
 'use client';
+import AppLink from '@/components/app-link';
 import { useCallback, useEffect, useState } from 'react';
-import Link from 'next/link';
 import { social, load, display, type TableSocial } from './api';
 
 // Lobby panel: every seated, signed-in player can invite their friends.
@@ -41,7 +41,7 @@ export function InviteFriends({ code }: { code: string }) {
       <div className="social-inline">
         <p className="eyebrow">INVITE FRIENDS</p>
         <p className="muted">
-          <Link href="/account">Sign in</Link> to invite your friends to this
+          <AppLink href="/account">Sign in</AppLink> to invite your friends to this
           table with one tap.
         </p>
       </div>
@@ -50,14 +50,14 @@ export function InviteFriends({ code }: { code: string }) {
     <div className="social-inline">
       <div className="section-heading">
         <p className="eyebrow">INVITE FRIENDS</p>
-        <Link className="text-action" href="/friends">
+        <AppLink className="text-action" href="/friends">
           Manage friends
-        </Link>
+        </AppLink>
       </div>
       {state.friends.length === 0 ? (
         <p className="muted">
           Add friends by handle on your{' '}
-          <Link href="/friends">Friends page</Link>, then invite them here.
+          <AppLink href="/friends">Friends page</AppLink>, then invite them here.
         </p>
       ) : (
         <div className="friend-rows">

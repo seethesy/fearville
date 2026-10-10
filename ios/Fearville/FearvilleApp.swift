@@ -2,102 +2,114 @@ import SwiftUI
 import UIKit
 
 extension Color {
-    static let tableBackground = Color(red: 54/255, green: 54/255, blue: 54/255)
-    static let tableAccent = Color(red: 190/255, green: 81/255, blue: 3/255)
-    static let tablePanel = Color(red: 43/255, green: 43/255, blue: 43/255)
+    static let tableBackground = Color(red: 25/255, green: 25/255, blue: 28/255)
+    static let tableAccent = Color(red: 237/255, green: 122/255, blue: 40/255)
+    static let tablePanel = Color(red: 36/255, green: 36/255, blue: 40/255)
     static let tableHighlight = Color(red: 246/255, green: 162/255, blue: 101/255)
 }
 @main struct FearvilleApp: App {
     @StateObject private var store = TableStore()
+    @StateObject private var tutorials = TutorialCenter()
     var body: some Scene {
-        WindowGroup { RootView().environmentObject(store).preferredColorScheme(.dark).tint(.tableAccent) }
+        WindowGroup { RootView().environmentObject(store).environmentObject(tutorials).preferredColorScheme(.dark).tint(.tableAccent).onAppear { tutorials.attach(store) } }
     }
 }
 struct RootView: View {
     @EnvironmentObject var store: TableStore
+    @EnvironmentObject var tutorials: TutorialCenter
     @Environment(\.scenePhase) private var scene
     var body: some View {
         Group {
-            if store.authenticated, let game = store.game { GameView(game: game) }
-            else if store.authenticated { VStack(spacing: 24) { ProgressView("Connecting to your table…"); Text(store.error).foregroundStyle(.secondary); Button("Retry") { Task { await store.refresh() } }; Button("Return to welcome") { store.leave() } }.padding() }
-            else { WelcomeView() }
+            if store.showingTable && store.authenticated, let game = store.game { GameView(game: game) }
+            else if store.showingTable && store.authenticated { VStack(spacing: 24) { ProgressView("Connecting to your table…"); Text(store.error).foregroundStyle(.secondary); Button("Retry") { Task { await store.refresh() } }; Button("Return to welcome") { store.leave() } }.padding() }
+            else if store.accountState?.account != nil { NativeHub() }
+            else { NativeWelcome() }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color.tableBackground)
-        .task(id: "\(scene)-\(store.authenticated)") {
-            guard scene == .active, store.authenticated else { return }
+        .task { await store.refreshAccount() }
+        .task(id: "\(scene)-\(store.authenticated)-\(store.showingTable)") {
+            guard scene == .active, store.authenticated, store.showingTable else { return }
             while !Task.isCancelled { await store.refresh(); do { try await Task.sleep(for: .seconds(2)) } catch { return } }
+        }
+        .overlay { TutorialOverlay() }
+        .task(id: store.accountState?.account?.id ?? "guest") { tutorials.attach(store); await tutorials.load() }
+        .dynamicTypeSize(store.preferences.largerText ? .xLarge ... .accessibility5 : .xSmall ... .accessibility5)
+        .task(id: scene) {
+            NativeAudio.shared.setBackground(scene != .active)
+            guard scene == .active else { await store.presence(false); return }
+            while !Task.isCancelled { await store.presence(true); do { try await Task.sleep(for: .seconds(45)) } catch { return } }
         }
         .overlay { if scene != .active { Color.tableBackground.overlay(Text("FEARVILLE").tracking(3)).ignoresSafeArea() } }
     }
 }
-struct WelcomeView: View {
-    @EnvironmentObject var store: TableStore
-    @State private var name = ""
-    @State private var code = ""
-    @State private var mode = "join"
-    @State private var recovery = ""
-    @State private var showAccount = false
-    var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 28) {
-                    Text("FEARVILLE").font(.caption.bold()).tracking(3).foregroundStyle(Color.tableHighlight)
-                    Text("A seat at\nthe table.").font(.system(size: 52, design: .serif))
-                    Text("In person").foregroundStyle(.secondary)
-                    if let account = store.accountState?.account {
-                        Text("Signed in as " + account.name)
-                        Button("Account & saved games") { showAccount = true }
-                    } else {
-                        VStack(spacing: 12) {
-                            Button("Continue with Google") { Task { await store.signIn(provider: "google") } }.disabled(store.working || store.accountState?.providers.google != true)
-                            Button("Continue with Apple") { Task { await store.signIn(provider: "apple") } }.disabled(store.working || store.accountState?.providers.apple != true)
-                            Text("Accounts recover your seats across devices. Guest play is available below.").font(.footnote).foregroundStyle(.secondary)
-                            if let providers = store.accountState?.providers, !providers.google && !providers.apple { Text("Account sign-in is not available yet.").font(.footnote).foregroundStyle(.secondary) }
-                        }
-                    }
-                    Picker("Your place", selection: $mode) { Text("Join").tag("join"); Text("Storytell").tag("create"); Text("Restore").tag("restore") }.pickerStyle(.segmented)
-                    if mode == "restore" {
-                        SecureField("Private recovery key", text: $recovery).textContentType(.password).textInputAutocapitalization(.never).autocorrectionDisabled()
-                    } else {
-                        TextField("Name at the table", text: $name).textContentType(.nickname)
-                        if mode == "join" { TextField("Six-letter session code", text: $code).textInputAutocapitalization(.characters).autocorrectionDisabled().font(.title2.monospaced()) }
-                        else { Text("Invite 5–18 players, assign characters, and lead the game.").foregroundStyle(.secondary) }
-                    }
-                    Button(store.working ? "Connecting…" : mode == "join" ? "Join the table" : mode == "create" ? "Create a session" : "Restore session") {
-                        Task { await store.enter(action: mode, name: name, code: code, recovery: recovery) }
-                    }.buttonStyle(.borderedProminent).controlSize(.large).frame(maxWidth: .infinity)
-                    .disabled(store.working || (mode == "restore" ? recovery.isEmpty : name.trimmingCharacters(in: .whitespaces).isEmpty || (mode == "join" && code.count != 6)))
-                    if !store.error.isEmpty { Text(store.error).foregroundStyle(.red).accessibilityAddTraits(.updatesFrequently) }
-                    Text("Keep the app open during play to receive information.").font(.footnote).foregroundStyle(.secondary)
-                }.textFieldStyle(.roundedBorder).padding(28)
-            }.background(Color.tableBackground).toolbarBackground(Color.tableBackground, for: .navigationBar)
-            .task { await store.refreshAccount() }
-            .sheet(isPresented: $showAccount) { NavigationStack { AccountScreen().environmentObject(store) } }
-        }
-    }
-}
 struct GameView: View {
     @EnvironmentObject var store: TableStore
+    @EnvironmentObject var tutorials: TutorialCenter
     let game: GameState
     @State private var selected: GameAction?
+    @State private var tab = "game"
+    @State private var showHelp = false
+    // Section tutorial for each tab (players only; FEAR-18).
+    private func section(for tab: String) -> String? {
+        guard !game.host else { return nil }
+        switch tab {
+        case "game": return game.phase == "lobby" ? nil : "flow"
+        case "seats": return "seats"
+        case "messages": return "messages"
+        case "script": return "rules"
+        case "controls": return "session"
+        default: return nil
+        }
+    }
+    private var voteOpen: Bool { !game.host && game.phase == "voting" && game.active != nil && game.active?.myVote == nil }
+    // Night Rite: the 30-second night lock, a timed turn, or an open vote.
+    private var riteHold: Bool {
+        guard !game.host, let puzzle = store.riteState?["puzzle"], !puzzle.isNull else { return false }
+        let phase = puzzle["phase"].text
+        return phase == "lock" || phase == "turn" || (!puzzle["vote"].isNull && !puzzle["vote"]["answered"].flag)
+    }
+    @State private var confirmExit = false
     var body: some View {
-        TabView {
-            NavigationStack { FlowView(game: game, selected: $selected).navigationTitle(game.phaseLabel).navigationBarTitleDisplayMode(.inline) }.tabItem { Text("Game") }
-            NavigationStack { SeatsView(game: game, selected: $selected).navigationTitle("Seats") }.tabItem { Text("Seats") }
-            NavigationStack { MessagesView(game: game, selected: $selected).navigationTitle("Messages") }.tabItem { Text("Messages") }
-            NavigationStack { ScriptView(script: game.script ?? "horrors").navigationTitle(game.scriptName ?? "Horrors of Fearville") }.tabItem { Text("Script") }
-            NavigationStack { ControlView(game: game, selected: $selected).navigationTitle(game.host ? "Storyteller" : "Session") }.tabItem { Text("Controls") }
+        TabView(selection: $tab) {
+            NavigationStack { FlowView(game: game, selected: $selected).navigationTitle(game.phaseLabel).navigationBarTitleDisplayMode(.inline) }.tabItem { Text("Game") }.tag("game")
+            NavigationStack { SeatsView(game: game, selected: $selected).navigationTitle("Seats") }.tabItem { Text("Seats") }.tag("seats")
+            NavigationStack { MessagesView(game: game, selected: $selected).navigationTitle("Messages") }.tabItem { Text("Messages") }.tag("messages")
+            NavigationStack { ScriptView(script: game.script ?? "horrors").navigationTitle(game.scriptName ?? "Horrors of Fearville") }.tabItem { Text("Script") }.tag("script")
+            NavigationStack { ControlView(game: game, selected: $selected).navigationTitle(game.host ? "Storyteller" : "Session") }.tabItem { Text("Controls") }.tag("controls")
         }
         .sheet(item: $selected) { action in ActionView(action: action).environmentObject(store) }
+        .sheet(isPresented: $showHelp) { NavigationStack { HelpView(host: game.host, seated: !game.host).toolbar { Button("Done") { showHelp = false } } }.environmentObject(tutorials) }
+        // Tutorials: seat scope, walkthrough chapters, first-open sections,
+        // and the states that hold popups (FEAR-16/17/18).
+        .task(id: game.code + ":" + game.me) { tutorials.setScope(game.code + ":" + game.me) }
+        .onChange(of: "\(game.phase)|\(game.day)|\(tutorials.loaded)", initial: true) { _, _ in
+            tutorials.walkthrough(for: game)
+            if !game.host && game.phase == "night" { tutorials.requestSection("night") }
+        }
+        .onChange(of: tab, initial: true) { _, next in if let s = section(for: next) { tutorials.requestSection(s) } }
+        .onChange(of: tutorials.requestedTab) { _, next in if let next { tab = next; tutorials.requestedTab = nil } }
+        .onChange(of: selected?.id, initial: true) { _, open in tutorials.setBlocker("action", open != nil) }
+        .onChange(of: game.glimpse?.id, initial: true) { _, open in tutorials.setBlocker("glimpse", open != nil) }
+        .onChange(of: voteOpen, initial: true) { _, open in tutorials.setBlocker("vote", open) }
+        .onChange(of: riteHold, initial: true) { _, open in tutorials.setBlocker("rite", open) }
+        .onChange(of: showHelp) { _, open in tutorials.setBlocker("help", open) }
         .safeAreaInset(edge: .top) {
             VStack(spacing: 5) {
-                HStack { Text(game.code).font(.headline.monospaced()).tracking(3); Spacer(); Text(store.online ? (game.host ? "Storyteller" : game.name(game.me)) : "Reconnecting…").font(.caption) }
+                HStack { Button { store.leave() } label: { Label("Return home", systemImage: "house") }; Spacer(); if game.phase == "lobby" || (!game.host && game.phase == "ended") { Button(game.host ? "Close lobby" : "Leave lobby", role: .destructive) { confirmExit = true } } }
+                HStack { Text(game.code).font(.headline.monospaced()).tracking(3); Spacer(); Button { showHelp = true } label: { Label("Help", systemImage: "questionmark.circle") }.font(.caption); Text(store.online ? (game.host ? "Storyteller" : game.name(game.me)) : "Reconnecting…").font(.caption) }
+                NativeError()
                 if !store.online { Text("Actions are unavailable until you reconnect. Timers continue.").font(.caption).foregroundStyle(.orange) }
                 if !store.notice.isEmpty { HStack { Text(store.notice.hasPrefix("New") ? store.notice : "Action confirmed.").font(.caption); Spacer(); Button("Dismiss") { store.notice = "" }.font(.caption) } }
             }.padding(.horizontal).padding(.vertical, 8).background(Color.tablePanel)
         }
         .toolbarBackground(Color.tableBackground, for: .tabBar)
+        .onAppear { NativeAudio.shared.ambient(true) }
+        .onDisappear { NativeAudio.shared.ambient(false) }
+        .confirmationDialog(game.host ? "Close lobby for everyone?" : "Leave this lobby?", isPresented: $confirmExit, titleVisibility: .visible) {
+            Button(game.host ? "Close lobby for everyone" : "Leave lobby", role: .destructive) { Task { await store.exitLobby(host: game.host) } }
+            Button("Cancel", role: .cancel) {}
+        } message: { Text(game.host ? "Everyone loses access. Completed games stay in account history. Return home keeps the lobby open." : "Your seat and access are removed. Return home keeps your seat.") }
     }
 }
 struct FlowView: View {
@@ -110,6 +122,7 @@ struct FlowView: View {
     @State private var dismissedGlimpse = ""
     var body: some View {
         List {
+            if game.host || store.riteState?["enabled"].flag == true { Section("Night Rite") { NativeRiteView(game: game) } }
             if let current = game.glimpse { Section("Sphinx") { Text("Your glimpse of every role is open until the night choice timer ends."); Button("View glimpse") { glimpse = current } } }
             Section {
                 HStack(alignment: .top) {
@@ -156,6 +169,14 @@ struct FlowView: View {
                 Section("Today's votes") { ForEach(game.ballots) { ballot in HStack { Text(game.name(ballot.target)); Spacer(); Text("\(ballot.count) yes") } }; Text(game.leader.tied ? "Tied · no execution" : game.leader.target.isEmpty ? "No qualifying nominee" : game.leader.name + " leads the vote") }
             }
         }.scrollContentBackground(.hidden).background(Color.tableBackground)
+        .task(id: scene) {
+            guard scene == .active else { return }
+            while !Task.isCancelled {
+                await store.refreshRite()
+                let interactive = store.riteState?["status"].text == "open" && store.game?.phase == "night"
+                do { try await Task.sleep(for: .milliseconds(interactive ? 300 : 1500)) } catch { return }
+            }
+        }
         .onChange(of: scene) { _, phase in if phase != .active { reveal = false; glimpse = nil } }
         .onAppear { showGlimpse() }
         .onChange(of: game.glimpse?.id) { _, _ in showGlimpse() }
@@ -174,7 +195,7 @@ struct SeatsView: View {
         List(game.players) { player in
             VStack(alignment: .leading, spacing: 8) {
                 Text("SEAT \(player.seat) · \(player.alive ? "ALIVE" : "DEAD")").font(.caption).foregroundStyle(Color.tableHighlight)
-                Text(player.name).font(.title2)
+                HStack { NativeAvatar(avatar: player.avatar ?? "ghost", effect: player.deathEffect ?? "spirit", alive: player.publicAlive ?? player.alive).frame(width: 48, height: 48); Text(player.name).font(.title2) }
                 if let role = player.role { Text(role).font(.headline); if role == "drunk" { Text("Shown: " + (player.shown ?? "Unassigned")) } }
                 Text(player.ghost ? "Dead vote available" : "Dead vote spent").font(.subheadline).foregroundStyle(.secondary)
                 if player.nominated { Text("Nominated today").font(.caption) }
@@ -262,7 +283,22 @@ struct ScriptView: View {
     }()
     private var roles: [ScriptRole] { ScriptView.all.filter { ($0.script ?? "horrors") == script } }
     private func teamName(_ team: String) -> String { ["townsfolk": "Villager", "outsider": "Fool", "traveler": "Traveler · neutral", "minion": "Haunt", "demon": "Horror"][team] ?? team }
-    var body: some View { List { Section { Text("All characters on the script, including those not in play. These are short summaries.") }; Section("Glossary") { ForEach(GLOSSARY) { entry in VStack(alignment: .leading, spacing: 6) { Text(entry.term).font(.headline); Text(entry.definition); if let example = entry.example { Text("Example: " + example).font(.callout).italic().foregroundStyle(.secondary) } }.padding(.vertical, 4) } }; ForEach(roles) { role in VStack(alignment: .leading, spacing: 8) { Text(teamName(role.team).uppercased()).font(.caption).foregroundStyle(Color.tableHighlight); Text(role.name).font(.headline); GlossaryText(text: role.description) }.padding(.vertical, 6) } }.scrollContentBackground(.hidden).background(Color.tableBackground) }
+    var body: some View { List {
+        Section("How to play") {
+            Label("Two teams, one hidden Horror", systemImage: "person.3").font(.headline)
+            Text("Good aims to kill the Horror. Evil usually wins with only two living players. Character abilities can change the outcome; the neutral Storyteller resolves them.")
+            Label("Day and night", systemImage: "moon.stars").font(.headline)
+            Text("By day, talk, share information, and bluff. At night, follow private instructions from the Storyteller. Some characters act only once or under special conditions.")
+            Label("Nominations and execution", systemImage: "hand.raised").font(.headline)
+            Text("Living players may nominate once each day; each player can be nominated once. Votes need half of living players, rounded up. The highest qualifying tally leads to execution; ties mean no execution. The nominee does not vote at this table.")
+            Label("Death is not the end", systemImage: "cloud.fog").font(.headline)
+            Text("Dead players keep talking and win with their team. They cannot nominate and have one final vote. A counted Yes spends it; No does not. Abilities usually stop on death unless they say otherwise.")
+            Label("Information can be wrong", systemImage: "eye.slash").font(.headline)
+            Text("Drunkenness and poison disable abilities without telling their owners. Information may be false. Ask the Storyteller privately when unsure.")
+            Label("Keep the game fair", systemImage: "heart").font(.headline)
+            Text("Bluffing is welcome; peeking at private screens is not. Respect other players. Specific character rules take precedence.")
+        }
+        Section { Text("All characters on the script, including those not in play. These are short summaries.") }; Section("Glossary") { ForEach(GLOSSARY) { entry in VStack(alignment: .leading, spacing: 6) { Text(entry.term).font(.headline); Text(entry.definition); if let example = entry.example { Text("Example: " + example).font(.callout).italic().foregroundStyle(.secondary) } }.padding(.vertical, 4) } }; ForEach(roles) { role in VStack(alignment: .leading, spacing: 8) { Text(teamName(role.team).uppercased()).font(.caption).foregroundStyle(Color.tableHighlight); Label(role.name, systemImage: nativeRoleIcon(role.team)).font(.headline); GlossaryText(text: role.description) }.padding(.vertical, 6) } }.scrollContentBackground(.hidden).background(Color.tableBackground) }
 }
 // The Sphinx's nightly glimpse. Opens on its own and closes when the server
 // stops sending it (the night-choice timer ended).
@@ -288,10 +324,11 @@ struct ControlView: View {
     var body: some View {
         List {
             Section("Session") {
-                NavigationLink("Account & saved games") { AccountScreen() }
+                NavigationLink("Account & saved games") { NativeAccount() }
+                NavigationLink("Help & tutorials") { HelpView(host: game.host, seated: !game.host) }
                 Text("\(game.hostName) is Storytelling. Code: \(game.code)")
                 Button("Save recovery key") { showRecovery = true }
-                Button("Leave this device", role: .destructive) { confirmLeave = true }
+                Button("Return home (keep lobby)") { store.leave() }
                 Text("Keep the app open and connected to receive private information. No background push notifications are used.").font(.footnote).foregroundStyle(.secondary)
             }
             if game.host {
@@ -344,45 +381,5 @@ struct ActionView: View {
             let reply = try await store.perform(action, values: values, preview: !confirm, version: confirm ? preview?.version ?? -1 : store.game?.version ?? -1)
             if confirm { dismiss() } else { preview = reply }
         } catch { self.error = error.localizedDescription; preview = nil; await store.refresh() }
-    }
-}
-
-struct AccountScreen: View {
-    @EnvironmentObject var store: TableStore
-    @Environment(\.dismiss) private var dismiss
-    @State private var deleteConfirmation = false
-    var body: some View {
-        List {
-            if let state = store.accountState {
-                if let account = state.account {
-                    Section("Your account") { Text(account.name).font(.headline); Text(account.email).foregroundStyle(.secondary) }
-                    Section("Connected accounts") {
-                        Button(state.connections.contains("google") ? "Google connected" : "Connect Google") { Task { await store.signIn(provider: "google", link: true) } }.disabled(store.working || state.connections.contains("google") || !state.providers.google)
-                        Button(state.connections.contains("apple") ? "Apple connected" : "Connect Apple") { Task { await store.signIn(provider: "apple", link: true) } }.disabled(store.working || state.connections.contains("apple") || !state.providers.apple)
-                    }
-                    Section("Saved games") {
-                        if state.seats.isEmpty { Text("No saved seats yet.").foregroundStyle(.secondary) }
-                        ForEach(state.seats) { seat in
-                            Button { Task { await store.resumeSeat(seat); if store.authenticated { dismiss() } } } label: { VStack(alignment: .leading) { Text(seat.code).font(.headline.monospaced()); Text((seat.host == 1 ? "Storyteller" : seat.hostName + "’s game") + " · " + seat.phase).font(.caption) } }.disabled(store.working)
-                        }
-                        if store.authenticated { Button("Save current seat to account") { Task { await store.attachCurrentSeat() } } }
-                    }
-                    Section { Button("Sign out") { Task { await store.endAccount() } }.disabled(store.working); Button("Delete account", role: .destructive) { deleteConfirmation = true }.disabled(store.working) }
-                } else {
-                    Section("Create an account or sign in") {
-                        Button("Continue with Google") { Task { await store.signIn(provider: "google") } }.disabled(store.working || !state.providers.google)
-                        Button("Continue with Apple") { Task { await store.signIn(provider: "apple") } }.disabled(store.working || !state.providers.apple)
-                        if !state.providers.google && !state.providers.apple { Text("Account sign-in is not available yet. Guest play is still available.").foregroundStyle(.secondary) }
-                    }
-                }
-            } else { ProgressView("Loading account…") }
-            if !store.error.isEmpty { Text(store.error).foregroundStyle(.red) }
-            Section { Link("Privacy and account data", destination: store.baseURL.appendingPathComponent("privacy")) }
-        }.navigationTitle("Account").scrollContentBackground(.hidden).background(Color.tableBackground)
-        .task { await store.refreshAccount() }
-        .confirmationDialog("Delete your profile, connections, and saved seat access? Games you host will end. Shared records in other people’s games remain. This cannot be undone.", isPresented: $deleteConfirmation, titleVisibility: .visible) {
-            Button("Delete account permanently", role: .destructive) { Task { await store.endAccount(delete: true) } }
-            Button("Cancel", role: .cancel) {}
-        }
     }
 }

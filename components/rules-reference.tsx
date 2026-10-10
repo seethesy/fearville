@@ -60,7 +60,7 @@ const STEP_NAMES: Record<string, string> = {
 };
 const teamsFor = (script: RoleScript) =>
   teams.filter((team) => scriptRoles(script).some((r) => r.team === team.id));
-function RoleTeams({ script }: { script: RoleScript }) {
+export function RoleTeams({ script }: { script: RoleScript }) {
   const list = scriptRoles(script);
   return (
     <>

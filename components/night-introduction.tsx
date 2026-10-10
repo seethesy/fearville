@@ -1,6 +1,7 @@
 'use client';
 import { GlossaryText } from '@/components/glossary-text';
 import { useEffect, useState } from 'react';
+import { useTutorialBlocker } from '@/components/tutorials/provider';
 import {
   Dialog,
   DialogContent,
@@ -16,6 +17,8 @@ export function NightIntroduction({
 }) {
   const [open, setOpen] = useState(true);
   const [read, setRead] = useState(false);
+  // Private night information: hold tutorial popups while it is open.
+  useTutorialBlocker('night-introduction', open);
   useEffect(() => {
     const hide = () => {
       if (document.hidden) setOpen(false);
@@ -46,7 +49,9 @@ export function NightIntroduction({
               yourself.
             </DialogDescription>
           </DialogHeader>
-          <p className="night-team-information"><GlossaryText text={information.text} /></p>
+          <p className="night-team-information">
+            <GlossaryText text={information.text} />
+          </p>
           <button
             className="primary"
             onClick={() => {

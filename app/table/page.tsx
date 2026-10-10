@@ -1,6 +1,9 @@
 'use client';
+import AppLink from '@/components/app-link';
+import { NightRite } from '@/components/rite/night-rite';
+import { playCue } from '@/components/hub/audio';
+import { LobbyExit } from '@/components/hub/lobby-exit';
 import { GlossaryText } from '@/components/glossary-text';
-import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { PlayerNotes } from '@/components/player-notes';
 import { VoteChoices } from '@/components/vote-choices';
@@ -55,6 +58,8 @@ import { RateStoryteller } from '@/components/social/rate-storyteller';
 import { TableMessages } from '@/components/table-messages';
 import { TableMembership } from '@/components/table-membership';
 import { RulesReference } from '@/components/rules-reference';
+import { HelpMenu } from '@/components/tutorials/help-menu';
+import { TableTutorials } from '@/components/tutorials/table-tutorials';
 
 type Values = Record<string, string | number | boolean>;
 function FieldInput({
@@ -179,6 +184,13 @@ export default function Table() {
     [activeTab, setActiveTab] = useState('flow'),
     [compact, setCompact] = useState(false),
     [sandboxPov, setSandboxPov] = useState('host');
+  const previousPhase = useRef<string | null>(null);
+  const phase = game?.phase;
+  useEffect(() => {
+    if (phase && previousPhase.current && previousPhase.current !== phase)
+      playCue();
+    previousPhase.current = phase ?? null;
+  }, [phase]);
   const [followChoice, setFollowChoice] = useState(true);
   const confirmation =
     selected?.action === 'night' &&
@@ -407,9 +419,9 @@ export default function Table() {
               {error || connectionError}
             </p>
           )}
-          <Link className="quiet-link" href="/">
+          <AppLink className="quiet-link" href="/">
             Create or join a session →
-          </Link>
+          </AppLink>
           <label className="field">
             Recovery key
             <input
@@ -482,15 +494,31 @@ export default function Table() {
       {c.title}
     </button>
   );
+  const tab =
+    game.phase === 'lobby' &&
+    !game.host &&
+    !['flow', 'cosmetic', 'recap', 'script'].includes(activeTab)
+      ? 'flow'
+      : game.phase !== 'lobby' &&
+          !game.host &&
+          ['cosmetic', 'recap'].includes(activeTab)
+        ? 'flow'
+        : activeTab;
   return (
     <TableAtmosphere night={game.phase === 'night'}>
+      <TableTutorials
+        game={game}
+        tab={tab}
+        setTab={setActiveTab}
+        dialogOpen={!!selected || !!recovery}
+      />
       <main
         className={`table-shell ${game.host ? 'host-table' : 'player-table'}`}
       >
         <header className="brand table-header">
-          <Link href="/" className="table-wordmark">
+          <AppLink href="/" className="table-wordmark">
             Fearville
-          </Link>
+          </AppLink>
           <span className="table-identity">
             {game.host ? 'STORYTELLER' : name(game.me)}
           </span>
@@ -506,7 +534,9 @@ export default function Table() {
             {game.players.length} players ·{' '}
             {game.players.filter((p) => p.alive).length} alive
           </span>
+          <HelpMenu host={game.host} seated={!game.host && !game.sandboxHost} />
         </header>
+        <LobbyExit game={game} />
         {game.sandboxHost && (
           <section
             className="panel sandbox-toolbar"
@@ -564,6 +594,7 @@ export default function Table() {
           </div>
           <div className="timer-toolbar">
             <div
+              data-tutorial="clock"
               className={`clock-box ${(displayDeadline || game.remaining) && seconds <= 20 ? 'timer-urgent' : ''}`}
             >
               <span>
@@ -666,17 +697,7 @@ export default function Table() {
         )}
         <Tabs
           className="game-tabs"
-          value={
-            game.phase === 'lobby' &&
-            !game.host &&
-            !['flow', 'cosmetic', 'recap', 'script'].includes(activeTab)
-              ? 'flow'
-              : game.phase !== 'lobby' &&
-                  !game.host &&
-                  ['cosmetic', 'recap'].includes(activeTab)
-                ? 'flow'
-                : activeTab
-          }
+          value={tab}
           onValueChange={(value) => setActiveTab(String(value))}
           orientation={compact || !game.host ? 'horizontal' : 'vertical'}
         >
@@ -687,7 +708,7 @@ export default function Table() {
             </TabsTrigger>
             {game.phase === 'lobby' && !game.host ? (
               <>
-                <TabsTrigger value="cosmetic">
+                <TabsTrigger value="cosmetic" data-tutorial="tab-cosmetic">
                   <Users aria-hidden="true" />
                   <span>Cosmetic</span>
                 </TabsTrigger>
@@ -698,12 +719,12 @@ export default function Table() {
               </>
             ) : (
               <>
-                <TabsTrigger value="seats">
+                <TabsTrigger value="seats" data-tutorial="tab-notes">
                   <Users aria-hidden="true" />
                   <span>{game.host ? 'Seats' : 'Notes'}</span>{' '}
                   <span className="count">{game.players.length}</span>
                 </TabsTrigger>
-                <TabsTrigger value="messages">
+                <TabsTrigger value="messages" data-tutorial="tab-messages">
                   <MessageSquare aria-hidden="true" />
                   <span>Messages</span>{' '}
                   <MessageBadge key={game.code + game.me} game={game} />
@@ -716,7 +737,11 @@ export default function Table() {
                 <span>Session Recap</span>
               </TabsTrigger>
             )}
-            <TabsTrigger value="script" aria-label="Rules & roles">
+            <TabsTrigger
+              value="script"
+              aria-label="Rules & roles"
+              data-tutorial="tab-rules"
+            >
               <BookOpen aria-hidden="true" />
               <span>Rules</span>
             </TabsTrigger>
@@ -727,7 +752,7 @@ export default function Table() {
               </TabsTrigger>
             )}
           </TabsList>
-          <TabsContent value="cosmetic">
+          <TabsContent value="cosmetic" data-tutorial="cosmetic-panel">
             {!game.host && game.phase === 'lobby' && (
               <>
                 <AvatarPicker
@@ -744,16 +769,19 @@ export default function Table() {
               </>
             )}
           </TabsContent>
-          <TabsContent value="recap">
+          <TabsContent value="recap" data-tutorial="recap-panel">
             <SessionRecaps game={game} />
           </TabsContent>
           <TabsContent value="flow">
+            <NightRite key={`${game.code}:${game.me}`} game={game}/>
             {game.phase === 'lobby' && (
-              <TableSeating game={game} refresh={refresh} />
+              <div data-tutorial="seating">
+                <TableSeating game={game} refresh={refresh} />
+              </div>
             )}
             <RankedMode game={game} refresh={refresh} />
             <div className="workspace-grid flow-dashboard">
-              <section className="panel flow-panel">
+              <section className="panel flow-panel" data-tutorial="flow-panel">
                 <p className="eyebrow">
                   {game.phase === 'night'
                     ? 'NIGHT ORDER'
@@ -775,7 +803,7 @@ export default function Table() {
                           '. Players join on their own devices. Randomly assign roles below, or choose each character manually in Seats.'
                         : 'Your Storyteller will assign characters and begin the game. Keep this screen open.'}
                     </p>
-                    <p>
+                    <p data-tutorial="script">
                       <strong>Selected script:</strong> {game.scriptName}
                     </p>
                     <p>
@@ -797,7 +825,9 @@ export default function Table() {
                         )}
                       </div>
                     )}
-                    <InviteFriends code={game.code} />
+                    <div data-tutorial="invite-friends">
+                      <InviteFriends code={game.code} />
+                    </div>
                   </>
                 ) : game.phase === 'night' ? (
                   game.host ? (
@@ -1011,12 +1041,15 @@ export default function Table() {
                     {h}
                   </p>
                 ))}
-                <div className="actions">
+                <div className="actions" data-tutorial="flow-actions">
                   {core.map((c, i) => button(c, i === 0))}
                 </div>
               </section>
               {game.phase !== 'lobby' && (
-                <aside className="panel character-panel">
+                <aside
+                  className="panel character-panel"
+                  data-tutorial="character-panel"
+                >
                   <p className="eyebrow">
                     {game.host ? 'YOUR GRIMOIRE' : 'YOUR SEAT'}
                   </p>
@@ -1039,6 +1072,7 @@ export default function Table() {
                       )}
                       <button
                         className="secondary full"
+                        data-tutorial="character-reveal"
                         onClick={() => setRevealed(!revealed)}
                       >
                         {revealed ? 'Hide character' : 'Reveal my character'}
@@ -1160,10 +1194,12 @@ export default function Table() {
                   refresh={refresh}
                 />
                 {game.phase !== 'lobby' && (
-                  <PlayerNotes
-                    key={'notes:' + game.code + game.me + game.gameStartedAt}
-                    game={game}
-                  />
+                  <div data-tutorial="notes-panel">
+                    <PlayerNotes
+                      key={'notes:' + game.code + game.me + game.gameStartedAt}
+                      game={game}
+                    />
+                  </div>
                 )}
                 <TableMembership
                   key={game.code + game.me}
@@ -1275,7 +1311,11 @@ export default function Table() {
               </>
             )}
           </TabsContent>
-          <TabsContent value="messages" keepMounted>
+          <TabsContent
+            value="messages"
+            keepMounted
+            data-tutorial="messages-panel"
+          >
             <TableMessages
               game={game}
               recipient={chatPlayer}
@@ -1286,11 +1326,11 @@ export default function Table() {
             />
           </TabsContent>
           <TabsContent value="script">
-            <div className="panel">
+            <div className="panel" data-tutorial="rules-panel">
               <h2>Rules & roles</h2>
-              <Link className="quiet-link" href="/rules">
+              <AppLink className="quiet-link" href="/rules">
                 Open the full reference page →
-              </Link>
+              </AppLink>
               <RulesReference script={game.script} />
             </div>
           </TabsContent>
@@ -1337,7 +1377,7 @@ export default function Table() {
             </TabsContent>
           )}
         </Tabs>
-        <footer>
+        <footer data-tutorial="table-footer">
           <span>
             Session {game.code} · {game.hostName} is Storytelling
           </span>
@@ -1354,7 +1394,7 @@ export default function Table() {
           >
             Save recovery key
           </button>
-          <Link href="/account">Account & saved games</Link>
+          <AppLink href="/account">Account & saved games</AppLink>
           <button
             onClick={() =>
               setActiveTab(
@@ -1364,8 +1404,8 @@ export default function Table() {
           >
             {game.host ? 'Characters' : 'Your name & appearance'}
           </button>
-          <Link href="/rules">Rules & roles</Link>
-          <Link href="/">Switch session</Link>
+          <AppLink href="/rules">Rules & roles</AppLink>
+          <AppLink href="/">Switch session</AppLink>
         </footer>
         <Dialog
           open={!!selected}
