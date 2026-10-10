@@ -1,6 +1,9 @@
 'use client';
+import AppLink from '@/components/app-link';
+import { NightRite } from '@/components/rite/night-rite';
+import { playCue } from '@/components/hub/audio';
+import { LobbyExit } from '@/components/hub/lobby-exit';
 import { GlossaryText } from '@/components/glossary-text';
-import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { PlayerNotes } from '@/components/player-notes';
 import { VoteChoices } from '@/components/vote-choices';
@@ -181,6 +184,13 @@ export default function Table() {
     [activeTab, setActiveTab] = useState('flow'),
     [compact, setCompact] = useState(false),
     [sandboxPov, setSandboxPov] = useState('host');
+  const previousPhase = useRef<string | null>(null);
+  const phase = game?.phase;
+  useEffect(() => {
+    if (phase && previousPhase.current && previousPhase.current !== phase)
+      playCue();
+    previousPhase.current = phase ?? null;
+  }, [phase]);
   const [followChoice, setFollowChoice] = useState(true);
   const confirmation =
     selected?.action === 'night' &&
@@ -409,9 +419,9 @@ export default function Table() {
               {error || connectionError}
             </p>
           )}
-          <Link className="quiet-link" href="/">
+          <AppLink className="quiet-link" href="/">
             Create or join a session →
-          </Link>
+          </AppLink>
           <label className="field">
             Recovery key
             <input
@@ -506,9 +516,9 @@ export default function Table() {
         className={`table-shell ${game.host ? 'host-table' : 'player-table'}`}
       >
         <header className="brand table-header">
-          <Link href="/" className="table-wordmark">
+          <AppLink href="/" className="table-wordmark">
             Fearville
-          </Link>
+          </AppLink>
           <span className="table-identity">
             {game.host ? 'STORYTELLER' : name(game.me)}
           </span>
@@ -526,6 +536,7 @@ export default function Table() {
           </span>
           <HelpMenu host={game.host} seated={!game.host && !game.sandboxHost} />
         </header>
+        <LobbyExit game={game} />
         {game.sandboxHost && (
           <section
             className="panel sandbox-toolbar"
@@ -762,6 +773,7 @@ export default function Table() {
             <SessionRecaps game={game} />
           </TabsContent>
           <TabsContent value="flow">
+            <NightRite key={`${game.code}:${game.me}`} game={game}/>
             {game.phase === 'lobby' && (
               <div data-tutorial="seating">
                 <TableSeating game={game} refresh={refresh} />
@@ -1316,9 +1328,9 @@ export default function Table() {
           <TabsContent value="script">
             <div className="panel" data-tutorial="rules-panel">
               <h2>Rules & roles</h2>
-              <Link className="quiet-link" href="/rules">
+              <AppLink className="quiet-link" href="/rules">
                 Open the full reference page →
-              </Link>
+              </AppLink>
               <RulesReference script={game.script} />
             </div>
           </TabsContent>
@@ -1382,7 +1394,7 @@ export default function Table() {
           >
             Save recovery key
           </button>
-          <Link href="/account">Account & saved games</Link>
+          <AppLink href="/account">Account & saved games</AppLink>
           <button
             onClick={() =>
               setActiveTab(
@@ -1392,8 +1404,8 @@ export default function Table() {
           >
             {game.host ? 'Characters' : 'Your name & appearance'}
           </button>
-          <Link href="/rules">Rules & roles</Link>
-          <Link href="/">Switch session</Link>
+          <AppLink href="/rules">Rules & roles</AppLink>
+          <AppLink href="/">Switch session</AppLink>
         </footer>
         <Dialog
           open={!!selected}

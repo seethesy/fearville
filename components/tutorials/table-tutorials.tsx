@@ -74,6 +74,8 @@ export function TableTutorials({
   useTutorialBlocker('night-choice', reasons.includes('night-choice'));
   useTutorialBlocker('night-glimpse', reasons.includes('night-glimpse'));
   useTutorialBlocker('vote', reasons.includes('vote'));
+  useTutorialBlocker('night-lock', reasons.includes('night-lock'));
+  useTutorialBlocker('rite-turn', reasons.includes('rite-turn'));
   useTutorialBlocker('table-dialog', dialogOpen);
   return null;
 }

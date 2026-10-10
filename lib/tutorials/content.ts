@@ -167,7 +167,7 @@ const WALKTHROUGH: Tutorial[] = [
         target: 'table-footer',
         illustration: 'settings',
         ios: {
-          body: 'The Controls tab holds your account, your recovery key and leaving this device.',
+          body: 'The Controls tab holds your account, your recovery key and Help. Return home from the top bar; your seat stays in the lobby.',
           tab: 'controls',
         },
       },
@@ -377,12 +377,12 @@ const SECTIONS: Tutorial[] = [
     section: 'session',
     platforms: ['ios'],
     title: 'Session',
-    summary: 'Your account, recovery key and leaving this device.',
+    summary: 'Your account, recovery key and returning home.',
     audience: 'player',
     steps: [
       {
         title: 'Session',
-        body: 'Save a recovery key before you switch devices, open your account and saved games, or leave this device. Help lives here too.',
+        body: 'Save a recovery key before you switch devices, open your account and saved games, or return home while keeping your seat. Help lives here too.',
         illustration: 'settings',
         ios: { tab: 'controls' },
       },
@@ -456,7 +456,7 @@ const SECTIONS: Tutorial[] = [
       },
       {
         title: 'Tutorials',
-        body: 'Signed in, each tutorial shows once. Use Show tutorials again on this page to see them all from the start.',
+        body: 'Signed in, each tutorial shows once. Use Show tutorials again in Settings to see them all from the start.',
         illustration: 'help',
       },
     ],

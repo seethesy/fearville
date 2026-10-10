@@ -4,8 +4,9 @@ import { hash, tokenOf } from '@/lib/game/store';
 import { random, appleSecret, decryptToken, type Provider } from './oidc';
 import { linkSeatRecords } from '@/lib/social/results';
 import { pendingCounts } from '@/lib/social/pending';
+import { profileDefaults } from './profile';
 export const accountCookie = 'ct_account';
-export const origin = 'https://fearville.phatsyloaf.chatgpt.site';
+export const origin = 'https://fearville.app';
 export function config(key: string) {
   const value = (env as unknown as Record<string, unknown>)[key];
   return typeof value === 'string' ? value.trim() : '';
@@ -50,7 +51,7 @@ export async function accountAuth(r: Request) {
   if (!token || token.length > 200) return null;
   return database()
     .prepare(
-      'SELECT a.id,a.name,a.email,a.handle FROM accounts a JOIN account_sessions s ON a.id=s.account WHERE s.hash=? AND s.expires>?',
+      'SELECT a.id,a.name,a.email,a.handle,a.handle_changed_at AS handleChangedAt FROM accounts a JOIN account_sessions s ON a.id=s.account WHERE s.hash=? AND s.expires>?',
     )
     .bind(await hash(token), Date.now())
     .first<{
@@ -58,6 +59,7 @@ export async function accountAuth(r: Request) {
       name: string;
       email: string;
       handle: string | null;
+      handleChangedAt: number | null;
     }>();
 }
 export async function createAccountSession(account: string) {
@@ -115,6 +117,7 @@ export async function accountView(r: Request) {
     }>();
   return {
     account,
+    profile: await profileDefaults(account.id, account.name),
     providers,
     connections: connections.results.map((c) => c.provider),
     seats: seats.results,

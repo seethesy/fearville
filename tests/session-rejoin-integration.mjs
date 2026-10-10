@@ -1,8 +1,9 @@
+import { hostFixtureFetch } from './host-fixture.mjs';
 import { claimSeats } from './claim-seats.mjs';
 import assert from 'node:assert/strict';
 const base = process.env.CT_TEST_URL || 'http://localhost:3000';
 async function call(path, token = '', body) {
-  const r = await fetch(base + path, {
+  const r = await hostFixtureFetch(base + path, {
     method: body ? 'POST' : 'GET',
     headers: {
       'Content-Type': 'application/json',
@@ -38,7 +39,10 @@ for (let i = 0; i < 5; i++)
       }),
     ),
   );
-await claimSeats(base, players.map((p) => p.token));
+await claimSeats(
+  base,
+  players.map((p) => p.token),
+);
 const initial = ok(await call('/api/game', host.token));
 for (const token of [host.token, players[0].token]) {
   const before = ok(await call('/api/game', token));
@@ -61,16 +65,21 @@ for (const token of [host.token, players[0].token]) {
   assert.equal(info.phase, 'lobby');
   assert.equal(info.name, before.host ? 'Returning Host' : 'Returning 0');
 }
-assert.equal(
-  (
-    await call('/api/session', '', {
-      action: 'join',
-      code: host.code,
-      name: 'Returning 0',
-    })
-  ).status,
-  400,
+// An unauthenticated device cannot claim an existing identity merely by name.
+// Name collisions are allowed; only credentials recover the saved seat.
+const duplicate = ok(
+  await call('/api/session', '', {
+    action: 'join',
+    code: host.code,
+    name: 'Returning 0',
+  }),
 );
+assert.notEqual(
+  ok(await call('/api/game', duplicate.token)).me,
+  initial.players[0].id,
+);
+ok(await call('/api/session', duplicate.token, { action: 'leaveLobby' }));
+initial.version = ok(await call('/api/game', host.token)).version;
 assert.equal(
   (
     await call('/api/game', players[0].token, {

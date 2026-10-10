@@ -1,7 +1,9 @@
 'use client';
+import { PlayerAvatar } from '@/components/player-avatar';
+import AppLink from '@/components/app-link';
 import { useSectionTutorial } from '@/components/tutorials/provider';
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
+import { HubShell } from '@/components/hub/shell';
 import { load, social, type PublicAccount } from '@/components/social/api';
 import {
   Record,
@@ -65,14 +67,7 @@ export default function ProfilePage() {
   }
   const a = profile?.account;
   return (
-    <main className="entry">
-      <header className="brand">
-        <Link className="brand-mark" href="/">
-          F
-        </Link>
-        <span>FEARVILLE</span>
-        <span className="edition">PLAYER</span>
-      </header>
+    <HubShell active="Social" title="A face in the town.">
       {error && (
         <p className="error" role="alert">
           {error}
@@ -81,6 +76,9 @@ export default function ProfilePage() {
       {profile && a && (
         <div className="account-layout">
           <section className="panel">
+            <div className="profile-portrait">
+              <PlayerAvatar id={a.id} avatar={a.avatar} />
+            </div>
             <p className="eyebrow">@{a.handle}</p>
             <h1>{a.name}</h1>
             <p className="muted">
@@ -142,9 +140,9 @@ export default function ProfilePage() {
                 </button>
               )}
               {profile.relation === 'self' && (
-                <Link className="quiet-link" href="/stats">
+                <AppLink className="quiet-link" href="/stats">
                   This is you. View your full record →
-                </Link>
+                </AppLink>
               )}
               {!['self', 'blocked'].includes(profile.relation) && (
                 <button
@@ -156,9 +154,9 @@ export default function ProfilePage() {
                 </button>
               )}
             </div>
-            <Link className="quiet-link" href="/friends">
+            <AppLink className="quiet-link" href="/friends">
               ← Back to friends
-            </Link>
+            </AppLink>
           </section>
           <section className="panel">
             <p className="eyebrow">RECORD</p>
@@ -186,9 +184,9 @@ export default function ProfilePage() {
         </div>
       )}
       <footer>
-        <Link href="/">Back to the table</Link>
-        <Link href="/privacy">Privacy</Link>
+        <AppLink href="/">Back to the table</AppLink>
+        <AppLink href="/privacy">Privacy</AppLink>
       </footer>
-    </main>
+    </HubShell>
   );
 }

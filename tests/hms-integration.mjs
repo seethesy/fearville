@@ -1,3 +1,4 @@
+import { hostFixtureFetch } from './host-fixture.mjs';
 import { claimSeats } from './claim-seats.mjs';
 // Holy Moon and Stars over HTTP: script selection, private night choices,
 // Storyteller resolution, the death queue, dawn, and channel privacy.
@@ -5,7 +6,7 @@ import { claimSeats } from './claim-seats.mjs';
 import assert from 'node:assert/strict';
 const base = process.env.CT_TEST_URL || 'http://localhost:3000';
 async function call(path, token, body) {
-  const r = await fetch(base + path, {
+  const r = await hostFixtureFetch(base + path, {
     method: body ? 'POST' : 'GET',
     headers: {
       'Content-Type': 'application/json',

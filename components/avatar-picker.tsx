@@ -6,7 +6,7 @@ import { PlayerAvatar } from './player-avatar';
 import { DEATH_EFFECTS, type DeathEffectId } from '@/lib/game/cosmetics';
 import { DeathEffect } from './death-effect';
 
-async function portrait(file: File) {
+export async function portrait(file: File) {
   if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type))
     throw Error('Choose a JPG, PNG, or WebP photo.');
   if (file.size > 8 * 1024 * 1024)

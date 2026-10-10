@@ -238,6 +238,16 @@ export interface SuppressionView {
     eligible: string[];
     myVoteSubmitted?: boolean;
   } | null;
+  serverNow?: number;
+  // Night Rite (players): the 30-second night lock and timed turns.
+  rite?: {
+    host?: boolean;
+    lockUntil?: number;
+    puzzle?: {
+      phase: string;
+      vote?: { answered: boolean } | null;
+    } | null;
+  } | null;
 }
 // Reasons the game itself blocks popups. Components add their own blockers
 // (open dialogs, Night Rite timed turns, the night lock) at runtime.
@@ -252,6 +262,21 @@ export function suppressionReasons(view: SuppressionView): string[] {
     !view.active.myVoteSubmitted
   )
     reasons.push('vote');
+  const rite = view.rite && !view.rite.host ? view.rite : null;
+  if (
+    rite &&
+    (rite.puzzle?.phase === 'lock' ||
+      (view.phase === 'night' &&
+        rite.lockUntil !== undefined &&
+        (view.serverNow ?? 0) < rite.lockUntil))
+  )
+    reasons.push('night-lock');
+  if (
+    rite?.puzzle &&
+    (rite.puzzle.phase === 'turn' ||
+      (rite.puzzle.vote && !rite.puzzle.vote.answered))
+  )
+    reasons.push('rite-turn');
   return reasons;
 }
 

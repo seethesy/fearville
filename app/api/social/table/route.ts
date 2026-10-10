@@ -10,7 +10,7 @@ export async function GET(r: Request) {
     const a = await accountAuth(r);
     if (!a) return json({ account: null });
     const code = (new URL(r.url).searchParams.get('code') || '').toUpperCase();
-    if (!/^[A-Z]{6}$/.test(code)) throw Error('Choose a session.');
+    if (!/^(?:[0-9]{6}|[A-Z]{6})$/.test(code)) throw Error('Choose a session.');
     if (!(await memberOf(r, a.id, code)))
       return json({ error: 'You are not seated at this table.' }, 403);
     return json({

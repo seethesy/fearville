@@ -1,5 +1,6 @@
 import { database } from '@/db';
 import type { Game } from '@/lib/game/types';
+import { recapOf } from '@/lib/game/lobby';
 import { deriveResult, gameID } from './derive';
 import { BASE_XP, mvpShares } from './progression';
 
@@ -78,6 +79,17 @@ export async function recordResult(
     );
   }
   statements.push(
+    db
+      .prepare(`UPDATE games SET recap=? WHERE id=? AND ${guard}`)
+      .bind(
+        JSON.stringify({
+          ...recapOf(g, ended),
+          id: record.id,
+          started: record.started,
+        }),
+        record.id,
+        ...guarded,
+      ),
     db
       .prepare(`DELETE FROM ranked_seats WHERE game=? AND ${guard}`)
       .bind(record.id, ...guarded),
@@ -162,6 +174,24 @@ export async function syncMvp(g: Game, version?: number) {
   });
   for (let offset = 0; offset < statements.length; offset += 50)
     await db.batch(statements.slice(offset, offset + 50));
+  for (const recap of [
+    ...(g.recaps ?? []),
+    ...(g.phase === 'ended' ? [recapOf(g, g.gameEndedAt ?? Date.now())] : []),
+  ]) {
+    await db
+      .prepare(
+        'UPDATE games SET recap=? WHERE id=? AND recap IS NOT ? AND EXISTS (SELECT 1 FROM sessions WHERE code=? AND (? IS NULL OR version=?))',
+      )
+      .bind(
+        JSON.stringify(recap),
+        recap.id,
+        JSON.stringify(recap),
+        g.code,
+        version ?? null,
+        version ?? null,
+      )
+      .run();
+  }
 }
 export async function syncResult(
   g: Game,

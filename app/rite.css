@@ -1,0 +1,727 @@
+.night-rite {
+  --rite-gold: #d4ae4f;
+  --rite-cream: #efe1b4;
+  margin: 1.2rem 0;
+  padding: clamp(14px, 3vw, 28px);
+  border: 1px solid #68542d;
+  border-radius: 22px;
+  background: radial-gradient(ellipse at top, #20382b, #0b1718 70%);
+  color: var(--rite-cream);
+  max-width: 720px;
+  position: relative;
+}
+.rite-heading {
+  text-align: center;
+  margin-bottom: 20px;
+}
+.rite-heading h2 {
+  font-family: Georgia, serif !important;
+  font-size: clamp(21px, 4vw, 32px) !important;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--rite-cream);
+  line-height: 1.3;
+}
+.rite-eyebrow {
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  color: #a29c78;
+}
+.rite-meta {
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-size: 13px;
+}
+.rite-roster {
+  display: flex;
+  justify-content: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin: 18px 0;
+}
+.rite-roster span {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13px;
+}
+.rite-roster b {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 2px solid var(--rite-gold);
+  border-radius: 50%;
+}
+.rite-roster .you b {
+  background: var(--rite-gold);
+  color: #251b16;
+}
+.rite-state {
+  display: block;
+  text-align: center;
+  color: #c2b888;
+  font-size: 14px;
+  padding: 10px;
+  background: #12282a;
+  border-radius: 9px;
+}
+.rite-timer {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin: 16px 0;
+}
+.rite-timer strong {
+  font-size: 28px;
+  min-width: 32px;
+  font-family: Georgia, serif;
+}
+.rite-timer progress {
+  width: 100%;
+  height: 14px;
+  accent-color: #e9b84c;
+}
+.rite-timer progress::-webkit-progress-bar {
+  background: #1b292b;
+  border-radius: 8px;
+}
+.rite-timer progress::-webkit-progress-value {
+  background: #e9b84c;
+  border-radius: 8px;
+}
+.rite-timer progress::-moz-progress-bar {
+  background: #e9b84c;
+  border-radius: 8px;
+}
+.rite-ring {
+  display: grid;
+  place-items: center;
+  width: 72px;
+  height: 72px;
+  margin: 18px auto;
+}
+.rite-ring svg,
+.rite-ring strong {
+  grid-area: 1 / 1;
+}
+.rite-ring strong {
+  min-width: 0;
+  text-align: center;
+}
+.rite-ring progress {
+  display: none;
+}
+.rite-buttons {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 15px 0;
+}
+.rite-buttons button {
+  min-height: 44px;
+  flex-grow: 1;
+}
+.rite-error {
+  background: #51202e;
+  border: 1px solid #d35467;
+  color: #ffadba;
+  padding: 12px;
+  border-radius: 8px;
+}
+.rite-notice {
+  display: block;
+  padding: 10px;
+  color: #eac967;
+  font-size: 14px;
+}
+.rite-check {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+}
+.rite-check input {
+  width: 20px;
+  height: 20px;
+  accent-color: var(--rite-gold);
+}
+.rite-setup fieldset {
+  border: 1px solid #49615a;
+  border-radius: 12px;
+  padding: 15px;
+  margin: 18px 0;
+}
+.rite-setup legend {
+  padding: 0 8px;
+  font-family: Georgia, serif;
+}
+.rite-setup select,
+.night-rite select {
+  min-height: 44px;
+  font-size: 16px;
+  width: 100%;
+  padding: 9px;
+  background: #142829;
+  color: #efe1b4;
+  border: 1px solid #66766b;
+  border-radius: 8px;
+}
+.rite-settings {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+.rite-settings input {
+  width: 100%;
+  min-width: 0;
+}
+.host-vigil {
+  border-top: 1px solid #6a6547;
+  padding: 16px 0;
+  overflow-wrap: anywhere;
+}
+.host-vigil summary {
+  cursor: pointer;
+  font-size: 15px;
+}
+.rite-host .escape-puzzle,
+.rite-host .lab-puzzle {
+  max-width: 390px;
+  margin: auto;
+}
+.host-vigil ol {
+  font-size: 13px;
+  max-height: 240px;
+  overflow: auto;
+}
+.escape-puzzle {
+  padding: 20px 14px;
+  background:
+    radial-gradient(circle at 0 20%, #4a625b55 0 12%, transparent 13%),
+    radial-gradient(circle at 100% 70%, #42694d66 0 15%, transparent 16%);
+  border-radius: 15px;
+}
+.escape-board {
+  position: relative;
+  aspect-ratio: 1;
+  width: calc(100% - 16px);
+  border: 10px ridge #926c40;
+  border-right-width: 9px;
+  box-shadow:
+    0 0 0 3px #282b1d,
+    0 5px 20px #010909;
+  background-color: #443f2d;
+  background-image:
+    linear-gradient(#23251a88 2px, transparent 2px),
+    linear-gradient(90deg, #23251a88 2px, transparent 2px);
+  background-size: 16.6667% 16.6667%;
+  isolation: isolate;
+}
+.escape-gate {
+  position: absolute;
+  right: -24px;
+  top: 33.333%;
+  height: 16.666%;
+  width: 30px;
+  background: #473c23;
+  border-top: 3px solid #c39a4a;
+  border-bottom: 3px solid #c39a4a;
+  color: #e8bd58;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  z-index: 2;
+}
+.escape-piece {
+  position: absolute;
+  background: transparent !important;
+  padding: 2px !important;
+  border: 0 !important;
+  min-height: 0 !important;
+  min-width: 0 !important;
+  touch-action: none;
+  cursor: grab;
+  border-radius: 9px;
+  box-shadow: none !important;
+}
+.escape-piece svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.escape-piece.selected {
+  outline: 3px dashed #f3d174;
+  outline-offset: -3px;
+  z-index: 3;
+  filter: brightness(1.2);
+}
+.escape-piece:focus-visible {
+  outline: 3px solid white;
+  z-index: 3;
+}
+.lab-shelves {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 22px 8px;
+  background: linear-gradient(
+    transparent 44%,
+    #805b32 44%,
+    #3e2f1e 48%,
+    transparent 49%,
+    transparent 94%,
+    #805b32 94%,
+    #3e2f1e 98%,
+    transparent 99%
+  );
+  padding: 24px 0 10px;
+}
+.lab-shelves .vial {
+  background: transparent !important;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+  border-radius: 8px;
+  transition: transform 0.15s;
+}
+.vial svg {
+  width: 100%;
+  display: block;
+}
+.vial.selected {
+  transform: translateY(-5px);
+  outline: 2px dashed #d8b655;
+  box-shadow: 0 0 15px #dec65355;
+}
+.vial:disabled {
+  opacity: 0.85;
+}
+.rite-vote-sheet {
+  position: relative;
+  width: 100%;
+  color: var(--rite-cream);
+  padding: 22px;
+  background: #142a2c;
+  border: 2px solid var(--rite-gold);
+  border-radius: 22px;
+  margin: 20px 0;
+  text-align: center;
+  display: grid;
+  gap: 12px;
+}
+.rite-vote-sheet h3 {
+  font-family: Georgia, serif;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+.rite-vote-sheet > strong {
+  font-size: 32px;
+}
+.town-map {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  padding: 14px;
+  border: 2px solid var(--rite-gold);
+  border-radius: 18px;
+  background:
+    radial-gradient(ellipse at 0 0, #9db6ab44, transparent 40%),
+    radial-gradient(ellipse at 100% 100%, #9db6ab44, transparent 40%), #1b3229;
+}
+.town-place {
+  text-align: center;
+  min-width: 0;
+}
+.town-place.place-2 {
+  grid-column: 1/3;
+  width: 55%;
+  margin: auto;
+}
+.town-place > svg {
+  display: block;
+  width: 100%;
+  max-height: 145px;
+}
+.town-place > strong {
+  display: block;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-family: Georgia, serif;
+  font-size: 13px;
+  border: 2px solid #bc9d46;
+  border-radius: 20px;
+  background: #302817;
+  padding: 4px;
+}
+.town-spots {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 75px;
+}
+.character-token {
+  display: inline-grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: 3px solid #b5b8ad;
+  color: #422d66;
+  font-size: 29px;
+  padding: 0 !important;
+  min-height: 0 !important;
+  min-width: 0 !important;
+}
+.character-token:empty {
+  border-style: dashed;
+}
+.character-token svg {
+  width: 80%;
+  height: 80%;
+}
+.activity-spot svg,
+.activity-token svg {
+  width: 100%;
+  height: 100%;
+}
+.activity-token {
+  width: 38px;
+  height: 38px;
+}
+.activity-spot {
+  width: 33px;
+  height: 33px;
+  border: 2px dashed #a9b9b2;
+  border-radius: 50%;
+  position: relative;
+  margin-left: -12px;
+  align-self: end;
+  margin-bottom: 8px;
+  z-index: 1;
+  padding: 0 !important;
+  background: #142a25 !important;
+  min-height: 0 !important;
+  font-size: 23px;
+}
+.rite-tray {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 5px;
+  margin: 20px 0;
+}
+.rite-tray button {
+  background: transparent;
+  border: none;
+  color: var(--rite-cream);
+  padding: 3px;
+  min-width: 0;
+  display: grid;
+  justify-items: center;
+  gap: 7px;
+}
+.rite-tray button > span {
+  font-size: 27px;
+}
+.rite-tray small {
+  font-size: 10px;
+}
+.rite-tray .used {
+  opacity: 0.45;
+}
+.rite-tray [aria-pressed='true'] {
+  opacity: 1;
+  outline: 2px dashed #d7b45b;
+  border-radius: 8px;
+}
+.rite-clues {
+  border: 1px solid #4a6960;
+  background: #101f1d;
+  border-radius: 15px;
+  padding: 16px;
+  margin-top: 22px;
+  max-height: 500px;
+  overflow: auto;
+}
+.rite-clues h3 {
+  font-family: Georgia, serif;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-size: 15px;
+}
+.rite-clue {
+  display: flex;
+  gap: 12px;
+  padding: 16px 0;
+  border-bottom: 1px solid #36554a;
+  align-items: center;
+  font-family: Georgia, serif;
+  font-size: 15px;
+}
+.rite-clue > b {
+  flex-shrink: 0;
+  border: 2px solid var(--rite-gold);
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+}
+.hidden-clue {
+  color: #91a59b;
+  font-style: italic;
+}
+.forged-clues {
+  border: 2px dashed #a73648;
+  background: #301820;
+  border-radius: 12px;
+  padding: 12px;
+  margin-top: 16px;
+  color: #ed8998;
+}
+.forged-clues b {
+  font-size: 11px;
+  background: #a42f40;
+  border-radius: 20px;
+  padding: 4px 8px;
+}
+.divination-puzzle {
+  background: #130d25;
+  padding: 18px;
+  border: 1px solid #72604e;
+  border-radius: 18px;
+}
+.ritual-tabs {
+  display: flex;
+  gap: 5px;
+  margin: 12px 0;
+  flex-wrap: wrap;
+}
+.ritual-tabs button {
+  flex: 1;
+  background: #2e2143;
+  border: 1px solid #68528b;
+  color: #b6a7cb;
+  border-radius: 8px;
+  padding: 10px 6px;
+  font-size: 12px;
+  min-height: 44px;
+}
+.ritual-tabs [aria-selected='true'],
+.ritual-tabs [aria-pressed='true'] {
+  border-color: #d3b04f;
+  color: #e9c467;
+}
+.altar-control {
+  border: 1px solid #594276;
+  background: #1e1533;
+  padding: 14px;
+  border-radius: 15px;
+  margin: 16px 0;
+}
+.altar-control h3 {
+  text-transform: uppercase;
+  letter-spacing: 0.13em;
+  font-family: Georgia, serif;
+  font-size: 14px;
+  color: #ceac52;
+  margin: 0;
+}
+.altar-control > svg {
+  width: 100%;
+  height: 130px;
+  margin: 12px 0;
+}
+.omen-card {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  border: 1px solid #594276;
+  border-radius: 15px;
+  padding: 18px 10px;
+  margin: 18px 0;
+  background: #1e1533;
+}
+.omen-card > b {
+  border: 1px solid #d3b04f;
+  border-radius: 50%;
+  width: 28px;
+  flex-shrink: 0;
+  text-align: center;
+  color: #e5c577;
+}
+.omen-card svg {
+  width: 25%;
+  max-width: 72px;
+}
+.grimoire-entry {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 8px;
+  border: 1px solid #584176;
+  border-radius: 9px;
+  margin: 10px 0;
+  background: #1e1533;
+}
+.grimoire-entry > div {
+  width: 46%;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.grimoire-entry > div:first-child {
+  flex-wrap: nowrap;
+}
+.grimoire-entry > span {
+  color: #d3b04f;
+}
+.grimoire-entry svg {
+  width: 33%;
+}
+.grimoire-entry > div:last-child svg {
+  width: 100%;
+  height: 70px;
+}
+.grimoire-entry small {
+  font-size: 10px;
+  text-align: center;
+  color: #b6a7cb;
+}
+.night-rite .primary {
+  background: #cba747;
+  color: #251c15;
+  border-color: #e3c976;
+}
+.night-rite .hint {
+  color: #a6b8ab;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.rite-flash {
+  animation: rite-falter 0.4s ease-out;
+}
+@keyframes rite-falter {
+  0%,
+  55% {
+    box-shadow: inset 0 0 0 1000px #c6385060;
+    transform: translateX(-2px);
+  }
+  25%,
+  75% {
+    transform: translateX(2px);
+  }
+  100% {
+    transform: translateX(0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rite-flash {
+    animation: rite-pulse 0.4s;
+  }
+  .vial {
+    transition: none !important;
+  }
+}
+[data-reduced-motion='true'] .rite-flash {
+  animation: rite-pulse 0.4s;
+}
+.reduce-motion .rite-flash {
+  animation: rite-pulse 0.4s;
+}
+.reduce-motion .vial {
+  transition: none !important;
+}
+.rite-control-buttons {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+.rite-control-buttons button {
+  font-size: 11px;
+  padding: 8px 4px;
+  min-height: 44px;
+  background: #241c38;
+  border: 1px solid #7e668d;
+  border-radius: 8px;
+  color: var(--rite-cream);
+}
+.rite-control-buttons button[aria-pressed='true'] {
+  background: var(--rite-gold);
+  color: #21192d;
+}
+.rite-control-buttons label {
+  font-size: 11px;
+  min-width: 0;
+}
+.rite-control-buttons select {
+  padding: 5px;
+  font-size: 12px;
+}
+.rite-control-buttons.dial-marks {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+.rite-art-control {
+  display: grid;
+  width: 100%;
+  color: var(--rite-cream);
+  background: transparent;
+  border: 0;
+}
+.rite-art-control svg {
+  width: 100%;
+  height: 100px;
+}
+.ritual-performed {
+  box-shadow:
+    0 0 24px #d4ae4f55,
+    inset 0 0 15px #d4ae4f22;
+}
+@keyframes rite-pulse {
+  0% {
+    box-shadow: inset 0 0 0 1000px #c6385060;
+  }
+  100% {
+    box-shadow: none;
+  }
+}
+@media (max-width: 420px) {
+  .night-rite {
+    padding: 12px;
+    border-radius: 15px;
+  }
+  .rite-settings {
+    grid-template-columns: 1fr;
+  }
+  .escape-puzzle {
+    padding: 14px 8px;
+  }
+  .escape-board {
+    border-width: 7px;
+  }
+  .divination-puzzle {
+    padding: 10px;
+  }
+  .omen-card {
+    gap: 7px;
+  }
+  .town-map {
+    gap: 9px;
+    padding: 9px;
+  }
+  .town-place > strong {
+    font-size: 11px;
+  }
+  .character-token {
+    width: 41px;
+    height: 41px;
+  }
+  .rite-tray small {
+    font-size: 9px;
+  }
+  .rite-roster {
+    gap: 10px;
+  }
+}

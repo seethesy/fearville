@@ -33,8 +33,15 @@
     {
       "idx": 4,
       "version": "6",
-      "when": 1791659405210,
-      "tag": "0004_tutorial_progress",
+      "when": 1791559359195,
+      "tag": "0004_fearville_profiles",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1791662087976,
+      "tag": "0005_tutorial_progress",
       "breakpoints": true
     }
   ]

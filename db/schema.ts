@@ -42,6 +42,7 @@ export const accounts = sqliteTable(
     created: integer('created').notNull(),
     // Public, unique, lowercase handle chosen by the player. Null until set.
     handle: text('handle'),
+    handleChangedAt: integer('handle_changed_at'),
   },
   (t) => [uniqueIndex('idx_accounts_handle').on(t.handle)],
 );
@@ -166,6 +167,7 @@ export const games = sqliteTable(
     script: text('script').notNull().default('unknown'),
     ranked: integer('ranked').notNull().default(0),
     hostXp: integer('host_xp').notNull().default(0),
+    recap: text('recap'),
     code: text('code').notNull(),
     hostAccount: text('host_account').references(() => accounts.id, {
       onDelete: 'set null',
@@ -247,6 +249,17 @@ export const accountSettings = sqliteTable('account_settings', {
   historyVisibility: text('history_visibility').notNull().default('friends'),
   friendRequests: text('friend_requests').notNull().default('everyone'),
   gameInvites: text('game_invites').notNull().default('friends'),
+});
+export const accountProfiles = sqliteTable('account_profiles', {
+  account: text('account')
+    .primaryKey()
+    .references(() => accounts.id, { onDelete: 'cascade' }),
+  lobbyName: text('lobby_name').notNull().default(''),
+  avatar: text('avatar').notNull().default('ghost'),
+  deathEffect: text('death_effect').notNull().default('spirit'),
+  settings: text('settings').notNull().default('{}'),
+  lastSeen: integer('last_seen').notNull().default(0),
+  onlineVisible: integer('online_visible').notNull().default(1),
 });
 // Prevent one account from starting two rated matches with the same rating.
 export const rankedSeats = sqliteTable(

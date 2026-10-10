@@ -300,6 +300,42 @@ void test('night choices, the Sphinx glimpse and an unanswered vote suppress pop
     [],
     'non-voters are not held',
   );
+  // Night Rite: the night lock and timed turns or open votes.
+  const night = { phase: 'night', host: false, me: 'p1', serverNow: 1000 };
+  assert.deepEqual(
+    suppressionReasons({ ...night, rite: { lockUntil: 5000, puzzle: null } }),
+    ['night-lock'],
+  );
+  assert.deepEqual(
+    suppressionReasons({
+      ...night,
+      rite: { lockUntil: 500, puzzle: { phase: 'lock' } },
+    }),
+    ['night-lock'],
+  );
+  assert.deepEqual(
+    suppressionReasons({
+      ...night,
+      rite: { lockUntil: 500, puzzle: { phase: 'wait' } },
+    }),
+    [],
+  );
+  assert.deepEqual(
+    suppressionReasons({ ...night, rite: { puzzle: { phase: 'turn' } } }),
+    ['rite-turn'],
+  );
+  assert.deepEqual(
+    suppressionReasons({
+      ...night,
+      rite: { puzzle: { phase: 'wait', vote: { answered: false } } },
+    }),
+    ['rite-turn'],
+  );
+  assert.deepEqual(
+    suppressionReasons({ ...night, rite: { host: true, lockUntil: 5000 } }),
+    [],
+    'Storyteller view is not held',
+  );
 });
 
 void test('guest progress lasts for one seat and resets on a new join', () => {

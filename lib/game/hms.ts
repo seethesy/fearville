@@ -1,3 +1,4 @@
+import { refreshedInfoRoles } from '../rite/engine.ts';
 // Holy Moon and Stars rules. Uses the shared queued night engine.
 //
 // Order of operations for any death (see resolveDeath):
@@ -253,7 +254,7 @@ function canAct(g: Game, p: Player, r: string) {
 export function hmsTasks(g: Game): Task[] {
   if (isHof(g)) return hofTasks(g);
   const s = hms(g);
-  const order = g.night === 1 ? HMS_FIRST : HMS_OTHER;
+  const order = g.night === 1 ? HMS_FIRST : [...refreshedInfoRoles(g), ...HMS_OTHER];
   const st = stActor(g);
   const out: Task[] = [];
   const special = (key: string, name: string, player = '') =>
@@ -495,7 +496,10 @@ export function choiceTasks(g: Game) {
 const NIGHTMARE_DECISION_MS = 60_000;
 export function nightChoiceDeadlineFor(g: Game, t: Pick<Task, 'key'>) {
   if (g.sandbox) return Number.MAX_SAFE_INTEGER;
-  return g.nightChoiceDeadlines?.[t.key] ?? g.nightChoiceDeadline ?? 0;
+  const deadline = g.nightChoiceDeadlines?.[t.key] ?? g.nightChoiceDeadline ?? 0;
+  return g.rite?.config.enabled && g.rite.status === 'open' && g.phase === 'night'
+    ? Math.min(deadline, g.rite.lockUntil ?? deadline)
+    : deadline;
 }
 function openNightmareDecision(g: Game, now: number) {
   const n = hms(g).nightmare;

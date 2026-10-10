@@ -1,6 +1,8 @@
 import { database } from '@/db';
 import { newPlayer, MAX_PLAYERS } from './types';
-import { assignAvatars } from './avatars';
+import { assignAvatars, availableAvatar } from './avatars';
+import type { ProfileDefaults } from '@/lib/accounts/preferences';
+import type { DeathEffectId } from './cosmetics';
 import { requireThat, log } from './engine';
 import { read, cookieName } from './store';
 
@@ -11,15 +13,19 @@ export function memberCookie(r: Request, token: string) {
 
 // Seats a new player at a lobby table under a fresh member credential.
 // Shared by the public join form and by invitation acceptance so both paths
-// enforce the same lobby, capacity, and unique-name rules. Returns false when
+// enforce the same lobby, capacity, and avatar rules. Returns false when
 // concurrent joins kept changing the table (the caller reports 409).
 export async function joinSession(
   code: string,
   name: string,
   tokenHash: string,
   invitation?: { id: string; account: string; sender: string; now: number },
+  defaults?: ProfileDefaults,
 ) {
-  requireThat(/^[A-Z]{6}$/.test(code), 'Enter a six-letter code.');
+  requireThat(
+    /^(?:[0-9]{6}|[A-Z]{6})$/.test(code),
+    'Enter a 6-digit session code.',
+  );
   const db = database();
   for (let i = 0; i < 8; i++) {
     const { game, version } = await read(code);
@@ -29,12 +35,12 @@ export async function joinSession(
       'This game has started. Use your recovery key to reconnect.',
     );
     requireThat(game.players.length < MAX_PLAYERS, 'This table is full.');
-    requireThat(
-      !game.players.some((p) => p.name.toLowerCase() === name.toLowerCase()),
-      'That name is taken. Use a different name, or restore your session.',
-    );
     assignAvatars(game.players);
     const player = newPlayer(name, 0);
+    if (defaults) {
+      player.avatar = availableAvatar(defaults.avatar, game.players);
+      player.deathEffect = defaults.deathEffect as DeathEffectId;
+    }
     game.players.push(player);
     assignAvatars(game.players);
     log(game, name + ' joined the table.', Date.now(), true);

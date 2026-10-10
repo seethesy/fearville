@@ -1,8 +1,9 @@
+import { hostFixtureFetch } from './host-fixture.mjs';
 import { claimSeats } from './claim-seats.mjs';
 import assert from 'node:assert/strict';
 const base = process.env.CT_TEST_URL || 'http://localhost:3000';
 async function request(path, token, body) {
-  const response = await fetch(base + path, {
+  const response = await hostFixtureFetch(base + path, {
     method: body ? 'POST' : 'GET',
     headers: {
       'Content-Type': 'application/json',

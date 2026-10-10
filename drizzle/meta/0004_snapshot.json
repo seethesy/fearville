@@ -1,9 +1,88 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "c08968cc-1936-42f7-80b0-4fa26943f328",
+  "id": "7648d64f-794a-464a-9d45-7fc2efef2ce4",
   "prevId": "8747d454-3455-4443-a71f-a8af9db827a6",
   "tables": {
+    "account_profiles": {
+      "name": "account_profiles",
+      "columns": {
+        "account": {
+          "name": "account",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "lobby_name": {
+          "name": "lobby_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "''"
+        },
+        "avatar": {
+          "name": "avatar",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'ghost'"
+        },
+        "death_effect": {
+          "name": "death_effect",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'spirit'"
+        },
+        "settings": {
+          "name": "settings",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'{}'"
+        },
+        "last_seen": {
+          "name": "last_seen",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        },
+        "online_visible": {
+          "name": "online_visible",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 1
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "account_profiles_account_accounts_id_fk": {
+          "name": "account_profiles_account_accounts_id_fk",
+          "tableFrom": "account_profiles",
+          "tableTo": "accounts",
+          "columnsFrom": [
+            "account"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
     "account_seats": {
       "name": "account_seats",
       "columns": {
@@ -234,6 +313,13 @@
         "handle": {
           "name": "handle",
           "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "handle_changed_at": {
+          "name": "handle_changed_at",
+          "type": "integer",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
@@ -544,6 +630,13 @@
           "notNull": true,
           "autoincrement": false,
           "default": 0
+        },
+        "recap": {
+          "name": "recap",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
         },
         "code": {
           "name": "code",
@@ -1265,66 +1358,6 @@
             "rater"
           ],
           "name": "storyteller_ratings_game_rater_pk"
-        }
-      },
-      "uniqueConstraints": {},
-      "checkConstraints": {}
-    },
-    "tutorial_progress": {
-      "name": "tutorial_progress",
-      "columns": {
-        "account": {
-          "name": "account",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "tutorial": {
-          "name": "tutorial",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "status": {
-          "name": "status",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "updated": {
-          "name": "updated",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "tutorial_progress_account_accounts_id_fk": {
-          "name": "tutorial_progress_account_accounts_id_fk",
-          "tableFrom": "tutorial_progress",
-          "tableTo": "accounts",
-          "columnsFrom": [
-            "account"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "tutorial_progress_account_tutorial_pk": {
-          "columns": [
-            "account",
-            "tutorial"
-          ],
-          "name": "tutorial_progress_account_tutorial_pk"
         }
       },
       "uniqueConstraints": {},

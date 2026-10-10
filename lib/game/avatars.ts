@@ -27,6 +27,24 @@ export function isPresetAvatar(value: unknown) {
 
 type AvatarSeat = { id: string; avatar?: string };
 
+// Only the arriving player's preset changes. Existing seats keep their icons.
+export function availableAvatar(
+  preferred: string,
+  players: readonly AvatarSeat[],
+) {
+  if (
+    !isPresetAvatar(preferred) ||
+    !players.some((p) => p.avatar === preferred)
+  )
+    return preferred;
+  const available = AVATARS.filter(
+    (a) => !players.some((p) => p.avatar === a.id),
+  );
+  if (!available.length) throw Error('No preset avatars are available.');
+  const random = crypto.getRandomValues(new Uint32Array(1))[0];
+  return available[random % available.length].id;
+}
+
 // Reserve explicit choices first, then allocate missing/legacy duplicate presets.
 // Stable identity order keeps this independent of seating and view order.
 export function resolvedAvatars(players: readonly AvatarSeat[]) {

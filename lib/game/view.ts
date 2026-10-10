@@ -1,4 +1,5 @@
 import { resolvedAvatars } from './avatars.ts';
+import { riteView } from '../rite/view.ts';
 import {
   scriptRoles,
   SCRIPTS,
@@ -729,6 +730,7 @@ export function view(
   const actingPlayer = g.players.find((p) => p.id === currentTask?.player);
   return {
     code: g.code,
+    rite: riteView(g, a, now),
     sandbox: !!g.sandbox,
     sandboxHost,
     script: g.script ?? 'horrors',

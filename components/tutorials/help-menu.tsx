@@ -88,8 +88,8 @@ export function HelpMenu({
           ))}
           {account && (
             <p className="hint">
-              Want every tutorial to pop up again? Use Show tutorials again on
-              your account page.
+              Want every tutorial to pop up again? Use Show tutorials again in
+              Account → Settings.
             </p>
           )}
         </DialogContent>

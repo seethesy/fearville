@@ -1,7 +1,9 @@
 'use client';
+import AppLink from '@/components/app-link';
 import { useSectionTutorial } from '@/components/tutorials/provider';
 import { useCallback, useEffect, useState } from 'react';
-import Link from 'next/link';
+import { HubShell } from '@/components/hub/shell';
+import { PlayerAvatar } from '@/components/player-avatar';
 import {
   social,
   load,
@@ -24,6 +26,8 @@ type Friend = PublicAccount & {
   together: number;
   lastPlayed: number | null;
   since: number;
+  online: boolean;
+  avatar?: string;
 };
 type Invite = {
   id: string;
@@ -46,7 +50,6 @@ export default function Friends() {
   const [account, setAccount] = useState<AccountView['account'] | null>(null),
     [loaded, setLoaded] = useState(false),
     [view, setView] = useState<SocialView | null>(null),
-    [handle, setHandle] = useState(''),
     [search, setSearch] = useState(''),
     [error, setError] = useState(''),
     [notice, setNotice] = useState(''),
@@ -60,7 +63,6 @@ export default function Friends() {
       const me = await load<AccountView>('/api/accounts');
       setAccount(me.account);
       if (me.account) {
-        setHandle((h) => h || me.account?.handle || '');
         setView(await load<SocialView>('/api/social'));
       }
     } catch (e) {
@@ -99,7 +101,7 @@ export default function Friends() {
     <div>
       <strong>
         {a.handle ? (
-          <Link href={'/profile?handle=' + a.handle}>{a.name}</Link>
+          <AppLink href={'/profile?handle=' + a.handle}>{a.name}</AppLink>
         ) : (
           a.name
         )}
@@ -108,14 +110,11 @@ export default function Friends() {
     </div>
   );
   return (
-    <main className="entry">
-      <header className="brand">
-        <Link className="brand-mark" href="/">
-          F
-        </Link>
-        <span>FEARVILLE</span>
-        <span className="edition">FRIENDS</span>
-      </header>
+    <HubShell
+      active="Social"
+      title="Find your people."
+      subtitle="Friends, invitations, and familiar faces."
+    >
       {!loaded ? null : !account ? (
         <section className="panel recovery-panel">
           <h1>Find your people.</h1>
@@ -123,46 +122,23 @@ export default function Friends() {
             Sign in to choose a handle, add friends, and invite them to your
             tables.
           </p>
-          <Link className="primary full text-center" href="/account">
+          <AppLink className="primary full text-center" href="/account">
             Go to your account →
-          </Link>
+          </AppLink>
         </section>
       ) : (
         <div className="account-layout">
           <section className="panel">
-            <p className="eyebrow">YOUR HANDLE</p>
-            <h1>{account.handle ? '@' + account.handle : 'Pick a handle.'}</h1>
+            <p className="eyebrow">ADD A FRIEND</p>
+            <h2>Better with friends.</h2>
             <p className="muted">
-              Friends find you by handle. It is public; your email never is.
+              Your username:{' '}
+              {account.handle ? (
+                '@' + account.handle
+              ) : (
+                <AppLink href="/account">Choose a username in Profile</AppLink>
+              )}
             </p>
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                void act({ action: 'handle', handle }, 'Handle saved.');
-              }}
-            >
-              <label className="field">
-                Handle
-                <input
-                  value={handle}
-                  maxLength={21}
-                  autoComplete="off"
-                  placeholder="lowercase, numbers, underscores"
-                  onChange={(e) => setHandle(e.target.value)}
-                />
-              </label>
-              <button
-                className="secondary"
-                disabled={
-                  busy ||
-                  !handle.trim() ||
-                  handle.replace(/^@/, '') === account.handle
-                }
-              >
-                Save handle
-              </button>
-            </form>
-            <p className="eyebrow section-gap">ADD A FRIEND</p>
             <form
               onSubmit={(e) => {
                 e.preventDefault();
@@ -177,12 +153,12 @@ export default function Friends() {
               }}
             >
               <label className="field">
-                Their handle
+                Their username
                 <input
                   value={search}
                   maxLength={21}
                   autoComplete="off"
-                  placeholder="@handle"
+                  placeholder="@username"
                   onChange={(e) => setSearch(e.target.value)}
                 />
               </label>
@@ -193,7 +169,7 @@ export default function Friends() {
                 Send request
               </button>
               {!account.handle && (
-                <p className="hint">Choose your own handle first.</p>
+                <p className="hint">Choose your username in Profile first.</p>
               )}
             </form>
             {notice && (
@@ -209,13 +185,13 @@ export default function Friends() {
                 {error}
               </p>
             )}
-            <Link className="quiet-link" href="/stats">
+            <AppLink className="quiet-link" href="/stats">
               View your record →
-            </Link>
+            </AppLink>
             <br />
-            <Link className="quiet-link" href="/account">
+            <AppLink className="quiet-link" href="/account">
               Manage account →
-            </Link>
+            </AppLink>
           </section>
           <div className="stack">
             {view && view.invites.length > 0 && (
@@ -257,8 +233,8 @@ export default function Friends() {
                   </article>
                 ))}
                 <p className="hint">
-                  Joining seats you under your account name. Invitations expire
-                  after a day or when the game starts.
+                  Joining uses your saved lobby name and cosmetics. Invitations
+                  expire after a day or when the game starts.
                 </p>
               </section>
             )}
@@ -331,48 +307,60 @@ export default function Friends() {
                   above.
                 </p>
               )}
-              {view?.friends.map((f) => (
-                <article key={f.id} className="friend-row">
-                  <div>
-                    <strong>
-                      {f.handle ? (
-                        <Link href={'/profile?handle=' + f.handle}>
-                          {f.name}
-                        </Link>
-                      ) : (
-                        f.name
-                      )}
-                    </strong>
-                    <small>
-                      {display(f)} ·{' '}
-                      {f.together
-                        ? `${f.together} game${f.together === 1 ? '' : 's'} together` +
-                          (f.lastPlayed ? ` · last ${when(f.lastPlayed)}` : '')
-                        : 'No games together yet'}
-                    </small>
-                  </div>
-                  <div className="row-actions">
-                    <button
-                      className="secondary"
-                      disabled={busy}
-                      onClick={() =>
-                        setPending({ action: 'remove', account: f })
-                      }
-                    >
-                      Remove
-                    </button>
-                    <button
-                      className="danger"
-                      disabled={busy}
-                      onClick={() =>
-                        setPending({ action: 'block', account: f })
-                      }
-                    >
-                      Block
-                    </button>
-                  </div>
-                </article>
-              ))}
+              {view?.friends
+                .toSorted((a, b) => Number(b.online) - Number(a.online))
+                .map((f) => (
+                  <article key={f.id} className="friend-row">
+                    <div className="friend-avatar">
+                      <PlayerAvatar avatar={f.avatar} id={f.id} />
+                    </div>
+                    <div>
+                      <strong>
+                        {f.handle ? (
+                          <AppLink href={'/profile?handle=' + f.handle}>
+                            {f.name}
+                          </AppLink>
+                        ) : (
+                          f.name
+                        )}
+                      </strong>
+                      <small
+                        className={f.online ? 'presence online' : 'presence'}
+                      >
+                        {f.online ? 'Online' : 'Offline'}
+                      </small>
+                      <small>
+                        {display(f)} ·{' '}
+                        {f.together
+                          ? `${f.together} game${f.together === 1 ? '' : 's'} together` +
+                            (f.lastPlayed
+                              ? ` · last ${when(f.lastPlayed)}`
+                              : '')
+                          : 'No games together yet'}
+                      </small>
+                    </div>
+                    <div className="row-actions">
+                      <button
+                        className="secondary"
+                        disabled={busy}
+                        onClick={() =>
+                          setPending({ action: 'remove', account: f })
+                        }
+                      >
+                        Remove
+                      </button>
+                      <button
+                        className="danger"
+                        disabled={busy}
+                        onClick={() =>
+                          setPending({ action: 'block', account: f })
+                        }
+                      >
+                        Block
+                      </button>
+                    </div>
+                  </article>
+                ))}
             </section>
             {view && view.blocked.length > 0 && (
               <section className="panel">
@@ -396,10 +384,6 @@ export default function Friends() {
           </div>
         </div>
       )}
-      <footer>
-        <Link href="/">Back to the table</Link>
-        <Link href="/privacy">Privacy</Link>
-      </footer>
       <AlertDialog
         open={!!pending}
         onOpenChange={(open) => !open && setPending(null)}
@@ -436,6 +420,6 @@ export default function Friends() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </main>
+    </HubShell>
   );
 }

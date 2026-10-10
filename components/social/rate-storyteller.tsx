@@ -1,6 +1,6 @@
 'use client';
+import AppLink from '@/components/app-link';
 import { useCallback, useEffect, useState } from 'react';
-import Link from 'next/link';
 import { social, load, type TableSocial } from './api';
 
 // End-of-game panel for players: rate the Storyteller from 1 to 5 stars.
@@ -58,7 +58,7 @@ export function RateStoryteller({
         <p className="eyebrow">YOUR RATING</p>
         <p className="muted">
           Players can now rate your storytelling. Ratings and comments appear on
-          your <Link href="/stats">record</Link>.
+          your <AppLink href="/stats">record</AppLink>.
         </p>
       </div>
     );
@@ -68,7 +68,7 @@ export function RateStoryteller({
       <div className="social-inline">
         <p className="eyebrow">RATE YOUR STORYTELLER</p>
         <p className="muted">
-          <Link href="/account">Sign in</Link> and save this seat to rate the
+          <AppLink href="/account">Sign in</AppLink> and save this seat to rate the
           Storyteller and keep this game in your record.
         </p>
       </div>
