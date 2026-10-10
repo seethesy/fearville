@@ -25,6 +25,8 @@ const files = [
   ['Assets.xcassets', 'folder.assetcatalog', 'resource'],
   ['PrivacyInfo.xcprivacy', 'text.xml', 'resource'],
   ['Info.plist', 'text.plist.xml', 'none'],
+  ['Tutorials.swift', 'sourcecode.swift', 'source'],
+  ['tutorials.json', 'text.json', 'resource'],
 ].map(([name, type, phase], i) => ({
   name,
   type,

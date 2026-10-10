@@ -148,3 +148,12 @@ extension TableStore {
         } catch { self.error = error.localizedDescription }
     }
 }
+// Tutorial progress (FEAR-16). Guests get { account: false } and keep
+// progress on the device.
+extension TableStore {
+    func tutorialProgress() async throws -> TutorialProgressReply { try await request("api/tutorials") }
+    func markTutorial(_ id: String, status: String) async throws -> TutorialProgressReply {
+        try await request("api/tutorials", body: ["action": .string("mark"), "id": .string(id), "status": .string(status)])
+    }
+    func resetTutorials() async throws -> TutorialProgressReply { try await request("api/tutorials", body: ["action": .string("reset")]) }
+}

@@ -9,12 +9,14 @@ extension Color {
 }
 @main struct FearvilleApp: App {
     @StateObject private var store = TableStore()
+    @StateObject private var tutorials = TutorialCenter()
     var body: some Scene {
-        WindowGroup { RootView().environmentObject(store).preferredColorScheme(.dark).tint(.tableAccent) }
+        WindowGroup { RootView().environmentObject(store).environmentObject(tutorials).preferredColorScheme(.dark).tint(.tableAccent).onAppear { tutorials.attach(store) } }
     }
 }
 struct RootView: View {
     @EnvironmentObject var store: TableStore
+    @EnvironmentObject var tutorials: TutorialCenter
     @Environment(\.scenePhase) private var scene
     var body: some View {
         Group {
@@ -28,11 +30,14 @@ struct RootView: View {
             guard scene == .active, store.authenticated else { return }
             while !Task.isCancelled { await store.refresh(); do { try await Task.sleep(for: .seconds(2)) } catch { return } }
         }
+        .overlay { TutorialOverlay() }
+        .task(id: store.accountState?.account?.id ?? "guest") { tutorials.attach(store); await tutorials.load() }
         .overlay { if scene != .active { Color.tableBackground.overlay(Text("FEARVILLE").tracking(3)).ignoresSafeArea() } }
     }
 }
 struct WelcomeView: View {
     @EnvironmentObject var store: TableStore
+    @EnvironmentObject var tutorials: TutorialCenter
     @State private var name = ""
     @State private var code = ""
     @State private var mode = "join"
@@ -73,26 +78,56 @@ struct WelcomeView: View {
                 }.textFieldStyle(.roundedBorder).padding(28)
             }.background(Color.tableBackground).toolbarBackground(Color.tableBackground, for: .navigationBar)
             .task { await store.refreshAccount() }
-            .sheet(isPresented: $showAccount) { NavigationStack { AccountScreen().environmentObject(store) } }
+            .sheet(isPresented: $showAccount) { NavigationStack { AccountScreen(inSheet: true).environmentObject(store).environmentObject(tutorials) } }
         }
     }
 }
 struct GameView: View {
     @EnvironmentObject var store: TableStore
+    @EnvironmentObject var tutorials: TutorialCenter
     let game: GameState
     @State private var selected: GameAction?
+    @State private var tab = "game"
+    @State private var showHelp = false
+    // Section tutorial for each tab (players only; FEAR-18).
+    private func section(for tab: String) -> String? {
+        guard !game.host else { return nil }
+        switch tab {
+        case "game": return game.phase == "lobby" ? nil : "flow"
+        case "seats": return "seats"
+        case "messages": return "messages"
+        case "script": return "rules"
+        case "controls": return "session"
+        default: return nil
+        }
+    }
+    private var voteOpen: Bool { !game.host && game.phase == "voting" && game.active != nil && game.active?.myVote == nil }
     var body: some View {
-        TabView {
-            NavigationStack { FlowView(game: game, selected: $selected).navigationTitle(game.phaseLabel).navigationBarTitleDisplayMode(.inline) }.tabItem { Text("Game") }
-            NavigationStack { SeatsView(game: game, selected: $selected).navigationTitle("Seats") }.tabItem { Text("Seats") }
-            NavigationStack { MessagesView(game: game, selected: $selected).navigationTitle("Messages") }.tabItem { Text("Messages") }
-            NavigationStack { ScriptView(script: game.script ?? "horrors").navigationTitle(game.scriptName ?? "Horrors of Fearville") }.tabItem { Text("Script") }
-            NavigationStack { ControlView(game: game, selected: $selected).navigationTitle(game.host ? "Storyteller" : "Session") }.tabItem { Text("Controls") }
+        TabView(selection: $tab) {
+            NavigationStack { FlowView(game: game, selected: $selected).navigationTitle(game.phaseLabel).navigationBarTitleDisplayMode(.inline) }.tabItem { Text("Game") }.tag("game")
+            NavigationStack { SeatsView(game: game, selected: $selected).navigationTitle("Seats") }.tabItem { Text("Seats") }.tag("seats")
+            NavigationStack { MessagesView(game: game, selected: $selected).navigationTitle("Messages") }.tabItem { Text("Messages") }.tag("messages")
+            NavigationStack { ScriptView(script: game.script ?? "horrors").navigationTitle(game.scriptName ?? "Horrors of Fearville") }.tabItem { Text("Script") }.tag("script")
+            NavigationStack { ControlView(game: game, selected: $selected).navigationTitle(game.host ? "Storyteller" : "Session") }.tabItem { Text("Controls") }.tag("controls")
         }
         .sheet(item: $selected) { action in ActionView(action: action).environmentObject(store) }
+        .sheet(isPresented: $showHelp) { NavigationStack { HelpView(host: game.host, seated: !game.host).toolbar { Button("Done") { showHelp = false } } }.environmentObject(tutorials) }
+        // Tutorials: seat scope, walkthrough chapters, first-open sections,
+        // and the states that hold popups (FEAR-16/17/18).
+        .task(id: game.code + ":" + game.me) { tutorials.setScope(game.code + ":" + game.me) }
+        .onChange(of: "\(game.phase)|\(game.day)|\(tutorials.loaded)", initial: true) { _, _ in
+            tutorials.walkthrough(for: game)
+            if !game.host && game.phase == "night" { tutorials.requestSection("night") }
+        }
+        .onChange(of: tab, initial: true) { _, next in if let s = section(for: next) { tutorials.requestSection(s) } }
+        .onChange(of: tutorials.requestedTab) { _, next in if let next { tab = next; tutorials.requestedTab = nil } }
+        .onChange(of: selected?.id, initial: true) { _, open in tutorials.setBlocker("action", open != nil) }
+        .onChange(of: game.glimpse?.id, initial: true) { _, open in tutorials.setBlocker("glimpse", open != nil) }
+        .onChange(of: voteOpen, initial: true) { _, open in tutorials.setBlocker("vote", open) }
+        .onChange(of: showHelp) { _, open in tutorials.setBlocker("help", open) }
         .safeAreaInset(edge: .top) {
             VStack(spacing: 5) {
-                HStack { Text(game.code).font(.headline.monospaced()).tracking(3); Spacer(); Text(store.online ? (game.host ? "Storyteller" : game.name(game.me)) : "Reconnecting…").font(.caption) }
+                HStack { Text(game.code).font(.headline.monospaced()).tracking(3); Spacer(); Button { showHelp = true } label: { Label("Help", systemImage: "questionmark.circle") }.font(.caption); Text(store.online ? (game.host ? "Storyteller" : game.name(game.me)) : "Reconnecting…").font(.caption) }
                 if !store.online { Text("Actions are unavailable until you reconnect. Timers continue.").font(.caption).foregroundStyle(.orange) }
                 if !store.notice.isEmpty { HStack { Text(store.notice.hasPrefix("New") ? store.notice : "Action confirmed.").font(.caption); Spacer(); Button("Dismiss") { store.notice = "" }.font(.caption) } }
             }.padding(.horizontal).padding(.vertical, 8).background(Color.tablePanel)
@@ -289,6 +324,7 @@ struct ControlView: View {
         List {
             Section("Session") {
                 NavigationLink("Account & saved games") { AccountScreen() }
+                NavigationLink("Help & tutorials") { HelpView(host: game.host, seated: !game.host) }
                 Text("\(game.hostName) is Storytelling. Code: \(game.code)")
                 Button("Save recovery key") { showRecovery = true }
                 Button("Leave this device", role: .destructive) { confirmLeave = true }
@@ -349,8 +385,12 @@ struct ActionView: View {
 
 struct AccountScreen: View {
     @EnvironmentObject var store: TableStore
+    @EnvironmentObject var tutorials: TutorialCenter
     @Environment(\.dismiss) private var dismiss
     @State private var deleteConfirmation = false
+    @State private var tutorialsReset = false
+    // Sheets sit above the app's tutorial overlay, so they draw their own.
+    var inSheet = false
     var body: some View {
         List {
             if let state = store.accountState {
@@ -367,6 +407,10 @@ struct AccountScreen: View {
                         }
                         if store.authenticated { Button("Save current seat to account") { Task { await store.attachCurrentSeat() } } }
                     }
+                    Section("Tutorials") {
+                        Button("Show tutorials again") { Task { await tutorials.reset(); tutorialsReset = true } }
+                        Text(tutorialsReset ? "Tutorials will show again." : "Each tutorial shows once per account, on every device.").font(.footnote).foregroundStyle(.secondary)
+                    }
                     Section { Button("Sign out") { Task { await store.endAccount() } }.disabled(store.working); Button("Delete account", role: .destructive) { deleteConfirmation = true }.disabled(store.working) }
                 } else {
                     Section("Create an account or sign in") {
@@ -380,6 +424,8 @@ struct AccountScreen: View {
             Section { Link("Privacy and account data", destination: store.baseURL.appendingPathComponent("privacy")) }
         }.navigationTitle("Account").scrollContentBackground(.hidden).background(Color.tableBackground)
         .task { await store.refreshAccount() }
+        .onAppear { tutorials.requestSection("account") }
+        .overlay { if inSheet { TutorialOverlay() } }
         .confirmationDialog("Delete your profile, connections, and saved seat access? Games you host will end. Shared records in other people’s games remain. This cannot be undone.", isPresented: $deleteConfirmation, titleVisibility: .visible) {
             Button("Delete account permanently", role: .destructive) { Task { await store.endAccount(delete: true) } }
             Button("Cancel", role: .cancel) {}
