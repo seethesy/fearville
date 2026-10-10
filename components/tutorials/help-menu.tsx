@@ -10,6 +10,7 @@ import {
 } from '@/components/ui/dialog';
 import { helpSections } from '@/lib/tutorials/engine';
 import { useTutorials } from './provider';
+import { RoleTipsToggle } from '@/components/role-tips';
 
 // FEAR-20: replay any tutorial or guide on demand. Lists only what applies
 // to this viewer: the player walkthrough for seated players, the Storyteller
@@ -20,12 +21,14 @@ export function HelpMenu({
   ownGuides = [],
   className = 'secondary help-button',
   label = 'Help',
+  tipSession,
 }: {
   host: boolean;
   seated: boolean;
   ownGuides?: string[];
   className?: string;
   label?: string;
+  tipSession?: string;
 }) {
   const [open, setOpen] = useState(false);
   const { state, replay, blocked, account } = useTutorials();
@@ -91,6 +94,12 @@ export function HelpMenu({
               Want every tutorial to pop up again? Use Show tutorials again in
               Account → Settings.
             </p>
+          )}
+          {tipSession && (
+            <section className="help-section">
+              <p className="eyebrow">ROLE TIPS</p>
+              <RoleTipsToggle session={tipSession} />
+            </section>
           )}
         </DialogContent>
       </Dialog>

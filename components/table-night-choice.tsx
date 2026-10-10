@@ -57,6 +57,10 @@ export function TableNightChoice({
       .filter((s): s is string => !!s)
       .slice(0, prompt.count);
   const [picked, setPicked] = useState<string[]>(initial);
+  const [fearTarget, setFearTarget] = useState(prompt.choice?.fearTarget ?? '');
+  const fearChoices =
+    prompt.fearOptions?.find((entry) => entry.target === picked[0])
+      ?.neighbors ?? [];
   const [question, setQuestion] = useState(prompt.choice?.text ?? '');
   const [flag, setFlag] = useState(!!prompt.choice?.flag);
   const [guessRows, setGuessRows] = useState<
@@ -74,6 +78,9 @@ export function TableNightChoice({
   const filledGuesses = guessRows.filter((g) => g.player && g.role);
   const ready =
     picked.length === prompt.count &&
+    (!prompt.fearOptions ||
+      !fearChoices.length ||
+      fearChoices.includes(fearTarget)) &&
     (!prompt.text || question.trim().length > 0) &&
     (!prompt.guesses ||
       (prompt.guesses === 'members'
@@ -105,6 +112,7 @@ export function TableNightChoice({
                 target: ids[0],
                 target2: ids[1],
                 target3: ids[2],
+                ...(prompt.fearOptions ? { fearTarget } : {}),
                 ...(prompt.text ? { text: question.trim() } : {}),
                 ...(prompt.flag ? { flag } : {}),
                 ...(prompt.guesses ? { guesses: filledGuesses } : {}),
@@ -127,6 +135,7 @@ export function TableNightChoice({
     picked[0] === (prompt.choice.target || undefined) &&
     (picked[1] ?? '') === prompt.choice.target2 &&
     (picked[2] ?? '') === (prompt.choice.target3 ?? '') &&
+    (!prompt.fearOptions || fearTarget === (prompt.choice.fearTarget ?? '')) &&
     (!prompt.text || question.trim() === prompt.choice.text) &&
     (!prompt.flag || flag === !!prompt.choice.flag) &&
     (!prompt.guesses ||
@@ -136,11 +145,13 @@ export function TableNightChoice({
     <section className="panel night-choice-panel">
       <h2>Your night choice</h2>
       <p>
-        {prompt.choice?.pass
-          ? 'You passed. You can change this until the timer ends.'
-          : prompt.choice
-            ? 'Choice sent. The Storyteller will confirm your action.'
-            : <GlossaryText text={what} />}
+        {prompt.choice?.pass ? (
+          'You passed. You can change this until the timer ends.'
+        ) : prompt.choice ? (
+          'Choice sent. The Storyteller will confirm your action.'
+        ) : (
+          <GlossaryText text={what} />
+        )}
       </p>
       <button className="primary" onClick={() => setOpen(true)}>
         {prompt.choice ? 'View or change choice' : 'Make your choice'}
@@ -150,8 +161,8 @@ export function TableNightChoice({
           <DialogHeader>
             <DialogTitle>Your night choice</DialogTitle>
             <DialogDescription>
-              <GlossaryText text={what} /> Your choice is sent privately to the Storyteller, who
-              confirms the action.
+              <GlossaryText text={what} /> Your choice is sent privately to the
+              Storyteller, who confirms the action.
             </DialogDescription>
           </DialogHeader>
           {seconds !== null && (
@@ -277,6 +288,8 @@ export function TableNightChoice({
                             ? [...picked, p.id]
                             : [p.id];
                     setPicked(next);
+                    if (prompt.fearOptions && next[0] !== picked[0])
+                      setFearTarget('');
                     setError('');
                   }}
                 >
@@ -311,6 +324,27 @@ export function TableNightChoice({
                 </button>
               ))}
             </div>
+          )}
+          {prompt.fearOptions && picked[0] && fearChoices.length > 0 && (
+            <label className="field">
+              If this player dies, choose a living neighbor to fear next night
+              <NativeSelect
+                value={fearTarget}
+                disabled={busy}
+                onChange={(e) => setFearTarget(e.target.value)}
+              >
+                <NativeSelectOption value="">
+                  Choose a neighbor…
+                </NativeSelectOption>
+                {prompt.options
+                  .filter((p) => fearChoices.includes(p.id))
+                  .map((p) => (
+                    <NativeSelectOption key={p.id} value={p.id}>
+                      {p.seat}. {p.name}
+                    </NativeSelectOption>
+                  ))}
+              </NativeSelect>
+            </label>
           )}
           {prompt.flag && (
             <label className="check-field">

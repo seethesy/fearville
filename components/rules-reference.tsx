@@ -13,6 +13,7 @@ import {
   type RoleScript,
 } from '@/lib/game/types';
 import { GLOSSARY } from '@/lib/game/glossary';
+import { roleTips } from '@/lib/game/role-tips';
 
 const teams = [
   {
@@ -190,9 +191,10 @@ function HorrorsOfFearville() {
         <article>
           <h3>How a death resolves</h3>
           <p>
-            A save or an impaired killer prevents a night death. Then the
-            Guardian may die in their ward’s place, and only then do triggers
-            happen (Executioner, Banshee, Hag, Hunter, Monster).
+            A save or an impaired killer prevents a night death. The Guardian
+            may die for their ward. After the Storyteller confirms a fatal night
+            outcome, the Bodyguard learns the target’s name and may take their
+            place. Death triggers then apply to whoever dies.
           </p>
         </article>
       </div>
@@ -215,6 +217,35 @@ function HorrorsOfFearville() {
         </article>
       </div>
       <RoleTeams script="horrors" />
+      <section
+        id="role-tips"
+        className="reference-section"
+        aria-labelledby="role-tips-title"
+      >
+        <p className="eyebrow">HORRORS OF FEARVILLE</p>
+        <h2 id="role-tips-title">Role tips</h2>
+        <p className="muted">
+          Ideas for playing each character. Your private Game flow shows only
+          the tips for the character you believe you are.
+        </p>
+        {teamsFor('horrors').map((team) => (
+          <div key={team.id} className="role-tips-group">
+            <h3>{team.name}</h3>
+            <div className="reference-role-grid">
+              {HOF_ROLES.filter((r) => r.team === team.id).map((r) => (
+                <article key={r.id}>
+                  <h4>{r.name}</h4>
+                  <ul>
+                    {roleTips('horrors', r.id).map((tip) => (
+                      <li key={tip}>{tip}</li>
+                    ))}
+                  </ul>
+                </article>
+              ))}
+            </div>
+          </div>
+        ))}
+      </section>
     </section>
   );
 }
@@ -228,6 +259,9 @@ export function RulesReference({ script }: { script?: RoleScript }) {
         <a href="#how-to-play">How to play</a>
         <a href="#glossary">Glossary</a>
         <a href="#using-fearville">Using Fearville</a>
+        {(!script || script === 'horrors') && (
+          <a href="#role-tips">Role tips</a>
+        )}
         {teamsFor(script ?? 'horrors').map((team) => (
           <a key={team.id} href={`#roles-${script ?? 'horrors'}-${team.id}`}>
             {team.name}

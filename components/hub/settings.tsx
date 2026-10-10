@@ -4,6 +4,7 @@ import { useAccount, accountAction } from './account-context';
 import { playCue, ambientAudio } from './audio';
 import { load, social } from '@/components/social/api';
 import { defaultPrivacy, type Privacy } from '@/lib/social/privacy-options';
+import { RoleTipsToggle } from '@/components/role-tips';
 export function SettingsPanel() {
   const { preferences, preview, refresh } = useAccount();
   const [privacy, setPrivacy] = useState(defaultPrivacy),
@@ -101,6 +102,8 @@ export function SettingsPanel() {
           <span>{label}</span>
         </label>
       ))}
+      <h2>Role tips</h2>
+      <RoleTipsToggle session="account" />
       <h2>Privacy & social</h2>
       <label className="check-setting">
         <input

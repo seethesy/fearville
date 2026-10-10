@@ -60,6 +60,7 @@ import { TableMembership } from '@/components/table-membership';
 import { RulesReference } from '@/components/rules-reference';
 import { HelpMenu } from '@/components/tutorials/help-menu';
 import { TableTutorials } from '@/components/tutorials/table-tutorials';
+import { RoleTipsPanel } from '@/components/role-tips';
 
 type Values = Record<string, string | number | boolean>;
 function FieldInput({
@@ -534,7 +535,8 @@ export default function Table() {
             {game.players.length} players ·{' '}
             {game.players.filter((p) => p.alive).length} alive
           </span>
-          <HelpMenu host={game.host} seated={!game.host && !game.sandboxHost} />
+          <HelpMenu host={game.host} seated={!game.host && !game.sandboxHost}
+            tipSession={`${game.code}:${game.me}`} />
         </header>
         <LobbyExit game={game} />
         {game.sandboxHost && (
@@ -774,6 +776,8 @@ export default function Table() {
           </TabsContent>
           <TabsContent value="flow">
             <NightRite key={`${game.code}:${game.me}`} game={game}/>
+            {game.character && <RoleTipsPanel tips={game.character.tips}
+              session={`${game.code}:${game.me}`} />}
             {game.phase === 'lobby' && (
               <div data-tutorial="seating">
                 <TableSeating game={game} refresh={refresh} />
@@ -835,11 +839,15 @@ export default function Table() {
                       <h2>
                         {pendingDeath
                           ? pendingDeath.title
+                          : game.pendingBodyguard
+                            ? 'Waiting for the Bodyguard'
                           : first?.name || 'The night is complete.'}
                       </h2>
                       <p className="muted">
                         {pendingDeath
                           ? 'Resolve this death before the next night task: prevention, the Fateweaver, then any triggered abilities.'
+                          : game.pendingBodyguard
+                            ? `${game.pendingBodyguard} has been told who will die and may take their place.`
                           : first
                             ? game.nightConfirmation?.choice
                               ? 'The player sent their choice. Open the action to review and confirm it.'

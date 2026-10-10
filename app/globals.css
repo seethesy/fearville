@@ -3040,3 +3040,26 @@ button.glossary-trigger:focus-visible { outline: 2px solid currentColor; outline
     transition: none;
   }
 }
+.role-tips-panel {
+  margin-block: 1rem;
+}
+.role-tips-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: .75rem;
+}
+.role-tips-panel ul,
+.role-tips-group ul {
+  padding-left: 1.35rem;
+  margin: .9rem 0 0;
+}
+.role-tips-panel li,
+.role-tips-group li {
+  margin-block: .45rem;
+  line-height: 1.5;
+}
+.role-tips-group {
+  margin-block: 1.5rem;
+}

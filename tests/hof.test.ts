@@ -4,6 +4,7 @@ import {
   newGame,
   newPlayer,
   HOF_ROLES,
+  HMS_ROLES,
   HOF_COUNTS,
   TEAM_ORDER,
   role,
@@ -13,6 +14,7 @@ import { execute, tasks, nightChoiceTask } from '../lib/game/engine.ts';
 import { view } from '../lib/game/view.ts';
 import { pendingDeath } from '../lib/game/hms.ts';
 import { deriveResult } from '../lib/social/derive.ts';
+import { ROLE_TIPS, roleTips } from '../lib/game/role-tips.ts';
 
 const host = { id: 'host', host: true };
 let clock = 0;
@@ -97,6 +99,18 @@ function resolve(g: Game, c: Record<string, unknown> = {}) {
 function settle(g: Game, c: Record<string, unknown> = {}) {
   const out: string[] = [];
   for (let d = pendingDeath(g); d; d = pendingDeath(g)) {
+    if (d.bodyguard && d.bodyguard.decision === undefined) {
+      execute(
+        g,
+        as(g, g.players.findIndex((p) => p.id === d.bodyguard!.player) + 1),
+        {
+          action: c.bodyguardAccept ? 'bodyguardAccept' : 'bodyguardDecline',
+          death: d.id,
+        },
+        later(),
+      );
+      continue;
+    }
     const control = view(g, host, 1, clock).controls.find(
       (x) => x.action === 'resolveDeath',
     )!;
@@ -178,6 +192,26 @@ void test('every Horrors of Fearville role is unique and counts match the script
       ),
     );
   }
+});
+
+void test('tips cover both scripts and the player receives only their perceived role', () => {
+  for (const r of HOF_ROLES) assert.ok(ROLE_TIPS.horrors[r.id]?.length, r.id);
+  for (const r of HMS_ROLES)
+    assert.ok(ROLE_TIPS.holyMoonStars[r.id]?.length, r.id);
+  const g = game(['drunk', 'doctor', 'detective', 'basilisk', 'monster']);
+  const shown = view(g, as(g, 1), 1, clock);
+  assert.deepEqual(shown.character?.tips, roleTips('horrors', 'doctor'));
+  assert.ok(
+    !JSON.stringify(shown.character).includes(
+      'You see guidance for the Villager',
+    ),
+  );
+  P(g, 1).shown = 'detective';
+  assert.deepEqual(
+    view(g, as(g, 1), 2, clock).character?.tips,
+    roleTips('horrors', 'detective'),
+    'tips change with the role the player is told',
+  );
 });
 
 void test('random assignment deals valid setups for 5–18 players', () => {
@@ -269,7 +303,6 @@ void test('night order follows the Horrors of Fearville sheet', () => {
     'lostwanderer:7',
     'doctor:11',
     'wraith:10',
-    'bodyguard:13',
     'detective:5',
     'judge:6',
     'psychic:4',
@@ -282,11 +315,21 @@ void test('the Doctor saves the Monster’s victim; the Watchman sees both visit
   dawn(g);
   toNight(g);
   choose(g, 1, { target: P(g, 5).id }); // Doctor saves the Detective
-  choose(g, 4, { target: P(g, 5).id }); // Monster attacks the Detective
+  choose(g, 4, { target: P(g, 5).id, fearTarget: P(g, 6).id }); // Monster attacks the Detective
   choose(g, 2, { target: P(g, 5).id }); // Watchman watches the Detective
   choose(g, 3, { target: P(g, 6).id }); // Basilisk fears the Judge
   runNight(g);
   assert.ok(P(g, 5).alive, 'the save prevents the kill');
+  assert.notEqual(
+    P(g, 6).fearNight,
+    g.night + 1,
+    'a saved target causes no Monster fear',
+  );
+  assert.ok(
+    !g.messages.some(
+      (m) => m.to === P(g, 9).id && /will die tonight/.test(m.text),
+    ),
+  );
   const watch = g.messages.filter((m) => m.to === P(g, 2).id).at(-1)!.text;
   assert.match(watch, /P1/);
   assert.match(watch, /P4/);
@@ -298,31 +341,71 @@ void test('a feared Doctor fails to save; the Monster’s victim dies and a neig
   toNight(g);
   choose(g, 3, { target: P(g, 1).id }); // Basilisk fears the Doctor
   choose(g, 1, { target: P(g, 5).id });
-  choose(g, 4, { target: P(g, 5).id });
-  choose(g, 9, { pass: true });
+  choose(g, 4, { target: P(g, 5).id, fearTarget: P(g, 6).id });
   runNight(g);
   assert.ok(P(g, 1).feared);
   assert.equal(P(g, 5).alive, false);
-  const neighbor = [P(g, 4), P(g, 6)].find((p) => p.fearNight === g.night + 1);
-  assert.ok(neighbor, 'a living neighbor is feared the following night');
+  const neighbor = P(g, 6);
+  assert.equal(
+    neighbor.fearNight,
+    g.night + 1,
+    'the Monster’s chosen neighbor is feared',
+  );
   execute(g, host, { action: 'dawn' }, later());
   assert.equal(P(g, 1).feared, false, 'fear ends at dawn');
   toNight(g);
   assert.equal(neighbor.feared, true);
 });
 
+void test('the Monster can fear only a living neighbor of the chosen target', () => {
+  const g = game(NINE);
+  dawn(g);
+  toNight(g);
+  assert.throws(
+    () =>
+      choose(g, 4, {
+        target: P(g, 5).id,
+        fearTarget: P(g, 8).id,
+      }),
+    /living neighbors/,
+  );
+  choose(g, 4, { target: P(g, 5).id, fearTarget: P(g, 6).id });
+  assert.equal(
+    g.nightChoices?.['monster:' + P(g, 4).id]?.fearTarget,
+    P(g, 6).id,
+  );
+});
+
 void test('the Bodyguard dies in the victim’s place', () => {
   const g = game(NINE);
   dawn(g);
   toNight(g);
-  choose(g, 4, { target: P(g, 6).id });
-  choose(g, 9, {}); // Bodyguard offers their life
-  runNight(g);
+  assert.equal(
+    nightChoiceTask(g, P(g, 9).id),
+    null,
+    'the Bodyguard is not prompted during the night choice window',
+  );
+  choose(g, 4, { target: P(g, 6).id, fearTarget: P(g, 5).id });
+  assert.ok(
+    !g.messages.some(
+      (m) => m.to === P(g, 9).id && /will die tonight/.test(m.text),
+    ),
+  );
+  runNight(g, {}, { bodyguardAccept: true });
   assert.ok(P(g, 6).alive);
   assert.equal(P(g, 9).alive, false);
   assert.match(
     g.messages.filter((m) => m.to === P(g, 9).id).at(-1)!.text,
     /P6/,
+  );
+  assert.doesNotMatch(
+    g.messages.filter((m) => m.to === P(g, 9).id).at(-1)!.text,
+    /Judge|role/i,
+    'the Bodyguard learns only the target’s name',
+  );
+  assert.ok(
+    !P(g, 5).fearNight && !P(g, 7).fearNight,
+    'Monster fear does not trigger when the target survives',
   );
 });
 
@@ -462,6 +545,13 @@ void test('Researcher and Executioner wins are added to the team result', () => 
   const exec = P(g, 2);
   exec.charge = P(g, 4).id;
   dawn(g);
+  P(g, 1).alive = false;
+  P(g, 2).alive = false;
+  assert.ok(
+    view(g, as(g, 1), 1, clock).controls.some(
+      (c) => c.action === 'researcherDeclare',
+    ),
+  );
   execute(
     g,
     as(g, 1),

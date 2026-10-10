@@ -35,6 +35,7 @@ import {
   hofResolve,
   hofPrevented,
   guardianFor,
+  bodyguardFor,
   validateHofTriggers,
   hofAfterKill,
   hofDawn,
@@ -254,7 +255,8 @@ function canAct(g: Game, p: Player, r: string) {
 export function hmsTasks(g: Game): Task[] {
   if (isHof(g)) return hofTasks(g);
   const s = hms(g);
-  const order = g.night === 1 ? HMS_FIRST : [...refreshedInfoRoles(g), ...HMS_OTHER];
+  const order =
+    g.night === 1 ? HMS_FIRST : [...refreshedInfoRoles(g), ...HMS_OTHER];
   const st = stActor(g);
   const out: Task[] = [];
   const special = (key: string, name: string, player = '') =>
@@ -496,8 +498,11 @@ export function choiceTasks(g: Game) {
 const NIGHTMARE_DECISION_MS = 60_000;
 export function nightChoiceDeadlineFor(g: Game, t: Pick<Task, 'key'>) {
   if (g.sandbox) return Number.MAX_SAFE_INTEGER;
-  const deadline = g.nightChoiceDeadlines?.[t.key] ?? g.nightChoiceDeadline ?? 0;
-  return g.rite?.config.enabled && g.rite.status === 'open' && g.phase === 'night'
+  const deadline =
+    g.nightChoiceDeadlines?.[t.key] ?? g.nightChoiceDeadline ?? 0;
+  return g.rite?.config.enabled &&
+    g.rite.status === 'open' &&
+    g.phase === 'night'
     ? Math.min(deadline, g.rite.lockUntil ?? deadline)
     : deadline;
 }
@@ -571,6 +576,16 @@ export function validateChoice(g: Game, t: Task, c: Command): NightChoice {
       ids[1] ?? '',
       ids[2] ?? '',
     ];
+  }
+  if (isHof(g) && t.role === 'monster') {
+    const target = person(g, choice.target);
+    const near = livingNeighbors(g, target);
+    const feared = clean(c.fearTarget);
+    requireThat(
+      !feared || near.some((p) => p.id === feared),
+      'Choose one of the target’s living neighbors to fear.',
+    );
+    choice.fearTarget = feared;
   }
   if (spec.flag) choice.flag = c.flag === true;
   if (spec.text) {
@@ -1390,6 +1405,44 @@ export function resolveDeath(g: Game, c: Command, now: number): string {
     );
     log(g, `Guardian ${guardian.name} dies in place of ${v.name}.`, now);
     return `The Guardian dies in place of ${v.name}. Resolve it next.`;
+  }
+  if (isHof(g) && d.night && !d.redirected && v.role !== 'bodyguard') {
+    if (!d.bodyguard) {
+      const bodyguard = bodyguardFor(g, v);
+      if (bodyguard) {
+        d.bodyguard = { player: bodyguard.id };
+        message(
+          g,
+          bodyguard.id,
+          `${v.name} will die tonight. You may die in their place.`,
+          now,
+        );
+        log(
+          g,
+          `Bodyguard ${bodyguard.name} is offered ${v.name}’s death.`,
+          now,
+        );
+        return `The death is confirmed. ${bodyguard.name} has been told that ${v.name} will die and may take their place.`;
+      }
+    } else {
+      requireThat(
+        d.bodyguard.decision !== undefined,
+        'Wait for the Bodyguard’s decision.',
+      );
+      const bodyguard = person(g, d.bodyguard.player);
+      if (d.bodyguard.decision && bodyguard.alive && healthy(bodyguard)) {
+        remove();
+        enqueueDeath(
+          g,
+          bodyguard.id,
+          `${d.cause}, the Bodyguard took ${v.name}’s place`,
+          { ready: true, night: true, redirected: true },
+          true,
+        );
+        log(g, `Bodyguard ${bodyguard.name} dies in place of ${v.name}.`, now);
+        return `The Bodyguard takes ${v.name}’s place. Resolve their death next.`;
+      }
+    }
   }
   const weaver = !d.redirected ? fateweaverFor(g, v) : undefined;
   const to = weaver ? clean(c.fateweaver) : '';

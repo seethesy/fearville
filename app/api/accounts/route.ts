@@ -17,7 +17,7 @@ import {
   revokeApple,
 } from '@/lib/accounts/service';
 import { random } from '@/lib/accounts/oidc';
-import { savePreferences, saveProfile } from '@/lib/accounts/profile';
+import { savePreferences, saveProfile, saveRoleTipsPreference } from '@/lib/accounts/profile';
 import { setHandle } from '@/lib/social/friends';
 export async function GET(r: Request) {
   try {
@@ -48,6 +48,10 @@ export async function POST(r: Request) {
     }
     if (body.action === 'preferences') {
       await savePreferences(a.id, body.settings);
+      return json(await accountView(r));
+    }
+    if (body.action === 'roleTips') {
+      await saveRoleTipsPreference(a.id, body.enabled);
       return json(await accountView(r));
     }
     if (body.action === 'handle') {
