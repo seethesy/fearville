@@ -1,4 +1,5 @@
 'use client';
+import { useSectionTutorial } from '@/components/tutorials/provider';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { load, social, type PublicAccount } from '@/components/social/api';
@@ -28,6 +29,7 @@ type Profile = {
 
 // Public player profile, addressed by handle: /profile?handle=name
 export default function ProfilePage() {
+  useSectionTutorial('profile');
   const [profile, setProfile] = useState<Profile | null>(null),
     [error, setError] = useState(''),
     [busy, setBusy] = useState(false),

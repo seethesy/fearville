@@ -29,6 +29,13 @@
       "when": 1791144971328,
       "tag": "0003_new_elektra",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1791659405210,
+      "tag": "0004_tutorial_progress",
+      "breakpoints": true
     }
   ]
 }

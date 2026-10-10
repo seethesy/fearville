@@ -1,0 +1,294 @@
+{
+  "tutorials": [
+    {
+      "id": "walkthrough.lobby",
+      "kind": "walkthrough",
+      "title": "Getting started",
+      "summary": "Your seat, your name, inviting friends and the script.",
+      "audience": "player",
+      "section": null,
+      "group": "walkthrough",
+      "covers": [],
+      "steps": [
+        {
+          "title": "Welcome to Fearville",
+          "body": "This short tour shows where everything lives. Skip it at any step, and replay it any time from Help.",
+          "symbol": "sparkles",
+          "tab": null
+        },
+        {
+          "title": "Invite friends",
+          "body": "Friends join with the six-letter session code shown at the top of the screen. Read it out or show it to them.",
+          "symbol": "person.badge.plus",
+          "tab": null
+        },
+        {
+          "title": "The script",
+          "body": "The Script tab lists every character this table can use, plus the key terms. It never shows who has which character.",
+          "symbol": "scroll",
+          "tab": "script"
+        },
+        {
+          "title": "Next: the first night",
+          "body": "When everyone is seated, the Storyteller deals characters and the game begins. The tour continues then.",
+          "symbol": "moon.stars",
+          "tab": "game"
+        }
+      ]
+    },
+    {
+      "id": "walkthrough.start",
+      "kind": "walkthrough",
+      "title": "Your character and the night",
+      "summary": "Revealing your character, Game flow, the clock and night prompts.",
+      "audience": "player",
+      "section": null,
+      "group": "walkthrough",
+      "covers": [
+        "section.flow"
+      ],
+      "steps": [
+        {
+          "title": "Your character is private",
+          "body": "Scroll to Your private character and tap Reveal my character when no one else can see your screen. It hides again as soon as you leave the app.",
+          "symbol": "eye.slash",
+          "tab": "game"
+        },
+        {
+          "title": "Game flow",
+          "body": "The Game tab always shows what is happening now: the phase, what the town is doing, and any actions you can use.",
+          "symbol": "list.bullet.rectangle",
+          "tab": "game"
+        },
+        {
+          "title": "The clock",
+          "body": "Timed phases count down here. The Storyteller can pause or extend the clock.",
+          "symbol": "timer",
+          "tab": null
+        },
+        {
+          "title": "Day and night",
+          "body": "By day the town talks, nominates and votes. At night everyone closes their eyes and the Storyteller works through the night in order. If you are asked for a choice, the Storyteller tells you in Messages and you reply there. Every player sees the same night screen.",
+          "symbol": "sun.horizon",
+          "tab": null
+        },
+        {
+          "title": "Messages",
+          "body": "Messages is your private line to the Storyteller. Anything meant only for you arrives here.",
+          "symbol": "bubble.left.and.bubble.right",
+          "tab": "messages"
+        },
+        {
+          "title": "Next: the first day",
+          "body": "Nominations and voting are covered when the first day begins.",
+          "symbol": "sun.horizon",
+          "tab": "game"
+        }
+      ]
+    },
+    {
+      "id": "walkthrough.day",
+      "kind": "walkthrough",
+      "title": "Nominations, voting and your tools",
+      "summary": "How to nominate and vote, plus notes, Help and settings.",
+      "audience": "player",
+      "section": null,
+      "group": "walkthrough",
+      "covers": [],
+      "steps": [
+        {
+          "title": "Nominations",
+          "body": "During nominations each living player may nominate once per day, and each player can be nominated once per day. When you can nominate, it appears under Actions in the Game tab.",
+          "symbol": "hand.raised",
+          "tab": "game"
+        },
+        {
+          "title": "Voting",
+          "body": "When someone is nominated, vote before the timer ends. Votes are public. Dead players keep a single vote for the rest of the game.",
+          "symbol": "checkmark.circle",
+          "tab": null
+        },
+        {
+          "title": "Help",
+          "body": "Replay this tour or any section guide from Help.",
+          "symbol": "questionmark.circle",
+          "tab": null
+        },
+        {
+          "title": "Settings and account",
+          "body": "The Controls tab holds your account, your recovery key and leaving this device.",
+          "symbol": "gearshape",
+          "tab": "controls"
+        },
+        {
+          "title": "You are ready",
+          "body": "That is the tour. Good luck in Fearville.",
+          "symbol": "checkmark.seal",
+          "tab": "game"
+        }
+      ]
+    },
+    {
+      "id": "section.flow",
+      "kind": "section",
+      "title": "Game flow",
+      "summary": "What is happening now and what you can do.",
+      "audience": "player",
+      "section": "flow",
+      "group": null,
+      "covers": [],
+      "steps": [
+        {
+          "title": "Game flow",
+          "body": "This is your home screen during play. It shows the current phase, what the town is doing, and any buttons you can use right now.",
+          "symbol": "list.bullet.rectangle",
+          "tab": "game"
+        },
+        {
+          "title": "Your seat",
+          "body": "Your private character and any actions you can take are further down this screen.",
+          "symbol": "eye.slash",
+          "tab": null
+        }
+      ]
+    },
+    {
+      "id": "section.night",
+      "kind": "section",
+      "title": "Night actions",
+      "summary": "What happens on your screen at night.",
+      "audience": "player",
+      "section": "night",
+      "group": null,
+      "covers": [],
+      "steps": [
+        {
+          "title": "The night",
+          "body": "At night the Storyteller works through the night order. Your screen stays on the night view whatever your character.",
+          "symbol": "moon.stars",
+          "tab": null
+        },
+        {
+          "title": "Night messages",
+          "body": "If you are asked for a choice, the Storyteller tells you in Messages. Reply there before the night moves on.",
+          "symbol": "bubble.left.and.bubble.right",
+          "tab": "messages"
+        },
+        {
+          "title": "Dawn",
+          "body": "Deaths from the night become public at dawn. Anything you learn at night stays in Messages.",
+          "symbol": "sun.horizon",
+          "tab": null
+        }
+      ]
+    },
+    {
+      "id": "section.seats",
+      "kind": "section",
+      "title": "Seats",
+      "summary": "Everyone at the table and who is alive.",
+      "audience": "player",
+      "section": "seats",
+      "group": null,
+      "covers": [],
+      "steps": [
+        {
+          "title": "Seats",
+          "body": "Seats lists everyone at the table in seat order, who is alive, and who still has a dead vote. Nominations used today show here too.",
+          "symbol": "chair",
+          "tab": "seats"
+        }
+      ]
+    },
+    {
+      "id": "section.messages",
+      "kind": "section",
+      "title": "Messages",
+      "summary": "Your private conversation with the Storyteller.",
+      "audience": "player",
+      "section": "messages",
+      "group": null,
+      "covers": [],
+      "steps": [
+        {
+          "title": "Messages",
+          "body": "Your conversation with the Storyteller. Information meant only for you arrives here, and you can reply at any time.",
+          "symbol": "bubble.left.and.bubble.right",
+          "tab": "messages"
+        },
+        {
+          "title": "Everyone",
+          "body": "Messages marked Everyone were sent to the whole table. Private messages are never shown to other players during the game.",
+          "symbol": "bubble.left.and.bubble.right",
+          "tab": null
+        }
+      ]
+    },
+    {
+      "id": "section.rules",
+      "kind": "section",
+      "title": "Rules & roles",
+      "summary": "Every character on the script and the key terms.",
+      "audience": "player",
+      "section": "rules",
+      "group": null,
+      "covers": [],
+      "steps": [
+        {
+          "title": "Rules & roles",
+          "body": "Every character on this script with the glossary of key terms. It lists the script, never who has which character.",
+          "symbol": "book",
+          "tab": "script"
+        },
+        {
+          "title": "Key terms",
+          "body": "Underlined words open a short definition. Tap one to read it, and tap again to close.",
+          "symbol": "book",
+          "tab": null
+        }
+      ]
+    },
+    {
+      "id": "section.session",
+      "kind": "section",
+      "title": "Session",
+      "summary": "Your account, recovery key and leaving this device.",
+      "audience": "player",
+      "section": "session",
+      "group": null,
+      "covers": [],
+      "steps": [
+        {
+          "title": "Session",
+          "body": "Save a recovery key before you switch devices, open your account and saved games, or leave this device. Help lives here too.",
+          "symbol": "gearshape",
+          "tab": "controls"
+        }
+      ]
+    },
+    {
+      "id": "section.account",
+      "kind": "section",
+      "title": "Your account",
+      "summary": "Saved seats, sign-in and privacy.",
+      "audience": "all",
+      "section": "account",
+      "group": null,
+      "covers": [],
+      "steps": [
+        {
+          "title": "Your account",
+          "body": "An account saves your seats across devices and keeps your record. Resume a saved game, connect another sign-in, or adjust your privacy here.",
+          "symbol": "person.crop.square",
+          "tab": null
+        },
+        {
+          "title": "Tutorials",
+          "body": "Signed in, each tutorial shows once. Use Show tutorials again on this page to see them all from the start.",
+          "symbol": "questionmark.circle",
+          "tab": null
+        }
+      ]
+    }
+  ]
+}

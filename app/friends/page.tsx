@@ -1,4 +1,5 @@
 'use client';
+import { useSectionTutorial } from '@/components/tutorials/provider';
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import {
@@ -41,6 +42,7 @@ type SocialView = {
 };
 
 export default function Friends() {
+  useSectionTutorial('friends');
   const [account, setAccount] = useState<AccountView['account'] | null>(null),
     [loaded, setLoaded] = useState(false),
     [view, setView] = useState<SocialView | null>(null),

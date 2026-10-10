@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
+import { TutorialProvider } from '@/components/tutorials/provider';
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
@@ -16,7 +17,9 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" className="dark">
-      <body>{children}</body>
+      <body>
+        <TutorialProvider>{children}</TutorialProvider>
+      </body>
     </html>
   );
 }

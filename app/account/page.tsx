@@ -1,8 +1,10 @@
 'use client';
+import { useSectionTutorial } from '@/components/tutorials/provider';
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { AccountPanel, type AccountView } from '@/components/account-panel';
 import { PrivacySettings } from '@/components/social/privacy-settings';
+import { ResetTutorials } from '@/components/tutorials/help-menu';
 import {
   AlertDialog,
   AlertDialogContent,
@@ -13,6 +15,7 @@ import {
   AlertDialogCancel,
 } from '@/components/ui/alert-dialog';
 export default function Account() {
+  useSectionTutorial('account');
   const [state, setState] = useState<AccountView | null>(null),
     [error, setError] = useState(''),
     [busy, setBusy] = useState(false),
@@ -158,6 +161,7 @@ export default function Account() {
         )}
       </div>
       {state?.account && <PrivacySettings />}
+      {state?.account && <ResetTutorials />}
       <footer>
         <Link href="/">Back to the table</Link>
         <Link href="/privacy">Privacy</Link>

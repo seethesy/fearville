@@ -262,3 +262,18 @@ export const rankedSeats = sqliteTable(
   },
   (t) => [index('idx_ranked_seats_code').on(t.code)],
 );
+
+// Tutorials a signed-in account has finished or skipped (FEAR-16). Guests are
+// never stored. status: completed | skipped
+export const tutorialProgress = sqliteTable(
+  'tutorial_progress',
+  {
+    account: text('account')
+      .notNull()
+      .references(() => accounts.id, { onDelete: 'cascade' }),
+    tutorial: text('tutorial').notNull(),
+    status: text('status').notNull(),
+    updated: integer('updated').notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.account, t.tutorial] })],
+);

@@ -1,4 +1,5 @@
 'use client';
+import { useSectionTutorial } from '@/components/tutorials/provider';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { load, when } from '@/components/social/api';
@@ -24,6 +25,7 @@ type View = {
 };
 
 export default function StatsPage() {
+  useSectionTutorial('stats');
   const [account, setAccount] = useState<AccountView['account'] | null>(null),
     [loaded, setLoaded] = useState(false),
     [view, setView] = useState<View | null>(null),

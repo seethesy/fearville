@@ -12,6 +12,7 @@ npx wrangler d1 execute site-creator-d1 --local --config wrangler.local.json --f
 npx wrangler d1 execute site-creator-d1 --local --config wrangler.local.json --file drizzle/0001_fine_komodo.sql
 npx wrangler d1 execute site-creator-d1 --local --config wrangler.local.json --file drizzle/0002_smiling_northstar.sql
 npx wrangler d1 execute site-creator-d1 --local --config wrangler.local.json --file drizzle/0003_new_elektra.sql
+npx wrangler d1 execute site-creator-d1 --local --config wrangler.local.json --file drizzle/0004_tutorial_progress.sql
 npm run dev
 ```
 
@@ -31,6 +32,7 @@ node tests/introductions-integration.mjs
 node tests/nightmare-integration.mjs
 node tests/sandbox-lobby-integration.mjs
 node tests/lobby-recap-integration.mjs
+node tests/tutorials-integration.mjs
 npx tsc --noEmit
 npm run build
 ```
@@ -64,6 +66,17 @@ Account progression, ranked Elo, statistics, social privacy, and migration detai
 - Both scripts use a server-authoritative queued night engine with private choices, Storyteller confirmation, visits, death prevention and redirects, and dawn changes. Character effects and win conditions remain script-specific.
 - Storytellers may pause, extend, advance, edit, override, or rewind. Rewinding restores the selected decision and later game changes while retaining messages; it sends a correction and pauses the restored timer. Information already read cannot be erased from a person’s knowledge. Rewinding across player joins is refused to avoid orphaning a device identity.
 - Recovery credentials are stored as hashes on the backend, HttpOnly cookies on web, and Keychain items on iOS. They expire after 30 days. Do not share the Storyteller recovery key. Optional Google and Apple accounts can save seats across devices. Explicit provider linking, sign-out, and account deletion are included. See ACCOUNT-SETUP.md to activate providers.
+
+## Tutorials and Help
+
+First-time players get a short walkthrough, and every section explains itself the first time it opens. Tutorials are text and illustrations only, never mention characters or teams, and read the same for every role.
+
+- **Walkthrough.** Three chapters follow a player's first lobby (seat, name and look, inviting friends, the script), first night (revealing your character, Game flow, the clock, day and night, Messages) and first day (nominations, voting, Notes, Help, settings). The Storyteller does not get it.
+- **Section tutorials.** Game flow, Night actions (shown to every player on their first night), Notes, Messages, Rules & roles, Cosmetic, Session Recap, Friends, Your record, Profiles and Your account. On iPhone: Game, Seats, Messages, Script and Session.
+- **Who sees what.** Signed-in players see each tutorial once, tracked per account on every device. Guests see everything again on every new join; a refresh or reconnect on the same seat does not replay anything. **Skip** (or Escape, then confirm) ends only the current tutorial; skipping any walkthrough chapter ends the whole walkthrough.
+- **Never in the way.** Popups wait while a night choice, the Sphinx glimpse, the Night 1 introduction, an unanswered vote, the end-game popup or an action dialog is open, then show afterwards. Other blocking states (for example timed puzzle turns) call `useTutorialBlocker(name, active)`.
+- **Help.** The Help button (table header on web, top bar and Controls on iPhone) replays the walkthrough or any section tutorial for guests and accounts. Replays never mark anything unseen; while play is blocked they start afterwards. Only the player's own Night Rite guide will be listed. Accounts can reset everything with **Show tutorials again** on the account page.
+- **Adding content.** Tutorials are data in `lib/tutorials/content.ts`. Add a section tutorial there and call `useSectionTutorial('<section>')` where it opens; spotlight targets are `data-tutorial` attributes. Run `node --experimental-strip-types scripts/generate-ios-reference.mjs` to refresh `ios/Fearville/tutorials.json`. API: `GET/POST /api/tutorials` (`mark` with `items` or a single `id`/`status`, and `reset`).
 
 ## Holy Moon and Stars
 
