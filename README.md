@@ -114,7 +114,7 @@ Signed-in players get a public handle, a friends list, table invitations, a Stor
 
 Open `ios/Fearville.xcodeproj` on a Mac. Follow `ios/TESTFLIGHT.md`. The SwiftUI app is a native client, not a web wrapper. The shared scheme builds unsigned for both simulator architectures in GitHub Actions. Physical device checks and a signed distribution build remain required before distribution.
 
-The deployed entry page is public at https://fearville.phatsyloaf.chatgpt.site. Do not embed a Sites owner bypass token in the iOS app. The session API itself enforces per-seat credentials even when the entry page is public.
+The deployed entry page is public at https://fearville.app. Do not embed a Sites owner bypass token in the iOS app. The session API itself enforces per-seat credentials even when the entry page is public.
 
 ## Scope
 

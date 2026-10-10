@@ -143,4 +143,3 @@ await writeFile(
 console.log(
   'PASS: simultaneous seat claims, competing MVP votes, private notes, recap revelation, duration, shared return and two-game history over HTTP.',
 );
-
