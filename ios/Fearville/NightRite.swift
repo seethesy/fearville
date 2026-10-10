@@ -7,9 +7,9 @@ private let riteCharacters = ["Watchman", "Doctor", "Librarian", "Detective", "M
 private let riteLocations = ["Library", "Garden", "House", "Market", "Graveyard"]
 private let riteActivities = ["Reading", "Eating", "Biking", "Shopping", "Sleeping"]
 private let riteSymbols = ["☠", "☠ ⚔", "☾", "☽", "🕊", "🐦", "⋈", "⌛"]
-private let riteLiquids: [Color] = [.green, .red, .blue, .purple, .yellow, .teal, .pink, Color(red:0.16, green:0.13, blue:0.25)]
-private let riteSubstances = ["◉", "○", "✦", "∿", "ϟ", "⋊", "◎", "ᛟ"]
-private let riteLiquidNames = ["Green with eyes", "Red with bubbles", "Blue with stars", "Purple with smoke", "Yellow with lightning", "Teal with fish", "Pink with spirals", "Black ink with runes"]
+private let riteLiquids: [Color] = [.green, .red, .blue, .purple, .yellow, .teal, .pink, Color(red:0.16, green:0.13, blue:0.25), .orange, Color(red:0.79, green:0.81, blue:0.85)]
+private let riteSubstances = ["◉", "○", "✦", "∿", "ϟ", "⋊", "◎", "ᛟ", "❦", "✚"]
+private let riteLiquidNames = ["Green with eyes", "Red with bubbles", "Blue with stars", "Purple with smoke", "Yellow with lightning", "Teal with fish", "Pink with spirals", "Black ink with runes", "Orange with leaves", "Silver with crosses"]
 
 extension HubJSON {
     var riteValue: FieldValue {
@@ -170,13 +170,13 @@ private struct NativeLaboratory: View {
     @State private var from="";@State private var sheet=false
     var body:some View {
         VStack(spacing:16) {
-            LazyVGrid(columns:Array(repeating:GridItem(.flexible(),spacing:9),count:5),spacing:24) {
+            LazyVGrid(columns:Array(repeating:GridItem(.flexible(),spacing:7),count:6),spacing:24) {
                 ForEach(puzzle["vials"].items) { vial in
                     Button { if !from.isEmpty && from != vial.id {send("riteLabPour",["from":.string(from),"to":.string(vial.id),"turn":.string(puzzle["turn"].text)]);from=""}else{from=from==vial.id ? "":vial.id} } label: {
                         GeometryReader { geometry in
                             let shape=VialShape(kind:Int(vial["shape"].number))
                             ZStack(alignment:.bottom) {
-                                VStack(spacing:0) { ForEach(Array(vial["layers"].items.reversed().enumerated()),id:\.offset) { _,c in Rectangle().fill(riteLiquids[Int(c.number)]).overlay(Text(riteSubstances[Int(c.number)]).font(.caption).foregroundStyle(riteCream)).frame(height:geometry.size.height/4) } }.frame(maxHeight:.infinity,alignment:.bottom).clipShape(shape)
+                                VStack(spacing:0) { ForEach(Array(vial["layers"].items.reversed().enumerated()),id:\.offset) { _,c in Rectangle().fill(riteLiquids[Int(c.number)]).overlay(Text(riteSubstances[Int(c.number)]).font(.caption).foregroundStyle([4,9].contains(Int(c.number)) ? Color.black.opacity(0.65):riteCream)).frame(height:geometry.size.height/4) } }.frame(maxHeight:.infinity,alignment:.bottom).clipShape(shape)
                                 shape.stroke(from==vial.id ? riteGold : Color(red:0.73,green:0.83,blue:0.86),lineWidth:from==vial.id ? 3:2)
                             }
                         }.frame(height:98).padding(.horizontal,2)
@@ -211,11 +211,16 @@ private struct NativeRiddles: View {
     private var complete:Bool {Set(characters).count==5 && !characters.contains(-1) && Set(activities).count==5 && !activities.contains(-1)}
     var body:some View {
         VStack(spacing:18) {
-            VStack(spacing:14) {
-                HStack {place(0);place(1)}
-                place(2).frame(maxWidth:180)
-                HStack {place(3);place(4)}
-            }.padding(12).background(Color(red:0.1,green:0.22,blue:0.16)).clipShape(RoundedRectangle(cornerRadius:16)).overlay(RoundedRectangle(cornerRadius:16).stroke(riteGold,lineWidth:2))
+            // The five places stand along one street, west to east; relational
+            // clues ("next door to", "west of") refer to this order.
+            VStack(spacing:6) {
+                HStack(alignment:.top,spacing:4) {ForEach(0..<5,id:\.self){i in place(i)}}
+                HStack {Text("← WEST");Spacer();Text("THE STREET").opacity(0.7);Spacer();Text("EAST →")}
+                    .font(.system(size:9,weight:.semibold,design:.serif)).tracking(1).foregroundStyle(riteGold)
+                    .padding(.horizontal,8).padding(.vertical,5)
+                    .background(Color(red:0.23,green:0.2,blue:0.15),in:Capsule())
+                    .accessibilityElement(children:.ignore).accessibilityLabel("Places run west to east along the street")
+            }.padding(10).background(Color(red:0.1,green:0.22,blue:0.16)).clipShape(RoundedRectangle(cornerRadius:16)).overlay(RoundedRectangle(cornerRadius:16).stroke(riteGold,lineWidth:2))
             Text("Choose a token, then a place. Tap a filled spot to clear it.").font(.caption)
             HStack {ForEach(0..<5,id:\.self){i in Button {kind="character";token=i} label:{VStack {Image(systemName:characterIcons[i]).font(.title2).frame(width:40,height:40).foregroundStyle(colors[i]).background(colors[i].opacity(0.2),in:Circle());Text(riteCharacters[i]).font(.system(size:9))}.opacity(characters.contains(i) ? 0.45:1)}.buttonStyle(.plain).disabled(!editable)}}
             HStack {ForEach(0..<5,id:\.self){i in Button {kind="activity";token=i} label:{VStack {Image(systemName:activityIcons[i]).font(.title2);Text(riteActivities[i]).font(.system(size:9))}.frame(maxWidth:.infinity).opacity(activities.contains(i) ? 0.45:1)}.buttonStyle(.plain).disabled(!editable)}}
@@ -235,11 +240,11 @@ private struct NativeRiddles: View {
     }
     private func place(_ i:Int)->some View {
         VStack(spacing:4) {
-            NativeTownBuilding(place:i).frame(height:73)
-            Text(riteLocations[i].uppercased()).font(.system(.caption,design:.serif)).tracking(1).padding(5).frame(maxWidth:.infinity).overlay(Capsule().stroke(riteGold))
-            HStack(spacing:-8) {
-                Button{choose(i,"character")}label:{ZStack {Circle().stroke(riteGold,style:StrokeStyle(lineWidth:2,dash:characters[i]<0 ? [4,3]:[]));if characters[i]>=0 {Image(systemName:characterIcons[characters[i]]).font(.title2).foregroundStyle(colors[characters[i]])}}.frame(width:43,height:43)}
-                Button{choose(i,"activity")}label:{ZStack {Circle().stroke(riteGold.opacity(0.7),style:StrokeStyle(dash:[4,3]));if activities[i]>=0 {Image(systemName:activityIcons[activities[i]]).font(.title3)}}.frame(width:30,height:30).offset(y:12)}
+            NativeTownBuilding(place:i).frame(height:48)
+            Text(riteLocations[i].uppercased()).font(.system(size:9,design:.serif)).lineLimit(1).minimumScaleFactor(0.7).padding(.vertical,4).padding(.horizontal,2).frame(maxWidth:.infinity).overlay(Capsule().stroke(riteGold))
+            HStack(spacing:-10) {
+                Button{choose(i,"character")}label:{ZStack {Circle().stroke(riteGold,style:StrokeStyle(lineWidth:2,dash:characters[i]<0 ? [4,3]:[]));if characters[i]>=0 {Image(systemName:characterIcons[characters[i]]).font(.body).foregroundStyle(colors[characters[i]])}}.frame(width:36,height:36)}
+                Button{choose(i,"activity")}label:{ZStack {Circle().stroke(riteGold.opacity(0.7),style:StrokeStyle(dash:[4,3]));if activities[i]>=0 {Image(systemName:activityIcons[activities[i]]).font(.caption)}}.frame(width:26,height:26).offset(y:12)}
             }.buttonStyle(.plain).disabled(!editable)
         }.frame(maxWidth:.infinity)
     }
@@ -342,7 +347,7 @@ private struct NativeRiteSetup:View {
     @EnvironmentObject var store:TableStore
     let game:GameState
     @State private var enabled=false;@State private var patterns=Set(["board","grid","ritual","lab"])
-    @State private var opening=2;@State private var lock=30;@State private var window=60;@State private var threshold=50;@State private var first=3;@State private var forged=1;@State private var notify=true
+    @State private var opening=2;@State private var lock=30;@State private var window=90;@State private var threshold=50;@State private var first=3;@State private var forged=1;@State private var notify=true
     @State private var teams:[HubJSON]=[];@State private var moved:[String:String]=[:];@State private var kinds:[String:String]=[:]
     @State private var message="";@State private var busy=false;@State private var loaded=false
     private var rite:HubJSON {store.riteState ?? .null}

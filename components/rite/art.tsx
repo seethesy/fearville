@@ -12,6 +12,8 @@ export const LIQUIDS = [
   '#26b7b5',
   '#df65ad',
   '#302c48',
+  '#ee8a2b',
+  '#c9cfd8',
 ];
 const SUBSTANCES = [
   'eyes',
@@ -22,6 +24,8 @@ const SUBSTANCES = [
   'fish',
   'spirals',
   'runes',
+  'leaves',
+  'crosses',
 ];
 export function LiquidPattern({
   color,
@@ -32,9 +36,11 @@ export function LiquidPattern({
   x: number;
   y: number;
 }) {
-  const glyph = ['◉', '○', '✦', '∿', 'ϟ', '⋊', '◎', 'ᛟ'][color];
+  const glyph = ['◉', '○', '✦', '∿', 'ϟ', '⋊', '◎', 'ᛟ', '❦', '✚'][color];
+  // Light liquids (yellow, silver) carry dark markings.
+  const ink = color === 4 ? '#ac6a0b' : color === 9 ? '#3f4652' : '#f4ecc9';
   return (
-    <g fill={color === 4 ? '#ac6a0b' : '#f4ecc9'} fontSize="9" opacity=".9">
+    <g fill={ink} fontSize="9" opacity=".9">
       <text x={x + 5} y={y + 10}>
         {glyph}
       </text>
@@ -68,7 +74,7 @@ export function VialArt({
     <svg
       viewBox="0 0 60 106"
       role="img"
-      aria-label={`${vial.id}: ${vial.layers.map((c) => `${['green', 'red', 'blue', 'purple', 'yellow', 'teal', 'pink', 'ink'][c]} with ${SUBSTANCES[c]}`).join(', ') || 'empty'}`}
+      aria-label={`${vial.id}: ${vial.layers.map((c) => `${['green', 'red', 'blue', 'purple', 'yellow', 'teal', 'pink', 'ink', 'orange', 'silver'][c]} with ${SUBSTANCES[c]}`).join(', ') || 'empty'}`}
     >
       <defs>
         <clipPath id={id}>

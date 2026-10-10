@@ -25,6 +25,28 @@ export const OFFERINGS = [
   ['herb', 'bone', 'feather'],
   ['herb', 'feather', 'bone'],
 ];
+// Symbols come in look-alike pairs (0/1, 2/3, 4/5, 6/7). An omen never shows
+// both members of a pair, so it can't contain a skull and a skull and
+// crossbones together: each omen takes one symbol from three different pairs.
+export const SYMBOL_PAIRS = [
+  [0, 1],
+  [2, 3],
+  [4, 5],
+  [6, 7],
+];
+export function omenSets(): number[][] {
+  const sets: number[][] = [];
+  for (let skip = SYMBOL_PAIRS.length - 1; skip >= 0; skip--) {
+    const pairs = SYMBOL_PAIRS.filter((_, i) => i !== skip);
+    for (let mask = 0; mask < 8; mask++)
+      sets.push(pairs.map((pair, i) => pair[(mask >> i) & 1]));
+  }
+  return sets;
+}
+export const validOmen = (symbols: number[]) =>
+  SYMBOL_PAIRS.every(
+    (pair) => pair.filter((x) => symbols.includes(x)).length < 2,
+  );
 export function controlLabel(control: ControlName, value: number) {
   if (control === 'candles')
     return ['Red', 'White', 'Purple']
@@ -43,10 +65,7 @@ export function generateRitual(
   if (members.length !== 3)
     throw Error('Divination needs exactly three players.');
   const random = rng(seed),
-    sets: number[][] = [];
-  for (let a = 0; a < 8; a++)
-    for (let b = a + 1; b < 8; b++)
-      for (let c = b + 1; c < 8; c++) sets.push([a, b, c]);
+    sets = omenSets();
   const draw = shuffle(sets, random);
   const controls = Object.keys(CONTROL_COUNTS) as ControlName[];
   const book: Page[] = controls.map((control) => ({

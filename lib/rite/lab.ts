@@ -28,49 +28,44 @@ export function pour(vials: Vial[], move: Pour): Vial[] | null {
 }
 export const labSolved = (vials: Vial[]) =>
   vials.every((v) => v.layers.every((c) => c === v.layers[0]));
-const key = (vials: Vial[]) =>
-  vials
-    .map((v) => v.layers.join(''))
-    .sort()
-    .join('|');
-function neighbors(vials: Vial[]) {
-  const out: { vials: Vial[]; move: Pour }[] = [];
-  for (const from of vials)
-    for (const to of vials) {
-      // A monochrome vial transferred wholesale to an empty one is symmetric.
-      if (!to.layers.length && from.layers.every((c) => c === from.layers[0]))
-        continue;
-      const move = { from: from.id, to: to.id },
-        next = pour(vials, move);
-      if (next) out.push({ vials: next, move });
-    }
-  return out;
-}
-function heuristic(vials: Vial[]) {
-  // Every boundary between unlike liquids must be removed by at least a pour.
-  return vials.reduce(
-    (n, v) =>
-      n + v.layers.filter((c, i) => i > 0 && c !== v.layers[i - 1]).length,
-    0,
-  );
+// Liquids as letters: a vial is a string, bottom first.
+const enc = (layers: number[]) =>
+  layers.map((c) => String.fromCharCode(97 + c)).join('');
+function heuristic(state: string[]) {
+  // A vial is done once it holds a single liquid (labSolved), and each pour
+  // removes at most one boundary between unlike liquids: a lower bound.
+  let n = 0;
+  for (const v of state)
+    for (let i = 1; i < v.length; i++) if (v[i] !== v[i - 1]) n++;
+  return n;
 }
 export function solveLab(
   vials: Vial[],
   cap = 60000,
 ): Pour[] | null | undefined {
-  // A* with an admissible boundary heuristic. Canonical vial keys remove shape
-  // and empty-vial permutations, while paths retain real vial identifiers.
-  const heap: { vials: Vial[]; path: Pour[]; f: number }[] = [];
-  const push = (q: (typeof heap)[number]) => {
-    heap.push(q);
+  // A* with an admissible boundary heuristic. Canonical keys (sorted vial
+  // contents) remove shape and empty-vial permutations, while each node
+  // records the real vial identifiers of the pour that reached it.
+  const ids = vials.map((v) => v.id);
+  const states: string[][] = [vials.map((v) => enc(v.layers))];
+  const parent = [-1],
+    moves: [number, number][] = [[-1, -1]],
+    depth = [0];
+  const f = [heuristic(states[0])];
+  const heap: number[] = [];
+  // Equal estimates favour the deeper path, which reaches a solution sooner.
+  const before = (a: number, b: number) =>
+    f[a] < f[b] || (f[a] === f[b] && depth[a] >= depth[b]);
+  const push = (n: number) => {
+    heap.push(n);
     let i = heap.length - 1;
     while (i > 0) {
       const p = (i - 1) >> 1;
-      if (heap[p].f <= q.f) break;
+      if (before(heap[p], n)) break;
       heap[i] = heap[p];
       i = p;
     }
-    heap[i] = q;
+    heap[i] = n;
   };
   const pop = () => {
     const first = heap[0],
@@ -79,8 +74,8 @@ export function solveLab(
       let i = 0;
       while (i * 2 + 1 < heap.length) {
         let c = i * 2 + 1;
-        if (c + 1 < heap.length && heap[c + 1].f < heap[c].f) c++;
-        if (heap[c].f >= last.f) break;
+        if (c + 1 < heap.length && before(heap[c + 1], heap[c])) c++;
+        if (!before(heap[c], last)) break;
         heap[i] = heap[c];
         i = c;
       }
@@ -88,100 +83,107 @@ export function solveLab(
     }
     return first;
   };
-  push({ vials, path: [], f: heuristic(vials) });
-  const best = new Map([[key(vials), 0]]);
+  const key = (state: string[]) => [...state].sort().join('|');
+  const best = new Map([[key(states[0]), 0]]);
+  push(0);
   while (heap.length) {
-    const q = pop();
-    if (q.path.length !== best.get(key(q.vials))) continue;
-    if (labSolved(q.vials)) return q.path;
+    const node = pop(),
+      state = states[node],
+      g = depth[node];
+    if (best.get(key(state)) !== g) continue;
+    if (f[node] === g) {
+      // h = 0: every vial holds a single liquid, so the lab is solved.
+      const path: Pour[] = [];
+      for (let n = node; parent[n] >= 0; n = parent[n])
+        path.push({ from: ids[moves[n][0]], to: ids[moves[n][1]] });
+      return path.reverse();
+    }
     if (best.size > cap) return undefined;
-    for (const n of neighbors(q.vials)) {
-      const k = key(n.vials),
-        d = q.path.length + 1;
-      if (d >= (best.get(k) ?? Infinity)) continue;
-      best.set(k, d);
-      push({
-        vials: n.vials,
-        path: [...q.path, n.move],
-        f: d + heuristic(n.vials),
-      });
+    const firstEmpty = state.findIndex((v) => !v.length);
+    for (let i = 0; i < state.length; i++) {
+      const v = state[i];
+      if (!v.length) continue;
+      const top = v[v.length - 1];
+      let run = 1;
+      while (run < v.length && v[v.length - 1 - run] === top) run++;
+      for (let j = 0; j < state.length; j++) {
+        const w = state[j];
+        if (j === i || w.length >= 4) continue;
+        if (!w.length) {
+          // Moving a whole single-liquid vial into an empty one changes
+          // nothing, and every empty vial is alike, so try only the first.
+          if (run === v.length || j !== firstEmpty) continue;
+        } else if (w[w.length - 1] !== top) continue;
+        const n = Math.min(run, 4 - w.length);
+        const next = state.slice();
+        next[i] = v.slice(0, v.length - n);
+        next[j] = w + top.repeat(n);
+        const k = key(next),
+          d = g + 1;
+        if (d >= (best.get(k) ?? Infinity)) continue;
+        best.set(k, d);
+        const id = states.length;
+        states.push(next);
+        parent.push(node);
+        moves.push([i, j]);
+        depth.push(d);
+        f.push(d + heuristic(next));
+        push(id);
+      }
     }
   }
   return null;
 }
+// Every vigil, whatever its size, gets a hard laboratory: ten liquids in
+// twelve vials, certified at 28-32 pours by an optimal solver.
+export const LAB_COLORS = 10;
+export const LAB_EMPTY = 2;
+export const LAB_PAR = [28, 32] as const;
 export function labCandidate(
   seed: string,
-  members: number,
+  _members: number,
   attempt: number,
 ): LabState | null {
-  const random = rng(`${seed}:${attempt}`),
-    target = members * 4,
-    colors = members * 2;
-  let vials: Vial[] = Array.from({ length: colors + 2 }, (_, i) => ({
-    id: `v${i}`,
-    shape: Math.floor(random() * 7),
-    layers: i < colors ? Array(4).fill(i) : [],
+  const random = rng(`${seed}:${attempt}`);
+  const units = shuffle(
+    Array.from({ length: LAB_COLORS * 4 }, (_, i) => i >> 2),
+    random,
+  );
+  let vials: Vial[] = Array.from(
+    { length: LAB_COLORS + LAB_EMPTY },
+    (_, i) => ({
+      id: `v${i}`,
+      shape: Math.floor(random() * 7),
+      layers: i < LAB_COLORS ? units.slice(i * 4, i * 4 + 4) : [],
+    }),
+  );
+  const solution = solveLab(vials, 120000);
+  if (!solution || solution.length < LAB_PAR[0]) return null;
+  // Playing the first optimal pours leaves a position exactly `target` away.
+  const target = Math.min(
+    solution.length,
+    LAB_PAR[0] + Math.floor(random() * (LAB_PAR[1] - LAB_PAR[0] + 1)),
+  );
+  for (const move of solution.slice(0, solution.length - target))
+    vials = pour(vials, move)!;
+  const palette = shuffle(
+    Array.from({ length: LAB_COLORS }, (_, i) => i),
+    rng(`${seed}:palette`),
+  );
+  vials = vials.map((v) => ({
+    ...v,
+    layers: v.layers.map((c) => palette[c]),
   }));
-  for (let depth = 0; depth < target + 12; depth++) {
-    const reverse: Vial[][] = [];
-    for (const from of vials)
-      for (const to of vials) {
-        if (from === to || !from.layers.length || to.layers.length === 4)
-          continue;
-        const c = from.layers.at(-1)!;
-        for (
-          let n = 1;
-          n <= Math.min(from.layers.length, 4 - to.layers.length);
-          n++
-        ) {
-          if (!from.layers.slice(-n).every((x) => x === c)) break;
-          const next = vials.map((v) =>
-            v === from
-              ? { ...v, layers: v.layers.slice(0, -n) }
-              : v === to
-                ? { ...v, layers: [...v.layers, ...Array(n).fill(c)] }
-                : v,
-          );
-          const restored = pour(next, { from: to.id, to: from.id });
-          if (
-            restored &&
-            restored.every(
-              (v, i) => v.layers.join(',') === vials[i].layers.join(','),
-            )
-          )
-            reverse.push(next);
-        }
-      }
-    if (!reverse.length) break;
-    const options = shuffle(reverse, random).sort(
-      (a, b) => heuristic(b) - heuristic(a),
-    );
-    vials = options[Math.floor(random() * Math.min(4, options.length))];
-  }
-  const solution = solveLab(vials, 4000);
-  if (solution && solution.length >= target) {
-    for (const move of solution.slice(0, solution.length - target))
-      vials = pour(vials, move)!;
-    const palette = shuffle(
-      Array.from({ length: 8 }, (_, i) => i),
-      rng(`${seed}:palette`),
-    );
-    vials = vials.map((v) => ({
-      ...v,
-      layers: v.layers.map((c) => palette[c]),
-    }));
-    return {
-      type: 'lab',
-      vials,
-      original: structuredClone(vials),
-      nightStart: structuredClone(vials),
-      par: target,
-      distance: target,
-      solved: false,
-      history: [],
-    };
-  }
-  return null;
+  return {
+    type: 'lab',
+    vials,
+    original: structuredClone(vials),
+    nightStart: structuredClone(vials),
+    par: target,
+    distance: target,
+    solved: false,
+    history: [],
+  };
 }
 export function generateLab(seed: string, members: number): LabState {
   for (let attempt = 0; attempt < 20000; attempt++) {

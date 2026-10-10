@@ -504,6 +504,20 @@ export default function Table() {
           ['cosmetic', 'recap'].includes(activeTab)
         ? 'flow'
         : activeTab;
+  // Night Rite guides: a player sees only their own vigil's pattern; the
+  // Storyteller, who chooses the patterns, sees every enabled one.
+  const rite = game.rite;
+  const ownGuide =
+    rite && !rite.host && rite.squad ? `guide.${rite.squad.kind}` : null;
+  const riteGuides = !rite
+    ? []
+    : rite.host
+      ? rite.enabled
+        ? rite.config.patterns
+        : []
+      : rite.squad
+        ? [rite.squad.kind]
+        : [];
   return (
     <TableAtmosphere night={game.phase === 'night'}>
       <TableTutorials
@@ -534,7 +548,11 @@ export default function Table() {
             {game.players.length} players ·{' '}
             {game.players.filter((p) => p.alive).length} alive
           </span>
-          <HelpMenu host={game.host} seated={!game.host && !game.sandboxHost} />
+          <HelpMenu
+            host={game.host}
+            seated={!game.host && !game.sandboxHost}
+            ownGuides={ownGuide ? [ownGuide] : []}
+          />
         </header>
         <LobbyExit game={game} />
         {game.sandboxHost && (
@@ -773,7 +791,7 @@ export default function Table() {
             <SessionRecaps game={game} />
           </TabsContent>
           <TabsContent value="flow">
-            <NightRite key={`${game.code}:${game.me}`} game={game}/>
+            <NightRite key={`${game.code}:${game.me}`} game={game} />
             {game.phase === 'lobby' && (
               <div data-tutorial="seating">
                 <TableSeating game={game} refresh={refresh} />
@@ -1331,7 +1349,7 @@ export default function Table() {
               <AppLink className="quiet-link" href="/rules">
                 Open the full reference page →
               </AppLink>
-              <RulesReference script={game.script} />
+              <RulesReference script={game.script} riteGuides={riteGuides} />
             </div>
           </TabsContent>
           {game.host && (

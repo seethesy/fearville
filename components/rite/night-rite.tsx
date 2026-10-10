@@ -853,7 +853,10 @@ function Sphinx({
   const colors = ['#d9c5f1', '#f9d6d6', '#d4e4fb', '#fbf0c2', '#dde0e3'];
   return (
     <div className="sphinx-puzzle">
-      <div className="town-map">
+      <div
+        className="town-map"
+        aria-label="The street. Places run west to east."
+      >
         {LOCATIONS.map((name, location) => {
           const row = placements.find((p) => p.location === location)!;
           return (
@@ -901,6 +904,11 @@ function Sphinx({
             </div>
           );
         })}
+        <div className="town-street" aria-hidden="true">
+          <span>← West</span>
+          <span>The street</span>
+          <span>East →</span>
+        </div>
       </div>
       <p className="hint">
         Select a token, then tap a place. Tap a filled spot to clear it.

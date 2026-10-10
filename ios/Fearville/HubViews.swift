@@ -171,7 +171,7 @@ struct NativeSocial: View {
 }
 struct NativeRules: View {
     @State private var script = "horrors"
-    var body: some View { ScriptView(script: script).safeAreaInset(edge: .top) { Picker("Script", selection: $script) { Text("Horrors of Fearville").tag("horrors"); Text("Holy Moon and Stars").tag("holyMoonStars") }.pickerStyle(.segmented).padding().background(Color.tablePanel) }.navigationTitle("Rules & scripts").navigationBarTitleDisplayMode(.inline) }
+    var body: some View { ScriptView(script: script, riteGuides: ["board", "grid", "ritual", "lab"]).safeAreaInset(edge: .top) { Picker("Script", selection: $script) { Text("Horrors of Fearville").tag("horrors"); Text("Holy Moon and Stars").tag("holyMoonStars") }.pickerStyle(.segmented).padding().background(Color.tablePanel) }.navigationTitle("Rules & scripts").navigationBarTitleDisplayMode(.inline) }
 }
 struct NativeAccount: View {
     @EnvironmentObject var store: TableStore
