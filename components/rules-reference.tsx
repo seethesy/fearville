@@ -381,8 +381,7 @@ export function RulesReference({ script }: { script?: RoleScript }) {
           <li>
             <strong>Keep your seat.</strong> Closing a tab does not leave the
             game. Return from the home page in the same browser. Save your
-            private recovery key or link your account to return from another
-            device.
+            Sign in to your account to return from another device.
           </li>
         </ol>
       </section>

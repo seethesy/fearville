@@ -163,11 +163,11 @@ const WALKTHROUGH: Tutorial[] = [
       },
       {
         title: 'Settings and account',
-        body: 'Use the links at the bottom of the page to change your name and appearance, save a recovery key, or open your account.',
-        target: 'table-footer',
+        body: 'Open Settings from the gear in the table header. Your account keeps your saved lobbies available across devices.',
+        target: 'table-settings',
         illustration: 'settings',
         ios: {
-          body: 'The Controls tab holds your account, your recovery key and Help. Return home from the top bar; your seat stays in the lobby.',
+          body: 'Settings opens from the gear. Return home from the top bar; your seat stays in the lobby.',
           tab: 'controls',
         },
       },
@@ -377,12 +377,12 @@ const SECTIONS: Tutorial[] = [
     section: 'session',
     platforms: ['ios'],
     title: 'Session',
-    summary: 'Your account, recovery key and returning home.',
+    summary: 'Your account and returning home.',
     audience: 'player',
     steps: [
       {
         title: 'Session',
-        body: 'Save a recovery key before you switch devices, open your account and saved games, or return home while keeping your seat. Help lives here too.',
+        body: 'Your account keeps saved lobbies available across devices. Return home while keeping your seat. Help lives here too.',
         illustration: 'settings',
         ios: { tab: 'controls' },
       },

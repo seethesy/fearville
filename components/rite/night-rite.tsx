@@ -39,7 +39,13 @@ type Send = (
   action: string,
   payload?: Record<string, unknown>,
 ) => Promise<void>;
-export function NightRite({ game }: { game: GameView }) {
+export function NightRite({
+  game,
+  mode = 'play',
+}: {
+  game: GameView;
+  mode?: 'play' | 'setup';
+}) {
   const [reply, setReply] = useState<Reply>({
       rite: game.rite,
       serverNow: game.serverNow,
@@ -147,7 +153,6 @@ export function NightRite({ game }: { game: GameView }) {
       const next: Reply = await response.json();
       if (!response.ok)
         throw Error(next.error || 'That action could not be completed.');
-      lastAction.current = Date.now();
       apply(next);
       setNotice(next.summary ?? '');
       if (next.summary?.includes('falters') || next.summary?.includes('ruined'))
@@ -162,64 +167,78 @@ export function NightRite({ game }: { game: GameView }) {
   };
   const r = reply.rite;
   const own = r && !r.host ? r.puzzle : null;
-  const previous = useRef<{ phase?: string; ruined?: string }>({});
-  const lastAction = useRef(0);
+  const previousRuined = useRef('');
   useEffect(() => {
-    if (
-      own &&
-      ((previous.current.phase === 'turn' &&
-        own.phase === 'locked' &&
-        !busy &&
-        Date.now() - lastAction.current > 1000) ||
-        (own.ruined && own.ruined !== previous.current.ruined))
-    )
+    if (own?.ruined && own.ruined !== previousRuined.current)
       fail('That action could not be completed.');
-    previous.current = { phase: own?.phase, ruined: own?.ruined };
-  }, [own, busy, fail]);
+    previousRuined.current = own?.ruined ?? '';
+  }, [own, fail]);
   if (!game.host && !r) return null;
+  if (
+    mode === 'setup' &&
+    (!game.host ||
+      !r?.host ||
+      !(
+        game.phase === 'lobby' ||
+        (r.status === 'dormant' && game.night < r.config.opensNight)
+      ))
+  )
+    return null;
   return (
     <section
       className={'night-rite ' + (flash ? 'rite-flash' : '')}
       aria-label="Night Rite"
     >
       <header className="rite-heading">
+        {mode === 'play' &&
+          r?.lockUntil &&
+          r?.windowEnd &&
+          game.phase === 'night' && (
+            <div className="rite-window-clocks" aria-label="Night Rite timers">
+              <div>
+                <span>UNLOCKS IN</span>
+                <strong>{formatRiteTime(r.lockUntil - now)}</strong>
+              </div>
+              <div>
+                <span>CLOSES IN</span>
+                <strong>{formatRiteTime(r.windowEnd - now)}</strong>
+              </div>
+            </div>
+          )}
         <p className="rite-eyebrow">THE TOWN’S NIGHT RITE</p>
         <h2>
-          {r?.status === 'complete'
-            ? 'The Rite is complete.'
-            : r && !r.host
-              ? r.squad.title
-              : 'Keep the candles burning.'}
+          {mode === 'setup'
+            ? 'Night vigil setup'
+            : r?.status === 'complete'
+              ? 'The Rite is complete.'
+              : r && !r.host
+                ? r.squad.title
+                : 'Keep the candles burning.'}
         </h2>
       </header>
       {r?.host ? (
         <>
-          {(game.phase === 'lobby' ||
-            (r.status === 'dormant' && game.night < r.config.opensNight)) && (
-            <RiteSetup
-              key={JSON.stringify([r.config, r.plans])}
-              game={game}
-              config={r.config}
-              plans={r.plans}
-              send={send}
-              busy={busy}
-            />
-          )}
-          {r.preparing && (
+          {mode === 'setup' &&
+            (game.phase === 'lobby' ||
+              (r.status === 'dormant' && game.night < r.config.opensNight)) && (
+              <RiteSetup
+                key={JSON.stringify([r.config, r.plans])}
+                game={game}
+                config={r.config}
+                plans={r.plans}
+                send={send}
+                busy={busy}
+              />
+            )}
+          {mode === 'play' && r.preparing && (
             <p className="rite-state">Preparing the vigils’ puzzles…</p>
           )}
-          {r.squads.length > 0 && (
+          {mode === 'play' && r.squads.length > 0 && (
             <div className="rite-host">
               <p>
                 {r.squads.filter((s) => s.completeNight).length} of{' '}
                 {r.squads.length} vigils complete · {r.needed} needed
               </p>
-              {r.windowEnd && game.phase === 'night' && (
-                <p>
-                  Window closes in{' '}
-                  {Math.max(0, Math.ceil((r.windowEnd - now) / 1000))} seconds
-                </p>
-              )}
               {r.squads.map((s) => (
                 <HostVigil
                   key={s.id}
@@ -241,7 +260,7 @@ export function NightRite({ game }: { game: GameView }) {
             </div>
           )}
         </>
-      ) : (
+      ) : mode === 'setup' ? null : (
         r && (
           <>
             <p className="rite-meta">
@@ -278,7 +297,7 @@ export function NightRite({ game }: { game: GameView }) {
                 )}
                 {own.phase === 'wait' && (
                   <p className="rite-state">
-                    Waiting for your turn. Keep this screen open.
+                    The vigil is voting. Keep this screen open.
                   </p>
                 )}
                 {own.phase === 'locked' && (
@@ -293,48 +312,6 @@ export function NightRite({ game }: { game: GameView }) {
                 )}
                 {own.phase === 'done' && (
                   <p className="rite-state">Your vigil’s puzzle is complete.</p>
-                )}
-                {own.deadline && own.phase === 'turn' && (
-                  <div
-                    className={
-                      'rite-timer ' + (own.type === 'lab' ? 'rite-ring' : '')
-                    }
-                    aria-label="Time remaining"
-                  >
-                    {own.type === 'lab' && (
-                      <svg viewBox="0 0 100 100" aria-hidden="true">
-                        <circle
-                          cx="50"
-                          cy="50"
-                          r="43"
-                          fill="none"
-                          stroke="#314f50"
-                          strokeWidth="7"
-                        />
-                        <circle
-                          cx="50"
-                          cy="50"
-                          r="43"
-                          fill="none"
-                          stroke="#d4ae4f"
-                          strokeWidth="7"
-                          pathLength="1"
-                          strokeDasharray={`${Math.min(1, Math.max(0, (own.deadline - now) / 8000))} 1`}
-                          transform="rotate(-90 50 50)"
-                        />
-                      </svg>
-                    )}
-                    <strong>
-                      {Math.min(
-                        own.type === 'board' ? 5 : 8,
-                        Math.max(0, Math.ceil((own.deadline - now) / 1000)),
-                      )}
-                    </strong>
-                    <progress
-                      max={own.type === 'board' ? 5000 : 8000}
-                      value={Math.max(0, own.deadline - now)}
-                    />
-                  </div>
                 )}
                 {own.type === 'board' && (
                   <Escape puzzle={own} send={send} busy={busy} />
@@ -375,6 +352,12 @@ export function NightRite({ game }: { game: GameView }) {
       {notice && !error && <output className="rite-notice">{notice}</output>}
     </section>
   );
+}
+function formatRiteTime(milliseconds: number) {
+  const seconds = Math.max(0, Math.ceil(milliseconds / 1000));
+  return `${Math.floor(seconds / 60)
+    .toString()
+    .padStart(2, '0')}:${(seconds % 60).toString().padStart(2, '0')}`;
 }
 function RiteSetup({
   game,
@@ -668,15 +651,6 @@ function Escape({
           ))}
         </div>
       )}
-      {active && (
-        <button
-          className="secondary"
-          disabled={busy}
-          onClick={() => void send('ritePass', { turn: puzzle.turn })}
-        >
-          Pass
-        </button>
-      )}
     </div>
   );
 }
@@ -727,12 +701,6 @@ function Laboratory({
           <button className="secondary" onClick={() => setSheet(true)}>
             Undo / Reset
           </button>
-          <button
-            className="secondary"
-            onClick={() => void send('ritePass', { turn: puzzle.turn })}
-          >
-            Pass
-          </button>
         </div>
       )}
       {sheet && (
@@ -748,7 +716,7 @@ function Laboratory({
           <button className="secondary" onClick={() => call('reset')}>
             Reset the original puzzle
           </button>
-          <p>Everyone else must agree. Calling a vote uses your turn.</p>
+          <p>Everyone else must agree.</p>
           <button className="secondary" onClick={() => setSheet(false)}>
             Never mind
           </button>
@@ -833,7 +801,27 @@ function Sphinx({
     kind: 'character' | 'activity';
     id: number;
   } | null>(null);
+  const first = useRef(true);
+  const lastSent = useRef('');
+  const sendLatest = useRef(send);
+  useEffect(() => {
+    sendLatest.current = send;
+  }, [send]);
   const editable = ['day', 'turn'].includes(puzzle.phase);
+  useEffect(() => {
+    if (first.current) {
+      first.current = false;
+      return;
+    }
+    if (!editable || busy) return;
+    const serialized = JSON.stringify(placements);
+    if (serialized === lastSent.current) return;
+    const timer = setTimeout(() => {
+      lastSent.current = serialized;
+      void sendLatest.current('riteNotes', { placements });
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [placements, editable, busy]);
   const place = (
     location: number,
     kind: 'character' | 'activity',
@@ -905,24 +893,49 @@ function Sphinx({
       <p className="hint">
         Select a token, then tap a place. Tap a filled spot to clear it.
       </p>
-      <div className="rite-tray" aria-label="Characters">
-        {CHARACTERS.map((c, id) => (
-          <button
-            key={c}
-            aria-pressed={token?.kind === 'character' && token.id === id}
-            disabled={!editable}
-            className={placements.some((p) => p.character === id) ? 'used' : ''}
-            onClick={() => setToken({ kind: 'character', id })}
-          >
-            <span
-              className="character-token"
-              style={{ background: colors[id] }}
-            >
-              <CharacterArt character={id} />
-            </span>
-            <small>{c}</small>
-          </button>
-        ))}
+      <div className="rite-tray character-tray" aria-label="Characters">
+        {CHARACTERS.map((c, id) => {
+          const placed = placements.find((p) => p.character === id);
+          return (
+            <div className="character-tray-card" key={c}>
+              <button
+                aria-pressed={token?.kind === 'character' && token.id === id}
+                disabled={!editable}
+                className={placed ? 'used' : ''}
+                onClick={() => setToken({ kind: 'character', id })}
+              >
+                <span
+                  className="character-token"
+                  style={{ background: colors[id] }}
+                >
+                  <CharacterArt character={id} />
+                </span>
+                <small>{c}</small>
+              </button>
+              <button
+                className="activity-spot"
+                aria-label={`${c}: ${placed?.activity === undefined || placed.activity < 0 ? 'empty activity slot' : ACTIVITIES[placed.activity]}`}
+                disabled={
+                  !editable ||
+                  !placed ||
+                  (token?.kind !== 'activity' && placed.activity < 0)
+                }
+                onClick={() => {
+                  if (placed)
+                    place(
+                      placed.location,
+                      'activity',
+                      token?.kind === 'activity' ? token.id : placed.activity,
+                    );
+                }}
+              >
+                {placed && placed.activity >= 0 && (
+                  <ActivityArt activity={placed.activity} />
+                )}
+              </button>
+            </div>
+          );
+        })}
       </div>
       <div className="rite-tray" aria-label="Activities">
         {ACTIVITIES.map((a, id) => (
@@ -941,13 +954,6 @@ function Sphinx({
         ))}
       </div>
       <div className="rite-buttons">
-        <button
-          className="secondary"
-          disabled={busy || !editable}
-          onClick={() => void send('riteNotes', { placements })}
-        >
-          Save working board
-        </button>
         <button
           className="primary"
           disabled={
@@ -1250,10 +1256,7 @@ function HostVigil({
         <>
           <p>
             Par: {state.par} · Distance: {state.distance ?? 'Not yet certified'}{' '}
-            · Current turn:{' '}
-            {turn?.order[turn.cursor]
-              ? game.players.find((p) => p.id === turn.order[turn.cursor])?.name
-              : 'Finished'}
+            · {turn ? 'Moves open to the vigil' : 'Waiting for night'}
           </p>
           {state.type === 'board' ? (
             <Escape

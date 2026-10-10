@@ -21,8 +21,7 @@ export default function Home() {
     [custom, setCustom] = useState(false),
     [entryTab, setEntryTab] = useState('join');
   const [name, setName] = useState(''),
-    [code, setCode] = useState(''),
-    [recoveryKey, setRecoveryKey] = useState('');
+    [code, setCode] = useState('');
   const [busy, setBusy] = useState(false),
     [error, setError] = useState('');
   const [session, setSession] = useState<{
@@ -61,7 +60,6 @@ export default function Home() {
           action,
           name,
           code,
-          recoveryKey: recoveryKey.trim(),
         }),
       });
       const d = (await r.json()) as { error?: string };
@@ -124,41 +122,15 @@ export default function Home() {
     <div className="resume-banner">
       <div>
         <strong>Your table is waiting</strong>
-        <small>Session {session.code}</small>
+        <small>
+          {session.phase === 'lobby' ? 'Lobby' : 'Game in progress'}
+        </small>
       </div>
       <AppLink className="primary" href="/table">
         {session.phase === 'lobby' ? 'Rejoin lobby' : 'Return to game'}
         <ArrowRight size={16} />
       </AppLink>
     </div>
-  );
-  const recover = (
-    <details className="recover-seat">
-      <summary>Recover a seat on another device</summary>
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          void enter('restore');
-        }}
-      >
-        <label className="field">
-          Private recovery key
-          <input
-            type="password"
-            value={recoveryKey}
-            onChange={(e) => setRecoveryKey(e.target.value)}
-            autoComplete="off"
-            required
-          />
-        </label>
-        <button
-          className="secondary full"
-          disabled={busy || !recoveryKey.trim()}
-        >
-          Restore my seat
-        </button>
-      </form>
-    </details>
   );
   const status = (
     <>
@@ -236,7 +208,6 @@ export default function Home() {
               {join}
             </div>
             {status}
-            {recover}
           </section>
           <aside className="play-aside">
             <section className="panel">
@@ -377,7 +348,6 @@ export default function Home() {
               </div>
             )}
             {status}
-            {recover}
           </section>
         </section>
         <section id="about" className="public-section">

@@ -4,6 +4,7 @@ import { Check, CircleHelp } from 'lucide-react';
 import { scriptRoles } from '@/lib/game/types';
 import type { GameView } from '@/lib/game/view';
 import { RoleIcon } from './role-icon';
+import { PlayerAvatar } from './player-avatar';
 type Notebook = {
   roles: Record<string, number>;
   players: Record<string, { role: string; confidence: string }>;
@@ -121,6 +122,11 @@ export function PlayerNotes({ game }: { game: GameView }) {
     }
   }
   const roles = scriptRoles(game.script);
+  const seatCount = Math.max(
+    5,
+    game.players.length,
+    ...game.players.map((p) => p.seat),
+  );
   return (
     <div className="player-notebook">
       <section className="panel">
@@ -143,6 +149,58 @@ export function PlayerNotes({ game }: { game: GameView }) {
             {error}
           </p>
         )}
+      </section>
+      <section className="panel notes-table-panel">
+        <h2>The table</h2>
+        <div className="seat-circle-scroll">
+          <div
+            className="seat-circle notes-circle"
+            style={{
+              minWidth: seatCount > 8 ? seatCount * 48 : 480,
+              minHeight: seatCount > 8 ? seatCount * 43 : 460,
+            }}
+          >
+            <div className="circle-center">
+              Fearville
+              <br />
+              <small>{game.hostName} · Storyteller</small>
+            </div>
+            {Array.from({ length: seatCount }, (_, i) => {
+              const player = game.players.find((p) => p.seat === i + 1);
+              const angle = (2 * Math.PI * i) / seatCount - Math.PI / 2;
+              return (
+                <div
+                  className={`circle-seat notes-seat${player && !player.alive ? ' is-dead' : ''}`}
+                  key={i}
+                  style={{
+                    left: `${50 + 37 * Math.cos(angle)}%`,
+                    top: `${50 + 36 * Math.sin(angle)}%`,
+                  }}
+                >
+                  {player ? (
+                    <>
+                      <PlayerAvatar
+                        avatar={player.avatar}
+                        id={player.id}
+                        dead={!player.alive}
+                      />
+                      <strong>
+                        {player.name}
+                        {player.id === game.me ? ' · you' : ''}
+                      </strong>
+                      <small>
+                        Seat {i + 1} · {player.alive ? 'Alive' : 'Dead'}
+                        {player.departed ? ' · Left' : ''}
+                      </small>
+                    </>
+                  ) : (
+                    <small>Seat {i + 1} · Empty</small>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
       </section>
       <section className="panel">
         <h2>Roles in the game</h2>
@@ -221,7 +279,6 @@ export function PlayerNotes({ game }: { game: GameView }) {
                   </small>
                 </div>
                 <label className="field">
-                  <span>Suspected role</span>
                   <select
                     aria-label={`Role for ${p.name}`}
                     disabled={!ready}

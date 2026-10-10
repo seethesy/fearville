@@ -2,7 +2,6 @@
 import {
   createContext,
   useContext,
-  useState,
   useEffect,
   type ReactNode,
   type CSSProperties,
@@ -23,9 +22,8 @@ export function TableAtmosphere({
   night: boolean;
   children: ReactNode;
 }) {
-  const [enabled, setEnabled] = useState(true);
   const { preferences } = useAccount();
-  const motion = enabled && !preferences.reducedMotion;
+  const motion = !preferences.reducedMotion;
   useEffect(() => {
     const start = () => ambientAudio(true);
     document.addEventListener('pointerdown', start, { once: true });
@@ -59,15 +57,6 @@ export function TableAtmosphere({
               }
             />
           ))}
-        </div>
-        <div className="atmosphere-control">
-          <button
-            className="secondary"
-            aria-pressed={enabled}
-            onClick={() => setEnabled(!enabled)}
-          >
-            Visual effects: {enabled ? 'on' : 'off'}
-          </button>
         </div>
         {children}
       </div>
