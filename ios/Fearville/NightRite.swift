@@ -395,8 +395,8 @@ private struct NativeHostVigil:View {
                     ForEach(Array(turn["log"].items.enumerated()),id:\.offset){_,l in Text(game.name(l["player"].text)+": "+l["kind"].text+" "+l["detail"].text).font(.caption)}
                 }else if state["type"].text=="grid" {
                     Text("Solution").font(.headline)
-                    ForEach(Array(state["solution"].items.enumerated()),id:\.offset){_,t in Text(riteCharacters[Int(t["character"].number)]+" / "+riteLocations[Int(t["location"].number)]+" / "+riteActivities[Int(t["activity"].number)]).font(.caption)}
-                    ForEach(state["clues"].items){c in Text(game.name(c["holder"].text)+": "+c["text"].text+(c["forged"].flag ? " [FORGED]":"")+" · Night "+c["revealNight"].text).font(.caption)}
+                    ForEach(Array(state["solution"].items.enumerated()),id:\.offset){_,t in Text(riteSolutionText(t)).font(.caption)}
+                    ForEach(state["clues"].items){c in Text(riteClueText(c, holder: game.name(c["holder"].text))).font(.caption)}
                 }else {
                     ForEach(squad["members"].items,id:\.text){member in
                         let r=state["rituals"][member.text]
@@ -411,4 +411,17 @@ private struct NativeHostVigil:View {
             }
         }
     }
+}
+
+// Split out of the host vigil view: long string concatenations inside a
+// ViewBuilder exceed the Swift type checker's time limit.
+private func riteSolutionText(_ t: HubJSON) -> String {
+    let character: String = riteCharacters[Int(t["character"].number)]
+    let location: String = riteLocations[Int(t["location"].number)]
+    let activity: String = riteActivities[Int(t["activity"].number)]
+    return character + " / " + location + " / " + activity
+}
+private func riteClueText(_ c: HubJSON, holder: String) -> String {
+    let forged: String = c["forged"].flag ? " [FORGED]" : ""
+    return holder + ": " + c["text"].text + forged + " · Night " + c["revealNight"].text
 }
