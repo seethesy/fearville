@@ -33,9 +33,9 @@ struct NativeStats: View {
             Picker("Script", selection: $script) { Text("All scripts").tag(""); ForEach(Array(stats["scripts"].items.enumerated()), id: \.offset) { _, item in Text(item["name"].text).tag(item["script"].text) } }
                 .onChange(of: script) { _, _ in type = "" }
             Picker("Role type", selection: $type) { Text("All role types").tag(""); ForEach(Array(selected["roleTypes"].items.enumerated()), id: \.offset) { _, item in Text(item["type"].text.capitalized).tag(item["type"].text) } }
-            Text(filtered["played"].text + " played · " + filtered["wins"].text + " wins · " + filtered["losses"].text + " losses · " + percentage(filtered["winRate"])).font(.callout).foregroundStyle(.secondary)
+            Text(hubRecordLine(filtered, rate: percentage(filtered["winRate"]))).font(.callout).foregroundStyle(.secondary)
             ForEach(filtered["roles"].items) { role in
-                VStack(alignment: .leading, spacing: 8) { Label(role["name"].text, systemImage: nativeRoleIcon(role["roleType"].text)).font(.headline); Text(role["played"].text + " played · " + role["wins"].text + " wins · " + role["losses"].text + " losses · " + percentage(role["winRate"])).font(.callout); Text("Opponent Elo " + (role["averageOpponentElo"].isNull ? "—" : role["averageOpponentElo"].text) + " · Teammate Elo " + (role["averageTeamElo"].isNull ? "—" : role["averageTeamElo"].text)).font(.caption).foregroundStyle(.secondary); Divider() }
+                VStack(alignment: .leading, spacing: 8) { Label(role["name"].text, systemImage: nativeRoleIcon(role["roleType"].text)).font(.headline); Text(hubRecordLine(role, rate: percentage(role["winRate"]))).font(.callout); Text(hubEloLine(role)).font(.caption).foregroundStyle(.secondary); Divider() }
             }
             if filtered["roles"].items.isEmpty { Text("Your character statistics appear after your first completed game.").foregroundStyle(.secondary) }
         }
@@ -56,9 +56,9 @@ struct NativeHistory: View {
             ForEach(rows) { game in
                 VStack(alignment: .leading, spacing: 10) {
                     Text(game["storyteller"].flag ? "Storyteller" : game["roleName"].text).font(.headline)
-                    Text((game["winner"].text == "good" ? "Good" : "Evil") + " won · " + hubDate(game["ended"].number)).foregroundStyle(Color.tableHighlight)
-                    Text((game["script"].text == "horrors" ? "Horrors of Fearville" : "Holy Moon and Stars") + " · " + game["players"].text + " players").font(.caption)
-                    Text(game["xp"].text + " XP · " + game["mvpVotes"].text + " MVP votes" + (game["ranked"].flag ? " · Elo " + game["eloDelta"].text : "")).font(.caption).foregroundStyle(.secondary)
+                    Text(hubGameResult(game)).foregroundStyle(Color.tableHighlight)
+                    Text(hubGameScript(game)).font(.caption)
+                    Text(hubGameRewards(game)).font(.caption).foregroundStyle(.secondary)
                     if handle == nil { NavigationLink("View recap") { NativeRecap(id: game["id"].text) } }
                 }.frame(maxWidth: .infinity, alignment: .leading).padding(18).background(Color.tablePanel, in: RoundedRectangle(cornerRadius: 12))
             }
@@ -103,7 +103,7 @@ struct NativeRecapPlayer: View {
             if tab == "history" { Section("Their story") { ForEach(recap["decisions"].items.filter { $0["actor"].text == player.id || $0["playerIds"].items.contains { $0.text == player.id } }) { Text($0["text"].text) } } }
             if tab == "notes" {
                 Section("Notebook") { Text(player["notebook"]["text"].text.isEmpty ? "No written notes." : player["notebook"]["text"].text) }
-                Section("Player suspicions") { ForEach(player["notebook"]["players"].fields.keys.sorted(), id: \.self) { key in let note = player["notebook"]["players"][key]; Text((recap["players"].items.first { $0.id == key }?["name"].text ?? key) + ": " + note["role"].text + " · " + note["confidence"].text) } }
+                Section("Player suspicions") { ForEach(player["notebook"]["players"].fields.keys.sorted(), id: \.self) { key in Text(hubSuspicion(recap: recap, notebook: player["notebook"], key: key)) } }
                 Section("Role notes") { ForEach(player["notebook"]["roles"].fields.keys.sorted(), id: \.self) { key in Text(key + ": " + player["notebook"]["roles"][key].text) } }
             }
             if tab == "messages" { Section("Messages") { ForEach(recap["messages"].items.filter { $0["from"].text == player.id || $0["to"].text == player.id || $0["to"].text == "all" }) { message in VStack(alignment: .leading, spacing: 8) { Text(message["from"].text == "host" ? "Storyteller" : recap["players"].items.first { $0.id == message["from"].text }?["name"].text ?? "Player").font(.caption).foregroundStyle(Color.tableHighlight); Text(message["text"].text) } } } }
@@ -197,4 +197,33 @@ struct NativeSettings: View {
         busy = true; message = ""; defer { busy = false }
         do { try await store.saveAccount(["action": .string("preferences"), "settings": .object(preferences.fields)]); let _: HubJSON = try await store.request("api/social", body: ["action": .string("privacy"), "privacy": .object(["stats": .string(stats), "history": .string(history), "requests": .string(requests ? "everyone" : "nobody"), "invites": .string(invites)])]); message = "Settings saved." } catch { message = error.localizedDescription }
     }
+}
+
+// Built outside the views: long string concatenations inside a ViewBuilder
+// exceed the Swift type checker's time limit.
+func hubGameResult(_ game: HubJSON) -> String {
+    let winner: String = game["winner"].text == "good" ? "Good" : "Evil"
+    return winner + " won · " + hubDate(game["ended"].number)
+}
+func hubGameScript(_ game: HubJSON) -> String {
+    let script: String = game["script"].text == "horrors" ? "Horrors of Fearville" : "Holy Moon and Stars"
+    return script + " · " + game["players"].text + " players"
+}
+func hubGameRewards(_ game: HubJSON) -> String {
+    let elo: String = game["ranked"].flag ? " · Elo " + game["eloDelta"].text : ""
+    return game["xp"].text + " XP · " + game["mvpVotes"].text + " MVP votes" + elo
+}
+func hubSuspicion(recap: HubJSON, notebook: HubJSON, key: String) -> String {
+    let note: HubJSON = notebook["players"][key]
+    let name: String = recap["players"].items.first { $0.id == key }?["name"].text ?? key
+    return name + ": " + note["role"].text + " · " + note["confidence"].text
+}
+func hubRecordLine(_ record: HubJSON, rate: String) -> String {
+    let played: String = record["played"].text, wins: String = record["wins"].text, losses: String = record["losses"].text
+    return played + " played · " + wins + " wins · " + losses + " losses · " + rate
+}
+func hubEloLine(_ role: HubJSON) -> String {
+    let opponent: String = role["averageOpponentElo"].isNull ? "—" : role["averageOpponentElo"].text
+    let team: String = role["averageTeamElo"].isNull ? "—" : role["averageTeamElo"].text
+    return "Opponent Elo " + opponent + " · Teammate Elo " + team
 }
