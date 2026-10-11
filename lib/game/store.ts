@@ -23,7 +23,7 @@ export function tokenOf(r: Request) {
     ''
   );
 }
-export async function auth(
+export async function authMember(
   r: Request,
 ): Promise<{ actor: Actor; code: string }> {
   const token = tokenOf(r);
@@ -35,16 +35,43 @@ export async function auth(
     .bind(await hash(token), Date.now())
     .first<{ code: string; player: string; host: number }>();
   if (!member) throw Error('AUTH');
-  const { game } = await read(member.code);
-  if (
-    !member.host &&
-    !game.players.some((p) => p.id === member.player && !p.departed)
-  )
-    throw Error('AUTH');
   return {
     actor: { id: member.player, host: !!member.host },
     code: member.code,
   };
+}
+export async function auth(r: Request): Promise<{ actor: Actor; code: string }> {
+  const { actor, code } = await authMember(r);
+  const { game } = await read(code);
+  if (
+    !actor.host &&
+    !game.players.some((p) => p.id === actor.id && !p.departed)
+  )
+    throw Error('AUTH');
+  return { actor, code };
+}
+export async function authenticatedRead(r: Request) {
+  const token = tokenOf(r);
+  if (!token || token.length > 200) throw Error('AUTH');
+  const row = await database()
+    .prepare(
+      'SELECT m.code, m.player, m.host, s.state, s.version, s.created FROM members m JOIN sessions s ON s.code = m.code WHERE m.token_hash = ? AND m.expires > ?',
+    )
+    .bind(await hash(token), Date.now())
+    .first<{
+      code: string;
+      player: string;
+      host: number;
+      state: string;
+      version: number;
+      created: number;
+    }>();
+  if (!row) throw Error('AUTH');
+  const game = savedGame(row.state);
+  const actor = { id: row.player, host: !!row.host };
+  if (!actor.host && !game.players.some((p) => p.id === actor.id && !p.departed))
+    throw Error('AUTH');
+  return { actor, code: row.code, game, version: row.version, created: row.created };
 }
 export async function read(code: string) {
   const row = await database()

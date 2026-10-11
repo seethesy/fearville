@@ -1,5 +1,5 @@
 import {
-  auth,
+  authenticatedRead,
   read,
   save,
   json,
@@ -11,9 +11,10 @@ import { riteAction } from '@/lib/rite/engine';
 import { riteView } from '@/lib/rite/view';
 import type { Command } from '@/lib/game/types';
 async function handle(r: Request, c?: Command) {
-  const { actor, code } = await auth(r);
+  const initial = await authenticatedRead(r);
+  const { actor, code } = initial;
   for (let attempt = 0; attempt < 8; attempt++) {
-    const { game, version } = await read(code),
+    const { game, version } = attempt === 0 ? initial : await read(code),
       now = Date.now();
     const requested = c?.pov ?? new URL(r.url).searchParams.get('pov');
     const pov =
@@ -28,10 +29,16 @@ async function handle(r: Request, c?: Command) {
     const changed = tick(game, now);
     if (c && ['configureRite', 'riteForce', 'riteRedeal'].includes(c.action)) {
       requireThat(viewer.host, 'Only the Storyteller can do that.');
-      requireThat(
-        c.version === version,
-        'The table changed. Refresh setup before saving.',
-      );
+      if (c.action === 'configureRite' || c.epoch === undefined || c.night === undefined)
+        requireThat(
+          c.version === version,
+          'The table changed. Refresh setup before saving.',
+        );
+      else
+        requireThat(
+          c.epoch === game.rite?.epoch && c.night === game.night,
+          'This Rite action belongs to an earlier window.',
+        );
       snapshot(game, 'Night Rite: ' + c.action, now);
     }
     const summary = c ? riteAction(game, viewer, c, now) : undefined;

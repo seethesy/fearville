@@ -526,8 +526,12 @@ function executeCommand(
   }
   if (c.action === 'nightDefer') {
     requireThat(g.phase === 'night', 'It is not night.');
+    if (c.night !== undefined)
+      requireThat(c.night === g.night, 'The night changed. Review this task again.');
     const task = tasks(g).find((t) => !t.done);
     requireThat(task, 'No night task remains.');
+    if (c.task !== undefined)
+      requireThat(c.task === task.key, 'The active night task changed. Review it again.');
     g.deferredNightTasks ??= [];
     requireThat(
       !g.deferredNightTasks.includes(task.key),
@@ -808,6 +812,8 @@ function executeCommand(
     }
     case 'setPlayerStatus': {
       requireThat(g.phase === 'night', 'Change these states during the night.');
+      if (c.night !== undefined)
+        requireThat(c.night === g.night, 'The night changed. Review this player state again.');
       const p = person(g, c.player);
       const status = clean(c.status);
       requireThat(typeof c.active === 'boolean', 'Choose whether the state is active.');
@@ -1029,15 +1035,21 @@ function executeCommand(
       return 'Deal every player their private character and begin the first night.';
     }
     case 'pause':
+      if (c.phaseToken !== undefined)
+        requireThat(c.phaseToken === `${g.day}:${g.night}:${g.phase}`, 'The phase changed. Review this timer again.');
       requireThat(g.deadline !== null, 'No running timer.');
       g.remaining = Math.max(0, Math.ceil((g.deadline - now) / 1000));
       g.deadline = null;
       return 'Pause the shared timer for everyone.';
     case 'resume':
+      if (c.phaseToken !== undefined)
+        requireThat(c.phaseToken === `${g.day}:${g.night}:${g.phase}`, 'The phase changed. Review this timer again.');
       requireThat(g.deadline === null && g.remaining > 0, 'No paused timer.');
       g.deadline = now + g.remaining * 1000;
       return 'Resume the shared timer.';
     case 'extend':
+      if (c.phaseToken !== undefined)
+        requireThat(c.phaseToken === `${g.day}:${g.night}:${g.phase}`, 'The phase changed. Review this timer again.');
       requireThat(g.timers[g.phase], 'This phase has no timer.');
       {
         const seconds = Number(c.seconds);
@@ -1107,8 +1119,12 @@ function executeCommand(
       );
     case 'nightSkip': {
       requireThat(g.phase === 'night', 'It is not night.');
+      if (c.night !== undefined)
+        requireThat(c.night === g.night, 'The night changed. Review this task again.');
       const task = tasks(g).find((t) => !t.done);
       requireThat(task, 'All night tasks are complete.');
+      if (c.task !== undefined)
+        requireThat(c.task === task.key, 'The active night task changed. Review it again.');
 
       requireNoPendingDeath(g);
       if (task.key === 'deaths')
@@ -1127,6 +1143,8 @@ function executeCommand(
     }
     case 'night': {
       requireThat(g.phase === 'night', 'It is not night.');
+      if (c.night !== undefined)
+        requireThat(c.night === g.night, 'The night changed. Review this task again.');
       const t = tasks(g).find((t) => !t.done);
       requireThat(t && t.key === c.task, 'The active night task changed.');
       const choice = g.nightChoices?.[t.key];

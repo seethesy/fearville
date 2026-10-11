@@ -1,5 +1,5 @@
 import {
-  auth,
+  authenticatedRead,
   read,
   save,
   json,
@@ -8,14 +8,15 @@ import {
 } from '@/lib/game/store';
 import { tick, execute, requireThat } from '@/lib/game/engine';
 import { view } from '@/lib/game/view';
+import { canApplyLatest, canApplyUnchangedEdit } from '@/lib/game/concurrency';
 import { syncResult, syncMvp, voidResult } from '@/lib/social/results';
 import { prepareProgression } from '@/lib/social/start';
 export async function GET(r: Request) {
   try {
-    const { actor, code } = await auth(r);
+    const initial = await authenticatedRead(r);
+    const { actor, code } = initial;
     for (let i = 0; i < 8; i++) {
-      await auth(r);
-      const { game, version, created } = await read(code);
+      const { game, version, created } = i === 0 ? initial : await read(code);
       if (
         !actor.host &&
         !game.players.some((p) => p.id === actor.id && !p.departed)
@@ -59,7 +60,8 @@ export async function GET(r: Request) {
 export async function POST(r: Request) {
   try {
     checkOrigin(r);
-    const { actor, code } = await auth(r);
+    const initial = await authenticatedRead(r);
+    const { actor, code } = initial;
     const raw = await r.text();
     requireThat(raw.length < 20000, 'Request is too large.');
     const c = JSON.parse(raw);
@@ -75,8 +77,7 @@ export async function POST(r: Request) {
       c.yes = c.yes === 'null' ? null : c.yes === 'true';
     }
     for (let i = 0; i < 8; i++) {
-      await auth(r);
-      const { game, version, created } = await read(code);
+      const { game, version, created } = i === 0 ? initial : await read(code);
       const now = Date.now();
       const before = game.phase;
       const resultStarted = game.gameStartedAt ?? created;
@@ -85,12 +86,11 @@ export async function POST(r: Request) {
           ? game.players.find((p) => p.id === c.pov && p.dummy)
           : null;
       const actionActor = pov ? { id: pov.id, host: false } : actor;
+      const canRebase = canApplyLatest(actionActor, c);
       if (tick(game, now)) {
         if (!(await save(game, version))) continue;
-        return json(
-          { error: 'The timer advanced the game. Review the current phase.' },
-          409,
-        );
+        if (canRebase || (actionActor.host && c.action === 'edit' && c.base)) continue;
+        return json({ error: 'The timer advanced the game. Review the current phase.' }, 409);
       }
       if (
         ![
@@ -103,7 +103,7 @@ export async function POST(r: Request) {
           'saveNotebook',
           'returnLobby',
         ].includes(c.action) &&
-        c.version !== version
+        c.version !== version && !canRebase && !canApplyUnchangedEdit(game, actionActor, c)
       )
         return json(
           { error: 'The table changed. Review this action again.' },

@@ -20,13 +20,13 @@ import {
   limited,
   tokenOf,
   read,
+  authenticatedRead,
 } from '@/lib/game/store';
 export async function GET(r: Request) {
   try {
-    const { actor, code } = await auth(r);
-    const { game } = await read(code);
+    const { actor, code, game } = await authenticatedRead(r);
     const player = game.players.find((p) => p.id === actor.id);
-    requireThat(actor.host || player, 'This seat is no longer available.');
+    requireThat(actor.host || (player && !player.departed), 'This seat is no longer available.');
     return json({
       code,
       host: actor.host,

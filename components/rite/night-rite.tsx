@@ -99,33 +99,32 @@ export function NightRite({
       } catch {
       } finally {
         inFlight = false;
-        if (!stopped) {
-          const r = latest.current.rite;
+        if (!stopped && mode === 'play' && latest.current.rite?.status === 'open' && game.phase === 'night') {
           timer = setTimeout(
             () => void poll(),
             document.hidden
-              ? 5000
-              : r?.status === 'open' && game.phase === 'night'
-                ? 300
-                : 1500,
+              ? 8000
+              : 1000,
           );
         }
       }
     };
-    void poll();
-    const clock = setInterval(() => setNow(Date.now() + offset.current), 100);
+    if (mode === 'play' && game.rite?.status === 'open' && game.phase === 'night') void poll();
+    const clock = mode === 'play' && game.rite?.status === 'open' && game.phase === 'night'
+      ? setInterval(() => setNow(Date.now() + offset.current), 250)
+      : null;
     const resume = () => {
-      if (!document.hidden) void poll();
+      if (!document.hidden && mode === 'play' && latest.current.rite?.status === 'open' && game.phase === 'night') void poll();
     };
     document.addEventListener('visibilitychange', resume);
     return () => {
       stopped = true;
       clearTimeout(timer);
-      clearInterval(clock);
+      if (clock) clearInterval(clock);
       controller.abort();
       document.removeEventListener('visibilitychange', resume);
     };
-  }, [apply, game.phase, game.code, game.me, game.sandboxHost, game.host]);
+  }, [apply, game.phase, game.code, game.me, game.sandboxHost, game.host, game.rite?.status, mode]);
   const fail = useCallback((message: string) => {
     setError(message);
     setFlash(true);
@@ -200,6 +199,7 @@ export function NightRite({
     >
       <header className="rite-heading">
         {mode === 'play' &&
+          r?.status === 'open' &&
           r?.lockUntil &&
           r?.windowEnd &&
           game.phase === 'night' && (

@@ -294,11 +294,11 @@ export default function Table() {
     const poll = async () => {
       await refresh(false);
       if (!stopped)
-        timer = setTimeout(() => void poll(), document.hidden ? 5000 : 1000);
+        timer = setTimeout(() => void poll(), document.hidden ? 8000 : 2000);
     };
     timer = setTimeout(() => void poll(), 0);
     const resume = () => {
-      if (!document.hidden) void refresh();
+      if (!document.hidden) void refresh(false);
     };
     window.addEventListener('online', resume);
     window.addEventListener('focus', resume);
@@ -315,7 +315,7 @@ export default function Table() {
     };
   }, [refresh, cancelRefresh]);
   useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 250);
+    const id = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(id);
   }, []);
   useEffect(() => {
@@ -330,8 +330,8 @@ export default function Table() {
       setActiveTab('messages');
       return;
     }
-    if (control.fields.length === 0) {
-      void submit(control, {});
+    if (control.fields.every((field) => field.type === 'hidden')) {
+      void submit(control, Object.fromEntries(control.fields.map((field) => [field.key, field.value ?? ''])));
       return;
     }
     setSelected(control);
@@ -354,6 +354,9 @@ export default function Table() {
         body: JSON.stringify({
           ...payload,
           action: control.action,
+          ...(control.action === 'edit'
+            ? { base: Object.fromEntries(control.fields.map((field) => [field.key, field.value ?? ''])) }
+            : {}),
           ...(game?.sandboxHost && sandboxPov !== 'host'
             ? { pov: sandboxPov }
             : {}),
@@ -376,7 +379,6 @@ export default function Table() {
       applyGame(data.game);
       setSelected(null);
       setNotice(data.summary);
-      await refresh();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Action failed.');
     } finally {
@@ -407,7 +409,6 @@ export default function Table() {
       if (data.game) applyGame(data.game);
       setNotice(data.summary ?? 'Character assigned.');
       setSelectedRole('');
-      await refresh();
     } catch (e) {
       setRoleError(e instanceof Error ? e.message : 'Could not assign the character.');
       await refresh();
@@ -1398,12 +1399,13 @@ export default function Table() {
                                 { key: 'player', label: '', type: 'hidden', value: confirmation.playerId },
                                 { key: 'status', label: '', type: 'hidden', value: status.key },
                                 { key: 'active', label: '', type: 'hidden', value: true },
+                                { key: 'night', label: '', type: 'hidden', value: game.night },
                                 { key: 'target', label: 'Redirect target', type: 'select', required: true, options: game.players.filter((player) => player.id !== confirmation.playerId).map((player) => ({ value: player.id, label: player.name })), value: game.players.find((player) => player.id !== confirmation.playerId)?.id ?? '' },
                               ],
                             });
                             return;
                           }
-                          void submit({ action: 'setPlayerStatus', title: 'Change player state', description: '', fields: [] }, { player: confirmation.playerId, status: status.key, active: !status.active });
+                          void submit({ action: 'setPlayerStatus', title: 'Change player state', description: '', fields: [] }, { player: confirmation.playerId, status: status.key, active: !status.active, night: game.night });
                         }}
                       >
                         {status.active

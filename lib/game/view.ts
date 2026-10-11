@@ -353,6 +353,7 @@ export function controls(g: Game, a: Actor): Control[] {
           description || 'Review and confirm this step before continuing.',
           [
             { key: 'task', label: '', type: 'hidden', value: t.key },
+            { key: 'night', label: '', type: 'hidden', value: g.night },
             ...fields,
             ...overrideFields,
           ],
@@ -361,13 +362,19 @@ export function controls(g: Game, a: Actor): Control[] {
           'nightDefer',
           'Do this task later',
           'Move this task behind the other unresolved night tasks. Nothing is announced to players.',
-          [],
+          [
+            { key: 'task', label: '', type: 'hidden', value: t.key },
+            { key: 'night', label: '', type: 'hidden', value: g.night },
+          ],
         );
         add(
           'nightSkip',
           'Skip this task entirely',
           'Complete this task without sending information or applying its effect. Nothing is announced to players.',
-          [],
+          [
+            { key: 'task', label: '', type: 'hidden', value: t.key },
+            { key: 'night', label: '', type: 'hidden', value: g.night },
+          ],
           true,
         );
       } else
@@ -380,13 +387,19 @@ export function controls(g: Game, a: Actor): Control[] {
         );
     }
 
+    const phaseToken = `${g.day}:${g.night}:${g.phase}`;
     if (!g.sandbox && g.deadline !== null)
-      add('pause', 'Pause timer', 'Pause for everyone.');
+      add('pause', 'Pause timer', 'Pause for everyone.', [
+        { key: 'phaseToken', label: '', type: 'hidden', value: phaseToken },
+      ]);
     else if (!g.sandbox && g.remaining > 0 && g.timers[g.phase])
-      add('resume', 'Resume timer', 'Continue the shared countdown.');
+      add('resume', 'Resume timer', 'Continue the shared countdown.', [
+        { key: 'phaseToken', label: '', type: 'hidden', value: phaseToken },
+      ]);
     if (!g.sandbox && g.timers[g.phase]) {
       add('extend', 'Add time', 'Extend this timer.', [
         num('seconds', 'Seconds to add', 30),
+        { key: 'phaseToken', label: '', type: 'hidden', value: phaseToken },
       ]);
       add(
         'advance',
