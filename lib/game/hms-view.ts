@@ -83,7 +83,7 @@ export function hmsNightFields(g: Game, t: Task, ps: Option[]) {
     notes.push(
       healthy(p)
         ? 'Acting player is healthy.'
-        : 'Acting player is drunk or poisoned: their ability fails, but you may still give (false) information.',
+        : `Acting player is ${isHof(g) ? 'feared or drunk' : 'drunk or poisoned'}: their ability fails, but you may still give (false) information.`,
     );
   if (p?.role === 'lostsoul')
     notes.push(

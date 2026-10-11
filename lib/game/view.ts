@@ -25,6 +25,7 @@ import {
   eligibleVoters,
   nightChoiceTask,
   alignment,
+  healthy,
 } from './engine.ts';
 import {
   isMoon,
@@ -587,7 +588,8 @@ export function controls(g: Game, a: Actor): Control[] {
             : []),
           check('alive', 'Alive', p.alive),
           check('ghost', 'Dead vote available', p.ghost),
-          check('poisoned', 'Poisoned', p.poisoned),
+          ...(isMoon(g) ? [check('poisoned', 'Poisoned', p.poisoned)] : []),
+          check('protected', 'Protected', p.protected),
           check('used', 'Once-per-game ability used', p.used),
           input('notes', 'Private reminders', p.notes, 'textarea'),
         ],
@@ -807,45 +809,24 @@ export function view(
       a.host && currentTask
         ? {
             task: currentTask.key,
+            playerId: actingPlayer?.id ?? '',
             playerName: actingPlayer?.name ?? '',
-            poisoned: !!actingPlayer?.poisoned,
+            impaired: !!actingPlayer && (!actingPlayer.alive || !healthy(actingPlayer)),
             ability:
               role(currentTask.role)?.description ??
               (currentTask.role === 'nightmareRuling'
                 ? 'Privately resolve the Nightmare’s requested redirect before the haunted ability lands.'
                 : ''),
-            statuses: [
-              { name: 'Poisoned', active: !!actingPlayer?.poisoned },
-              { name: 'Feared', active: !!actingPlayer?.feared },
-              {
-                name: 'Drunk',
-                active: !!actingPlayer?.drunk || actingPlayer?.role === 'drunk',
-              },
-              {
-                name: 'Redirected',
-                active:
-                  !!actingPlayer &&
-                  g.hms?.nightmare?.bound === actingPlayer.id &&
-                  !!g.hms.nightmareRedirectTarget,
-              },
-              {
-                name: 'Protected',
-                active: !!actingPlayer?.protected,
-              },
-              {
-                name: 'Infected',
-                active: g.hms?.infected?.target === actingPlayer?.id,
-              },
-              {
-                name: 'Marked',
-                active: !!actingPlayer?.marked,
-              },
-              {
-                name: 'Haunted',
-                active:
-                  !!actingPlayer && g.hms?.nightmare?.bound === actingPlayer.id,
-              },
-            ],
+            statuses: actingPlayer && actingPlayer.id !== ST ? [
+              ...(isHof(g) ? [{ key: 'feared', name: 'Feared', active: !!actingPlayer.feared || !!actingPlayer.poisoned }] : []),
+              { key: 'drunk', name: 'Drunk', active: !!actingPlayer.drunk || actingPlayer.role === 'drunk', locked: actingPlayer.role === 'drunk' },
+              { key: 'protected', name: 'Protected', active: !!actingPlayer.protected },
+              ...(isMoon(g) ? [{ key: 'marked', name: 'Marked', active: !!actingPlayer.marked }] : []),
+              ...(isMoon(g) && g.hms?.nightmare ? [
+                { key: 'haunted', name: 'Haunted', active: g.hms.nightmare.bound === actingPlayer.id },
+                ...(g.hms.nightmare.bound === actingPlayer.id ? [{ key: 'redirected', name: 'Redirected', active: !!g.hms.nightmareRedirectTarget }] : []),
+              ] : []),
+            ] : [],
             choice: g.nightChoices?.[currentTask.key] ?? null,
           }
         : null,

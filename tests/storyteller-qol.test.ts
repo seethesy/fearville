@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { beginNight, execute, tasks } from '../lib/game/engine.ts';
 import { newGame, newPlayer, type Game } from '../lib/game/types.ts';
 import { controls, view } from '../lib/game/view.ts';
+import { hms, preventedBy } from '../lib/game/hms.ts';
 
 const host = { id: 'host', host: true };
 
@@ -94,11 +95,7 @@ void test('night task UI hides its task selector, shows statuses, and defers pri
     'hidden',
   );
   assert.ok(gameView.nightConfirmation?.ability);
-  assert.ok(
-    gameView.nightConfirmation?.statuses.some(
-      (status) => status.name === 'Poisoned' && !status.active,
-    ),
-  );
+  assert.ok(gameView.nightConfirmation?.statuses.every((status) => !['Poisoned', 'Infected'].includes(status.name)));
   assert.ok(
     gameView.controls.some((control) => control.action === 'nightDefer'),
   );
@@ -108,6 +105,54 @@ void test('night task UI hides its task selector, shows statuses, and defers pri
   assert.ok(
     !g.log.some((entry) => entry.public && /set aside/i.test(entry.text)),
   );
+});
+
+void test('Storyteller can correct fear from a status bubble and fear disables abilities', () => {
+  const g = horrors(['sheriff', 'doctor', 'hag', 'basilisk', 'monster']);
+  execute(g, host, { action: 'start', override: true }, 1);
+  const doctor = g.players[1];
+  const player = { id: doctor.id, host: false };
+  assert.throws(() => execute(g, player, { action: 'setPlayerStatus', player: doctor.id, status: 'feared', active: true }, 2), /Storyteller/);
+  execute(g, host, { action: 'setPlayerStatus', player: doctor.id, status: 'feared', active: true }, 3);
+  assert.equal(doctor.feared, true);
+  assert.equal(doctor.poisoned, false);
+  g.night = 2;
+  g.done = [];
+  const doctorTask = tasks(g).find((task) => task.player === doctor.id)!;
+  for (const task of tasks(g)) {
+    if (task.key === doctorTask.key) break;
+    g.done.push(task.key);
+  }
+  const confirmation = view(g, host, 2, 4).nightConfirmation;
+  assert.equal(confirmation?.playerId, doctor.id);
+  assert.equal(confirmation?.impaired, true);
+  assert.ok(confirmation?.statuses.some((status) => status.key === 'feared' && status.active));
+  execute(g, host, { action: 'setPlayerStatus', player: doctor.id, status: 'feared', active: false }, 5);
+  assert.equal(doctor.feared, false);
+  assert.equal(view(g, host, 3, 5).nightConfirmation?.impaired, false);
+  execute(g, host, { action: 'setPlayerStatus', player: doctor.id, status: 'protected', active: true }, 6);
+  assert.equal(preventedBy(g, { id: 'manual', player: doctor.id, cause: 'attack', ready: true, night: true }), 'Storyteller protection');
+});
+
+void test('Nightmare state bubbles can bind and redirect a player', () => {
+  const g = newGame('NIGHTMARE', 'Storyteller');
+  g.script = 'holyMoonStars';
+  g.phase = 'night';
+  g.night = 2;
+  g.players = ['mystic', 'astrologist', 'nightmare', 'miasma', 'werewolf'].map((id, index) => ({
+    ...newPlayer(`P${index + 1}`, index + 1), role: id, shown: id,
+  }));
+  hms(g).nightmare = { player: g.players[2].id, bound: '', used: false };
+  const subject = g.players[0];
+  const target = g.players[1];
+  execute(g, host, { action: 'setPlayerStatus', player: subject.id, status: 'haunted', active: true }, 1);
+  assert.equal(g.hms?.nightmare?.bound, subject.id);
+  execute(g, host, { action: 'setPlayerStatus', player: subject.id, status: 'redirected', active: true, target: target.id }, 2);
+  assert.equal(g.hms?.nightmareRedirectTarget, target.id);
+  execute(g, host, { action: 'setPlayerStatus', player: subject.id, status: 'redirected', active: false }, 3);
+  assert.equal(g.hms?.nightmareRedirectTarget, undefined);
+  execute(g, host, { action: 'setPlayerStatus', player: subject.id, status: 'haunted', active: false }, 4);
+  assert.equal(g.hms?.nightmare?.bound, '');
 });
 
 void test('day confirmation automatically executes the ballot leader and checks wins', () => {

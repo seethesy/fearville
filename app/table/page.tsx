@@ -1238,7 +1238,6 @@ export default function Table() {
                             </div>
                           )}
                           <p className="tags">
-                            {p.poisoned ? 'POISONED ' : ''}
                             {p.feared ? 'FEARED ' : ''}
                             {p.protected ? 'PROTECTED ' : ''}
                             {p.used ? 'ABILITY USED' : ''}
@@ -1375,16 +1374,42 @@ export default function Table() {
                   )}
                   <div className="status-bubbles" aria-label="Player status">
                     {confirmation.statuses.map((status) => (
-                      <span
-                        key={status.name}
+                      <button
+                        type="button"
+                        key={status.key}
                         className={
                           status.active ? 'status-active' : 'status-inactive'
                         }
+                        disabled={busy}
+                        aria-pressed={status.active}
+                        aria-label={status.locked ? `Edit ${confirmation.playerName}'s character` : `${status.active ? 'Remove' : 'Add'} ${status.name.toLowerCase()} for ${confirmation.playerName}`}
+                        onClick={() => {
+                          if (status.locked) {
+                            const edit = game.controls.find((control) => control.action === 'edit' && control.fields[0]?.value === confirmation.playerId);
+                            if (edit) open(edit);
+                            return;
+                          }
+                          if (status.key === 'redirected' && !status.active) {
+                            open({
+                              action: 'setPlayerStatus',
+                              title: `Redirect ${confirmation.playerName}`,
+                              description: 'Choose the player whose ability receives the redirect.',
+                              fields: [
+                                { key: 'player', label: '', type: 'hidden', value: confirmation.playerId },
+                                { key: 'status', label: '', type: 'hidden', value: status.key },
+                                { key: 'active', label: '', type: 'hidden', value: true },
+                                { key: 'target', label: 'Redirect target', type: 'select', required: true, options: game.players.filter((player) => player.id !== confirmation.playerId).map((player) => ({ value: player.id, label: player.name })), value: game.players.find((player) => player.id !== confirmation.playerId)?.id ?? '' },
+                              ],
+                            });
+                            return;
+                          }
+                          void submit({ action: 'setPlayerStatus', title: 'Change player state', description: '', fields: [] }, { player: confirmation.playerId, status: status.key, active: !status.active });
+                        }}
                       >
                         {status.active
                           ? status.name
                           : `Not ${status.name.toLowerCase()}`}
-                      </span>
+                      </button>
                     ))}
                   </div>
                 </>

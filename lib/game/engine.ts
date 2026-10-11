@@ -360,6 +360,7 @@ function executeCommand(
     'correctVote',
     'moveSeat',
     'assignRole',
+    'setPlayerStatus',
     'randomAssign',
     'configure',
     'edit',
@@ -805,6 +806,63 @@ function executeCommand(
         ? 'Save Horror bluffs and the red herring. Sandbox timers stay disabled.'
         : 'Save timers, Horror bluffs, and red herring. Active timers keep their current time.';
     }
+    case 'setPlayerStatus': {
+      requireThat(g.phase === 'night', 'Change these states during the night.');
+      const p = person(g, c.player);
+      const status = clean(c.status);
+      requireThat(typeof c.active === 'boolean', 'Choose whether the state is active.');
+      const active = c.active;
+      switch (status) {
+        case 'feared':
+          requireThat(isHof(g), 'Fear belongs to Horrors of Fearville.');
+          p.feared = active;
+          p.poisoned = false;
+          break;
+        case 'drunk':
+          requireThat(p.role !== 'drunk', 'Change the Drunk’s character to remove their drunkenness.');
+          p.drunk = active;
+          break;
+        case 'protected':
+          p.protected = active;
+          break;
+        case 'marked':
+          requireThat(isMoon(g), 'Death marks belong to Holy Moon and Stars.');
+          p.marked = active;
+          break;
+        case 'haunted': {
+          const nightmare = g.hms?.nightmare;
+          requireThat(isMoon(g) && nightmare, 'There is no active Nightmare to bind.');
+          if (active) {
+            nightmare.bound = p.id;
+            nightmare.used = false;
+            delete g.hms!.nightmareRedirectTarget;
+          } else if (nightmare.bound === p.id) {
+            nightmare.bound = '';
+            nightmare.used = false;
+            delete g.hms!.nightmareRedirectTarget;
+          }
+          break;
+        }
+        case 'redirected': {
+          const nightmare = g.hms?.nightmare;
+          requireThat(isMoon(g) && nightmare?.bound === p.id, 'This player is not haunted.');
+          if (active) {
+            const target = person(g, c.target);
+            requireThat(target.id !== p.id, 'Choose another player as the redirect target.');
+            g.hms!.nightmareRedirectTarget = target.id;
+            nightmare.used = true;
+          } else {
+            delete g.hms!.nightmareRedirectTarget;
+            nightmare.used = false;
+          }
+          break;
+        }
+        default:
+          throw Error('Choose a valid player state.');
+      }
+      log(g, `${p.name} is ${active ? 'now' : 'no longer'} ${status}.`, now);
+      return `${p.name} is ${active ? 'now' : 'no longer'} ${status}.`;
+    }
     case 'edit': {
       const p = person(g, c.player);
       const name = clean(c.name, 32);
@@ -826,7 +884,7 @@ function executeCommand(
             : p.role;
       if (p.role === 'lostsoul') p.acts = clean(c.acts);
       else delete p.acts;
-      p.drunk = !!c.drunk;
+      if (isMoon(g)) p.drunk = !!c.drunk;
       p.marked = !!c.marked;
       const lives = Number(c.extraLife ?? 0);
       requireThat(
@@ -849,8 +907,8 @@ function executeCommand(
         p.role !== 'drunk' || role(p.shown)?.team === 'townsfolk',
         'The Drunk must be shown a Villager.',
       );
-      p.poisoned = !!c.poisoned;
-      p.protected = !!c.protected;
+      if (isMoon(g)) p.poisoned = !!c.poisoned;
+      if (c.protected !== undefined) p.protected = !!c.protected;
       p.ghost = c.ghost !== false;
       p.used = !!c.used;
       p.notes = clean(c.notes, 1000);

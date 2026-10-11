@@ -1348,6 +1348,7 @@ export function fateweaverFor(g: Game, victim: Player) {
 export function preventedBy(g: Game, d: DeathItem) {
   const v = person(g, d.player);
   if (d.impaired) return 'the killing ability is impaired';
+  if (d.night && v.protected) return 'Storyteller protection';
   if (isHof(g)) return hofPrevented(g, d);
   if ((v.extraLife ?? 0) > 0) return 'an extra life';
   if (

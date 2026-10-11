@@ -497,13 +497,16 @@ footer {
   margin-bottom: 16px;
 }
 
-.status-bubbles span {
+.status-bubbles button {
   padding: 5px 10px;
   border: 1px solid currentColor;
   border-radius: 999px;
   font-size: 0.78rem;
   font-weight: 700;
+  cursor: pointer;
 }
+.status-bubbles button:hover { filter: brightness(1.15); }
+.status-bubbles button:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
 
 .status-active {
   color: #37a96b;
