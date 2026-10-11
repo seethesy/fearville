@@ -25,17 +25,15 @@ export async function GET(r: Request) {
       const now = Date.now();
       const changed = tick(game, now);
       if (changed && !(await save(game, version))) continue;
-      // Ended games are recorded here as well, so a result that failed to
-      // record at the moment the game ended is recorded on the next poll.
-      if (game.phase === 'ended')
+      // A timer may end a game during a poll. Ordinary polls must stay read-only;
+      // action handlers synchronize results and MVP changes when they save.
+      if (changed && game.phase === 'ended')
         await syncResult(
           game,
           game.gameStartedAt ?? created,
           now,
           version + Number(changed),
         );
-      else if (game.recaps?.length)
-        await syncMvp(game, version + Number(changed));
       const requested = new URL(r.url).searchParams.get('pov');
       const pov =
         actor.host && game.sandbox
