@@ -18,11 +18,11 @@ export const DIAGRAM_ALT: Record<RiteDiagram, string> = {
   'escape-goal':
     'A six by six board. The red carriage sits in the third row and must slide right through the gap in the fence. Arrows show pieces sliding only along their length.',
   'escape-turns':
-    'Four players in a ring take turns in a random order, each with a five-second timer for one slide.',
+    'Four players in a ring take turns in a random order. Each has five seconds for as many slides as possible, and turns repeat until the Rite window closes.',
   'lab-pour':
     'Two red layers on top of one vial pour onto a vial topped with red that has room for two.',
   'lab-turns':
-    'Four players in a ring take turns in a random order, each with an eight-second timer for one pour.',
+    'Four players in a ring take turns in a random order. Each has eight seconds for as many pours as possible, and turns repeat until the Rite window closes.',
   'riddle-map':
     'Five places along one street from west to east: Library, Garden, House, Market, Graveyard. Each has a spot for a person and an activity.',
   'riddle-cards':
@@ -139,13 +139,13 @@ function turns(kind: 'escape' | 'lab') {
     text(
       160,
       84,
-      `One ${kind === 'escape' ? 'slide' : 'pour'} per turn,`,
+      `Make many ${kind === 'escape' ? 'slides' : 'pours'} per turn,`,
       12,
       CREAM,
     ) +
-    text(160, 99, `${secs} seconds to make it.`, 12, CREAM) +
-    text(160, 128, 'Done early? The turn', 11, DIM) +
-    text(160, 142, 'passes at once.', 11, DIM);
+    text(160, 99, `within ${secs} seconds.`, 12, CREAM) +
+    text(160, 128, 'Pass or wait; turns repeat', 11, DIM) +
+    text(160, 142, 'until the window ends.', 11, DIM);
   return frame(id, body);
 }
 

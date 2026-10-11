@@ -336,15 +336,15 @@
           "tab": null
         },
         {
-          "title": "One slide per turn",
-          "body": "Each night the Rite is open, your vigil takes turns in a random order. On your turn you have five seconds to slide one piece as far as you like. The turn passes the moment you move, or when time runs out. A slide the rules do not allow is refused.",
+          "title": "Keep sliding on your turn",
+          "body": "Each night the Rite is open, your vigil takes turns in a random order. You have five seconds to make as many legal slides as you can. Pass when ready, or your turn passes when time runs out. Turns keep cycling until the Rite window closes.",
           "symbol": null,
           "diagram": "RiteDiagram-escape-turns",
           "tab": null
         },
         {
           "title": "Plan it by day",
-          "body": "This escape takes about thirty slides, so expect to need three nights. Between turns you see the board as you left it; the live board appears when your turn begins. By day, study the board together and agree on the next moves.",
+          "body": "This escape takes about thirty slides. Between turns you see the board as you left it; the live board appears when your turn begins. By day, study the board together and agree on the next moves.",
           "symbol": "sun.horizon",
           "diagram": null,
           "tab": null
@@ -369,15 +369,15 @@
           "tab": null
         },
         {
-          "title": "One pour per turn",
-          "body": "Each night the Rite is open, your vigil takes turns in a random order, with eight seconds to make one pour. Between turns you see the vials as you left them; the live vials appear when your turn begins. Running out of time passes your turn.",
+          "title": "Keep pouring on your turn",
+          "body": "Each night the Rite is open, your vigil takes turns in a random order. You have eight seconds to make as many legal pours as you can. Pass when ready, or your turn passes when time runs out. Turns keep cycling until the Rite window closes.",
           "symbol": null,
           "diagram": "RiteDiagram-lab-turns",
           "tab": null
         },
         {
           "title": "Undo, reset and ruin",
-          "body": "On your turn you may call a vote to undo tonight’s last pour or to reset to the very start; everyone else must agree. A pour that makes the brew impossible ruins it, and the vials return to how they were at nightfall. Expect about thirty pours over three nights.",
+          "body": "On your turn you may call a vote to undo tonight’s last pour or to reset to the very start; everyone else must agree. A pour that makes the brew impossible ruins it, and the vials return to how they were at nightfall. Between turns, you see the vials as you left them.",
           "symbol": "checkmark.circle",
           "diagram": null,
           "tab": null

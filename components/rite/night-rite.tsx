@@ -152,7 +152,6 @@ export function NightRite({
       const next: Reply = await response.json();
       if (!response.ok)
         throw Error(next.error || 'That action could not be completed.');
-      lastAction.current = Date.now();
       apply(next);
       setNotice(next.summary ?? '');
       if (next.summary?.includes('falters') || next.summary?.includes('ruined'))
@@ -167,20 +166,12 @@ export function NightRite({
   };
   const r = reply.rite;
   const own = r && !r.host ? r.puzzle : null;
-  const previous = useRef<{ phase?: string; ruined?: string }>({});
-  const lastAction = useRef(0);
+  const previous = useRef<{ ruined?: string }>({});
   useEffect(() => {
-    if (
-      own &&
-      ((previous.current.phase === 'turn' &&
-        own.phase === 'locked' &&
-        !busy &&
-        Date.now() - lastAction.current > 1000) ||
-        (own.ruined && own.ruined !== previous.current.ruined))
-    )
+    if (own?.ruined && own.ruined !== previous.current.ruined)
       fail('That action could not be completed.');
-    previous.current = { phase: own?.phase, ruined: own?.ruined };
-  }, [own, busy, fail]);
+    previous.current = { ruined: own?.ruined };
+  }, [own, fail]);
   if (!game.host && !r) return null;
   if (
     mode === 'setup' &&
@@ -1319,8 +1310,8 @@ function HostVigil({
           <p>
             Par: {state.par} · Distance: {state.distance ?? 'Not yet certified'}{' '}
             · Current turn:{' '}
-            {turn?.order[turn.cursor]
-              ? game.players.find((p) => p.id === turn.order[turn.cursor])?.name
+            {turn?.order.length && !state.solved
+              ? game.players.find((p) => p.id === turn.order[turn.cursor % turn.order.length])?.name
               : 'Finished'}
           </p>
           {state.type === 'board' ? (

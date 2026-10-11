@@ -246,18 +246,26 @@ export function beginRiteNight(g: Game, at: number) {
 function boardOf(s: BoardState | LabState): Block[] | Vial[] {
   return s.type === 'board' ? s.blocks : s.vials;
 }
+function turnPlayer(t: NonNullable<BoardState['turn']>) {
+  return t.order[t.cursor % t.order.length];
+}
 function nextTurn(s: Squad, at: number, kind: string, detail?: string) {
   const state = s.state as BoardState | LabState,
     t = state.turn!;
-  const player = t.order[t.cursor];
+  const player = turnPlayer(t);
   if (!player) return;
   t.snapshots[player] = structuredClone(boardOf(state));
   t.log.push({ player, at, kind, detail });
-  t.cursor++;
+  t.cursor = (t.cursor + 1) % t.order.length;
   t.token = uuid();
   t.start = at;
   t.deadline = at + (s.kind === 'board' ? 5000 : 8000);
-  if (state.solved) t.cursor = t.order.length;
+}
+function recordMove(s: Squad, at: number, kind: string, detail: string) {
+  const t = (s.state as BoardState | LabState).turn!;
+  t.log.push({ player: turnPlayer(t), at, kind, detail });
+  // Invalidate a duplicate request while keeping this player's timed turn.
+  t.token = uuid();
 }
 function finishVote(s: Squad, at: number) {
   const state = s.state as LabState,
@@ -362,7 +370,12 @@ export function tickRite(g: Game, now: number) {
       finishVote(s, t.vote.deadline);
       changed = true;
     }
-    while (!t.vote && t.cursor < t.order.length && now > t.deadline + 750) {
+    while (
+      !s.state.solved &&
+      !t.vote &&
+      t.deadline + 750 < (r.windowEnd ?? Infinity) &&
+      now > t.deadline + 750
+    ) {
       nextTurn(s, t.deadline + 750, 'timeout');
       changed = true;
     }
@@ -372,17 +385,7 @@ export function tickRite(g: Game, now: number) {
 export function riteReady(g: Game, now: number) {
   const r = g.rite;
   if (!r?.config.enabled || r.status !== 'open') return true;
-  return (
-    now >= (r.windowEnd ?? Infinity) &&
-    !r.pendingRedeal?.length &&
-    r.squads.every(
-      (s) =>
-        s.completeNight ||
-        (s.state.type !== 'board' && s.state.type !== 'lab') ||
-        !s.state.turn ||
-        s.state.turn.cursor >= s.state.turn.order.length,
-    )
-  );
+  return now >= (r.windowEnd ?? Infinity) && !r.pendingRedeal?.length;
 }
 export function resolveRite(g: Game, now: number, force = false) {
   const r = g.rite;
@@ -475,7 +478,7 @@ export function riteAction(
         if (s.state.type === 'board' || s.state.type === 'lab') {
           if (s.state.turn) {
             delete s.state.turn.vote;
-            s.state.turn.cursor = s.state.turn.order.length;
+            s.state.turn.token = uuid();
           }
         }
       return 'Rite window closed. Current results will resolve at dawn.';
@@ -524,7 +527,7 @@ export function riteAction(
       !s.completeNight &&
       !r.pendingRedeal?.includes(s.id) &&
       now >= (r.lockUntil ?? Infinity) &&
-      now <= (r.windowEnd ?? -1),
+      now < (r.windowEnd ?? -1),
     failure,
   );
   if (c.action === 'riteGridSubmit') {
@@ -576,7 +579,7 @@ export function riteAction(
   }
   check(
     !t.vote &&
-      t.order[t.cursor] === actor.id &&
+      turnPlayer(t) === actor.id &&
       c.turn === t.token &&
       now <= t.deadline + 750 &&
       !state.solved,
@@ -597,7 +600,7 @@ export function riteAction(
     state.blocks = next;
     state.solved = boardSolved(next);
     state.distance = solveBoard(next, 25000)?.length ?? null;
-    nextTurn(
+    recordMove(
       s,
       now,
       'move',
@@ -624,7 +627,7 @@ export function riteAction(
     }
     state.solved = labSolved(state.vials);
     state.distance = solution === null ? null : (solution?.length ?? null);
-    nextTurn(s, now, 'pour', `${String(c.from)} → ${String(c.to)}`);
+    recordMove(s, now, 'pour', `${String(c.from)} → ${String(c.to)}`);
     return solution === null
       ? 'The brew is ruined. The laboratory resets to the start of tonight.'
       : 'Your pour was recorded.';
@@ -640,7 +643,7 @@ export function riteAction(
       id: uuid(),
       kind: c.kind as 'undo' | 'reset',
       caller: actor.id,
-      deadline: now + 5000,
+      deadline: Math.min(now + 5000, r.windowEnd ?? now + 5000),
       ballots: {},
     };
     return 'A vote has been called.';

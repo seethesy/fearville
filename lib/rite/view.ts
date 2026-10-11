@@ -113,10 +113,12 @@ export function riteView(g: Game, a: Actor, now: number) {
   const puzzle: RitePuzzleView = { type: s.kind, phase };
   if (state.type === 'board' || state.type === 'lab') {
     const t = state.turn,
-      current = t?.order[t.cursor] === a.id;
+      current = t?.order[t.cursor % t.order.length] === a.id;
     const snapshot = t?.snapshots[a.id];
-    if (phase === 'wait')
-      phase = current && !t?.vote ? 'turn' : snapshot ? 'locked' : 'wait';
+    if (phase === 'wait' && state.solved)
+      phase = 'done';
+    else if (phase === 'wait')
+      phase = current && !t?.vote ? 'turn' : 'wait';
     puzzle.phase = phase;
     const board =
       g.phase !== 'night' || s.completeNight

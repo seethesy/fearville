@@ -186,8 +186,8 @@ const moved = await call('/api/rite', tokenFor(mover), {
   turn: bv.rite.puzzle.turn,
   ...move,
 });
-assert.equal(moved.rite.puzzle.phase, 'locked');
-assert.ok(!('deadline' in moved.rite.puzzle));
+assert.equal(moved.rite.puzzle.phase, 'turn');
+assert.ok(moved.rite.puzzle.deadline);
 await call(
   '/api/rite',
   tokenFor(mover),
@@ -200,20 +200,44 @@ await call(
   },
   400,
 );
+const anotherMove = boardMoves(moved.rite.puzzle.blocks)[0].move;
+const movedAgain = await call('/api/rite', tokenFor(mover), {
+  action: 'riteBoardMove',
+  epoch: moved.rite.epoch,
+  night: 2,
+  turn: moved.rite.puzzle.turn,
+  ...anotherMove,
+});
+assert.equal(movedAgain.rite.puzzle.phase, 'turn');
+await call('/api/rite', tokenFor(mover), {
+  action: 'ritePass',
+  epoch: movedAgain.rite.epoch,
+  night: 2,
+  turn: movedAgain.rite.puzzle.turn,
+});
 const next = await call('/api/rite', tokenFor(board.state.turn.order[1]));
 assert.equal(next.rite.puzzle.phase, 'turn');
 mover = lab.state.turn.order[0];
 let lv = await call('/api/rite', tokenFor(mover));
 const optimal = solveLab(lv.rite.puzzle.vials)[0];
-await call('/api/rite', tokenFor(mover), {
+lv = await call('/api/rite', tokenFor(mover), {
   action: 'riteLabPour',
   epoch: lv.rite.epoch,
   night: 2,
   turn: lv.rite.puzzle.turn,
   ...optimal,
 });
-const caller = lab.state.turn.order[1];
-lv = await call('/api/rite', tokenFor(caller));
+assert.equal(lv.rite.puzzle.phase, 'turn');
+const anotherPour = solveLab(lv.rite.puzzle.vials)[0];
+lv = await call('/api/rite', tokenFor(mover), {
+  action: 'riteLabPour',
+  epoch: lv.rite.epoch,
+  night: 2,
+  turn: lv.rite.puzzle.turn,
+  ...anotherPour,
+});
+assert.equal(lv.rite.puzzle.phase, 'turn');
+const caller = mover;
 const called = await call('/api/rite', tokenFor(caller), {
   action: 'riteLabCall',
   epoch: lv.rite.epoch,
@@ -291,5 +315,5 @@ const ordinary = await call(
 );
 assert.equal(ordinary.me, raw.players[1].id);
 console.log(
-  'PASS: production Worker HTTP, setup, private payloads, lock/dawn gating, concurrent submissions, dead-player turns, immediate handoff, stale retries, anonymous unanimous votes, quiet completion and rewind.',
+  'PASS: production Worker HTTP, setup, private payloads, lock/dawn gating, concurrent submissions, repeated moves, timed handoff, stale retries, anonymous unanimous votes, quiet completion and rewind.',
 );
