@@ -4,6 +4,7 @@ import './hub.css';
 import './rite.css';
 import { AccountProvider } from '@/components/hub/account-context';
 import { TutorialProvider } from '@/components/tutorials/provider';
+import { NativeShell } from '@/components/native-shell';
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
@@ -22,6 +23,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <body>
+        <NativeShell />
         <AccountProvider>
           <TutorialProvider>{children}</TutorialProvider>
         </AccountProvider>
