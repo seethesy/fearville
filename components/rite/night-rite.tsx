@@ -54,10 +54,8 @@ export function NightRite({
     [error, setError] = useState(''),
     [notice, setNotice] = useState(''),
     [busy, setBusy] = useState(false),
-    [flash, setFlash] = useState(false),
-    [now, setNow] = useState(() => Date.now());
-  const latest = useRef(reply),
-    offset = useRef(0);
+    [flash, setFlash] = useState(false);
+  const latest = useRef(reply);
   const apply = useCallback((next: Reply) => {
     if (
       next.version > latest.current.version ||
@@ -65,7 +63,6 @@ export function NightRite({
         next.serverNow >= latest.current.serverNow)
     ) {
       latest.current = next;
-      offset.current = next.serverNow - Date.now();
       setReply(next);
     }
   }, []);
@@ -76,55 +73,6 @@ export function NightRite({
       serverNow: game.serverNow,
     });
   }, [game.rite, game.version, game.serverNow, apply]);
-  useEffect(() => {
-    let stopped = false,
-      inFlight = false,
-      timer: ReturnType<typeof setTimeout>;
-    const controller = new AbortController();
-    const poll = async () => {
-      if (stopped || inFlight) return;
-      inFlight = true;
-      clearTimeout(timer);
-      try {
-        const response = await fetch(
-          `/api/rite${game.sandboxHost && !game.host ? `?pov=${encodeURIComponent(game.me)}` : ''}`,
-          {
-            cache: 'no-store',
-            signal: controller.signal,
-          },
-        );
-        if (response.ok) {
-          apply(await response.json());
-        }
-      } catch {
-      } finally {
-        inFlight = false;
-        if (!stopped && mode === 'play' && latest.current.rite?.status === 'open' && game.phase === 'night') {
-          timer = setTimeout(
-            () => void poll(),
-            document.hidden
-              ? 8000
-              : 1000,
-          );
-        }
-      }
-    };
-    if (mode === 'play' && game.rite?.status === 'open' && game.phase === 'night') void poll();
-    const clock = mode === 'play' && game.rite?.status === 'open' && game.phase === 'night'
-      ? setInterval(() => setNow(Date.now() + offset.current), 250)
-      : null;
-    const resume = () => {
-      if (!document.hidden && mode === 'play' && latest.current.rite?.status === 'open' && game.phase === 'night') void poll();
-    };
-    document.addEventListener('visibilitychange', resume);
-    return () => {
-      stopped = true;
-      clearTimeout(timer);
-      if (clock) clearInterval(clock);
-      controller.abort();
-      document.removeEventListener('visibilitychange', resume);
-    };
-  }, [apply, game.phase, game.code, game.me, game.sandboxHost, game.host, game.rite?.status, mode]);
   const fail = useCallback((message: string) => {
     setError(message);
     setFlash(true);
@@ -189,22 +137,6 @@ export function NightRite({
       aria-label="Night Rite"
     >
       <header className="rite-heading">
-        {mode === 'play' &&
-          r?.status === 'open' &&
-          r?.lockUntil &&
-          r?.windowEnd &&
-          game.phase === 'night' && (
-            <div className="rite-window-clocks" aria-label="Night Rite timers">
-              <div>
-                <span>UNLOCKS IN</span>
-                <strong>{formatRiteTime(r.lockUntil - now)}</strong>
-              </div>
-              <div>
-                <span>CLOSES IN</span>
-                <strong>{formatRiteTime(r.windowEnd - now)}</strong>
-              </div>
-            </div>
-          )}
         <p className="rite-eyebrow">THE TOWN’S NIGHT RITE</p>
         <h2>
           {mode === 'setup'
@@ -254,7 +186,7 @@ export function NightRite({
                   disabled={busy}
                   onClick={() => void send('riteForce')}
                 >
-                  Close Rite window now
+                  Close Rite now
                 </button>
               )}
             </div>
@@ -285,16 +217,6 @@ export function NightRite({
               </p>
             ) : (
               <>
-                {own.phase === 'lock' && (
-                  <p className="rite-state" aria-live="polite">
-                    View only · Opens in{' '}
-                    {Math.max(
-                      0,
-                      Math.ceil(((r.lockUntil ?? now) - now) / 1000),
-                    )}{' '}
-                    seconds. Make your night choices first.
-                  </p>
-                )}
                 {own.phase === 'wait' && (
                   <p className="rite-state">
                     Waiting for your turn. Keep this screen open.
@@ -313,36 +235,6 @@ export function NightRite({
                 {own.phase === 'done' && (
                   <p className="rite-state">Your vigil’s puzzle is complete.</p>
                 )}
-                {own.deadline && own.phase === 'turn' && (
-                  <div
-                    className={
-                      'rite-timer ' + (own.type === 'lab' ? 'rite-ring' : '')
-                    }
-                    aria-label="Time remaining"
-                  >
-                    {own.type === 'lab' && (
-                      <svg viewBox="0 0 100 100" aria-hidden="true">
-                        <circle cx="50" cy="50" r="43" fill="none" stroke="#314f50" strokeWidth="7" />
-                        <circle
-                          cx="50" cy="50" r="43" fill="none"
-                          stroke="#d4ae4f" strokeWidth="7" pathLength="1"
-                          strokeDasharray={`${Math.min(1, Math.max(0, (own.deadline - now) / 8000))} 1`}
-                          transform="rotate(-90 50 50)"
-                        />
-                      </svg>
-                    )}
-                    <strong>
-                      {Math.min(
-                        own.type === 'board' ? 5 : 8,
-                        Math.max(0, Math.ceil((own.deadline - now) / 1000)),
-                      )}
-                    </strong>
-                    <progress
-                      max={own.type === 'board' ? 5000 : 8000}
-                      value={Math.max(0, own.deadline - now)}
-                    />
-                  </div>
-                )}
                 {own.type === 'board' && (
                   <Escape puzzle={own} send={send} busy={busy} />
                 )}
@@ -352,7 +244,6 @@ export function NightRite({
                     puzzle={own}
                     send={send}
                     busy={busy}
-                    now={now}
                   />
                 )}
                 {own.type === 'grid' && (
@@ -382,12 +273,6 @@ export function NightRite({
       {notice && !error && <output className="rite-notice">{notice}</output>}
     </section>
   );
-}
-function formatRiteTime(milliseconds: number) {
-  const seconds = Math.max(0, Math.ceil(milliseconds / 1000));
-  return `${Math.floor(seconds / 60)
-    .toString()
-    .padStart(2, '0')}:${(seconds % 60).toString().padStart(2, '0')}`;
 }
 function RiteSetup({
   game,
@@ -448,18 +333,6 @@ function RiteSetup({
       <div className="rite-settings">
         {[
           { key: 'opensNight', title: 'Opening night', min: 2, max: 20 },
-          {
-            key: 'lockSeconds',
-            title: 'Night lock (seconds)',
-            min: 0,
-            max: 120,
-          },
-          {
-            key: 'windowSeconds',
-            title: 'Puzzle window (seconds)',
-            min: 60,
-            max: 300,
-          },
           {
             key: 'ritualFirstNight',
             title: 'Divination first attempt',
@@ -697,12 +570,10 @@ function Laboratory({
   puzzle,
   send,
   busy,
-  now,
 }: {
   puzzle: RitePuzzleView;
   send: Send;
   busy: boolean;
-  now: number;
 }) {
   const [from, setFrom] = useState(''),
     [sheet, setSheet] = useState(false),
@@ -775,11 +646,8 @@ function Laboratory({
               ? 'Undo tonight’s last pour?'
               : 'Reset to the original puzzle?'}
           </p>
-          <strong>
-            {Math.max(0, Math.ceil((puzzle.vote.deadline - now) / 1000))}
-          </strong>
           <p>
-            Everyone must agree. No answer counts as no. Votes are anonymous.
+            Everyone else must agree. Votes are anonymous and stay open until everyone answers or the Rite closes.
           </p>
           {puzzle.vote.canVote && !puzzle.vote.answered && (
             <div className="rite-buttons">
@@ -1325,7 +1193,6 @@ function HostVigil({
               puzzle={{ type: 'lab', phase: 'day', vials: state.vials }}
               send={async () => {}}
               busy={true}
-              now={game.serverNow}
             />
           )}
           <ol>
@@ -1367,6 +1234,15 @@ function HostVigil({
             · {r.doneNight ? 'Performed' : 'Pending'}
           </p>
         ))}
+      {turn && (state.type === 'board' || state.type === 'lab') && !state.solved && game.phase === 'night' && game.rite?.status === 'open' && !game.rite.windowEnd && (
+        <button
+          className="secondary"
+          disabled={busy}
+          onClick={() => void send('ritePassTurn', { squad: s.id })}
+        >
+          Pass current turn
+        </button>
+      )}
       <button
         className="secondary"
         disabled={busy || game.rite?.status === 'complete'}

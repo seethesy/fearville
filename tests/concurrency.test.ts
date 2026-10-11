@@ -17,6 +17,8 @@ void test('only safe Storyteller actions can use the latest table state', () => 
   assert.equal(canApplyLatest(host, { action: 'edit' }), false);
   assert.equal(canApplyLatest(host, { action: 'start' }), false);
   assert.equal(canApplyLatest({ id: 'player', host: false }, { action: 'pause', phaseToken: '1:1:night' }), false);
+  assert.equal(canApplyLatest({ id: 'player', host: false }, { action: 'nominate', target: 'p2' }), true);
+  assert.equal(canApplyLatest({ id: 'player', host: false }, { action: 'researcherDeclare' }), true);
 });
 
 void test('a deferred or skipped task cannot silently switch targets', () => {

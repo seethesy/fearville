@@ -483,7 +483,7 @@ const RITE_GUIDES: Tutorial[] = [
       },
       {
         title: 'Keep sliding on your turn',
-        body: 'Each night the Rite is open, your vigil takes turns in a random order. You have five seconds to make as many legal slides as you can. Pass when ready, or your turn passes when time runs out. Turns keep cycling until the Rite window closes.',
+        body: 'Your vigil takes turns in a random order. Make as many legal slides as you want, then press Pass to hand over the board. Turns keep cycling until the Storyteller ends the night or closes the Rite.',
         diagram: 'escape-turns',
       },
       {
@@ -507,12 +507,12 @@ const RITE_GUIDES: Tutorial[] = [
       },
       {
         title: 'Keep pouring on your turn',
-        body: 'Each night the Rite is open, your vigil takes turns in a random order. You have eight seconds to make as many legal pours as you can. Pass when ready, or your turn passes when time runs out. Turns keep cycling until the Rite window closes.',
+        body: 'Your vigil takes turns in a random order. Make as many legal pours as you want, then press Pass to hand over the vials. Turns keep cycling until the Storyteller ends the night or closes the Rite.',
         diagram: 'lab-turns',
       },
       {
         title: 'Undo, reset and ruin',
-        body: 'On your turn you may call a vote to undo tonight’s last pour or to reset to the very start; everyone else must agree. A pour that makes the brew impossible ruins it, and the vials return to how they were at nightfall. Between turns, you see the vials as you left them.',
+        body: 'On your turn you may call a vote to undo tonight’s last pour or to reset to the very start; everyone else must agree. The vote stays open until everyone answers or the Rite closes. A pour that makes the brew impossible returns the vials to how they were at nightfall.',
         illustration: 'vote',
       },
     ],
@@ -541,7 +541,7 @@ const RITE_GUIDES: Tutorial[] = [
       },
       {
         title: 'Answer at night',
-        body: 'Arrange people and activities on your map whenever you like and save it. At night, submit your answer; you can replace it until the window closes. The riddle is solved at dawn if more than half your vigil submitted the right answer. A card that clashes with the rest may be forged.',
+        body: 'Arrange people and activities on your map whenever you like and save it. At night, submit your answer; you can replace it until the Storyteller ends the night or closes the Rite. The riddle is solved at dawn if more than half your vigil submitted the right answer. A card that clashes with the rest may be forged.',
         illustration: 'night',
       },
     ],

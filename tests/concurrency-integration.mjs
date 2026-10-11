@@ -52,6 +52,18 @@ const mergedEdit = await call('/api/game', token, {
 assert.equal(mergedEdit.status, 200, JSON.stringify(mergedEdit.data));
 assert.equal(mergedEdit.data.game.players[0].notes, 'Keep this private reminder');
 
+const simultaneous = await Promise.all(
+  mergedEdit.data.game.players.slice(0, 2).map((seat, index) =>
+    call('/api/game', index === 0 ? joined.data.token : second.data.token, {
+      action: 'setAvatar',
+      avatar: seat.avatar,
+      version: initial.data.version,
+    }),
+  ),
+);
+for (const result of simultaneous)
+  assert.equal(result.status, 200, JSON.stringify(result.data));
+
 const guarded = await call('/api/game', token, {
   action: 'start',
   version: initial.data.version,
@@ -59,4 +71,4 @@ const guarded = await call('/api/game', token, {
 assert.equal(guarded.status, 409);
 assert.match(guarded.data.error, /table changed/i);
 
-console.log('PASS: safe stale actions and unrelated seat edits apply to the latest table; starting remains guarded.');
+console.log('PASS: safe stale actions, simultaneous player updates and unrelated seat edits apply to the latest table; starting remains guarded.');

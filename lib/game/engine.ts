@@ -348,7 +348,7 @@ function executeCommand(
     'This seat is no longer available.',
   );
   if(c.action === 'configureRite' || c.action.startsWith('rite')) {
-    if (['configureRite', 'riteForce', 'riteRedeal'].includes(c.action) && actor.host) snapshot(g, 'Night Rite: ' + c.action, now);
+    if (['configureRite', 'riteForce', 'riteRedeal', 'ritePassTurn'].includes(c.action) && actor.host) snapshot(g, 'Night Rite: ' + c.action, now);
     return riteAction(g, actor, c, now)!;
   }
   const hostActions = [

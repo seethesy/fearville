@@ -164,6 +164,7 @@ export function configureRite(g: Game, c: Command) {
     plans,
     squads: [],
     status: 'dormant',
+    timerless: true,
     resolvedNight: 0,
   };
   return 'Night Rite setup saved.';
@@ -219,12 +220,9 @@ export function beginRiteNight(g: Game, at: number) {
     r.squads = r.plans.map((p) => deal(g, p));
     r.status = 'open';
   }
-  r.lockUntil = at + r.config.lockSeconds * 1000;
-  r.windowEnd = r.lockUntil + r.config.windowSeconds * 1000;
-  g.nightChoiceDeadline = Math.min(
-    g.nightChoiceDeadline ?? Infinity,
-    r.lockUntil,
-  );
+  r.timerless = true;
+  delete r.lockUntil;
+  delete r.windowEnd;
   for (const s of r.squads) {
     if (s.completeNight || (s.state.type !== 'board' && s.state.type !== 'lab'))
       continue;
@@ -235,8 +233,8 @@ export function beginRiteNight(g: Game, at: number) {
     s.state.turn = {
       order,
       cursor: 0,
-      start: r.lockUntil,
-      deadline: r.lockUntil + (s.kind === 'board' ? 5000 : 8000),
+      start: at,
+      deadline: 0,
       snapshots: {},
       log: [],
       token: uuid(),
@@ -259,7 +257,7 @@ function nextTurn(s: Squad, at: number, kind: string, detail?: string) {
   t.cursor = (t.cursor + 1) % t.order.length;
   t.token = uuid();
   t.start = at;
-  t.deadline = at + (s.kind === 'board' ? 5000 : 8000);
+  t.deadline = 0;
 }
 function recordMove(s: Squad, at: number, kind: string, detail: string) {
   const t = (s.state as BoardState | LabState).turn!;
@@ -291,6 +289,21 @@ function finishVote(s: Squad, at: number) {
 export function tickRite(g: Game, now: number) {
   const r = g.rite;
   let changed = false;
+  // Existing sessions may still carry turn and window deadlines from the
+  // former timed Rite. Migrate them once so a live puzzle reopens immediately.
+  if (r?.status === 'open' && g.phase === 'night' && !r.timerless) {
+    r.timerless = true;
+    delete r.lockUntil;
+    delete r.windowEnd;
+    for (const squad of r.squads)
+      if (squad.state.type === 'board' || squad.state.type === 'lab') {
+        if (squad.state.turn) {
+          squad.state.turn.deadline = 0;
+          if (squad.state.turn.vote) squad.state.turn.vote.deadline = 0;
+        }
+      }
+    changed = true;
+  }
   if (
     r?.config.enabled &&
     (r.status === 'dormant' || r.pendingRedeal?.length) &&
@@ -332,21 +345,17 @@ export function tickRite(g: Game, now: number) {
             delete s.completeNight;
             r.pendingRedeal = r.pendingRedeal.filter((id) => id !== plan.id);
             if (g.phase === 'night') {
-              const start = Math.max(now, r.lockUntil ?? now);
+              const start = now;
               candidate.turn = {
                 order: shuffle(s.members, rng(`${r.seed}:${s.id}:${g.night}`)),
                 cursor: 0,
                 start,
-                deadline: start + (s.kind === 'board' ? 5000 : 8000),
+                deadline: 0,
                 snapshots: {},
                 log: [],
                 token: uuid(),
               };
               s.state = structuredClone(candidate);
-              r.windowEnd = Math.max(
-                r.windowEnd ?? 0,
-                start + r.config.windowSeconds * 1000,
-              );
             }
           }
           break;
@@ -354,38 +363,12 @@ export function tickRite(g: Game, now: number) {
       }
     }
   }
-  if (
-    !r?.config.enabled ||
-    r.status !== 'open' ||
-    g.phase !== 'night' ||
-    now < (r.lockUntil ?? Infinity)
-  )
-    return changed;
-  for (const s of r.squads) {
-    if (r.pendingRedeal?.includes(s.id)) continue;
-    if (s.state.type !== 'board' && s.state.type !== 'lab') continue;
-    const t = s.state.turn;
-    if (!t) continue;
-    if (t.vote && now >= t.vote.deadline) {
-      finishVote(s, t.vote.deadline);
-      changed = true;
-    }
-    while (
-      !s.state.solved &&
-      !t.vote &&
-      t.deadline + 750 < (r.windowEnd ?? Infinity) &&
-      now > t.deadline + 750
-    ) {
-      nextTurn(s, t.deadline + 750, 'timeout');
-      changed = true;
-    }
-  }
   return changed;
 }
-export function riteReady(g: Game, now: number) {
+export function riteReady(g: Game, _now: number) {
   const r = g.rite;
   if (!r?.config.enabled || r.status !== 'open') return true;
-  return now >= (r.windowEnd ?? Infinity) && !r.pendingRedeal?.length;
+  return !r.pendingRedeal?.length;
 }
 export function resolveRite(g: Game, now: number, force = false) {
   const r = g.rite;
@@ -465,8 +448,19 @@ export function riteAction(
   }
   const r = g.rite;
   check(r?.config.enabled, 'The Night Rite is disabled.');
-  if (c.action === 'riteRedeal' || c.action === 'riteForce') {
+  if (c.action === 'riteRedeal' || c.action === 'riteForce' || c.action === 'ritePassTurn') {
     check(actor.host, 'Only the Storyteller can do that.');
+    if (c.action === 'ritePassTurn') {
+      check(g.phase === 'night' && r.status === 'open' && r.windowEnd === undefined,
+        'No active Rite turn to pass.');
+      const squad = r.squads.find((item) => item.id === c.squad);
+      check(squad && !squad.completeNight && !r.pendingRedeal?.includes(squad.id) &&
+        (squad.state.type === 'board' || squad.state.type === 'lab') &&
+        squad.state.turn && !squad.state.solved, 'Choose an active vigil.');
+      if (squad.state.turn.vote) finishVote(squad, now);
+      else nextTurn(squad, now, 'hostPass');
+      return 'The Storyteller passed this vigil’s turn.';
+    }
     if (c.action === 'riteForce') {
       check(
         g.phase === 'night' && r.status === 'open',
@@ -481,7 +475,7 @@ export function riteAction(
             s.state.turn.token = uuid();
           }
         }
-      return 'Rite window closed. Current results will resolve at dawn.';
+      return 'Rite closed. Current results will resolve at dawn.';
     }
     check(
       r.status !== 'complete',
@@ -526,8 +520,7 @@ export function riteAction(
       r.status === 'open' &&
       !s.completeNight &&
       !r.pendingRedeal?.includes(s.id) &&
-      now >= (r.lockUntil ?? Infinity) &&
-      now < (r.windowEnd ?? -1),
+      (r.windowEnd === undefined || now < r.windowEnd),
     failure,
   );
   if (c.action === 'riteGridSubmit') {
@@ -563,7 +556,6 @@ export function riteAction(
         t.vote &&
         c.vote === t.vote.id &&
         actor.id !== t.vote.caller &&
-        now < t.vote.deadline &&
         typeof c.yes === 'boolean' &&
         !Object.hasOwn(t.vote.ballots, actor.id),
       failure,
@@ -581,7 +573,6 @@ export function riteAction(
     !t.vote &&
       turnPlayer(t) === actor.id &&
       c.turn === t.token &&
-      now <= t.deadline + 750 &&
       !state.solved,
     failure,
   );
@@ -643,7 +634,7 @@ export function riteAction(
       id: uuid(),
       kind: c.kind as 'undo' | 'reset',
       caller: actor.id,
-      deadline: Math.min(now + 5000, r.windowEnd ?? now + 5000),
+      deadline: 0,
       ballots: {},
     };
     return 'A vote has been called.';

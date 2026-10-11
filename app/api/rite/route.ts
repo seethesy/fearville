@@ -13,7 +13,7 @@ import type { Command } from '@/lib/game/types';
 async function handle(r: Request, c?: Command) {
   const initial = await authenticatedRead(r);
   const { actor, code } = initial;
-  for (let attempt = 0; attempt < 8; attempt++) {
+  for (let attempt = 0; attempt < 20; attempt++) {
     const { game, version } = attempt === 0 ? initial : await read(code),
       now = Date.now();
     const requested = c?.pov ?? new URL(r.url).searchParams.get('pov');
@@ -27,7 +27,7 @@ async function handle(r: Request, c?: Command) {
       'AUTH',
     );
     const changed = tick(game, now);
-    if (c && ['configureRite', 'riteForce', 'riteRedeal'].includes(c.action)) {
+    if (c && ['configureRite', 'riteForce', 'riteRedeal', 'ritePassTurn'].includes(c.action)) {
       requireThat(viewer.host, 'Only the Storyteller can do that.');
       if (c.action === 'configureRite' || c.epoch === undefined || c.night === undefined)
         requireThat(
@@ -43,7 +43,10 @@ async function handle(r: Request, c?: Command) {
     }
     const summary = c ? riteAction(game, viewer, c, now) : undefined;
     requireThat(!c || summary !== null, 'Choose a Rite action.');
-    if ((changed || c) && !(await save(game, version))) continue;
+    if ((changed || c) && !(await save(game, version, false))) {
+      await new Promise((resolve) => setTimeout(resolve, 8 + Math.floor(Math.random() * 24)));
+      continue;
+    }
     return json({
       code,
       me: viewer.id,

@@ -16,9 +16,16 @@ const safeHostActions = new Set([
   'nightDefer',
   'resolveDeath',
 ]);
+const playerActions = new Set([
+  'claimSeat', 'leaveSeat', 'setAvatar', 'saveNotebook', 'chat', 'nightChoice',
+  'nominate', 'vote', 'mvpVote', 'returnLobby', 'bodyguardAccept',
+  'bodyguardDecline', 'vigilanteDeclare', 'researcherDeclare', 'hagDeclare',
+  'astrophage', 'reap', 'fateweaverPref',
+]);
 
 export function canApplyLatest(actor: Actor, command: Command): boolean {
-  if (!actor.host || !safeHostActions.has(command.action)) return false;
+  if (!actor.host) return playerActions.has(command.action);
+  if (!safeHostActions.has(command.action)) return false;
   switch (command.action) {
     case 'pause':
     case 'resume':

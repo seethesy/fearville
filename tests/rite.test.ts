@@ -84,7 +84,7 @@ function game(kind: Pattern = 'grid', n = 6) {
   return g;
 }
 const as = (id: string) => ({ id, host: false });
-function action(g: Game, id: string, c: Command, now = g.rite!.lockUntil!) {
+function action(g: Game, id: string, c: Command, now = 200) {
   return riteAction(
     g,
     as(id),
@@ -333,16 +333,17 @@ void test('Ritual generators have globally unique sets, cyclic roles, correct de
     assert.deepEqual(s, generateRitual(`ritual-${i}`, ['a', 'b', 'c'], ['b']));
   }
 });
-void test('night-2 lock caps choices, rejects early input, waits for full window and keeps hidden clue text off the wire', () => {
+void test('night-2 Rite opens immediately, leaves night choices independent and keeps hidden clues off the wire', () => {
   const g = game(),
     r = g.rite!,
     s = r.squads[0],
     id = s.members[0],
     state = s.state as GridState;
-  assert.equal(r.lockUntil, 30200);
-  assert.equal(g.nightChoiceDeadline, r.lockUntil);
+  assert.equal(r.lockUntil, undefined);
+  assert.equal(r.windowEnd, undefined);
+  assert.ok(g.nightChoiceDeadline! > 200);
   const v = memberView(g, id, 201);
-  assert.equal(v.puzzle!.phase, 'lock');
+  assert.equal(v.puzzle!.phase, 'turn');
   for (const c of v.puzzle!.clues!.filter((c) => c.hidden)) {
     assert.equal(c.text, undefined);
     assert.equal(Object.hasOwn(c, 'text'), false);
@@ -351,27 +352,11 @@ void test('night-2 lock caps choices, rejects early input, waits for full window
     (c) => c.holder === id && c.revealNight > 2,
   );
   for (const c of hidden) assert.ok(!JSON.stringify(v).includes(c.text));
-  assert.throws(
-    () =>
-      action(
-        g,
-        id,
-        { action: 'riteGridSubmit', solution: state.solution },
-        30200 - 1,
-      ),
-    /could not be completed/,
-  );
   assert.equal(
     action(g, id, { action: 'riteGridSubmit', solution: state.solution }),
     'Your submission was recorded.',
   );
-  assert.equal(riteReady(g, r.windowEnd! - 1), false);
-  assert.equal(riteReady(g, r.windowEnd!), true);
-  assert.throws(
-    () =>
-      execute(g, host, { action: 'dawn', override: true }, r.windowEnd! - 1),
-    /Rite window/,
-  );
+  assert.equal(riteReady(g, 201), true);
 });
 void test('submissions are private, replaceable, majority checked at dawn, and never announce failure', () => {
   const g = game(),
@@ -389,10 +374,10 @@ void test('submissions are private, replaceable, majority checked at dawn, and n
     solution: state.solution,
   });
   assert.equal(
-    memberView(g, s.members[1], r.lockUntil!).puzzle!.submission!.length,
+    memberView(g, s.members[1], 200).puzzle!.submission!.length,
     0,
   );
-  resolveRite(g, r.windowEnd!);
+  resolveRite(g, 300);
   assert.equal(s.completeNight, undefined);
   assert.equal(g.messages.filter((m) => m.text.includes('vigil')).length, 0);
   beginNight(g, 100000);
@@ -400,7 +385,7 @@ void test('submissions are private, replaceable, majority checked at dawn, and n
     action: 'riteGridSubmit',
     solution: state.solution,
   });
-  resolveRite(g, r.windowEnd!);
+  resolveRite(g, 300);
   assert.equal(s.completeNight, 3);
   assert.equal(r.status, 'complete');
   assert.equal(
@@ -408,7 +393,7 @@ void test('submissions are private, replaceable, majority checked at dawn, and n
     s.members.length,
   );
 });
-void test('Escape allows repeated moves, cycles turns until the window ends, and keeps snapshots private', () => {
+void test('Escape allows repeated moves without deadlines, cycles turns until manual close and keeps snapshots private', () => {
   const g = game('board'),
     r = g.rite!,
     s = r.squads[0],
@@ -417,9 +402,9 @@ void test('Escape allows repeated moves, cycles turns until the window ends, and
   const first = t.order[0],
     second = t.order[1];
   g.players.find((p) => p.id === first)!.alive = false;
-  const start = memberView(g, first, r.lockUntil!);
+  const start = memberView(g, first, 200);
   assert.equal(start.puzzle!.phase, 'turn');
-  assert.equal(memberView(g, second, r.lockUntil!).puzzle!.deadline, undefined);
+  assert.equal(start.puzzle!.deadline, undefined);
   assert.ok(!JSON.stringify(start).includes('order'));
   assert.ok(!JSON.stringify(start).includes('par'));
   const move = boardMoves(state.blocks)[0].move;
@@ -433,7 +418,7 @@ void test('Escape allows repeated moves, cycles turns until the window ends, and
     g,
     first,
     { action: 'riteBoardMove', ...move, turn: token },
-    t.deadline + 750,
+    201,
   );
   assert.equal(t.cursor, 0);
   assert.equal(memberView(g, first, t.start).puzzle!.phase, 'turn');
@@ -448,9 +433,9 @@ void test('Escape allows repeated moves, cycles turns until the window ends, and
     /could not be completed/,
   );
   const secondMove = boardMoves(state.blocks)[0].move;
-  action(g, first, { action: 'riteBoardMove', ...secondMove, turn: t.token }, t.deadline + 750);
+  action(g, first, { action: 'riteBoardMove', ...secondMove, turn: t.token }, 100000);
   assert.equal(t.cursor, 0);
-  action(g, first, { action: 'ritePass', turn: t.token }, t.deadline + 750);
+  action(g, first, { action: 'ritePass', turn: t.token }, 100001);
   assert.equal(t.cursor, 1);
   assert.equal(memberView(g, second, t.start).puzzle!.phase, 'turn');
   const frozen = memberView(g, first, t.start).puzzle!.blocks;
@@ -469,18 +454,19 @@ void test('Escape allows repeated moves, cycles turns until the window ends, and
   action(g, third, { action: 'ritePass', turn: t.token }, t.start);
   assert.equal(t.cursor, 0);
   assert.equal(memberView(g, first, t.start).puzzle!.phase, 'turn');
-  assert.equal(riteReady(g, r.windowEnd! - 1), false);
-  assert.equal(riteReady(g, r.windowEnd!), true);
-  assert.equal(memberView(g, first, r.windowEnd!).puzzle!.phase, 'locked');
+  assert.equal(riteReady(g, 100002), true);
+  assert.equal(memberView(g, first, 100002).puzzle!.phase, 'turn');
+  riteAction(g, host, { action: 'riteForce' }, 100003);
+  assert.equal(memberView(g, first, 100003).puzzle!.phase, 'locked');
   assert.throws(
-    () => action(g, first, { action: 'ritePass', turn: t.token }, r.windowEnd!),
+    () => action(g, first, { action: 'ritePass', turn: t.token }, 100003),
     /could not be completed/,
   );
   const saved = structuredClone(state.blocks);
   beginNight(g, 120000);
   assert.deepEqual(state.blocks, saved);
 });
-void test('Escape illegal axes, overlap, board bounds and timeouts all reject without changing the board', () => {
+void test('Escape rejects illegal slides but never advances a turn because time passed', () => {
   const g = game('board'),
     s = g.rite!.squads[0],
     state = s.state as BoardState,
@@ -500,14 +486,37 @@ void test('Escape illegal axes, overlap, board bounds and timeouts all reject wi
     );
     assert.deepEqual(state.blocks, before);
   }
-  assert.throws(
-    () =>
-      action(g, id, { action: 'ritePass', turn: t.token }, t.deadline + 751),
-    /could not be completed/,
-  );
-  tickRite(g, t.deadline + 751);
+  tickRite(g, 1000000);
+  assert.equal(t.cursor, 0);
+  assert.equal(t.log.length, 0);
+  action(g, id, { action: 'ritePass', turn: t.token }, 1000000);
   assert.equal(t.cursor, 1);
-  assert.equal(t.log[0].kind, 'timeout');
+});
+void test('an active timed Rite migrates to open play without losing its board or turn', () => {
+  const g = game('board'), r = g.rite!, state = r.squads[0].state as BoardState;
+  r.timerless = undefined;
+  r.lockUntil = 300;
+  r.windowEnd = 500;
+  state.turn!.deadline = 350;
+  const token = state.turn!.token, board = structuredClone(state.blocks);
+  assert.equal(tickRite(g, 1000), true);
+  assert.equal(r.timerless, true);
+  assert.equal(r.lockUntil, undefined);
+  assert.equal(r.windowEnd, undefined);
+  assert.equal(state.turn!.token, token);
+  assert.equal(state.turn!.cursor, 0);
+  assert.deepEqual(state.blocks, board);
+  assert.equal(memberView(g, state.turn!.order[0], 1000).puzzle!.phase, 'turn');
+});
+void test('Storyteller can pass an absent player’s Rite turn without a timer', () => {
+  const g = game('board'), squad = g.rite!.squads[0];
+  const turn = (squad.state as BoardState).turn!;
+  const first = turn.order[0];
+  assert.equal(riteAction(g, host, { action: 'ritePassTurn', squad: squad.id }, 500000),
+    'The Storyteller passed this vigil’s turn.');
+  assert.equal(turn.cursor, 1);
+  assert.equal(memberView(g, first, 500000).puzzle!.phase, 'wait');
+  assert.equal(memberView(g, turn.order[1], 500000).puzzle!.phase, 'turn');
 });
 void test('Lab rules pour maximal top run, reject unlike liquid, detect dead ends and treat solver caps as unknown', () => {
   const v = [
@@ -539,7 +548,7 @@ void test('Lab rules pour maximal top run, reject unlike liquid, detect dead end
   );
   assert.equal(solveLab(generateLab('cap', 2).vials, 0), undefined);
 });
-void test('Lab unanimous votes, private ballots, missing votes, early finish, timer suspension and tonight-only undo', () => {
+void test('Lab unanimous votes remain open without deadlines and preserve tonight-only undo', () => {
   const g = game('lab'),
     r = g.rite!,
     s = r.squads[0],
@@ -609,17 +618,20 @@ void test('Lab unanimous votes, private ballots, missing votes, early finish, ti
     { action: 'riteLabCall', kind: 'reset', turn: t.token },
     t.start,
   );
-  const deadline = t.vote!.deadline;
-  tickRite(g, deadline);
+  tickRite(g, 1000000);
+  assert.ok(t.vote);
+  action(g, s.members.find((id) => id !== t.order[1])!, { action: 'riteLabBallot', vote: t.vote!.id, yes: false }, 1000000);
+  const remaining = s.members.find((id) => id !== t.order[1] && !Object.hasOwn(t.vote!.ballots, id));
+  if (remaining) action(g, remaining, { action: 'riteLabBallot', vote: t.vote!.id, yes: true }, 1000001);
   assert.equal(t.voteResult!.passed, false);
   assert.equal(t.cursor, 2 % t.order.length);
-  assert.equal(memberView(g, t.order[t.cursor], deadline).puzzle!.phase, 'turn');
-  action(g, t.order[t.cursor], { action: 'ritePass', turn: t.token }, deadline);
+  assert.equal(memberView(g, t.order[t.cursor], 1000002).puzzle!.phase, 'turn');
+  action(g, t.order[t.cursor], { action: 'ritePass', turn: t.token }, 1000002);
   assert.equal(t.cursor, 0);
-  assert.equal(memberView(g, p, deadline).puzzle!.phase, 'turn');
-  assert.equal(riteReady(g, r.windowEnd! - 1), false);
-  assert.equal(riteReady(g, r.windowEnd!), true);
-  assert.equal(memberView(g, t.order[t.cursor], r.windowEnd!).puzzle!.phase, 'locked');
+  assert.equal(memberView(g, p, 1000002).puzzle!.phase, 'turn');
+  assert.equal(riteReady(g, 1000002), true);
+  riteAction(g, host, { action: 'riteForce' }, 1000003);
+  assert.equal(memberView(g, p, 1000003).puzzle!.phase, 'locked');
 });
 void test('Ritual first-night restriction, one attempt, own result only, persistent success and two-of-three completion', () => {
   const g = game('ritual'),
@@ -642,22 +654,22 @@ void test('Ritual first-night restriction, one attempt, own result only, persist
     /could not be completed/,
   );
   const other = s.members[1];
-  assert.equal(memberView(g, other, r.lockUntil!).puzzle!.performed, false);
-  assert.equal(memberView(g, other, r.lockUntil!).puzzle!.result, undefined);
+  assert.equal(memberView(g, other, 200).puzzle!.performed, false);
+  assert.equal(memberView(g, other, 200).puzzle!.result, undefined);
   const wrong = structuredClone(state.rituals[other].target);
   wrong[0].value = (wrong[0].value + 1) % CONTROL_COUNTS[wrong[0].control];
   assert.equal(
     action(g, other, { action: 'riteRitualPerform', altar: wrong }),
     'The ritual falters',
   );
-  resolveRite(g, r.windowEnd!);
+  resolveRite(g, 300);
   assert.equal(s.completeNight, undefined);
   beginNight(g, 220000);
   action(g, other, {
     action: 'riteRitualPerform',
     altar: state.rituals[other].target,
   });
-  resolveRite(g, r.windowEnd!);
+  resolveRite(g, 300);
   assert.equal(s.completeNight, 4);
   assert.equal(ritual.doneNight, 3);
 });
@@ -667,7 +679,7 @@ void test('per-actor redaction excludes other vigils, targets, attempt records, 
       r = g.rite!,
       s = r.squads[0],
       id = s.members[0],
-      wire = JSON.stringify(memberView(g, id, r.lockUntil!));
+      wire = JSON.stringify(memberView(g, id, 200));
     for (const name of [
       'solution',
       'target',
@@ -682,8 +694,8 @@ void test('per-actor redaction excludes other vigils, targets, attempt records, 
     ])
       assert.ok(!wire.includes(`"${name}"`), name);
     assert.ok(!wire.includes(r.squads[1].id));
-    assert.equal(riteView(g, as('outsider'), r.lockUntil!), null);
-    assert.ok(riteView(g, host, r.lockUntil!)?.host);
+    assert.equal(riteView(g, as('outsider'), 200), null);
+    assert.ok(riteView(g, host, 200)?.host);
   }
 });
 void test('reward refreshes all alignments once, respects death restrictions and preserves targets, links and death-trigger state', () => {
@@ -718,7 +730,7 @@ void test('reward refreshes all alignments once, respects death restrictions and
     .forEach((id) =>
       action(g, id, { action: 'riteGridSubmit', solution: state.solution }),
     );
-  resolveRite(g, r.windowEnd!);
+  resolveRite(g, 300);
   assert.ok(g.players.every((p) => !p.used && p.charge === 'p0' && p.revived));
   assert.equal(g.players[0].alive, false);
   assert.equal(g.hms!.nightmare.used, false);
@@ -726,7 +738,7 @@ void test('reward refreshes all alignments once, respects death restrictions and
   assert.equal(g.hms!.constellation.linked, false);
   assert.equal(g.hms!.stUsed, false);
   const count = g.log.filter((l) => l.text === 'The Rite is complete.').length;
-  resolveRite(g, r.windowEnd! + 1);
+  resolveRite(g, 301);
   assert.equal(
     g.log.filter((l) => l.text === 'The Rite is complete.').length,
     count,
@@ -770,7 +782,7 @@ void test('both scripts queue refreshed first-night information only on the next
       .forEach((id) =>
         action(g, id, { action: 'riteGridSubmit', solution: state.solution }),
       );
-    resolveRite(g, r.windowEnd!);
+    resolveRite(g, 300);
     beginNight(g, 100000);
     const types = tasks(g).map((t) => t.role);
     for (const role of roles.slice(0, script === 'horrors' ? 3 : 5))
@@ -836,23 +848,23 @@ void test('save compatibility, disabled older tables, setup authorization, force
           night: g.night,
           solution: (g.rite!.squads[0].state as GridState).solution,
         },
-        g.rite!.lockUntil!,
+        200,
       ),
     /earlier window/,
   );
 });
 
-void test('Rite caps per-task extensions such as Nightmare at the lock boundary', () => {
+void test('Rite does not shorten independent night choice deadlines', () => {
   const g = game();
-  g.nightChoiceDeadlines = { redirect: g.rite!.lockUntil! + 60000 };
+  g.nightChoiceDeadlines = { redirect: 60200 };
   assert.equal(
     nightChoiceDeadlineFor(g, { key: 'redirect' }),
-    g.rite!.lockUntil,
+    60200,
   );
   g.rite!.status = 'complete';
   assert.equal(
     nightChoiceDeadlineFor(g, { key: 'redirect' }),
-    g.rite!.lockUntil! + 60000,
+    60200,
   );
 });
 
@@ -865,15 +877,14 @@ void test('a pending redeal never stalls another vigil, and force close cancels 
     g,
     host,
     { action: 'riteRedeal', squad: first.id },
-    g.rite!.lockUntil!,
+    200,
   );
   assert.ok(r.pendingRedeal?.includes(first.id));
   const turn = (other.state as BoardState).turn!;
-  turn.deadline = 1;
-  tickRite(g, r.lockUntil! + 30000);
-  assert.ok(turn.log.some((entry) => entry.kind === 'timeout'));
-  assert.equal(memberView(g, turn.order[turn.cursor], r.lockUntil! + 30000).puzzle!.phase, 'turn');
-  riteAction(g, host, { action: 'riteForce' }, r.lockUntil! + 31000);
+  tickRite(g, 30200);
+  assert.equal(turn.log.length, 0);
+  assert.equal(memberView(g, turn.order[turn.cursor], 30200).puzzle!.phase, 'turn');
+  riteAction(g, host, { action: 'riteForce' }, 31200);
   assert.deepEqual(r.pendingRedeal, []);
-  assert.equal(riteReady(g, r.lockUntil! + 31000), true);
+  assert.equal(riteReady(g, 31200), true);
 });

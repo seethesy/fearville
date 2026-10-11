@@ -85,7 +85,7 @@ export async function read(code: string) {
     created: row.created,
   };
 }
-export async function save(g: Game, version: number) {
+export async function save(g: Game, version: number, syncRanked = true) {
   const state = JSON.stringify(g);
   if (state.length > 8_000_000)
     throw Error(
@@ -97,6 +97,9 @@ export async function save(g: Game, version: number) {
       'UPDATE sessions SET state = ?, version = version + 1 WHERE code = ? AND version = ?',
     )
     .bind(state, g.code, version);
+  // Puzzle moves cannot change ranked membership. Keep their CAS write to one
+  // statement instead of rebuilding locks for every seat on every move.
+  if (!syncRanked) return (await update.run()).meta.changes === 1;
   const guard =
     'EXISTS (SELECT 1 FROM sessions WHERE code=? AND version=? AND state=?)';
   const lockStatements: D1PreparedStatement[] = [];

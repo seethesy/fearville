@@ -189,7 +189,7 @@ struct FlowView: View {
             while !Task.isCancelled {
                 await store.refreshRite()
                 let interactive = store.riteState?["status"].text == "open" && store.game?.phase == "night"
-                do { try await Task.sleep(for: .milliseconds(interactive ? 300 : 1500)) } catch { return }
+                do { try await Task.sleep(for: .seconds(interactive ? 3 : 8)) } catch { return }
             }
         }
         .onChange(of: scene) { _, phase in if phase != .active { reveal = false; glimpse = nil } }

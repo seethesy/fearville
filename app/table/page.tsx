@@ -294,7 +294,7 @@ export default function Table() {
     const poll = async () => {
       await refresh(false);
       if (!stopped)
-        timer = setTimeout(() => void poll(), document.hidden ? 8000 : 2000);
+        timer = setTimeout(() => void poll(), document.hidden ? 15000 : 3000);
     };
     timer = setTimeout(() => void poll(), 0);
     const resume = () => {

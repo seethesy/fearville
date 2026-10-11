@@ -165,6 +165,7 @@ export type RiteState = {
   prepared?: Record<string, BoardState | LabState>;
   preparing?: Record<string, number>;
   pendingRedeal?: string[];
+  timerless?: boolean;
   lockUntil?: number;
   windowEnd?: number;
   resolvedNight: number;

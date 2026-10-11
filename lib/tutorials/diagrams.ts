@@ -18,11 +18,11 @@ export const DIAGRAM_ALT: Record<RiteDiagram, string> = {
   'escape-goal':
     'A six by six board. The red carriage sits in the third row and must slide right through the gap in the fence. Arrows show pieces sliding only along their length.',
   'escape-turns':
-    'Four players in a ring take turns in a random order. Each has five seconds for as many slides as possible, and turns repeat until the Rite window closes.',
+    'Four players in a ring take turns in a random order. Each can make any number of slides, then passes. Turns repeat until the night or Rite ends.',
   'lab-pour':
     'Two red layers on top of one vial pour onto a vial topped with red that has room for two.',
   'lab-turns':
-    'Four players in a ring take turns in a random order. Each has eight seconds for as many pours as possible, and turns repeat until the Rite window closes.',
+    'Four players in a ring take turns in a random order. Each can make any number of pours, then passes. Turns repeat until the night or Rite ends.',
   'riddle-map':
     'Five places along one street from west to east: Library, Garden, House, Market, Graveyard. Each has a spot for a person and an activity.',
   'riddle-cards':
@@ -130,9 +130,8 @@ function turns(kind: 'escape' | 'lab') {
       'bold',
     );
   });
-  const secs = kind === 'escape' ? '5' : '8';
   body += `<circle cx="${cx}" cy="${cy}" r="19" fill="#2a2119" stroke="#c8423b" stroke-width="2.5"/>`;
-  body += text(cx, cy + 5, `${secs}s`, 14, CREAM, 'middle', 'bold');
+  body += text(cx, cy + 4, 'Pass', 11, CREAM, 'middle', 'bold');
   body +=
     text(160, 40, 'Turn order is random', 12, CREAM) +
     text(160, 55, 'each night.', 12, CREAM) +
@@ -143,9 +142,9 @@ function turns(kind: 'escape' | 'lab') {
       12,
       CREAM,
     ) +
-    text(160, 99, `within ${secs} seconds.`, 12, CREAM) +
-    text(160, 128, 'Pass or wait; turns repeat', 11, DIM) +
-    text(160, 142, 'until the window ends.', 11, DIM);
+    text(160, 99, 'then pass when ready.', 12, CREAM) +
+    text(160, 128, 'Turns repeat until the', 11, DIM) +
+    text(160, 142, 'night or Rite ends.', 11, DIM);
   return frame(id, body);
 }
 

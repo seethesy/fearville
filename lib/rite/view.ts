@@ -85,7 +85,7 @@ export function riteView(g: Game, a: Actor, now: number) {
     redealing: !!r.pendingRedeal?.includes(plan.id),
     status: r.status,
     epoch: r.epoch,
-    lockUntil: g.phase === 'night' ? r.lockUntil : undefined,
+    lockUntil: undefined,
     windowEnd: g.phase === 'night' ? r.windowEnd : undefined,
     squad: {
       id: plan.id,
@@ -105,9 +105,7 @@ export function riteView(g: Game, a: Actor, now: number) {
       ? 'locked'
       : g.phase !== 'night'
         ? 'day'
-        : now < (r.lockUntil ?? Infinity)
-          ? 'lock'
-          : now >= (r.windowEnd ?? -1)
+        : r.windowEnd !== undefined && now >= r.windowEnd
             ? 'locked'
             : 'wait';
   const puzzle: RitePuzzleView = { type: s.kind, phase };
@@ -138,13 +136,12 @@ export function riteView(g: Game, a: Actor, now: number) {
     }
     if (phase === 'turn' && t) {
       puzzle.turn = t.token;
-      puzzle.deadline = t.deadline;
     }
     if (t?.vote)
       puzzle.vote = {
         id: t.vote.id,
         kind: t.vote.kind,
-        deadline: t.vote.deadline,
+        deadline: 0,
         canVote: a.id !== t.vote.caller,
         answered: Object.hasOwn(t.vote.ballots, a.id),
       };

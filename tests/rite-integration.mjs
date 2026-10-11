@@ -110,7 +110,7 @@ const tokenFor = (id) => seats[hg.players.findIndex((p) => p.id === id)].token;
 hr = await call('/api/rite', host.token);
 const grid = hr.rite.squads.find((s) => s.kind === 'grid');
 let own = await call('/api/rite', seats[0].token);
-assert.equal(own.rite.puzzle.phase, 'lock');
+assert.equal(own.rite.puzzle.phase, 'turn');
 assert.equal(own.rite.puzzle.clues.filter((c) => c.hidden).length, 2);
 assert.ok(own.rite.puzzle.clues.some((c) => c.forged));
 assert.ok(!JSON.stringify(own.rite).includes('solution'));
@@ -123,21 +123,15 @@ await call(
     night: 2,
     solution: grid.state.solution,
   },
-  400,
 );
+hr = await call('/api/rite', host.token);
 await call(
   '/api/game',
   host.token,
   { action: 'dawn', version: hr.version },
   400,
 );
-raw.rite.lockUntil = Date.now() - 2000;
-raw.nightChoiceDeadline = raw.rite.lockUntil;
-for (const s of raw.rite.squads)
-  if (s.state.turn) {
-    s.state.turn.start = raw.rite.lockUntil;
-    s.state.turn.deadline = Date.now() + 30000;
-  }
+raw.nightChoiceDeadline = Date.now() - 1;
 persist();
 const privateKeys = [
   'order',
@@ -187,7 +181,7 @@ const moved = await call('/api/rite', tokenFor(mover), {
   ...move,
 });
 assert.equal(moved.rite.puzzle.phase, 'turn');
-assert.ok(moved.rite.puzzle.deadline);
+assert.equal(moved.rite.puzzle.deadline, undefined);
 await call(
   '/api/rite',
   tokenFor(mover),
@@ -315,5 +309,5 @@ const ordinary = await call(
 );
 assert.equal(ordinary.me, raw.players[1].id);
 console.log(
-  'PASS: production Worker HTTP, setup, private payloads, lock/dawn gating, concurrent submissions, repeated moves, timed handoff, stale retries, anonymous unanimous votes, quiet completion and rewind.',
+  'PASS: production Worker HTTP, setup, private payloads, independent night-choice gating, concurrent submissions, repeated moves without timers, manual handoff, stale retries, anonymous unanimous votes, quiet completion and rewind.',
 );

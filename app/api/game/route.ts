@@ -74,7 +74,7 @@ export async function POST(r: Request) {
       );
       c.yes = c.yes === 'null' ? null : c.yes === 'true';
     }
-    for (let i = 0; i < 8; i++) {
+    for (let i = 0; i < 20; i++) {
       const { game, version, created } = i === 0 ? initial : await read(code);
       const now = Date.now();
       const before = game.phase;
@@ -86,7 +86,10 @@ export async function POST(r: Request) {
       const actionActor = pov ? { id: pov.id, host: false } : actor;
       const canRebase = canApplyLatest(actionActor, c);
       if (tick(game, now)) {
-        if (!(await save(game, version))) continue;
+        if (!(await save(game, version))) {
+          await new Promise((resolve) => setTimeout(resolve, 8 + Math.floor(Math.random() * 24)));
+          continue;
+        }
         if (canRebase || (actionActor.host && c.action === 'edit' && c.base)) continue;
         return json({ error: 'The timer advanced the game. Review the current phase.' }, 409);
       }
@@ -112,7 +115,10 @@ export async function POST(r: Request) {
       const summary = execute(game, actionActor, c, now);
       if (c.action === 'start') await prepareProgression(game);
       if (c.preview) return json({ summary, version });
-      if (!(await save(game, version))) continue;
+      if (!(await save(game, version, actionActor.host || c.action === 'returnLobby'))) {
+        await new Promise((resolve) => setTimeout(resolve, 8 + Math.floor(Math.random() * 24)));
+        continue;
+      }
       // Record the result when the game ends; withdraw it if the Storyteller
       // rewinds out of the ended phase. Both are idempotent.
       if (
