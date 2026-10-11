@@ -2,7 +2,6 @@
 import { GlossaryText } from '@/components/glossary-text';
 import { useState } from 'react';
 import {
-  standardCounts,
   scriptRoles,
   role,
   TEAM_ORDER,
@@ -23,13 +22,15 @@ export function RolePicker({
   );
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  const counts = standardCounts(game.script, game.players.length);
+  const counts = game.roleDistribution;
   const ROLES = scriptRoles(game.script);
   const hms = game.script === 'holyMoonStars';
   const atheist = hms && selected.includes('atheist');
   const extra = hms && selected.includes('moonshiner') ? 1 : 0;
   const expected: Record<Team, number> | null = !counts
     ? null
+    : game.customRoleDistribution
+      ? counts
     : atheist
       ? {
           ...counts,

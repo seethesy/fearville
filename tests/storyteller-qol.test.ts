@@ -16,7 +16,7 @@ function horrors(roles: string[]) {
   return g;
 }
 
-void test('pre-deal popup contains editable script decisions without override reasons', () => {
+void test('pre-deal popup contains editable script decisions and a rules override', () => {
   const defaults = horrors([
     'sheriff',
     'teacher',
@@ -59,9 +59,8 @@ void test('pre-deal popup contains editable script decisions without override re
   assert.ok(
     start.fields.some((field) => field.key === `shown_${g.players[3].id}`),
   );
-  assert.ok(
-    !start.fields.some((field) => ['override', 'reason'].includes(field.key)),
-  );
+  assert.ok(start.fields.some((field) => field.key === 'override' && field.type === 'checkbox'));
+  assert.ok(!start.fields.some((field) => field.key === 'reason'));
   execute(
     g,
     host,

@@ -13,7 +13,7 @@ import {
   role,
   scriptRoles,
   uuid,
-  COUNTS,
+  setupCounts,
   HMS_FIRST,
   HMS_OTHER,
   HMS_ROLES,
@@ -625,16 +625,17 @@ export function validateChoice(g: Game, t: Task, c: Command): NightChoice {
 export function hmsSetupIssues(g: Game) {
   if (isHof(g)) return hofSetupIssues(g);
   const issues: string[] = [];
-  const counts = COUNTS[g.players.length]?.slice();
+  const configured = setupCounts(g);
+  const counts = configured && [configured.townsfolk, configured.outsider, configured.minion, configured.demon];
   if (!counts) return ['Holy Moon and Stars requires 5–18 players.'];
   const ids = g.players.map((p) => p.role);
   if (g.players.some((p) => !HMS_ROLES.some((r) => r.id === p.role)))
     issues.push('Assign a Holy Moon and Stars character to every seat.');
   const atheist = ids.includes('atheist');
-  const expected = atheist
+  const expected = g.roleDistribution ? counts.slice() : atheist
     ? [g.players.length - counts[1], counts[1], 0, 0]
     : counts;
-  if (!atheist && ids.includes('moonshiner')) {
+  if (!g.roleDistribution && !atheist && ids.includes('moonshiner')) {
     expected[0] -= 1;
     expected[1] += 1;
   }
@@ -643,9 +644,9 @@ export function hmsSetupIssues(g: Game) {
   );
   if (actual.some((v, i) => v !== expected[i]))
     issues.push(
-      atheist
+      atheist && !g.roleDistribution
         ? `With an Atheist every player is good: expected ${expected[0]} Villagers and ${expected[1]} Fools.`
-        : `Expected ${expected[0]} Villagers, ${expected[1]} Fools, ${expected[2]} Haunts and 1 Horror.`,
+        : `Expected ${expected[0]} Villagers, ${expected[1]} Fools, ${expected[2]} Haunts and ${expected[3]} Horrors.`,
     );
   if (new Set(ids).size !== ids.length)
     issues.push('Characters must be unique at setup.');

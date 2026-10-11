@@ -4,6 +4,9 @@ import {
   scriptRoles,
   SCRIPTS,
   standardCounts,
+  setupCounts,
+  TEAM_ORDER,
+  TEAM_NAMES,
   MAX_PLAYERS,
   role,
   phaseName,
@@ -155,6 +158,19 @@ export function controls(g: Game, a: Actor): Control[] {
           ),
         ],
       );
+      const distribution = setupCounts(g);
+      if (distribution) {
+        add(
+          'setRoleDistribution',
+          'Change role distribution',
+          'Set the number of characters in each group. The totals are shown to every player. Counts must add up to the number of players.',
+          TEAM_ORDER.filter((team) => SR.some((r) => r.team === team)).map(
+            (team) => num(team, TEAM_NAMES[team], distribution[team], 0, g.players.length),
+          ),
+        );
+        if (g.roleDistribution)
+          add('resetRoleDistribution', 'Use standard distribution', 'Restore the standard role counts for this script and player count.');
+      }
     }
     if (g.phase === 'lobby') {
       const outOfPlayGood = SR.filter(
@@ -321,7 +337,7 @@ export function controls(g: Game, a: Actor): Control[] {
         'Deal roles & begin night',
         'Review the script-specific setup decisions below. Defaults are ready, but you can change them before private characters are sent. ' +
           (setupIssues(g).join(' ') || 'Setup is ready.'),
-        setupFields,
+        [...setupFields, ...overrideFields],
       );
     }
     const death = deathControl(g, ps);
@@ -834,6 +850,8 @@ export function view(
           }
         : null,
     standardCounts: standardCounts(g.script, g.players.length),
+    roleDistribution: setupCounts(g),
+    customRoleDistribution: !!g.roleDistribution,
     channel:
       !a.host &&
       g.phase === 'night' &&

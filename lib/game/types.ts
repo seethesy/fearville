@@ -419,6 +419,9 @@ export function standardCounts(
       }
     : null;
 }
+export function setupCounts(g: Game): Record<Team, number> | null {
+  return g.roleDistribution ?? standardCounts(g.script, g.players.length);
+}
 export type Player = {
   avatar?: string;
   deathEffect?: import('./cosmetics').DeathEffectId;
@@ -675,6 +678,7 @@ export type SessionRecap = {
   votes?: Record<string, string[]>;
 };
 export type Game = {
+  roleDistribution?: Record<Team, number>;
   rite?: import('../rite/types.ts').RiteState;
   ranked?: boolean;
   progression?: import('../social/progression.ts').ProgressionSnapshot;

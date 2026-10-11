@@ -1,11 +1,10 @@
 import {
-  COUNTS,
   HMS_ROLES,
   HOF_ROLES,
   TEAM_ORDER,
   TEAM_NAMES,
   MAX_PLAYERS,
-  standardCounts,
+  setupCounts,
   role,
   type Game,
 } from './types.ts';
@@ -13,9 +12,10 @@ import {
 // A saved seed makes previews and confirmation deal exactly the same roles.
 // The engine rotates it only when a deal is committed to the saved game.
 export function assignRandomRoles(g: Game, requested?: unknown): string {
-  const counts = COUNTS[g.players.length];
-  if (!counts)
+  const configured = setupCounts(g);
+  if (!configured || TEAM_ORDER.reduce((total, team) => total + configured[team], 0) !== g.players.length)
     throw Error(`Join 5–${MAX_PLAYERS} players before assigning roles.`);
+  const counts = [configured.townsfolk, configured.outsider, configured.minion, configured.demon];
   let seed = 2166136261;
   for (const char of g.assignmentSeed ?? g.players.map((p) => p.id).join(''))
     seed = Math.imul(seed ^ char.charCodeAt(0), 16777619) >>> 0;
@@ -56,6 +56,7 @@ function assignHms(
       ),
     );
   const expectedFor = (ids: string[]) => {
+    if (g.roleDistribution) return counts;
     if (ids.includes('atheist'))
       return [g.players.length - counts[1], counts[1], 0, 0];
     const moon = ids.includes('moonshiner') ? 1 : 0;
@@ -91,8 +92,10 @@ function assignHms(
       ...pool('townsfolk').slice(0, e[0]),
       ...pool('outsider').slice(0, e[1]),
       ...minions,
-      pool('demon')[0],
+      ...pool('demon').slice(0, counts[3]),
     ];
+    if (selected.length !== g.players.length || new Set(selected).size !== selected.length)
+      throw Error('This distribution cannot be dealt randomly with the available characters. Choose characters manually.');
   }
   const deal = shuffle(selected);
   const moon = selected.includes('moonshiner');
@@ -146,7 +149,7 @@ function assignHof(
   requested: unknown,
   shuffle: <T>(items: T[]) => T[],
 ): string {
-  const expected = standardCounts('horrors', g.players.length)!;
+  const expected = setupCounts(g)!;
   const team = (id: string) => role(id)?.team;
   const pool = (t: string) =>
     shuffle(HOF_ROLES.filter((r) => r.team === t).map((r) => r.id));
@@ -174,7 +177,11 @@ function assignHof(
           ' for this setup.',
       );
     selected = (requested as string[]).slice();
-  } else selected = TEAM_ORDER.flatMap((t) => pool(t).slice(0, expected[t]));
+  } else {
+    selected = TEAM_ORDER.flatMap((t) => pool(t).slice(0, expected[t]));
+    if (selected.length !== g.players.length)
+      throw Error('This distribution cannot be dealt with the available characters.');
+  }
   const deal = shuffle(selected);
   const shown = pool('townsfolk').find((r) => !selected.includes(r)) ?? '';
   const ordered = g.players.slice().sort((a, b) => a.seat - b.seat);

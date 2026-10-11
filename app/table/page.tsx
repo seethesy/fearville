@@ -532,16 +532,16 @@ export default function Table() {
             {game.host ? 'STORYTELLER' : name(game.me)}
           </span>
           <span className="table-script">{game.scriptName}</span>
-          {game.standardCounts && (
+          {game.roleDistribution && (
             <span className="table-setup">
-              <strong>Standard setup · {game.players.length} players</strong>
+              <strong>{game.customRoleDistribution ? 'Custom' : 'Standard'} setup · {game.players.length} players</strong>
               <small>
                 {TEAM_ORDER.filter(
                   (t) => t !== 'traveler' || game.script === 'horrors',
                 )
                   .map(
                     (t) =>
-                      `${game.standardCounts![t]} ${game.standardCounts![t] === 1 ? TEAM_NAMES[t].replace(/s$/, '') : TEAM_NAMES[t]}`,
+                      `${game.roleDistribution![t]} ${game.roleDistribution![t] === 1 ? TEAM_NAMES[t].replace(/s$/, '') : TEAM_NAMES[t]}`,
                   )
                   .join(' · ')}
               </small>
@@ -1112,6 +1112,13 @@ export default function Table() {
                     {game.controls
                       .filter((c) => c.action === 'setScript')
                       .map((c) => button(c))}
+                    <h3>Role distribution</h3>
+                    <p className="muted">{game.customRoleDistribution ? 'Custom counts are visible to everyone at the table.' : 'Standard counts are visible to everyone at the table.'}</p>
+                    <div className="actions">
+                      {game.controls
+                        .filter((c) => ['setRoleDistribution', 'resetRoleDistribution'].includes(c.action))
+                        .map((c) => button(c))}
+                    </div>
                   </section>
                 )}
                 {game.host && game.phase === 'lobby' && (

@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import { newGame, newPlayer } from '../lib/game/types.ts';
 import { execute } from '../lib/game/engine.ts';
 import { view } from '../lib/game/view.ts';
+import { savedGame } from '../lib/game/saved-state.ts';
+import { setupIssues } from '../lib/game/engine.ts';
 const host = { id: 'host', host: true };
 function setup() {
   const g = newGame('TEST', 'Host');
@@ -59,6 +61,44 @@ void test('public counts never expose assigned characters', () => {
     demon: 1,
   });
   assert.ok(v.players.every((p) => !('role' in p)));
+});
+void test('Storyteller can publish and reset a custom role distribution', () => {
+  const g = setup();
+  const player = { id: g.players[0].id, host: false };
+  const counts = { townsfolk: 2, outsider: 0, traveler: 1, minion: 1, demon: 1 };
+  const control = view(g, host, 1, 1).controls.find((c) => c.action === 'setRoleDistribution');
+  assert.deepEqual(control?.fields.map((field) => field.key), ['townsfolk', 'outsider', 'traveler', 'minion', 'demon']);
+  assert.throws(() => execute(g, player, { action: 'setRoleDistribution', ...counts }, 2), /Storyteller/);
+  assert.throws(() => execute(g, host, { action: 'setRoleDistribution', ...counts, demon: 2 }, 2), /add up/);
+  execute(g, host, { action: 'setRoleDistribution', ...counts }, 3);
+  const publicView = view(g, player, 2, 3);
+  assert.deepEqual(publicView.roleDistribution, counts);
+  assert.equal(publicView.customRoleDistribution, true);
+  assert.ok(publicView.players.every((seat) => !('role' in seat)));
+  assert.deepEqual(savedGame(JSON.stringify(g)).roleDistribution, counts);
+  execute(g, host, { action: 'randomAssign' }, 3);
+  assert.deepEqual(setupIssues(g), []);
+  execute(g, host, { action: 'resetRoleDistribution' }, 4);
+  assert.equal(view(g, player, 3, 4).customRoleDistribution, false);
+  assert.deepEqual(view(g, player, 3, 4).roleDistribution, view(g, player, 3, 4).standardCounts);
+});
+void test('custom Holy Moon and Stars distribution controls random deals', () => {
+  const g = newGame('MOON', 'Host');
+  g.script = 'holyMoonStars';
+  g.players = Array.from({ length: 6 }, (_, index) => newPlayer(`Player ${index + 1}`, index + 1));
+  const counts = { townsfolk: 2, outsider: 1, traveler: 0, minion: 2, demon: 1 };
+  execute(g, host, { action: 'setRoleDistribution', ...counts }, 1);
+  execute(g, host, { action: 'randomAssign' }, 2);
+  assert.deepEqual(setupIssues(g), []);
+  assert.deepEqual(view(g, { id: g.players[0].id, host: false }, 1, 2).roleDistribution, counts);
+});
+void test('Storyteller sees the standard rules override when starting the night', () => {
+  const g = setup();
+  const start = view(g, host, 1, 1).controls.find((c) => c.action === 'start');
+  assert.ok(start?.fields.some((field) => field.key === 'override' && field.type === 'checkbox'));
+  assert.throws(() => execute(g, host, { action: 'start' }, 2), /Storyteller override/);
+  execute(g, host, { action: 'start', override: true }, 3);
+  assert.equal(g.phase, 'night');
 });
 void test('nomination lists exclude dead and used nominators and previously nominated targets', () => {
   const g = setup();

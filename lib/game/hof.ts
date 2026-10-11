@@ -18,7 +18,7 @@ import { refreshedInfoRoles } from '../rite/engine.ts';
 //   3. Death, then triggers: Executioner, Banshee, Hag, Hunter, Monster.
 import {
   role,
-  standardCounts,
+  setupCounts,
   TEAM_ORDER,
   TEAM_NAMES,
   HOF_FIRST,
@@ -231,7 +231,7 @@ const countText = (expected: Record<Team, number>) =>
   '.';
 export function hofSetupIssues(g: Game) {
   const issues: string[] = [];
-  const expected = standardCounts('horrors', g.players.length);
+  const expected = setupCounts(g);
   if (!expected)
     return [`Horrors of Fearville requires 5–${MAX_PLAYERS} players.`];
   const ids = g.players.map((p) => p.role);

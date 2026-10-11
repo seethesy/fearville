@@ -12,6 +12,10 @@ import {
   newPlayer,
   phaseName,
   MAX_PLAYERS,
+  TEAM_ORDER,
+  TEAM_NAMES,
+  standardCounts,
+  type Team,
   type Game,
   type Actor,
   type Command,
@@ -351,6 +355,8 @@ function executeCommand(
     'addDummy',
     'removeDummy',
     'setScript',
+    'setRoleDistribution',
+    'resetRoleDistribution',
     'correctVote',
     'moveSeat',
     'assignRole',
@@ -708,9 +714,32 @@ function executeCommand(
         c.script === 'holyMoonStars' || c.script === 'horrors',
         'Choose a valid role script.',
       );
+      if (g.script !== c.script) delete g.roleDistribution;
       g.script = c.script;
       log(g, 'Updated role script.', now, true);
       return 'Role script updated.';
+    }
+    case 'setRoleDistribution': {
+      requireThat(g.phase === 'lobby', 'Change the distribution before starting the game.');
+      requireThat(!!standardCounts(g.script, g.players.length), `Join 5–${MAX_PLAYERS} players before setting the distribution.`);
+      const distribution = {} as Record<Team, number>;
+      for (const team of TEAM_ORDER) {
+        const count = team === 'traveler' && g.script === 'holyMoonStars' ? 0 : Number(c[team]);
+        requireThat(Number.isInteger(count) && count >= 0 && count <= g.players.length, `Choose a valid ${TEAM_NAMES[team]} count.`);
+        const available = scriptRoles(g.script).filter((r) => r.team === team).length;
+        requireThat(count <= available, `This script has only ${available} ${TEAM_NAMES[team]}.`);
+        distribution[team] = count;
+      }
+      requireThat(TEAM_ORDER.reduce((total, team) => total + distribution[team], 0) === g.players.length, 'Role counts must add up to the number of players.');
+      g.roleDistribution = distribution;
+      log(g, 'Updated the public role distribution.', now, true);
+      return 'Role distribution updated for everyone.';
+    }
+    case 'resetRoleDistribution': {
+      requireThat(g.phase === 'lobby', 'Change the distribution before starting the game.');
+      delete g.roleDistribution;
+      log(g, 'Restored the standard role distribution.', now, true);
+      return 'Standard role distribution restored for everyone.';
     }
     case 'moveSeat':
       throw Error('Players choose their own seats in the lobby.');
