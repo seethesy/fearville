@@ -20,25 +20,14 @@ npm run dev
 Open the Local URL printed by the server. Create a session, then join from separate browser profiles or devices. A browser profile holds one session identity; the Storyteller and players need separate profiles/devices. The local development URL is not a remotely accessible production server.
 
 ```sh
-node --experimental-strip-types --test tests/*.test.ts
-node tests/integration.mjs
-node tests/session-rejoin-integration.mjs
-node tests/membership-integration.mjs
-node tests/accounts-integration.mjs
-node tests/social-integration.mjs
-node tests/progression-integration.mjs
-node tests/hms-integration.mjs
-node tests/hof-integration.mjs
-node tests/introductions-integration.mjs
-node tests/nightmare-integration.mjs
-node tests/sandbox-lobby-integration.mjs
-node tests/lobby-recap-integration.mjs
-node tests/tutorials-integration.mjs
-npx tsc --noEmit
-npm run build
+npm run check                              # typecheck + lint + unit tests (fast; run this)
+npm run test:unit -- tests/rite.test.ts    # one unit test file
+npm run test:integration                   # build, migrate local D1, run every HTTP suite
+npm run test:integration -- rite social    # only suites whose name matches
+npm test                                   # unit + integration
 ```
 
-Integration tests require the development server and create test sessions and fixture accounts in the local database. They test simultaneous joins and votes, privacy, authorization, timer advancement, recovery, account scoping, and the whole social flow (handles, friend requests, invitations, recorded results, ratings, rewind withdrawal, and deletion). The social suite sends many requests; if a run trips the per-minute rate limit, wait for the next minute and run it again.
+`npm run test:integration` builds the worker, applies `drizzle/*.sql` to local D1, starts the compiled worker on a free port and runs each suite with `CT_TEST_URL`. Failing suites print their first 30 lines; full logs go to `work/integration-logs/`. Suites in `tests/integration-known-failures.json` fail on main for documented reasons and are reported as KNOWN without failing the run. Integration tests create test sessions and fixture accounts in the local database. They test simultaneous joins and votes, privacy, authorization, timer advancement, recovery, account scoping, and the whole social flow (handles, friend requests, invitations, recorded results, ratings, rewind withdrawal, and deletion). The social suite sends many requests; if a run trips the per-minute rate limit, wait for the next minute and run it again.
 
 For API verification on Windows, build first and run `node scripts/local-api-test-server.mjs`. This serves the compiled worker directly at `http://127.0.0.1:3001`, avoiding development proxy restarts. Set `CT_TEST_URL` to that URL when running HTTP suites (`$env:CT_TEST_URL='http://127.0.0.1:3001'` in PowerShell). The fixture database stays local. Use the normal development server for browser checks.
 
@@ -142,7 +131,7 @@ Horrors of Fearville (default) and Holy Moon and Stars support 5–18 players. H
 - 18 engine tests, 7 account cryptography tests, and 6 social result-derivation tests passed.
 - Multi-client API integration tests (session, accounts, social) passed against the local D1-backed server.
 - TypeScript checking, app/domain lint, and the production build passed.
-- The unmodified starter component catalog has pre-existing lint findings; `npm run lint` scans that catalog too. The app/domain check is `npx oxlint app lib/game lib/accounts lib/social components/account-panel.tsx components/social db tests`.
+- `npm run lint` covers `app lib components db tests`; the unmodified starter catalog in `components/ui` is excluded in `.oxlintrc.json`.
 
 ## Saved-table compatibility
 
@@ -163,6 +152,6 @@ Profile supports a unique, case-insensitive username (3–20 letters, digits, un
 
 Apply **0004_fearville_profiles.sql** before running the updated server against an existing database. It adds profile preferences, the username-change timestamp, friend presence, and durable participant-only recap snapshots. Older games without saved detail retain their statistics and show an explanatory message. New recaps survive leaving or closing a lobby. Presence is refreshed while the app is active and expires after 90 seconds; hiding online status is respected server-side.
 
-Local verification: `node --experimental-strip-types --test "tests/*.test.ts"`, `node tests/hub-integration.mjs`, and the existing integration scripts. Integration fixtures only target localhost and local D1. `host-fixture.mjs` supplies isolated storyteller accounts for the game-flow tests and cleans them up on exit. Actual Google/Apple sign-in still requires the provider configuration in ACCOUNT-SETUP.md. Native SwiftUI compilation and simulator/device validation require Xcode on macOS.
+Local verification: `npm run check` and `npm run test:integration`. Integration fixtures only target localhost and local D1. `host-fixture.mjs` supplies isolated storyteller accounts for the game-flow tests and cleans them up on exit. Actual Google/Apple sign-in still requires the provider configuration in ACCOUNT-SETUP.md. Native SwiftUI compilation and simulator/device validation require Xcode on macOS.
 
 Overhaul verification: 133 unit tests and all 14 HTTP integration suites passed. TypeScript, lint for changed application/test sources, and the production web build passed. Browser checks covered desktop and 390px mobile navigation, profile save/reload, settings save/reload, both rule scripts, saved-game recaps, and lobby return/close controls. All seven Swift files passed syntax parsing and the bundled font registration was validated; these checks do not replace an Xcode build. Full-repository lint still reports the 19 existing starter-component findings.

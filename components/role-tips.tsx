@@ -97,6 +97,8 @@ export function RoleTipsPanel({
   const id = useId();
   useEffect(() => {
     try {
+      // Read after hydration so server and client markup match.
+      // oxlint-disable-next-line react/react-compiler
       setOpen(localStorage.getItem(openKey(session)) === 'true');
     } catch {
       setOpen(false);

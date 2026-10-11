@@ -17,7 +17,7 @@ const fixture = () => {
   g.gameStartedAt = 1;
   return g;
 };
-test('different player notes and messages use independent updates with membership guards', () => {
+void test('different player notes and messages use independent updates with membership guards', () => {
   const before = fixture();
   for (const player of before.players) {
     const actor = { id: player.id, host: false };
@@ -38,7 +38,7 @@ test('different player notes and messages use independent updates with membershi
     }
   }
 });
-test('a vigil update guards its own puzzle and phase without locking other vigils', () => {
+void test('a vigil update guards its own puzzle and phase without locking other vigils', () => {
   const before = fixture();
   configureRite(before, { action: 'configureRite', config: { enabled: true, patterns: ['board'] } });
   tickRite(before, 10);
@@ -60,7 +60,7 @@ test('a vigil update guards its own puzzle and phase without locking other vigil
   after.rite!.squads[1].completeNight = 2;
   assert.equal(independentCommand(before, after, actor, command), null);
 });
-test('Storyteller controls survive unrelated actions but cannot cross phases', () => {
+void test('Storyteller controls survive unrelated actions but cannot cross phases', () => {
   const g = fixture(), host = { id: 'host', host: true };
   const control = controls(g, host).find((c) => c.action === 'start')!;
   const command = { action: 'start', ...Object.fromEntries(control.fields.map((f) => [f.key, f.value])), override: true };
@@ -70,7 +70,7 @@ test('Storyteller controls survive unrelated actions but cannot cross phases', (
   assert.equal(g.phase, 'night');
   assert.throws(() => execute(g, host, command, 4), /phase changed/);
 });
-test('offline puzzle bank preserves certified difficulty and deterministic selection', () => {
+void test('offline puzzle bank preserves certified difficulty and deterministic selection', () => {
   for (const board of PUZZLE_BANK.board) assert.equal(solveBoard(board.blocks)?.length, board.par);
   for (const lab of PUZZLE_BANK.lab) assert.equal(solveLab(lab.vials, 200000)?.length, lab.par);
   for (const kind of ['board', 'lab'] as const) {
