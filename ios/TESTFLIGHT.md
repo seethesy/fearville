@@ -17,7 +17,7 @@ Native SwiftUI source, Xcode project, app icon, privacy manifest, and shared sch
 ## Upload
 
 1. Register your bundle ID and create the matching iOS app record in App Store Connect.
-2. Follow ACCOUNT-SETUP.md to configure Google and Apple credentials, enable Sign in with Apple on the target, and test account linking and deletion. Confirm the app name, age rating, support contact, and App Privacy answers. This app stores chosen display names, provider identifiers and verified email addresses for optional accounts, seat identifiers, session/game state and private messages for game functionality. No advertising or tracking SDK is included. Hosting may process IP addresses for rate limiting and service operation.
+2. Follow docs/account-setup.md to configure Google and Apple credentials, enable Sign in with Apple on the target, and test account linking and deletion. Confirm the app name, age rating, support contact, and App Privacy answers. This app stores chosen display names, provider identifiers and verified email addresses for optional accounts, seat identifiers, session/game state and private messages for game functionality. No advertising or tracking SDK is included. Hosting may process IP addresses for rate limiting and service operation.
 3. Set an unused build number in the Xcode target. Select a generic iOS device destination, then Product → Archive.
 4. In Organizer, validate the archive and choose Distribute App → App Store Connect → Upload.
 5. After Apple processes the build, add it to a TestFlight group. Internal testers must be App Store Connect users with suitable access. External testing may require Beta App Review. Supply your feedback email and the testing notes below. Do not invite testers until you are ready to send invitations.

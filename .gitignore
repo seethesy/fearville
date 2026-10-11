@@ -43,3 +43,7 @@ next-env.d.ts
 /ios/DerivedData/
 *.xcuserstate
 xcuserdata/
+
+# local outputs (screenshots, previews), kept on disk but not in git
+/Claude outputs/
+/artifacts/
