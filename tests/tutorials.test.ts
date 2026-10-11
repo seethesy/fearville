@@ -12,6 +12,9 @@ import {
   type TutorialEvent,
   type TutorialState,
 } from '../lib/tutorials/engine.ts';
+import { riteGuideTrigger } from '../lib/tutorials/engine.ts';
+import { RITE_DIAGRAMS } from '../lib/tutorials/diagrams.ts';
+import { PATTERNS } from '../lib/rite/types.ts';
 import { TUTORIALS, tutorial } from '../lib/tutorials/content.ts';
 import { readGuest, writeGuest, isNewScope } from '../lib/tutorials/guest.ts';
 import { parseItems } from '../lib/tutorials/validate.ts';
@@ -469,7 +472,11 @@ void test('Help never lists Night Rite guides the player was not given', () => {
 });
 
 void test('tutorial content never names a character or a team', () => {
-  const text = JSON.stringify(TUTORIALS).toLowerCase();
+  // Night Rite pattern names (e.g. The Sphinx’s Riddles) are puzzle titles the
+  // table already shows, not character references.
+  let text = JSON.stringify(TUTORIALS).toLowerCase();
+  for (const title of Object.values(PATTERNS))
+    text = text.split(title.toLowerCase()).join('');
   for (const r of ALL_ROLES) {
     const name = r.name.toLowerCase();
     assert.ok(
@@ -533,4 +540,45 @@ void test('the iPhone tutorial catalog matches the web content', () => {
     ),
   );
   assert.deepEqual(native, iosCatalog());
+});
+
+void test('every Night Rite pattern has a guide with a diagram, shown on night 1 to its own vigil only', () => {
+  for (const kind of Object.keys(PATTERNS)) {
+    const guide = tutorial(`guide.${kind}`);
+    assert.ok(guide, `missing guide for ${kind}`);
+    assert.equal(guide.kind, 'guide');
+    assert.equal(guide.audience, 'player');
+    assert.ok(guide.steps.some((s) => s.diagram));
+    for (const s of guide.steps)
+      if (s.diagram) assert.ok(RITE_DIAGRAMS[s.diagram].startsWith('<svg'));
+  }
+  const view = (night: number, extra = {}) => ({
+    phase: 'night',
+    host: false,
+    night,
+    rite: { opensNight: 2, squad: { kind: 'grid' } },
+    ...extra,
+  });
+  assert.equal(riteGuideTrigger(view(1)), 'guide.grid');
+  // The Rite is open from night 2: the guide has done its job by then.
+  assert.equal(riteGuideTrigger(view(2)), null);
+  assert.equal(riteGuideTrigger({ ...view(1), phase: 'discussion' }), null);
+  assert.equal(riteGuideTrigger(view(1, { host: true })), null);
+  assert.equal(riteGuideTrigger(view(1, { rite: null })), null);
+  assert.equal(
+    riteGuideTrigger(
+      view(2, { rite: { opensNight: 4, squad: { kind: 'lab' } } }),
+    ),
+    'guide.lab',
+  );
+  // Help lists only the player's own guide.
+  const ids = helpSections({
+    platform: 'web',
+    host: false,
+    seated: true,
+    ownGuides: ['guide.board'],
+    seen: {},
+  }).flatMap((s) => s.items.map((i) => i.id));
+  assert.ok(ids.includes('guide.board'));
+  assert.ok(!ids.includes('guide.lab'));
 });

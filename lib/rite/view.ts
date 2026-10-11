@@ -113,10 +113,21 @@ export function riteView(g: Game, a: Actor, now: number) {
   const puzzle: RitePuzzleView = { type: s.kind, phase };
   if (state.type === 'board' || state.type === 'lab') {
     const t = state.turn,
-      current = phase === 'wait' && !t?.vote;
-    if (phase === 'wait') phase = current ? 'turn' : 'wait';
+      current = t?.order[t.cursor] === a.id;
+    const snapshot = t?.snapshots[a.id];
+    if (phase === 'wait')
+      phase = current && !t?.vote ? 'turn' : snapshot ? 'locked' : 'wait';
     puzzle.phase = phase;
-    const board = state.type === 'board' ? state.blocks : state.vials;
+    const board =
+      g.phase !== 'night' || s.completeNight
+        ? state.type === 'board'
+          ? state.blocks
+          : state.vials
+        : current
+          ? state.type === 'board'
+            ? state.blocks
+            : state.vials
+          : (snapshot ?? state.nightStart ?? state.original);
     if (state.type === 'board')
       puzzle.blocks = structuredClone(board as Block[]);
     else {
@@ -125,7 +136,7 @@ export function riteView(g: Game, a: Actor, now: number) {
     }
     if (phase === 'turn' && t) {
       puzzle.turn = t.token;
-      puzzle.deadline = r.windowEnd;
+      puzzle.deadline = t.deadline;
     }
     if (t?.vote)
       puzzle.vote = {

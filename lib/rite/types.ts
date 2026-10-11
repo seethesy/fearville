@@ -22,7 +22,7 @@ export const DEFAULT_CONFIG: RiteConfig = {
   opensNight: 2,
   threshold: 0.5,
   lockSeconds: 30,
-  windowSeconds: 60,
+  windowSeconds: 90,
   ritualFirstNight: 3,
   forgedPerEvil: 1,
   notifyCompletion: true,
@@ -45,9 +45,29 @@ export type Fact = {
   ys: number[];
   not?: boolean;
 };
+// Entities of The Sphinx's Riddles. Locations stand in LOCATIONS order along
+// one street, west (0) to east (4), which relational clues refer to.
+export type Ent = { cat: 'character' | 'location' | 'activity'; id: number };
+export type Logic =
+  | { t: 'is' | 'not'; a: Ent; b: Ent }
+  | { t: 'oneOf' | 'none'; a: Ent; bs: Ent[] }
+  | { t: 'set'; as: Ent[]; bs: Ent[] }
+  | { t: 'distinct'; es: Ent[] }
+  | { t: 'and' | 'xor' | 'if'; p: Logic; q: Logic }
+  | {
+      t: 'rel';
+      a: Ent;
+      b: Ent;
+      r: 'next' | 'apart' | 'west' | 'westBy' | 'gap';
+      n?: number;
+    }
+  | { t: 'at'; a: Ent; ps: number[] };
 export type Clue = {
   id: string;
-  facts: Fact[];
+  // Legacy clue cards (games dealt before the varied riddles) carry facts.
+  facts?: Fact[];
+  logic?: Logic;
+  pattern?: string;
   text: string;
   holder: string;
   revealNight: number;

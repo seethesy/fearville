@@ -7,9 +7,9 @@ private let riteCharacters = ["Watchman", "Doctor", "Librarian", "Detective", "M
 private let riteLocations = ["Library", "Garden", "House", "Market", "Graveyard"]
 private let riteActivities = ["Reading", "Eating", "Biking", "Shopping", "Sleeping"]
 private let riteSymbols = ["☠", "☠ ⚔", "☾", "☽", "🕊", "🐦", "⋈", "⌛"]
-private let riteLiquids: [Color] = [.green, .red, .blue, .purple, .yellow, .teal, .pink, Color(red:0.16, green:0.13, blue:0.25)]
-private let riteSubstances = ["◉", "○", "✦", "∿", "ϟ", "⋊", "◎", "ᛟ"]
-private let riteLiquidNames = ["Green with eyes", "Red with bubbles", "Blue with stars", "Purple with smoke", "Yellow with lightning", "Teal with fish", "Pink with spirals", "Black ink with runes"]
+private let riteLiquids: [Color] = [.green, .red, .blue, .purple, .yellow, .teal, .pink, Color(red:0.16, green:0.13, blue:0.25), .orange, Color(red:0.79, green:0.81, blue:0.85)]
+private let riteSubstances = ["◉", "○", "✦", "∿", "ϟ", "⋊", "◎", "ᛟ", "❦", "✚"]
+private let riteLiquidNames = ["Green with eyes", "Red with bubbles", "Blue with stars", "Purple with smoke", "Yellow with lightning", "Teal with fish", "Pink with spirals", "Black ink with runes", "Orange with leaves", "Silver with crosses"]
 private struct NativeRiteWindowClocks: View {
     let lockUntil: Double; let windowEnd: Double; let offset: Double
     private func clock(_ deadline: Double, _ now: Double) -> String {
@@ -72,6 +72,7 @@ struct NativeRiteView: View {
     @State private var busy = false
     @State private var message = ""
     @State private var flash = false
+    @State private var lastAction = Date.distantPast
     private var rite: HubJSON { store.riteState ?? .null }
     private var puzzle: HubJSON { rite["puzzle"] }
     var body: some View {
@@ -85,8 +86,16 @@ struct NativeRiteView: View {
                     HStack { ForEach(rite["squad"]["members"].items) { member in Text(member["id"].text == game.me ? "You" : member["name"].text).font(.caption).padding(7).overlay(Capsule().stroke(riteGold)) } }
                     if puzzle.isNull { Text(rite["redealing"].flag ? "Your puzzle is preparing. Plan with your vigil." : "Your puzzle opens on night \(Int(rite["opensNight"].number)). Meet your vigil and plan together.") }
                     else {
-                        if puzzle["phase"].text == "lock" { Text("View only · Make your night choices first.").font(.caption) }
-                        if puzzle["phase"].text == "wait" { Text("The vigil is voting. Keep this screen open.").font(.caption) }
+                        TimelineView(.periodic(from: .now, by: 0.1)) { context in
+                            let now = (context.date.timeIntervalSince1970 + store.offset) * 1000
+                            if puzzle["phase"].text == "lock" { Text("View only · Opens in \(max(0, Int(ceil((rite["lockUntil"].number-now)/1000)))) seconds. Make your night choices first.").font(.caption) }
+                            if !puzzle["deadline"].isNull && puzzle["phase"].text == "turn" {
+                                if puzzle["type"].text == "lab" {
+                                    ZStack {Circle().stroke(Color.gray.opacity(0.3),lineWidth:5);Circle().trim(from:0,to:min(1,max(0,(puzzle["deadline"].number-now)/8000))).stroke(riteGold,lineWidth:5).rotationEffect(.degrees(-90));Text("\(min(8,max(0,Int(ceil((puzzle["deadline"].number-now)/1000)))))").font(.title.monospacedDigit())}.frame(width:64,height:64)
+                                }else {VStack {Text("\(min(5,max(0,Int(ceil((puzzle["deadline"].number-now)/1000)))))").font(.largeTitle.monospacedDigit());ProgressView(value:min(5000,max(0,puzzle["deadline"].number-now)),total:5000).tint(riteGold)}}
+                            }
+                        }
+                        if puzzle["phase"].text == "wait" { Text("Waiting for your turn. Keep this screen open.").font(.caption) }
                         if puzzle["phase"].text == "locked" { Text("Sealed for tonight. Wait for dawn.").font(.caption) }
                         if puzzle["phase"].text == "day" { Text("Plan together by day. Act at night.").font(.caption) }
                         if puzzle["phase"].text == "done" { Text("Your vigil’s puzzle is complete.").foregroundStyle(riteGold) }
@@ -104,6 +113,9 @@ struct NativeRiteView: View {
                     .offset(x: flash && !(reduceMotion || store.preferences.reducedMotion) ? 2 : 0)
             }
         }
+        .onChange(of: puzzle["phase"].text) { old, next in
+            if old == "turn" && next == "locked" && Date().timeIntervalSince(lastAction) > 1 { failed("That action could not be completed.") }
+        }
         .onChange(of: puzzle["ruined"].text) { old, next in if !next.isEmpty && old != next { failed("The brew is ruined. The laboratory resets to the start of tonight.") } }
         .task(id: game.host ? game.code : "") {
             guard game.host else { return }
@@ -118,7 +130,7 @@ struct NativeRiteView: View {
         guard !busy else { return }; busy = true
         Task {
             defer { busy = false }
-            do { let text = try await store.riteAction(action, fields); message = text; if text.contains("falters") || text.contains("ruined") { failed(text) } }
+            do { lastAction = Date(); let text = try await store.riteAction(action, fields); message = text; if text.contains("falters") || text.contains("ruined") { failed(text) } }
             catch { failed(error.localizedDescription) }
         }
     }
@@ -151,6 +163,7 @@ private struct NativeEscape: View {
             }.aspectRatio(1,contentMode:.fit)
             Text("Get the red carriage through the gate. Slide one piece along its length.").font(.caption)
             if let b=puzzle["blocks"].items.first(where:{$0.id==selected}) { HStack { Button("←"){move(b,-1,0)};Button("→"){move(b,1,0)};Button("↑"){move(b,0,-1)};Button("↓"){move(b,0,1)} }.buttonStyle(.bordered).disabled(busy || puzzle["phase"].text != "turn") }
+            if puzzle["phase"].text=="turn" { Button("Pass"){send("ritePass",["turn":.string(puzzle["turn"].text)])}.disabled(busy) }
         }
     }
     private func move(_ b:HubJSON,_ dx:Int,_ dy:Int){guard !busy && puzzle["phase"].text == "turn" else {return};send("riteBoardMove",["block":.string(b.id),"x":.number(b["x"].number+Double(dx)),"y":.number(b["y"].number+Double(dy)),"turn":.string(puzzle["turn"].text)])}
@@ -177,13 +190,13 @@ private struct NativeLaboratory: View {
     @State private var from="";@State private var sheet=false
     var body:some View {
         VStack(spacing:16) {
-            LazyVGrid(columns:Array(repeating:GridItem(.flexible(),spacing:9),count:5),spacing:24) {
+            LazyVGrid(columns:Array(repeating:GridItem(.flexible(),spacing:7),count:6),spacing:24) {
                 ForEach(puzzle["vials"].items) { vial in
                     Button { if !from.isEmpty && from != vial.id {send("riteLabPour",["from":.string(from),"to":.string(vial.id),"turn":.string(puzzle["turn"].text)]);from=""}else{from=from==vial.id ? "":vial.id} } label: {
                         GeometryReader { geometry in
                             let shape=VialShape(kind:Int(vial["shape"].number))
                             ZStack(alignment:.bottom) {
-                                VStack(spacing:0) { ForEach(Array(vial["layers"].items.reversed().enumerated()),id:\.offset) { _,c in Rectangle().fill(riteLiquids[Int(c.number)]).overlay(Text(riteSubstances[Int(c.number)]).font(.caption).foregroundStyle(riteCream)).frame(height:geometry.size.height/4) } }.frame(maxHeight:.infinity,alignment:.bottom).clipShape(shape)
+                                VStack(spacing:0) { ForEach(Array(vial["layers"].items.reversed().enumerated()),id:\.offset) { _,c in Rectangle().fill(riteLiquids[Int(c.number)]).overlay(Text(riteSubstances[Int(c.number)]).font(.caption).foregroundStyle([4,9].contains(Int(c.number)) ? Color.black.opacity(0.65):riteCream)).frame(height:geometry.size.height/4) } }.frame(maxHeight:.infinity,alignment:.bottom).clipShape(shape)
                                 shape.stroke(from==vial.id ? riteGold : Color(red:0.73,green:0.83,blue:0.86),lineWidth:from==vial.id ? 3:2)
                             }
                         }.frame(height:98).padding(.horizontal,2)
@@ -191,7 +204,7 @@ private struct NativeLaboratory: View {
                 }
             }.padding(.vertical,10).background(Color.brown.opacity(0.10))
             Text("Tap a vial, then where to pour it. Match color and substance.").font(.caption)
-            if puzzle["phase"].text=="turn" {Button("Undo / Reset"){sheet=true}.buttonStyle(.bordered).disabled(busy)}
+            if puzzle["phase"].text=="turn" {HStack {Button("Undo / Reset"){sheet=true};Button("Pass"){send("ritePass",["turn":.string(puzzle["turn"].text)])}}.buttonStyle(.bordered).disabled(busy)}
             if !puzzle["vote"].isNull {
                 VStack {Text("A vote has been called").font(.headline);Text(puzzle["vote"]["kind"].text=="undo" ? "Undo tonight’s last pour?" : "Reset the original puzzle?")
                     TimelineView(.periodic(from:.now,by:0.1)){c in Text("\(max(0,Int(ceil(puzzle["vote"]["deadline"].number/1000-c.date.timeIntervalSince1970-store.offset))))").font(.largeTitle)}
@@ -200,7 +213,7 @@ private struct NativeLaboratory: View {
                 }.padding().overlay(RoundedRectangle(cornerRadius:14).stroke(riteGold))
             }
             if !puzzle["voteResult"].isNull {Text(puzzle["voteResult"]["passed"].flag ? "The vote passed." : "The vote failed.").font(.caption)}
-        }.confirmationDialog("Call a vote",isPresented:$sheet) {Button("Undo the last pour tonight"){call("undo")}.disabled(!puzzle["canUndo"].flag);Button("Reset the original puzzle"){call("reset")};Button("Never mind",role:.cancel){}}
+        }.confirmationDialog("Call a vote · This uses your turn",isPresented:$sheet) {Button("Undo the last pour tonight"){call("undo")}.disabled(!puzzle["canUndo"].flag);Button("Reset the original puzzle"){call("reset")};Button("Never mind",role:.cancel){}}
             .onChange(of:puzzle["turn"].text){_,_ in from="";sheet=false}
     }
     private func call(_ kind:String){send("riteLabCall",["kind":.string(kind),"turn":.string(puzzle["turn"].text)])}
@@ -220,11 +233,16 @@ private struct NativeRiddles: View {
     private var complete:Bool {Set(characters).count==5 && !characters.contains(-1) && Set(activities).count==5 && !activities.contains(-1)}
     var body:some View {
         VStack(spacing:18) {
-            VStack(spacing:14) {
-                HStack {place(0);place(1)}
-                place(2).frame(maxWidth:180)
-                HStack {place(3);place(4)}
-            }.padding(12).background(Color(red:0.1,green:0.22,blue:0.16)).clipShape(RoundedRectangle(cornerRadius:16)).overlay(RoundedRectangle(cornerRadius:16).stroke(riteGold,lineWidth:2))
+            // The five places stand along one street, west to east; relational
+            // clues ("next door to", "west of") refer to this order.
+            VStack(spacing:6) {
+                HStack(alignment:.top,spacing:4) {ForEach(0..<5,id:\.self){i in place(i)}}
+                HStack {Text("← WEST");Spacer();Text("THE STREET").opacity(0.7);Spacer();Text("EAST →")}
+                    .font(.system(size:9,weight:.semibold,design:.serif)).tracking(1).foregroundStyle(riteGold)
+                    .padding(.horizontal,8).padding(.vertical,5)
+                    .background(Color(red:0.23,green:0.2,blue:0.15),in:Capsule())
+                    .accessibilityElement(children:.ignore).accessibilityLabel("Places run west to east along the street")
+            }.padding(10).background(Color(red:0.1,green:0.22,blue:0.16)).clipShape(RoundedRectangle(cornerRadius:16)).overlay(RoundedRectangle(cornerRadius:16).stroke(riteGold,lineWidth:2))
             Text("Choose a token, then a place. Tap a filled spot to clear it.").font(.caption)
             HStack {ForEach(0..<5,id:\.self){i in
                 let location = characters.firstIndex(of:i)
@@ -269,11 +287,11 @@ private struct NativeRiddles: View {
     }
     private func place(_ i:Int)->some View {
         VStack(spacing:4) {
-            NativeTownBuilding(place:i).frame(height:73)
-            Text(riteLocations[i].uppercased()).font(.system(.caption,design:.serif)).tracking(1).padding(5).frame(maxWidth:.infinity).overlay(Capsule().stroke(riteGold))
-            HStack(spacing:-8) {
-                Button{choose(i,"character")}label:{ZStack {Circle().stroke(riteGold,style:StrokeStyle(lineWidth:2,dash:characters[i]<0 ? [4,3]:[]));if characters[i]>=0 {Image(systemName:characterIcons[characters[i]]).font(.title2).foregroundStyle(colors[characters[i]])}}.frame(width:43,height:43)}
-                Button{choose(i,"activity")}label:{ZStack {Circle().stroke(riteGold.opacity(0.7),style:StrokeStyle(dash:[4,3]));if activities[i]>=0 {Image(systemName:activityIcons[activities[i]]).font(.title3)}}.frame(width:30,height:30).offset(y:12)}
+            NativeTownBuilding(place:i).frame(height:48)
+            Text(riteLocations[i].uppercased()).font(.system(size:9,design:.serif)).lineLimit(1).minimumScaleFactor(0.7).padding(.vertical,4).padding(.horizontal,2).frame(maxWidth:.infinity).overlay(Capsule().stroke(riteGold))
+            HStack(spacing:-10) {
+                Button{choose(i,"character")}label:{ZStack {Circle().stroke(riteGold,style:StrokeStyle(lineWidth:2,dash:characters[i]<0 ? [4,3]:[]));if characters[i]>=0 {Image(systemName:characterIcons[characters[i]]).font(.body).foregroundStyle(colors[characters[i]])}}.frame(width:36,height:36)}
+                Button{choose(i,"activity")}label:{ZStack {Circle().stroke(riteGold.opacity(0.7),style:StrokeStyle(dash:[4,3]));if activities[i]>=0 {Image(systemName:activityIcons[activities[i]]).font(.caption)}}.frame(width:26,height:26).offset(y:12)}
             }.buttonStyle(.plain).disabled(!editable)
         }.frame(maxWidth:.infinity)
     }
@@ -376,7 +394,7 @@ private struct NativeRiteSetup:View {
     @EnvironmentObject var store:TableStore
     let game:GameState
     @State private var enabled=false;@State private var patterns=Set(["board","grid","ritual","lab"])
-    @State private var opening=2;@State private var lock=30;@State private var window=60;@State private var threshold=50;@State private var first=3;@State private var forged=1;@State private var notify=true
+    @State private var opening=2;@State private var lock=30;@State private var window=90;@State private var threshold=50;@State private var first=3;@State private var forged=1;@State private var notify=true
     @State private var teams:[HubJSON]=[];@State private var moved:[String:String]=[:];@State private var kinds:[String:String]=[:]
     @State private var message="";@State private var busy=false;@State private var loaded=false
     private var rite:HubJSON {store.riteState ?? .null}

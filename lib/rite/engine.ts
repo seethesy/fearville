@@ -12,7 +12,10 @@ import {
   type Plan,
   type RiteConfig,
   type Squad,
+  type BoardState,
   type LabState,
+  type Block,
+  type Vial,
 } from './types.ts';
 import { rng, shuffle } from './random.ts';
 import { boardCandidate, slide, boardSolved, solveBoard } from './board.ts';
@@ -240,6 +243,22 @@ export function beginRiteNight(g: Game, at: number) {
     };
   }
 }
+function boardOf(s: BoardState | LabState): Block[] | Vial[] {
+  return s.type === 'board' ? s.blocks : s.vials;
+}
+function nextTurn(s: Squad, at: number, kind: string, detail?: string) {
+  const state = s.state as BoardState | LabState,
+    t = state.turn!;
+  const player = t.order[t.cursor];
+  if (!player) return;
+  t.snapshots[player] = structuredClone(boardOf(state));
+  t.log.push({ player, at, kind, detail });
+  t.cursor++;
+  t.token = uuid();
+  t.start = at;
+  t.deadline = at + (s.kind === 'board' ? 5000 : 8000);
+  if (state.solved) t.cursor = t.order.length;
+}
 function finishVote(s: Squad, at: number) {
   const state = s.state as LabState,
     t = state.turn!,
@@ -255,16 +274,11 @@ function finishVote(s: Squad, at: number) {
       const last = state.history.pop();
       if (last) state.vials = last.before;
     }
-    state.distance = solveLab(state.vials, 12000)?.length ?? null;
+    state.distance = solveLab(state.vials, 25000)?.length ?? null;
   }
   t.voteResult = { id: vote.id, passed };
   delete t.vote;
-  t.log.push({
-    player: vote.caller,
-    at,
-    kind: 'vote',
-    detail: passed ? 'passed' : 'failed',
-  });
+  nextTurn(s, at, 'vote', passed ? 'passed' : 'failed');
 }
 export function tickRite(g: Game, now: number) {
   const r = g.rite;
@@ -348,13 +362,27 @@ export function tickRite(g: Game, now: number) {
       finishVote(s, t.vote.deadline);
       changed = true;
     }
+    while (!t.vote && t.cursor < t.order.length && now > t.deadline + 750) {
+      nextTurn(s, t.deadline + 750, 'timeout');
+      changed = true;
+    }
   }
   return changed;
 }
 export function riteReady(g: Game, now: number) {
   const r = g.rite;
   if (!r?.config.enabled || r.status !== 'open') return true;
-  return now >= (r.windowEnd ?? Infinity) && !r.pendingRedeal?.length;
+  return (
+    now >= (r.windowEnd ?? Infinity) &&
+    !r.pendingRedeal?.length &&
+    r.squads.every(
+      (s) =>
+        s.completeNight ||
+        (s.state.type !== 'board' && s.state.type !== 'lab') ||
+        !s.state.turn ||
+        s.state.turn.cursor >= s.state.turn.order.length,
+    )
+  );
 }
 export function resolveRite(g: Game, now: number, force = false) {
   const r = g.rite;
@@ -368,9 +396,10 @@ export function resolveRite(g: Game, now: number, force = false) {
       state.type === 'board' || state.type === 'lab'
         ? state.solved
         : state.type === 'grid'
-          ? s.members.some((id) =>
+          ? s.members.filter((id) =>
               sameSolution(state.submissions[id] ?? [], state.solution),
-            )
+            ).length >
+            s.members.length / 2
           : Object.values(state.rituals).filter(
               (x) => x.doneNight !== undefined,
             ).length >= 2;
@@ -545,7 +574,18 @@ export function riteAction(
       finishVote(s, now);
     return 'Your vote was recorded.';
   }
-  check(!t.vote && !state.solved, failure);
+  check(
+    !t.vote &&
+      t.order[t.cursor] === actor.id &&
+      c.turn === t.token &&
+      now <= t.deadline + 750 &&
+      !state.solved,
+    failure,
+  );
+  if (c.action === 'ritePass') {
+    nextTurn(s, now, 'pass');
+    return 'Your turn is over.';
+  }
   if (c.action === 'riteBoardMove') {
     check(state.type === 'board', failure);
     const next = slide(state.blocks, {
@@ -556,13 +596,13 @@ export function riteAction(
     check(next, failure);
     state.blocks = next;
     state.solved = boardSolved(next);
-    state.distance = solveBoard(next, 12000)?.length ?? null;
-    t.log.push({
-      player: actor.id,
-      at: now,
-      kind: 'move',
-      detail: `${String(c.block)}: ${Number(c.x)},${Number(c.y)}`,
-    });
+    state.distance = solveBoard(next, 25000)?.length ?? null;
+    nextTurn(
+      s,
+      now,
+      'move',
+      `${String(c.block)}: ${Number(c.x)},${Number(c.y)}`,
+    );
     return 'Your move was recorded.';
   }
   if (c.action === 'riteLabPour') {
@@ -576,7 +616,7 @@ export function riteAction(
       to: String(c.to),
     });
     state.vials = next;
-    const solution = solveLab(next, 12000);
+    const solution = solveLab(next, 25000);
     if (solution === null) {
       state.vials = structuredClone(state.nightStart);
       state.history = state.history.filter((h) => h.night !== g.night);
@@ -584,12 +624,7 @@ export function riteAction(
     }
     state.solved = labSolved(state.vials);
     state.distance = solution === null ? null : (solution?.length ?? null);
-    t.log.push({
-      player: actor.id,
-      at: now,
-      kind: 'pour',
-      detail: `${String(c.from)} → ${String(c.to)}`,
-    });
+    nextTurn(s, now, 'pour', `${String(c.from)} → ${String(c.to)}`);
     return solution === null
       ? 'The brew is ruined. The laboratory resets to the start of tonight.'
       : 'Your pour was recorded.';

@@ -31,10 +31,27 @@ import {
   slide,
   boardSolved,
   boardMoves,
+  BOARD_PAR,
 } from '../lib/rite/board.ts';
-import { generateLab, solveLab, pour, labSolved } from '../lib/rite/lab.ts';
-import { generateGrid, solveGrid, satisfies } from '../lib/rite/grid.ts';
-import { generateRitual, CONTROL_COUNTS } from '../lib/rite/ritual.ts';
+import {
+  generateLab,
+  solveLab,
+  pour,
+  labSolved,
+  LAB_PAR,
+} from '../lib/rite/lab.ts';
+import {
+  generateGrid,
+  solveGrid,
+  clueHolds,
+  makeRiddle,
+  CLUES_PER_PLAYER,
+} from '../lib/rite/grid.ts';
+import {
+  generateRitual,
+  CONTROL_COUNTS,
+  validOmen,
+} from '../lib/rite/ritual.ts';
 import { riteView } from '../lib/rite/view.ts';
 import { nightChoiceDeadlineFor } from '../lib/game/hms.ts';
 const host = { id: 'host', host: true };
@@ -136,32 +153,82 @@ void test('uniform seeded planner balances every supported table, validates manu
     'No alignment cap prevents three Evil members sharing a vigil.',
   );
 });
-void test('Sphinx six-clue feasibility, unique solutions for all sizes, determinism and covered forgeries', () => {
+void test('Sphinx riddles: four clues each, unique hard solutions, varied patterns, determinism and covered forgeries', () => {
+  const patterns = new Set<string>();
   for (const n of [2, 3, 4])
-    for (let i = 0; i < 12; i++) {
+    for (let i = 0; i < 6; i++) {
       const members = Array.from({ length: n }, (_, i) => `p${i}`),
         s = generateGrid(`grid-${i}`, members, ['p0'], 2);
       const trueClues = s.clues.filter((c) => !c.forged);
-      assert.equal(trueClues.length, n * 3);
-      assert.equal(new Set(trueClues.map((c) => c.text)).size, n * 3);
+      assert.equal(trueClues.length, n * CLUES_PER_PLAYER);
+      assert.equal(new Set(s.clues.map((c) => c.text)).size, s.clues.length);
       assert.deepEqual(solveGrid(trueClues), [s.solution]);
-      for (const id of members)
-        assert.equal(trueClues.filter((c) => c.holder === id).length, 3);
+      for (const c of trueClues) {
+        assert.ok(clueHolds(s.solution, c));
+        assert.match(c.text, /^[A-Z].*[.]$/);
+        patterns.add(c.pattern!);
+      }
+      // At most one plain "X was Y" statement in a hard riddle.
+      assert.ok(trueClues.filter((c) => c.pattern === 'direct').length <= 1);
+      for (const id of members) {
+        const own = trueClues.filter((c) => c.holder === id);
+        assert.equal(own.length, CLUES_PER_PLAYER);
+        assert.deepEqual(
+          own.map((c) => c.revealNight).sort((a, b) => a - b),
+          [2, 2, 3, 4],
+        );
+      }
       assert.ok(
         s.clues
           .filter((c) => c.forged)
-          .every((c) => c.holder === 'p0' && !satisfies(s.solution, c.facts)),
+          .every((c) => c.holder === 'p0' && !clueHolds(s.solution, c)),
       );
       assert.deepEqual(s, generateGrid(`grid-${i}`, members, ['p0'], 2));
     }
+  for (const p of [
+    'negative',
+    'either-or',
+    'neither-nor',
+    'exclusive-pairing',
+    'compound',
+    'relational',
+    'cross-category',
+    'one-of-three',
+    'three-way',
+    'set-membership',
+  ])
+    assert.ok(patterns.has(p), `missing clue pattern ${p}`);
 });
-void test('Escape and Laboratory certify exact optimal par, legal witnesses, distinct layouts and deterministic seeds', () => {
+void test('Sphinx riddles are hard: a one-clue-at-a-time solver needs several rounds', () => {
+  let hard = 0;
+  for (let i = 0; i < 8; i++) {
+    const r = makeRiddle(`hard-${i}`, 12);
+    assert.ok(r.difficulty.stalled || r.difficulty.rounds >= 2);
+    if (r.difficulty.stalled || r.difficulty.rounds >= 3) hard++;
+  }
+  assert.ok(hard >= 6);
+});
+void test('Legacy single-fact Sphinx clues still evaluate', () => {
+  const solution = [0, 1, 2, 3, 4].map((i) => ({
+    character: i,
+    location: i,
+    activity: i,
+  }));
+  assert.ok(
+    clueHolds(solution, {
+      facts: [{ a: 'character', x: 1, b: 'location', ys: [1] }],
+    }),
+  );
+});
+void test('Escape and Laboratory certify exact hard optimal par (28-32), legal witnesses, distinct layouts and deterministic seeds', () => {
   for (const n of [2, 3, 4])
     for (let i = 0; i < 4; i++) {
       const b = generateBoard(`generator-${i}`, n),
         solution = solveBoard(b.blocks);
       assert.ok(solution);
-      assert.equal(solution.length, n * 4);
+      // Hard for every vigil size: 28-32 optimal slides.
+      assert.equal(solution.length, b.par);
+      assert.ok(b.par >= BOARD_PAR[0] && b.par <= BOARD_PAR[1]);
       let blocks = b.blocks;
       for (const m of solution) {
         const next = slide(blocks, m);
@@ -173,7 +240,8 @@ void test('Escape and Laboratory certify exact optimal par, legal witnesses, dis
       const l = generateLab(`generator-${i}`, n),
         pours = solveLab(l.vials);
       assert.ok(pours);
-      assert.equal(pours.length, n * 4);
+      assert.equal(pours.length, l.par);
+      assert.ok(l.par >= LAB_PAR[0] && l.par <= LAB_PAR[1]);
       let vials = l.vials;
       for (const m of pours) {
         const next = pour(vials, m);
@@ -219,6 +287,10 @@ void test('Ritual generators have globally unique sets, cyclic roles, correct de
   for (let i = 0; i < 40; i++) {
     const s = generateRitual(`ritual-${i}`, ['a', 'b', 'c'], ['b']);
     assert.equal(s.book.flatMap((p) => p.entries).length, 28);
+    // Never two look-alike symbols (e.g. skull + skull and crossbones) in one omen.
+    assert.ok(
+      s.book.every((p) => p.entries.every((e) => validOmen(e.symbols))),
+    );
     assert.equal(
       new Set(s.book.flatMap((p) => p.entries.map((e) => e.symbols.join(','))))
         .size,
@@ -301,7 +373,7 @@ void test('night-2 lock caps choices, rejects early input, waits for full window
     /Rite window/,
   );
 });
-void test('one correct Sphinx submission completes the vigil; incorrect submissions stay private', () => {
+void test('submissions are private, replaceable, majority checked at dawn, and never announce failure', () => {
   const g = game(),
     r = g.rite!,
     s = r.squads[0],
@@ -321,31 +393,22 @@ void test('one correct Sphinx submission completes the vigil; incorrect submissi
     0,
   );
   resolveRite(g, r.windowEnd!);
-  assert.equal(s.completeNight, 2);
+  assert.equal(s.completeNight, undefined);
+  assert.equal(g.messages.filter((m) => m.text.includes('vigil')).length, 0);
+  beginNight(g, 100000);
+  action(g, s.members[1], {
+    action: 'riteGridSubmit',
+    solution: state.solution,
+  });
+  resolveRite(g, r.windowEnd!);
+  assert.equal(s.completeNight, 3);
   assert.equal(r.status, 'complete');
   assert.equal(
     g.messages.filter((m) => m.text.includes('vigil')).length,
     s.members.length,
   );
-  const incorrect = game(),
-    other = incorrect.rite!.squads[0],
-    answer = structuredClone((other.state as GridState).solution);
-  [answer[0].activity, answer[1].activity] = [
-    answer[1].activity,
-    answer[0].activity,
-  ];
-  action(incorrect, other.members[0], {
-    action: 'riteGridSubmit',
-    solution: answer,
-  });
-  resolveRite(incorrect, incorrect.rite!.windowEnd!);
-  assert.equal(other.completeNight, undefined);
-  assert.equal(
-    incorrect.messages.filter((m) => m.text.includes('vigil')).length,
-    0,
-  );
 });
-void test('Escape allows every vigil member unlimited shared moves until the night window closes', () => {
+void test('Escape turn deadlines, latency grace, hidden order, locked snapshots, dead members and immediate handoff', () => {
   const g = game('board'),
     r = g.rite!,
     s = r.squads[0],
@@ -356,44 +419,50 @@ void test('Escape allows every vigil member unlimited shared moves until the nig
   g.players.find((p) => p.id === first)!.alive = false;
   const start = memberView(g, first, r.lockUntil!);
   assert.equal(start.puzzle!.phase, 'turn');
-  assert.equal(
-    memberView(g, second, r.lockUntil!).puzzle!.deadline,
-    r.windowEnd,
-  );
+  assert.equal(memberView(g, second, r.lockUntil!).puzzle!.deadline, undefined);
   assert.ok(!JSON.stringify(start).includes('order'));
   assert.ok(!JSON.stringify(start).includes('par'));
   const move = boardMoves(state.blocks)[0].move;
-  action(g, second, { action: 'riteBoardMove', ...move, turn: t.token });
-  assert.equal(t.cursor, 0);
-  assert.deepEqual(
-    memberView(g, first, r.lockUntil!).puzzle!.blocks,
-    state.blocks,
+  assert.throws(
+    () =>
+      action(g, second, { action: 'riteBoardMove', ...move, turn: t.token }),
+    /could not be completed/,
   );
-  const next = boardMoves(state.blocks)[0].move;
+  const token = t.token;
   action(
     g,
     first,
-    { action: 'riteBoardMove', ...next, turn: t.token },
-    r.lockUntil! + 10000,
+    { action: 'riteBoardMove', ...move, turn: token },
+    t.deadline + 750,
   );
-  assert.equal(t.cursor, 0);
-  tickRite(g, r.windowEnd! - 1);
-  assert.equal(memberView(g, second, r.windowEnd! - 1).puzzle!.phase, 'turn');
+  assert.equal(t.cursor, 1);
+  assert.equal(memberView(g, second, t.start).puzzle!.phase, 'turn');
   assert.throws(
     () =>
       action(
         g,
         first,
-        { action: 'riteBoardMove', ...next, turn: t.token },
-        r.windowEnd! + 1,
+        { action: 'riteBoardMove', ...move, turn: token },
+        t.start,
       ),
     /could not be completed/,
   );
+  const frozen = memberView(g, first, t.start).puzzle!.blocks;
+  const next = boardMoves(state.blocks)[0].move;
+  action(
+    g,
+    second,
+    { action: 'riteBoardMove', ...next, turn: t.token },
+    t.start,
+  );
+  assert.deepEqual(memberView(g, first, t.start).puzzle!.blocks, frozen);
+  tickRite(g, t.deadline + 751);
+  assert.equal(t.cursor, t.order.length);
   const saved = structuredClone(state.blocks);
   beginNight(g, 120000);
   assert.deepEqual(state.blocks, saved);
 });
-void test('Escape rejects illegal axes, overlap, bounds, and moves after the window', () => {
+void test('Escape illegal axes, overlap, board bounds and timeouts all reject without changing the board', () => {
   const g = game('board'),
     s = g.rite!.squads[0],
     state = s.state as BoardState,
@@ -415,21 +484,12 @@ void test('Escape rejects illegal axes, overlap, bounds, and moves after the win
   }
   assert.throws(
     () =>
-      action(
-        g,
-        id,
-        {
-          action: 'riteBoardMove',
-          turn: t.token,
-          ...boardMoves(state.blocks)[0].move,
-        },
-        g.rite!.windowEnd! + 1,
-      ),
+      action(g, id, { action: 'ritePass', turn: t.token }, t.deadline + 751),
     /could not be completed/,
   );
   tickRite(g, t.deadline + 751);
-  assert.equal(t.cursor, 0);
-  assert.equal(t.log.length, 0);
+  assert.equal(t.cursor, 1);
+  assert.equal(t.log[0].kind, 'timeout');
 });
 void test('Lab rules pour maximal top run, reject unlike liquid, detect dead ends and treat solver caps as unknown', () => {
   const v = [
@@ -461,7 +521,7 @@ void test('Lab rules pour maximal top run, reject unlike liquid, detect dead end
   );
   assert.equal(solveLab(generateLab('cap', 2).vials, 0), undefined);
 });
-void test('Lab allows shared pours and unanimous undo or reset votes during the night window', () => {
+void test('Lab unanimous votes, private ballots, missing votes, early finish, timer suspension and tonight-only undo', () => {
   const g = game('lab'),
     r = g.rite!,
     s = r.squads[0],
@@ -471,7 +531,7 @@ void test('Lab allows shared pours and unanimous undo or reset votes during the 
     move = solveLab(state.vials)![0],
     before = structuredClone(state.vials);
   action(g, p, { action: 'riteLabPour', ...move, turn: t.token });
-  const caller = t.order[1];
+  const caller = t.order[t.cursor];
   action(
     g,
     caller,
@@ -489,7 +549,7 @@ void test('Lab allows shared pours and unanimous undo or reset votes during the 
     { action: 'riteLabBallot', vote: vote.id, yes: true },
     t.start,
   );
-  assert.equal(t.cursor, 0);
+  assert.equal(t.cursor, 1);
   assert.throws(
     () =>
       action(
@@ -506,7 +566,7 @@ void test('Lab allows shared pours and unanimous undo or reset votes during the 
     { action: 'riteLabBallot', vote: vote.id, yes: true },
     t.start,
   );
-  assert.equal(t.cursor, 0);
+  assert.equal(t.cursor, 2);
   assert.equal(t.voteResult!.passed, true);
   assert.deepEqual(state.vials, before);
   assert.throws(
@@ -528,7 +588,7 @@ void test('Lab allows shared pours and unanimous undo or reset votes during the 
   const deadline = t.vote!.deadline;
   tickRite(g, deadline);
   assert.equal(t.voteResult!.passed, false);
-  assert.equal(t.cursor, 0);
+  assert.equal(t.cursor, 3);
 });
 void test('Ritual first-night restriction, one attempt, own result only, persistent success and two-of-three completion', () => {
   const g = game('ritual'),
@@ -780,7 +840,7 @@ void test('a pending redeal never stalls another vigil, and force close cancels 
   const turn = (other.state as BoardState).turn!;
   turn.deadline = 1;
   tickRite(g, r.lockUntil! + 30000);
-  assert.equal(turn.cursor, 0);
+  assert.equal(turn.cursor, turn.order.length);
   riteAction(g, host, { action: 'riteForce' }, r.lockUntil! + 31000);
   assert.deepEqual(r.pendingRedeal, []);
   assert.equal(riteReady(g, r.lockUntil! + 31000), true);

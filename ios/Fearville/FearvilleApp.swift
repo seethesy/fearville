@@ -64,7 +64,20 @@ struct GameView: View {
         }
     }
     private var voteOpen: Bool { !game.host && game.phase == "voting" && game.active != nil && game.active?.myVote == nil }
-    // Night Rite: the 30-second night lock, the shared puzzle window, or an open vote.
+    // Night Rite guides: a player's own vigil pattern; every enabled pattern
+    // for the Storyteller.
+    private var ownGuide: String? {
+        guard !game.host, let rite = store.riteState, !rite.isNull else { return nil }
+        let kind = rite["squad"]["kind"].text
+        return kind.isEmpty ? nil : "guide." + kind
+    }
+    private var riteGuides: [String] {
+        guard let rite = store.riteState, !rite.isNull, rite["enabled"].flag else { return [] }
+        if game.host { return rite["config"]["patterns"].items.map(\.text) }
+        let kind = rite["squad"]["kind"].text
+        return kind.isEmpty ? [] : [kind]
+    }
+    // Night Rite: the 30-second night lock, a timed turn, or an open vote.
     private var riteHold: Bool {
         guard !game.host, let puzzle = store.riteState?["puzzle"], !puzzle.isNull else { return false }
         let phase = puzzle["phase"].text
@@ -76,12 +89,12 @@ struct GameView: View {
             NavigationStack { FlowView(game: game, selected: $selected).navigationTitle(game.phaseLabel).navigationBarTitleDisplayMode(.inline) }.tabItem { Text("Game") }.tag("game")
             NavigationStack { SeatsView(game: game, selected: $selected).navigationTitle("Seats") }.tabItem { Text("Seats") }.tag("seats")
             NavigationStack { MessagesView(game: game, selected: $selected).navigationTitle("Messages") }.tabItem { Text("Messages") }.tag("messages")
-            NavigationStack { ScriptView(script: game.script ?? "horrors").navigationTitle(game.scriptName ?? "Horrors of Fearville") }.tabItem { Text("Script") }.tag("script")
+            NavigationStack { ScriptView(script: game.script ?? "horrors", riteGuides: riteGuides).navigationTitle(game.scriptName ?? "Horrors of Fearville") }.tabItem { Text("Script") }.tag("script")
             NavigationStack { ControlView(game: game, selected: $selected).navigationTitle(game.host ? "Storyteller" : "Session") }.tabItem { Text("Controls") }.tag("controls")
         }
         .sheet(item: $selected) { action in ActionView(action: action).environmentObject(store) }
         .sheet(isPresented: $showSettings) { NavigationStack { NativeSettings() } }
-        .sheet(isPresented: $showHelp) { NavigationStack { HelpView(host: game.host, seated: !game.host).toolbar { Button("Done") { showHelp = false } } }.environmentObject(tutorials) }
+        .sheet(isPresented: $showHelp) { NavigationStack { HelpView(host: game.host, seated: !game.host, ownGuides: ownGuide.map { [$0] } ?? []).toolbar { Button("Done") { showHelp = false } } }.environmentObject(tutorials) }
         // Tutorials: seat scope, walkthrough chapters, first-open sections,
         // and the states that hold popups (FEAR-16/17/18).
         .task(id: game.code + ":" + game.me) { tutorials.setScope(game.code + ":" + game.me) }
@@ -89,6 +102,7 @@ struct GameView: View {
             tutorials.walkthrough(for: game)
             if !game.host && game.phase == "night" { tutorials.requestSection("night") }
         }
+        .onChange(of: "\(game.phase)|\(game.night)|\(ownGuide ?? "")|\(tutorials.loaded)", initial: true) { _, _ in tutorials.riteGuide(for: game, rite: store.riteState) }
         .onChange(of: tab, initial: true) { _, next in if let s = section(for: next) { tutorials.requestSection(s) } }
         .onChange(of: tutorials.requestedTab) { _, next in if let next { tab = next; tutorials.requestedTab = nil } }
         .onChange(of: selected?.id, initial: true) { _, open in tutorials.setBlocker("action", open != nil) }
@@ -279,6 +293,8 @@ struct GlossaryText: View {
 }
 struct ScriptView: View {
     let script: String
+    // Night Rite patterns whose guides to show (see RiteGuideSection).
+    var riteGuides: [String] = []
     private static let all: [ScriptRole] = {
         guard let url = Bundle.main.url(forResource: "roles", withExtension: "json"), let data = try? Data(contentsOf: url), let roles = try? JSONDecoder().decode([ScriptRole].self, from: data) else { return [] }; return roles
     }()
@@ -299,6 +315,7 @@ struct ScriptView: View {
             Label("Keep the game fair", systemImage: "heart").font(.headline)
             Text("Bluffing is welcome; peeking at private screens is not. Respect other players. Specific character rules take precedence.")
         }
+        if !riteGuides.isEmpty { Section("Night Rite") { RiteGuideRows(patterns: riteGuides) } }
         Section { Text("All characters on the script, including those not in play. These are short summaries.") }; Section("Glossary") { ForEach(GLOSSARY) { entry in VStack(alignment: .leading, spacing: 6) { Text(entry.term).font(.headline); Text(entry.definition); if let example = entry.example { Text("Example: " + example).font(.callout).italic().foregroundStyle(.secondary) } }.padding(.vertical, 4) } }; ForEach(roles) { role in VStack(alignment: .leading, spacing: 8) { Text(teamName(role.team).uppercased()).font(.caption).foregroundStyle(Color.tableHighlight); Label(role.name, systemImage: nativeRoleIcon(role.team)).font(.headline); GlossaryText(text: role.description) }.padding(.vertical, 6) } }.scrollContentBackground(.hidden).background(Color.tableBackground) }
 }
 // The Sphinx's nightly glimpse. Opens on its own and closes when the server

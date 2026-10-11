@@ -1,6 +1,8 @@
 // Tutorials are plain data. The engine, overlay, Help menu and the iPhone app
 // all read the same definitions, so later tickets only add content.
 
+import type { RiteDiagram } from './diagrams.ts';
+
 export type TutorialKind = 'walkthrough' | 'section' | 'tour' | 'guide';
 // player: seated players only (never the Storyteller). host: Storyteller only.
 export type TutorialAudience = 'player' | 'host' | 'all';
@@ -41,6 +43,8 @@ export interface TutorialStep {
   // target shows the step as a centered card.
   target?: string;
   illustration?: Illustration;
+  // Night Rite guides: an explanatory drawing shown instead of the icon tile.
+  diagram?: RiteDiagram;
   // Limit a step to one platform (default: both).
   platforms?: Platform[];
   // iPhone overrides: different wording for the native layout, and the tab to

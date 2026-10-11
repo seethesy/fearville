@@ -1,5 +1,6 @@
 import { GlossaryText } from '@/components/glossary-text';
 import { RoleIcon } from './role-icon';
+import { RiteGuides } from './tutorials/rite-diagram';
 import {
   HMS_ROLES,
   HMS_FIRST,
@@ -252,7 +253,14 @@ function HorrorsOfFearville() {
 
 // Shared public reference: never accepts a game state or exposes assigned roles.
 // Inside a game, only that game's script is shown; the public page shows both.
-export function RulesReference({ script }: { script?: RoleScript }) {
+export function RulesReference({
+  script,
+  riteGuides = [],
+}: {
+  script?: RoleScript;
+  // Night Rite patterns whose guides to include (see RiteGuides).
+  riteGuides?: string[];
+}) {
   return (
     <div className="rules-reference">
       <nav className="reference-nav" aria-label="Rules and role sections">
@@ -262,6 +270,7 @@ export function RulesReference({ script }: { script?: RoleScript }) {
         {(!script || script === 'horrors') && (
           <a href="#role-tips">Role tips</a>
         )}
+        {riteGuides.length > 0 && <a href="#night-rite">Night Rite</a>}
         {teamsFor(script ?? 'horrors').map((team) => (
           <a key={team.id} href={`#roles-${script ?? 'horrors'}-${team.id}`}>
             {team.name}
@@ -385,6 +394,19 @@ export function RulesReference({ script }: { script?: RoleScript }) {
           </li>
         </ol>
       </section>
+      {riteGuides.length > 0 && (
+        <section
+          id="night-rite"
+          className="reference-section"
+          aria-labelledby="night-rite-title"
+        >
+          <p className="eyebrow">NIGHT RITE</p>
+          <h2 id="night-rite-title">
+            {riteGuides.length === 1 ? 'Your vigil’s puzzle' : 'Puzzle guides'}
+          </h2>
+          <RiteGuides patterns={riteGuides} />
+        </section>
+      )}
       {(!script || script === 'holyMoonStars') && <MoonAndStars />}
       {(!script || script === 'horrors') && <HorrorsOfFearville />}
     </div>

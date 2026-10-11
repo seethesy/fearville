@@ -2,6 +2,7 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import type { Tutorial, TutorialStep } from '@/lib/tutorials/types';
 import { TutorialIllustration } from './illustration';
+import { RiteDiagramArt } from './rite-diagram';
 
 // Step overlay with a spotlight on the step's target (`data-tutorial`).
 // Modal: focus is trapped in the card, the page behind cannot be used, and
@@ -172,7 +173,11 @@ export function TutorialOverlay({
             Step {index + 1} of {steps.length}
           </span>
         </div>
-        {step.illustration && <TutorialIllustration name={step.illustration} />}
+        {step.diagram ? (
+          <RiteDiagramArt name={step.diagram} />
+        ) : (
+          step.illustration && <TutorialIllustration name={step.illustration} />
+        )}
         <div aria-live="polite">
           <h2 id={titleId}>{step.title}</h2>
           <p id={bodyId}>{step.body}</p>

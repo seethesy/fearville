@@ -2919,6 +2919,41 @@ button.glossary-trigger:focus-visible { outline: 2px solid currentColor; outline
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
+/* Night Rite guide drawings (lib/tutorials/diagrams.ts). */
+.rite-diagram {
+  margin-bottom: 14px;
+  line-height: 0;
+}
+.rite-diagram img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 8px;
+}
+.rite-guides {
+  display: grid;
+  gap: 18px;
+}
+.rite-guide ol {
+  list-style: none;
+  padding: 0;
+  margin: 10px 0 0;
+  display: grid;
+  gap: 16px;
+}
+.rite-guide h4 {
+  margin: 0 0 4px;
+}
+.rite-guide p {
+  margin: 0;
+}
+.rite-guide .rite-guide-summary {
+  color: var(--muted-foreground);
+}
+.rite-guide .rite-diagram {
+  max-width: 420px;
+  margin-bottom: 8px;
+}
 .tutorial-illustration {
   position: relative;
   display: grid;

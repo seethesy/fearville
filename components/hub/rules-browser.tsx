@@ -21,7 +21,11 @@ export function RulesBrowser({ rolesOnly = false }: { rolesOnly?: boolean }) {
       {rolesOnly ? (
         <RoleTeams script={script} />
       ) : (
-        <RulesReference key={script} script={script} />
+        <RulesReference
+          key={script}
+          script={script}
+          riteGuides={['board', 'grid', 'ritual', 'lab']}
+        />
       )}
     </div>
   );

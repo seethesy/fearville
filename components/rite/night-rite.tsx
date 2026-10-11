@@ -153,6 +153,7 @@ export function NightRite({
       const next: Reply = await response.json();
       if (!response.ok)
         throw Error(next.error || 'That action could not be completed.');
+      lastAction.current = Date.now();
       apply(next);
       setNotice(next.summary ?? '');
       if (next.summary?.includes('falters') || next.summary?.includes('ruined'))
@@ -167,12 +168,20 @@ export function NightRite({
   };
   const r = reply.rite;
   const own = r && !r.host ? r.puzzle : null;
-  const previousRuined = useRef('');
+  const previous = useRef<{ phase?: string; ruined?: string }>({});
+  const lastAction = useRef(0);
   useEffect(() => {
-    if (own?.ruined && own.ruined !== previousRuined.current)
+    if (
+      own &&
+      ((previous.current.phase === 'turn' &&
+        own.phase === 'locked' &&
+        !busy &&
+        Date.now() - lastAction.current > 1000) ||
+        (own.ruined && own.ruined !== previous.current.ruined))
+    )
       fail('That action could not be completed.');
-    previousRuined.current = own?.ruined ?? '';
-  }, [own, fail]);
+    previous.current = { phase: own?.phase, ruined: own?.ruined };
+  }, [own, busy, fail]);
   if (!game.host && !r) return null;
   if (
     mode === 'setup' &&
@@ -297,7 +306,7 @@ export function NightRite({
                 )}
                 {own.phase === 'wait' && (
                   <p className="rite-state">
-                    The vigil is voting. Keep this screen open.
+                    Waiting for your turn. Keep this screen open.
                   </p>
                 )}
                 {own.phase === 'locked' && (
@@ -312,6 +321,36 @@ export function NightRite({
                 )}
                 {own.phase === 'done' && (
                   <p className="rite-state">Your vigil’s puzzle is complete.</p>
+                )}
+                {own.deadline && own.phase === 'turn' && (
+                  <div
+                    className={
+                      'rite-timer ' + (own.type === 'lab' ? 'rite-ring' : '')
+                    }
+                    aria-label="Time remaining"
+                  >
+                    {own.type === 'lab' && (
+                      <svg viewBox="0 0 100 100" aria-hidden="true">
+                        <circle cx="50" cy="50" r="43" fill="none" stroke="#314f50" strokeWidth="7" />
+                        <circle
+                          cx="50" cy="50" r="43" fill="none"
+                          stroke="#d4ae4f" strokeWidth="7" pathLength="1"
+                          strokeDasharray={`${Math.min(1, Math.max(0, (own.deadline - now) / 8000))} 1`}
+                          transform="rotate(-90 50 50)"
+                        />
+                      </svg>
+                    )}
+                    <strong>
+                      {Math.min(
+                        own.type === 'board' ? 5 : 8,
+                        Math.max(0, Math.ceil((own.deadline - now) / 1000)),
+                      )}
+                    </strong>
+                    <progress
+                      max={own.type === 'board' ? 5000 : 8000}
+                      value={Math.max(0, own.deadline - now)}
+                    />
+                  </div>
                 )}
                 {own.type === 'board' && (
                   <Escape puzzle={own} send={send} busy={busy} />
@@ -651,6 +690,15 @@ function Escape({
           ))}
         </div>
       )}
+      {active && (
+        <button
+          className="secondary"
+          disabled={busy}
+          onClick={() => void send('ritePass', { turn: puzzle.turn })}
+        >
+          Pass
+        </button>
+      )}
     </div>
   );
 }
@@ -701,6 +749,12 @@ function Laboratory({
           <button className="secondary" onClick={() => setSheet(true)}>
             Undo / Reset
           </button>
+          <button
+            className="secondary"
+            onClick={() => void send('ritePass', { turn: puzzle.turn })}
+          >
+            Pass
+          </button>
         </div>
       )}
       {sheet && (
@@ -716,7 +770,7 @@ function Laboratory({
           <button className="secondary" onClick={() => call('reset')}>
             Reset the original puzzle
           </button>
-          <p>Everyone else must agree.</p>
+          <p>Everyone else must agree. Calling a vote uses your turn.</p>
           <button className="secondary" onClick={() => setSheet(false)}>
             Never mind
           </button>
@@ -841,7 +895,10 @@ function Sphinx({
   const colors = ['#d9c5f1', '#f9d6d6', '#d4e4fb', '#fbf0c2', '#dde0e3'];
   return (
     <div className="sphinx-puzzle">
-      <div className="town-map">
+      <div
+        className="town-map"
+        aria-label="The street. Places run west to east."
+      >
         {LOCATIONS.map((name, location) => {
           const row = placements.find((p) => p.location === location)!;
           return (
@@ -889,6 +946,11 @@ function Sphinx({
             </div>
           );
         })}
+        <div className="town-street" aria-hidden="true">
+          <span>← West</span>
+          <span>The street</span>
+          <span>East →</span>
+        </div>
       </div>
       <p className="hint">
         Select a token, then tap a place. Tap a filled spot to clear it.
@@ -1256,7 +1318,10 @@ function HostVigil({
         <>
           <p>
             Par: {state.par} · Distance: {state.distance ?? 'Not yet certified'}{' '}
-            · {turn ? 'Moves open to the vigil' : 'Waiting for night'}
+            · Current turn:{' '}
+            {turn?.order[turn.cursor]
+              ? game.players.find((p) => p.id === turn.order[turn.cursor])?.name
+              : 'Finished'}
           </p>
           {state.type === 'board' ? (
             <Escape
