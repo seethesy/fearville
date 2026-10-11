@@ -5,12 +5,15 @@ import {
   json,
   errorResponse,
   checkOrigin,
+  loadDecision,
+  saveIndependent,
 } from '@/lib/game/store';
 import { tick, execute, requireThat } from '@/lib/game/engine';
 import { view } from '@/lib/game/view';
 import { canApplyLatest, canApplyUnchangedEdit } from '@/lib/game/concurrency';
 import { syncResult, syncMvp, voidResult } from '@/lib/social/results';
 import { prepareProgression } from '@/lib/social/start';
+import { independentCommand } from '@/lib/game/scoped-update';
 export async function GET(r: Request) {
   try {
     const initial = await authenticatedRead(r);
@@ -24,7 +27,7 @@ export async function GET(r: Request) {
         throw Error('AUTH');
       const now = Date.now();
       const changed = tick(game, now);
-      if (changed && !(await save(game, version))) continue;
+      if (changed && !(await save(game, version, false))) continue;
       // A timer may end a game during a poll. Ordinary polls must stay read-only;
       // action handlers synchronize results and MVP changes when they save.
       if (changed && game.phase === 'ended')
@@ -86,7 +89,7 @@ export async function POST(r: Request) {
       const actionActor = pov ? { id: pov.id, host: false } : actor;
       const canRebase = canApplyLatest(actionActor, c);
       if (tick(game, now)) {
-        if (!(await save(game, version))) {
+        if (!(await save(game, version, false))) {
           await new Promise((resolve) => setTimeout(resolve, 8 + Math.floor(Math.random() * 24)));
           continue;
         }
@@ -112,10 +115,20 @@ export async function POST(r: Request) {
         );
       if (c.action === 'returnLobby' && before === 'ended')
         await syncResult(game, game.gameStartedAt ?? created, now, version);
+      await loadDecision(game, c);
+      const independentBefore = ['chat', 'saveNotebook'].includes(c.action) ? structuredClone(game) : null;
+      const rankedBefore = JSON.stringify([game.ranked, game.progression, game.gameStartedAt, game.phase === 'lobby', game.phase === 'ended']);
       const summary = execute(game, actionActor, c, now);
       if (c.action === 'start') await prepareProgression(game);
       if (c.preview) return json({ summary, version });
-      if (!(await save(game, version, actionActor.host || c.action === 'returnLobby'))) {
+      const scoped = i === 0 && independentBefore ? independentCommand(independentBefore, game, actionActor, c) : null;
+      if (scoped) {
+        const saved = await saveIndependent(code, scoped);
+        if (!saved) continue;
+        return json({ summary, game: view(saved.game, actionActor, saved.version, now, !!game.sandbox && actor.host) });
+      }
+      const rankedChanged = rankedBefore !== JSON.stringify([game.ranked, game.progression, game.gameStartedAt, game.phase === 'lobby', game.phase === 'ended']);
+      if (!(await save(game, version, rankedChanged))) {
         await new Promise((resolve) => setTimeout(resolve, 8 + Math.floor(Math.random() * 24)));
         continue;
       }

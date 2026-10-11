@@ -86,7 +86,9 @@ export function controls(g: Game, a: Actor): Control[] {
     description: string,
     fields: Field[] = [],
     danger = false,
-  ) => result.push({ action, title, description, fields, danger });
+  ) => result.push({ action, title, description, fields: a.host && action !== 'edit' && !fields.some((f) => f.key === 'phaseToken')
+    ? [...fields, { key: 'phaseToken', label: '', type: 'hidden', value: `${g.day}:${g.night}:${g.phase}` }]
+    : fields, danger });
   if (!a.host && g.phase === 'lobby') {
     const me = g.players.find((p) => p.id === a.id);
     if (me?.seat)
@@ -676,7 +678,7 @@ export function controls(g: Game, a: Actor): Control[] {
         'undo',
         'Undo last decision',
         'Restore the preceding game state. Messages remain; any active timer pauses.',
-        [],
+        [{ key: 'history', label: '', type: 'hidden', value: g.history.at(-1)!.id }],
         true,
       );
       add(

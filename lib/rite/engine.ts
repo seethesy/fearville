@@ -18,8 +18,9 @@ import {
   type Vial,
 } from './types.ts';
 import { rng, shuffle } from './random.ts';
-import { boardCandidate, slide, boardSolved, solveBoard } from './board.ts';
-import { labCandidate, pour, labSolved, solveLab } from './lab.ts';
+import { slide, boardSolved, solveBoard } from './board.ts';
+import { pour, labSolved, solveLab } from './lab.ts';
+import { preparedPuzzle } from './bank.ts';
 import {
   generateGrid,
   validTriples,
@@ -205,7 +206,7 @@ function deal(g: Game, plan: Plan): Squad {
     state,
     'The puzzles are still preparing. Keep the table open, then try again.',
   );
-  return { ...plan, state };
+  return { ...plan, state: structuredClone(state) };
 }
 export function beginRiteNight(g: Game, at: number) {
   const r = g.rite;
@@ -280,7 +281,7 @@ function finishVote(s: Squad, at: number) {
       const last = state.history.pop();
       if (last) state.vials = last.before;
     }
-    state.distance = solveLab(state.vials, 25000)?.length ?? null;
+    state.distance = solveLab(state.vials, 1500, performance.now() + 4)?.length ?? null;
   }
   t.voteResult = { id: vote.id, passed };
   delete t.vote;
@@ -309,9 +310,7 @@ export function tickRite(g: Game, now: number) {
     (r.status === 'dormant' || r.pendingRedeal?.length) &&
     r.plans.length
   ) {
-    // Preparation is resumable and runs in small request budgets, rather than
-    // spending several seconds of Worker CPU at the night-2 transition.
-    const until = performance.now() + 60;
+    // Select from puzzles certified offline. Refreshes never run generators.
     r.prepared ??= {};
     r.preparing ??= {};
     for (const plan of r.plans.filter(
@@ -321,45 +320,26 @@ export function tickRite(g: Game, now: number) {
     )) {
       const key = `${plan.id}:${plan.kind}:${plan.members.length}`;
       if (r.prepared[key]) continue;
-      while (performance.now() < until) {
-        const attempt = r.preparing[key] ?? 0;
-        const candidate =
-          plan.kind === 'board'
-            ? boardCandidate(
-                `${r.seed}:${plan.id}`,
-                plan.members.length,
-                attempt,
-              )
-            : labCandidate(
-                `${r.seed}:${plan.id}`,
-                plan.members.length,
-                attempt,
-              );
-        r.preparing[key] = attempt + 1;
-        changed = true;
-        if (candidate) {
-          r.prepared[key] = candidate;
-          if (r.pendingRedeal?.includes(plan.id)) {
-            const s = r.squads.find((s) => s.id === plan.id)!;
-            s.state = structuredClone(candidate);
-            delete s.completeNight;
-            r.pendingRedeal = r.pendingRedeal.filter((id) => id !== plan.id);
-            if (g.phase === 'night') {
-              const start = now;
-              candidate.turn = {
-                order: shuffle(s.members, rng(`${r.seed}:${s.id}:${g.night}`)),
-                cursor: 0,
-                start,
-                deadline: 0,
-                snapshots: {},
-                log: [],
-                token: uuid(),
-              };
-              s.state = structuredClone(candidate);
-            }
-          }
-          break;
+      const candidate = preparedPuzzle(plan.kind as 'board' | 'lab', `${r.seed}:${plan.id}`);
+      changed = true;
+      r.prepared[key] = candidate;
+      delete r.preparing[key];
+      if (r.pendingRedeal?.includes(plan.id)) {
+        const s = r.squads.find((s) => s.id === plan.id)!;
+        delete s.completeNight;
+        r.pendingRedeal = r.pendingRedeal.filter((id) => id !== plan.id);
+        if (g.phase === 'night') {
+          candidate.turn = {
+            order: shuffle(s.members, rng(`${r.seed}:${s.id}:${g.night}`)),
+            cursor: 0,
+            start: now,
+            deadline: 0,
+            snapshots: {},
+            log: [],
+            token: uuid(),
+          };
         }
+        s.state = structuredClone(candidate);
       }
     }
   }
@@ -590,7 +570,7 @@ export function riteAction(
     check(next, failure);
     state.blocks = next;
     state.solved = boardSolved(next);
-    state.distance = solveBoard(next, 25000)?.length ?? null;
+    state.distance = solveBoard(next, 1500, performance.now() + 4)?.length ?? null;
     recordMove(
       s,
       now,
@@ -610,7 +590,7 @@ export function riteAction(
       to: String(c.to),
     });
     state.vials = next;
-    const solution = solveLab(next, 25000);
+    const solution = solveLab(next, 1500, performance.now() + 4);
     if (solution === null) {
       state.vials = structuredClone(state.nightStart);
       state.history = state.history.filter((h) => h.night !== g.night);

@@ -25,6 +25,12 @@ const playerActions = new Set([
 
 export function canApplyLatest(actor: Actor, command: Command): boolean {
   if (!actor.host) return playerActions.has(command.action);
+  if (command.action === 'undo' || command.action === 'rewind')
+    return typeof command.history === 'string' && command.history.length > 0;
+  // A control belongs to a phase, not a global table revision. Chat, notes,
+  // puzzle moves and other players' choices cannot invalidate that control.
+  if (command.action !== 'edit' && typeof command.phaseToken === 'string' && command.phaseToken.length > 0)
+    return true;
   if (!safeHostActions.has(command.action)) return false;
   switch (command.action) {
     case 'pause':

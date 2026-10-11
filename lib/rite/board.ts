@@ -46,6 +46,7 @@ export function boardMoves(blocks: Block[]) {
 export function solveBoard(
   blocks: Block[],
   cap = 100000,
+  deadline = Infinity,
 ): Slide[] | null | undefined {
   const start = blocks
     .map((b) => String.fromCharCode(48 + (b.horiz ? b.x : b.y)))
@@ -57,6 +58,7 @@ export function solveBoard(
   const keyIndex = blocks.findIndex((b) => b.key);
   const occupied = new Int8Array(36);
   for (let i = 0; i < queue.length; i++) {
+    if (i % 64 === 0 && performance.now() >= deadline) return undefined;
     const state = queue[i];
     if (state.charCodeAt(keyIndex) - 48 === 4) {
       const path: Slide[] = [];

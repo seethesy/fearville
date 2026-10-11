@@ -347,6 +347,8 @@ function executeCommand(
     actor.host || g.players.some((p) => p.id === actor.id && !p.departed),
     'This seat is no longer available.',
   );
+  if (actor.host && typeof c.phaseToken === 'string' && !['edit', 'undo', 'rewind', 'chat'].includes(c.action))
+    requireThat(c.phaseToken === `${g.day}:${g.night}:${g.phase}`, 'The phase changed. Choose an action for the current phase.');
   if(c.action === 'configureRite' || c.action.startsWith('rite')) {
     if (['configureRite', 'riteForce', 'riteRedeal', 'ritePassTurn'].includes(c.action) && actor.host) snapshot(g, 'Night Rite: ' + c.action, now);
     return riteAction(g, actor, c, now)!;
@@ -614,6 +616,8 @@ function executeCommand(
     );
   }
   if (c.action === 'undo' || c.action === 'rewind') {
+    if (c.action === 'undo' && c.history !== undefined)
+      requireThat(c.history === g.history.at(-1)?.id, 'A newer decision was made. Choose the decision to restore.');
     const index =
       c.action === 'undo'
         ? g.history.length - 1
@@ -621,6 +625,13 @@ function executeCommand(
     requireThat(index >= 0, 'No saved decision to restore.');
     const entry = g.history[index];
     const state = savedGame(entry.before);
+    // Names belong to the current membership, including snapshots stored
+    // separately from the live table before a member was renamed.
+    state.hostName = g.hostName;
+    for (const player of state.players) {
+      const current = g.players.find((p) => p.id === player.id);
+      if (current) player.name = current.name;
+    }
     requireThat(
       g.players.every((p) => state.players.some((q: Player) => q.id === p.id)),
       'Cannot rewind before a player joined. Correct seats manually.',

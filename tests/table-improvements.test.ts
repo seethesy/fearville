@@ -67,7 +67,7 @@ void test('Storyteller can publish and reset a custom role distribution', () => 
   const player = { id: g.players[0].id, host: false };
   const counts = { townsfolk: 2, outsider: 0, traveler: 1, minion: 1, demon: 1 };
   const control = view(g, host, 1, 1).controls.find((c) => c.action === 'setRoleDistribution');
-  assert.deepEqual(control?.fields.map((field) => field.key), ['townsfolk', 'outsider', 'traveler', 'minion', 'demon']);
+  assert.deepEqual(control?.fields.filter((field) => field.type !== 'hidden').map((field) => field.key), ['townsfolk', 'outsider', 'traveler', 'minion', 'demon']);
   assert.throws(() => execute(g, player, { action: 'setRoleDistribution', ...counts }, 2), /Storyteller/);
   assert.throws(() => execute(g, host, { action: 'setRoleDistribution', ...counts, demon: 2 }, 2), /add up/);
   execute(g, host, { action: 'setRoleDistribution', ...counts }, 3);

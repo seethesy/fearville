@@ -13,6 +13,13 @@ export const sessions = sqliteTable('sessions', {
   version: integer('version').notNull().default(0),
   created: integer('created').notNull(),
 });
+// Decision snapshots are read only when the Storyteller rewinds. Keeping them
+// out of the live table avoids copying every past decision on each move/poll.
+export const sessionSnapshots = sqliteTable('session_snapshots', {
+  code: text('code').notNull().references(() => sessions.code, { onDelete: 'cascade' }),
+  id: text('id').notNull(),
+  state: text('state').notNull(),
+}, (t) => [primaryKey({ columns: [t.code, t.id] })]);
 export const members = sqliteTable(
   'members',
   {

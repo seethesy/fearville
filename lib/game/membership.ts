@@ -23,6 +23,7 @@ export function renameMember(
   }
   // Keep a name change when rewinding game decisions.
   for (const entry of g.history) {
+    if (!entry.before) continue;
     const state = JSON.parse(entry.before) as Game;
     if (actor.host) state.hostName = name;
     else {

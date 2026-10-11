@@ -1,6 +1,7 @@
 import { database } from '@/db';
-import type { Actor, Game } from './types';
+import type { Actor, Command, Game } from './types';
 import { savedGame } from './saved-state';
+import type { ScopedUpdate } from './scoped-update';
 export const cookieName = 'ct_session';
 export async function hash(token: string) {
   const data = await crypto.subtle.digest(
@@ -67,7 +68,7 @@ export async function authenticatedRead(r: Request) {
       created: number;
     }>();
   if (!row) throw Error('AUTH');
-  const game = savedGame(row.state);
+  const game = savedGame(row.state, false);
   const actor = { id: row.player, host: !!row.host };
   if (!actor.host && !game.players.some((p) => p.id === actor.id && !p.departed))
     throw Error('AUTH');
@@ -80,18 +81,22 @@ export async function read(code: string) {
     .first<{ state: string; version: number; created: number }>();
   if (!row) throw Error('Session not found.');
   return {
-    game: savedGame(row.state),
+    game: savedGame(row.state, false),
     version: row.version,
     created: row.created,
   };
 }
 export async function save(g: Game, version: number, syncRanked = true) {
-  const state = JSON.stringify(g);
+  const snapshots = g.history.filter((entry) => entry.before);
+  const state = JSON.stringify({ ...g, history: g.history.map((entry) => ({ ...entry, before: '' })) });
   if (state.length > 8_000_000)
     throw Error(
       'Session storage is full. End this session and create another.',
     );
   const db = database();
+  const snapshotStatements = snapshots.map((entry) => db.prepare(
+    'INSERT INTO session_snapshots (code,id,state) SELECT ?,?,? WHERE EXISTS (SELECT 1 FROM sessions WHERE code=? AND version=?) ON CONFLICT(code,id) DO UPDATE SET state=excluded.state',
+  ).bind(g.code, entry.id, entry.before, g.code, version));
   const update = db
     .prepare(
       'UPDATE sessions SET state = ?, version = version + 1 WHERE code = ? AND version = ?',
@@ -99,17 +104,17 @@ export async function save(g: Game, version: number, syncRanked = true) {
     .bind(state, g.code, version);
   // Puzzle moves cannot change ranked membership. Keep their CAS write to one
   // statement instead of rebuilding locks for every seat on every move.
-  if (!syncRanked) return (await update.run()).meta.changes === 1;
+  if (!syncRanked && !snapshotStatements.length) return (await update.run()).meta.changes === 1;
   const guard =
     'EXISTS (SELECT 1 FROM sessions WHERE code=? AND version=? AND state=?)';
   const lockStatements: D1PreparedStatement[] = [];
-  if (g.phase === 'lobby' || !g.ranked) {
+  if (syncRanked && (g.phase === 'lobby' || !g.ranked)) {
     lockStatements.push(
       db
         .prepare(`DELETE FROM ranked_seats WHERE code=? AND ${guard}`)
         .bind(g.code, g.code, version + 1, state),
     );
-  } else if (g.progression?.ranked) {
+  } else if (syncRanked && g.progression?.ranked) {
     for (const seat of g.progression.seats) {
       if (!seat.account) continue;
       lockStatements.push(
@@ -148,8 +153,8 @@ export async function save(g: Game, version: number, syncRanked = true) {
     }
   }
   try {
-    const results = await db.batch([update, ...lockStatements]);
-    return results[0].meta.changes === 1;
+    const results = await db.batch([...snapshotStatements, update, ...lockStatements]);
+    return results[snapshotStatements.length].meta.changes === 1;
   } catch (error) {
     if (String(error).includes('ranked_seats.account'))
       throw Error(
@@ -157,6 +162,39 @@ export async function save(g: Game, version: number, syncRanked = true) {
       );
     throw error;
   }
+}
+export async function loadDecision(g: Game, command: Command) {
+  if (command.action !== 'undo' && command.action !== 'rewind') return;
+  const entry = command.action === 'undo' ? g.history.at(-1) : g.history.find((h) => h.id === command.history);
+  if (!entry || entry.before) return;
+  const row = await database().prepare('SELECT state FROM session_snapshots WHERE code=? AND id=?')
+    .bind(g.code, entry.id).first<{ state: string }>();
+  if (!row) throw Error('This saved decision is no longer available.');
+  entry.before = row.state;
+}
+export async function saveIndependent(code: string, update: ScopedUpdate) {
+  const params: (string | number | null)[] = [];
+  let expression = 'state';
+  // json_set creates missing object parents (for the first notebook).
+  if (update.set.length) {
+    expression = `json_set(${expression},${update.set.map(() => '?,json(?)').join(',')})`;
+    for (const [path, value] of update.set) params.push(path, JSON.stringify(value ?? null));
+  }
+  if (update.append) {
+    expression = `json_insert(${expression},?,json(?))`;
+    params.push(update.append[0], JSON.stringify(update.append[1]));
+  }
+  const guards = update.guard.map(() => 'json_extract(state,?) IS json_extract(?,\'$\')');
+  params.push(code);
+  for (const [path, value] of update.guard) params.push(path, JSON.stringify(value ?? null));
+  if (update.messageId) {
+    guards.push("NOT EXISTS (SELECT 1 FROM json_each(state,'$.messages') WHERE json_extract(value,'$.id')=?)");
+    params.push(update.messageId);
+  }
+  const row = await database().prepare(
+    `UPDATE sessions SET state=${expression}, version=version+1 WHERE code=? AND ${guards.join(' AND ')} RETURNING state,version,created`,
+  ).bind(...params).first<{ state: string; version: number; created: number }>();
+  return row ? { game: savedGame(row.state, false), version: row.version, created: row.created } : null;
 }
 export function json(
   data: unknown,

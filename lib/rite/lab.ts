@@ -42,6 +42,7 @@ function heuristic(state: string[]) {
 export function solveLab(
   vials: Vial[],
   cap = 60000,
+  deadline = Infinity,
 ): Pour[] | null | undefined {
   // A* with an admissible boundary heuristic. Canonical keys (sorted vial
   // contents) remove shape and empty-vial permutations, while each node
@@ -87,6 +88,7 @@ export function solveLab(
   const best = new Map([[key(states[0]), 0]]);
   push(0);
   while (heap.length) {
+    if (performance.now() >= deadline) return undefined;
     const node = pop(),
       state = states[node],
       g = depth[node];

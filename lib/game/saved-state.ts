@@ -106,7 +106,7 @@ function currentFields<T>(value: T, keys: Set<string>): T {
   ) as T;
 }
 
-function currentGame(game: Game): Game {
+function currentGame(game: Game, includeHistory = true): Game {
   const current = currentFields(game, GAME_KEYS);
   current.players = game.players.map((player) =>
     currentFields(player, PLAYER_KEYS),
@@ -118,19 +118,19 @@ function currentGame(game: Game): Game {
         currentFields(player, RECAP_PLAYER_KEYS),
       ),
     }));
-  if (game.history)
+  if (includeHistory && game.history)
     current.history = game.history.map((entry) => ({
       ...entry,
-      before: JSON.stringify(currentGame(JSON.parse(entry.before) as Game)),
+      before: entry.before ? JSON.stringify(currentGame(JSON.parse(entry.before) as Game)) : '',
     }));
   return current;
 }
 
-export function savedGame(state: string): Game {
+export function savedGame(state: string, includeHistory = true): Game {
   const game = JSON.parse(state) as Game;
   if (!game.script || !Object.hasOwn(SCRIPTS, game.script))
     throw Error(
       'This saved table uses a retired script. Create a new table with Horrors of Fearville or Holy Moon and Stars.',
     );
-  return currentGame(game);
+  return currentGame(game, includeHistory);
 }

@@ -172,7 +172,7 @@ void test('day confirmation automatically executes the ballot leader and checks 
   const finish = controls(g, host).find(
     (control) => control.action === 'finishDay',
   )!;
-  assert.deepEqual(finish.fields, []);
+  assert.deepEqual(finish.fields.filter((f) => f.type !== 'hidden'), []);
   execute(g, host, { action: 'finishDay' }, 5);
   execute(g, host, { action: 'resolveDeath', death: g.hms!.deathQueue[0].id }, 6);
   execute(g, host, { action: 'finishDay' }, 7);
