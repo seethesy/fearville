@@ -1,6 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { PlayerAvatar } from './player-avatar';
+import { SeatChartZoom } from './seat-chart-zoom';
 import type { GameView } from '@/lib/game/view';
 
 export function TableSeating({
@@ -18,6 +19,7 @@ export function TableSeating({
     game.players.length,
     ...game.players.map((p) => p.seat),
   );
+  const chartSize = Math.max(480, count * 48);
   async function act(action: string, seat?: number) {
     setBusy(true);
     setError('');
@@ -52,12 +54,13 @@ export function TableSeating({
             ? 'Your seat is saved. Leave it to choose another.'
             : 'Choose an open seat to join the circle.'}
       </p>
-      <div className="seat-circle-scroll">
+      <SeatChartZoom width={chartSize} height={chartSize}>
         <div
           className="seat-circle lobby-circle"
           style={{
-            minWidth: count > 8 ? count * 48 : 480,
-            minHeight: count > 8 ? count * 43 : 460,
+            width: chartSize,
+            height: chartSize,
+            minWidth: chartSize,
           }}
         >
           {!game.host && !!me?.seat && game.phase === 'lobby' && (
@@ -117,7 +120,7 @@ export function TableSeating({
             );
           })}
         </div>
-      </div>
+      </SeatChartZoom>
       {game.players.some((p) => !p.seat) && (
         <p className="muted">
           Choosing a seat:{' '}

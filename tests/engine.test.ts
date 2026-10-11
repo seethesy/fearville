@@ -4,6 +4,30 @@ import { newGame, newPlayer } from '../lib/game/types.ts';
 import { execute, tick, candidate } from '../lib/game/engine.ts';
 import { view } from '../lib/game/view.ts';
 const host = { id: 'host', host: true };
+void test('Storyteller can assign and swap script roles in the lobby', () => {
+  const g = newGame('ASSIGN', 'Host');
+  g.players = [newPlayer('Ada', 1), newPlayer('Ben', 2)];
+  const [ada, ben] = g.players;
+  assert.throws(
+    () => execute(g, { id: ada.id, host: false }, { action: 'assignRole', player: ben.id, role: 'doctor' }, 1),
+    /Storyteller/,
+  );
+  assert.throws(
+    () => execute(g, host, { action: 'assignRole', player: ada.id, role: 'werewolf' }, 1),
+    /this script/,
+  );
+  execute(g, host, { action: 'assignRole', player: ada.id, role: 'doctor' }, 2);
+  execute(g, host, { action: 'assignRole', player: ben.id, role: 'monster' }, 3);
+  execute(g, host, { action: 'assignRole', player: ben.id, role: 'doctor' }, 4);
+  assert.equal(ada.role, 'monster');
+  assert.equal(ben.role, 'doctor');
+  assert.equal(ben.shown, 'doctor');
+  g.phase = 'night';
+  assert.throws(
+    () => execute(g, host, { action: 'assignRole', player: ada.id, role: 'teacher' }, 5),
+    /lobby/,
+  );
+});
 function game(
   roles = [
     'sheriff',

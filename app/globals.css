@@ -707,8 +707,27 @@ footer {
   gap: 20px;
   margin-bottom: 30px;
 }
+.role-assignment-layout { display: grid; grid-template-columns: minmax(210px, 250px) minmax(0, 1fr); gap: 16px; align-items: start; }
+.role-assignment-layout .seat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.role-assignment-palette { position: sticky; top: 16px; max-height: min(75dvh, 700px); overflow-y: auto; }
+.role-assignment-palette h3 { margin-top: 0; }
+.role-assignment-team { display: grid; gap: 5px; margin-top: 15px; }
+.role-assignment-team h4 { margin: 0 0 3px; }
+.role-assignment-chip { display: flex; align-items: center; gap: 7px; width: 100%; min-height: 42px; padding: 6px 8px; border: 1px solid #64727b; border-radius: 8px; background: #1c242b; color: #fff; text-align: left; cursor: grab; }
+.role-assignment-chip[aria-pressed='true'] { border-color: #f0c886; box-shadow: inset 0 0 0 1px #f0c886; }
+.role-assignment-chip small { margin-left: auto; color: #c8c1bd; overflow: hidden; text-overflow: ellipsis; max-width: 70px; }
+.role-drop-target { outline: 3px solid #f0c886; outline-offset: 2px; }
+.seat-role-assignment { display: grid; gap: 7px; margin: 10px 0; }
+.seat-role-assignment select { width: 100%; min-height: 44px; background: #1c242b; color: #fff; border: 1px solid #64727b; border-radius: 7px; padding: 7px; }
 .seat-card h2 {
   margin-bottom: 10px;
+}
+@media (max-width: 900px) {
+  .role-assignment-layout { grid-template-columns: minmax(0, 1fr); }
+  .role-assignment-palette { position: static; max-height: 320px; }
+}
+@media (max-width: 600px) {
+  .role-assignment-layout .seat-grid { grid-template-columns: minmax(0, 1fr); }
 }
 .role-name {
   color: #f6a265;
@@ -2284,6 +2303,14 @@ h3,
   margin: 1rem 0;
   padding: 0.5rem 0;
 }
+.seat-chart-controls { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
+.seat-chart-controls button { min-width: 44px; min-height: 44px; border: 1px solid var(--border); border-radius: 8px; background: #24313a; color: #fff; }
+.seat-chart-controls button:disabled { opacity: .45; }
+.seat-chart-controls output { color: #c8c1bd; font-variant-numeric: tabular-nums; }
+.seat-chart-viewport { width: 100%; }
+.seat-chart-size { position: relative; margin: 0 auto; }
+.seat-chart-scaled { position: absolute; inset: 0 auto auto 0; transform-origin: top left; }
+.seat-chart-scaled .seat-circle { max-width: none; }
 .seat-circle {
   position: relative;
   width: 100%;

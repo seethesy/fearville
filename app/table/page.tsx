@@ -8,6 +8,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { PlayerNotes } from '@/components/player-notes';
 import { VoteChoices } from '@/components/vote-choices';
 import { RolePicker } from '@/components/role-picker';
+import { RoleAssignmentPalette } from '@/components/role-assignment-palette';
 import { RoleIcon } from '@/components/role-icon';
 import { MessageBadge } from '@/components/message-badge';
 import { NightChoiceNotice } from '@/components/night-choice-notice';
@@ -36,7 +37,7 @@ import {
 } from 'lucide-react';
 import type { GameView } from '@/lib/game/view';
 import type { Control, Field } from '@/lib/game/types';
-import { role, TEAM_ORDER, TEAM_NAMES } from '@/lib/game/types';
+import { role, scriptRoles, TEAM_ORDER, TEAM_NAMES } from '@/lib/game/types';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import {
   Dialog,
@@ -183,7 +184,10 @@ export default function Table() {
     [chatPlayer, setChatPlayer] = useState('all'),
     [activeTab, setActiveTab] = useState('flow'),
     [compact, setCompact] = useState(false),
-    [sandboxPov, setSandboxPov] = useState('host');
+    [sandboxPov, setSandboxPov] = useState('host'),
+    [selectedRole, setSelectedRole] = useState(''),
+    [dropSeat, setDropSeat] = useState(''),
+    [roleError, setRoleError] = useState('');
   const previousPhase = useRef<string | null>(null);
   const phase = game?.phase;
   useEffect(() => {
@@ -376,6 +380,39 @@ export default function Table() {
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Action failed.');
     } finally {
+      setBusy(false);
+    }
+  }
+  async function assignSeatRole(player: string, nextRole: string) {
+    if (!game?.host || game.phase !== 'lobby' || busy) return;
+    setBusy(true);
+    setRoleError('');
+    try {
+      const response = await fetch('/api/game', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'assignRole',
+          player,
+          role: nextRole,
+          version: game.version,
+        }),
+      });
+      const data = (await response.json()) as {
+        error?: string;
+        summary?: string;
+        game?: GameView;
+      };
+      if (!response.ok) throw Error(data.error || 'Could not assign the character.');
+      if (data.game) applyGame(data.game);
+      setNotice(data.summary ?? 'Character assigned.');
+      setSelectedRole('');
+      await refresh();
+    } catch (e) {
+      setRoleError(e instanceof Error ? e.message : 'Could not assign the character.');
+      await refresh();
+    } finally {
+      setDropSeat('');
       setBusy(false);
     }
   }
@@ -1063,6 +1100,13 @@ export default function Table() {
             {game.host && (
               <>
                 {game.phase === 'lobby' && (
+                  <TableMembership
+                    key={`host-membership:${game.code}`}
+                    game={game}
+                    refresh={refresh}
+                  />
+                )}
+                {game.phase === 'lobby' && (
                   <section className="panel">
                     <h2>{game.scriptName}</h2>
                     {game.controls
@@ -1096,9 +1140,35 @@ export default function Table() {
                     </div>
                   </section>
                 )}
+                {game.phase === 'lobby' && roleError && (
+                  <p className="error" role="alert">{roleError}</p>
+                )}
+                <div className={game.phase === 'lobby' ? 'role-assignment-layout' : ''}>
+                  {game.phase === 'lobby' && (
+                    <RoleAssignmentPalette
+                      game={game}
+                      selected={selectedRole}
+                      onSelect={setSelectedRole}
+                    />
+                  )}
                 <div className="seat-grid">
                   {game.players.map((p) => (
-                    <section className="panel seat-card" key={p.id}>
+                    <section
+                      className={`panel seat-card${dropSeat === p.id ? ' role-drop-target' : ''}`}
+                      key={p.id}
+                      onDragOver={(event) => {
+                        if (game.phase !== 'lobby') return;
+                        event.preventDefault();
+                        event.dataTransfer.dropEffect = 'move';
+                        setDropSeat(p.id);
+                      }}
+                      onDragLeave={() => setDropSeat('')}
+                      onDrop={(event) => {
+                        event.preventDefault();
+                        setDropSeat('');
+                        void assignSeatRole(p.id, event.dataTransfer.getData('text/plain'));
+                      }}
+                    >
                       <PlayerAvatar
                         avatar={p.avatar}
                         id={p.id}
@@ -1132,6 +1202,34 @@ export default function Table() {
                       </p>
                       {game.host && (
                         <>
+                          {game.phase === 'lobby' && (
+                            <div className="seat-role-assignment">
+                              <label className="field">
+                                Assign character
+                                <select
+                                  aria-label={`Assign character to ${p.name}`}
+                                  disabled={busy}
+                                  value={p.role ?? ''}
+                                  onChange={(event) => void assignSeatRole(p.id, event.target.value)}
+                                >
+                                  <option value="">Choose a character</option>
+                                  {scriptRoles(game.script).map((r) => (
+                                    <option key={r.id} value={r.id}>{r.name}</option>
+                                  ))}
+                                </select>
+                              </label>
+                              {selectedRole && (
+                                <button
+                                  type="button"
+                                  className="secondary"
+                                  disabled={busy}
+                                  onClick={() => void assignSeatRole(p.id, selectedRole)}
+                                >
+                                  Assign {role(selectedRole)?.name}
+                                </button>
+                              )}
+                            </div>
+                          )}
                           <p className="tags">
                             {p.poisoned ? 'POISONED ' : ''}
                             {p.feared ? 'FEARED ' : ''}
@@ -1159,6 +1257,7 @@ export default function Table() {
                       )}
                     </section>
                   ))}
+                </div>
                 </div>
               </>
             )}
