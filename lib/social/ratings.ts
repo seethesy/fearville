@@ -2,6 +2,8 @@ import { database } from '@/db';
 import { requireThat } from '@/lib/game/engine';
 import { validStars, text } from './derive';
 import { linkSeatRecords } from './results';
+import { isObjectionable, OBJECTIONABLE_COMMENT } from './moderation';
+import { ratingRef } from './reports';
 
 // Ratings stay open for two weeks after a game ends, and can be revised
 // within that window. The Storyteller must hold a linked account (otherwise
@@ -78,6 +80,7 @@ export async function rateStoryteller(
   );
   const stars = validStars(starsValue);
   const comment = text(commentValue, 1000);
+  requireThat(!isObjectionable(comment), OBJECTIONABLE_COMMENT);
   const db = database();
   await linkSeatRecords(me);
   const game = await db
@@ -117,10 +120,12 @@ export async function rateStoryteller(
 export async function receivedRatings(storyteller: string) {
   const rows = await database()
     .prepare(
-      'SELECT r.stars,r.comment,r.created,g.code,g.ended,g.players FROM storyteller_ratings r JOIN games g ON g.id=r.game WHERE r.storyteller=? ORDER BY r.created DESC LIMIT 50',
+      'SELECT r.game,r.rater,r.stars,r.comment,r.created,g.code,g.ended,g.players FROM storyteller_ratings r JOIN games g ON g.id=r.game WHERE r.storyteller=? ORDER BY r.created DESC LIMIT 50',
     )
     .bind(storyteller)
     .all<{
+      game: string;
+      rater: string;
       stars: number;
       comment: string;
       created: number;
@@ -128,5 +133,11 @@ export async function receivedRatings(storyteller: string) {
       ended: number;
       players: number;
     }>();
-  return rows.results;
+  // Raters stay anonymous: `ref` lets the Storyteller report a comment.
+  return Promise.all(
+    rows.results.map(async ({ game, rater, ...rating }) => ({
+      ...rating,
+      ref: rating.comment ? await ratingRef(game, rater) : null,
+    })),
+  );
 }

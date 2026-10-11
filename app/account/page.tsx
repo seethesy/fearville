@@ -16,6 +16,7 @@ import {
   type RecentGame,
 } from '@/components/social/record';
 import { load, when } from '@/components/social/api';
+import { ReportDialog } from '@/components/social/report-dialog';
 import {
   AlertDialog,
   AlertDialogContent,
@@ -34,6 +35,7 @@ type View = {
     created: number;
     code: string;
     players: number;
+    ref?: string | null;
   }[];
 };
 export default function Account() {
@@ -43,7 +45,8 @@ export default function Account() {
     [error, setError] = useState(''),
     [busy, setBusy] = useState(false),
     [deleting, setDeleting] = useState(false),
-    [confirm, setConfirm] = useState('');
+    [confirm, setConfirm] = useState(''),
+    [reportingRating, setReportingRating] = useState<string | null>(null);
   // /stats opens the History tab of this page.
   useSectionTutorial(tab === 'history' ? 'stats' : 'account');
   useEffect(() => {
@@ -212,6 +215,14 @@ export default function Account() {
                           </small>
                           {r.comment && <p>{r.comment}</p>}
                         </div>
+                        {r.ref && (
+                          <button
+                            className="quiet-link"
+                            onClick={() => setReportingRating(r.ref ?? null)}
+                          >
+                            Report
+                          </button>
+                        )}
                       </article>
                     ))
                   ) : (
@@ -252,6 +263,14 @@ export default function Account() {
             </div>
           )}
         </>
+      )}
+      {reportingRating && (
+        <ReportDialog
+          open
+          onOpenChange={(open) => !open && setReportingRating(null)}
+          title="Report this comment"
+          target={{ kind: 'rating', ref: reportingRating }}
+        />
       )}
       <AlertDialog open={deleting} onOpenChange={setDeleting}>
         <AlertDialogContent>

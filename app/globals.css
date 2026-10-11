@@ -2115,6 +2115,15 @@ h3,
   display: block;
   text-align: right;
 }
+.chat-bubble .message-report {
+  margin-top: 2px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font-size: 0.75rem;
+  text-decoration: underline;
+  cursor: pointer;
+}
 .message-composer {
   border-top: 1px solid var(--border);
 }
