@@ -1,6 +1,6 @@
 import { database } from '@/db';
 import { accountAuth } from '@/lib/accounts/service';
-import { errorResponse, json } from '@/lib/game/store';
+import { errorResponse, json, read } from '@/lib/game/store';
 import type { SessionRecap } from '@/lib/game/types';
 export async function GET(r: Request) {
   try {
@@ -22,13 +22,10 @@ export async function GET(r: Request) {
       return json({ error: 'This recap is not in your game history.' }, 404);
     let raw = row.recap;
     if (!raw) {
-      const old = await database()
-        .prepare(
-          "SELECT value FROM sessions,json_each(sessions.state,'$.recaps') WHERE sessions.code=? AND json_extract(value,'$.id')=?",
-        )
-        .bind(row.code, id)
-        .first<{ value: string }>();
-      raw = old?.value ?? null;
+      // Older games kept their recap only on the table (now in its stored parts).
+      const table = await read(row.code).catch(() => null);
+      const old = table?.game.recaps?.find((recap) => recap.id === id);
+      raw = old ? JSON.stringify(old) : null;
     }
     if (!raw)
       return json(

@@ -10,6 +10,7 @@ import {
   memberExpiry,
   memberCookie as cookie,
 } from '@/lib/game/join';
+import { createStatements, prepareWrite, runWrite } from '@/lib/game/part-store';
 import {
   auth,
   hash,
@@ -99,28 +100,22 @@ export async function POST(r: Request) {
             Date.now(),
           );
         }
-        // Unique operation marker makes credential revocation conditional on
+        // The write's unique marker makes credential revocation conditional on
         // this exact successful update, inside one atomic D1 transaction.
-        const state = JSON.stringify({ ...game, membershipRevision: uuid() });
-        const statements = [
-          db
-            .prepare(
-              'UPDATE sessions SET state = ?, version = version + 1 WHERE code = ? AND version = ?',
-            )
-            .bind(state, code, version),
-        ];
+        const write = prepareWrite(db, game, version);
+        const statements: D1PreparedStatement[] = [];
         if (removed) {
           for (const table of ['members', 'account_seats'])
             statements.push(
               db
                 .prepare(
-                  `DELETE FROM ${table} WHERE code = ? AND player = ? AND EXISTS (SELECT 1 FROM sessions WHERE code = ? AND state = ?)`,
+                  `DELETE FROM ${table} WHERE code = ? AND player = ? AND ${write.guard}`,
                 )
-                .bind(code, removed, code, state),
+                .bind(code, removed, ...write.guardBindings),
             );
         }
-        const result = await db.batch(statements);
-        if (!result[0].meta.changes) continue;
+        const result = await runWrite(db, write, [], statements);
+        if (!result?.[0].meta.changes) continue;
         return json(
           { ok: true },
           200,
@@ -195,11 +190,7 @@ export async function POST(r: Request) {
             ? newSandboxGame(code, name)
             : newGame(code, name);
         await db.batch([
-          db
-            .prepare(
-              'INSERT INTO sessions (code,state,version,created) VALUES (?,?,0,?)',
-            )
-            .bind(code, JSON.stringify(game), Date.now()),
+          ...createStatements(db, game, Date.now()),
           db
             .prepare(
               'INSERT INTO members (token_hash,code,player,host,expires) VALUES (?,?,?,1,?)',

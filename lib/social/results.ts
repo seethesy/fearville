@@ -215,12 +215,12 @@ export async function linkSeatRecords(account: string) {
   await db.batch([
     db
       .prepare(
-        "UPDATE game_players SET account=? WHERE account IS NULL AND EXISTS (SELECT 1 FROM account_seats s JOIN sessions se ON se.code=s.code WHERE s.account=? AND s.host=0 AND s.player=game_players.player AND (game_players.game=s.code || ':' || se.created OR game_players.game=s.code || ':' || json_extract(se.state,'$.gameStartedAt') OR EXISTS (SELECT 1 FROM json_each(se.state,'$.recaps') r WHERE json_extract(r.value,'$.id')=game_players.game AND EXISTS (SELECT 1 FROM json_each(r.value,'$.players') p WHERE json_extract(p.value,'$.id')=s.player))))",
+        "UPDATE game_players SET account=? WHERE account IS NULL AND EXISTS (SELECT 1 FROM account_seats s JOIN sessions se ON se.code=s.code WHERE s.account=? AND s.host=0 AND s.player=game_players.player AND (game_players.game=s.code || ':' || se.created OR game_players.game=s.code || ':' || json_extract(se.state,'$.gameStartedAt') OR EXISTS (SELECT 1 FROM json_each(se.state,'$.recaps') r WHERE json_extract(r.value,'$.id')=game_players.game AND EXISTS (SELECT 1 FROM json_each(r.value,'$.players') p WHERE json_extract(p.value,'$.id')=s.player)) OR EXISTS (SELECT 1 FROM session_parts sp,json_each(sp.state) r WHERE sp.code=se.code AND sp.part LIKE 'recaps:%' AND json_extract(r.value,'$.id')=game_players.game AND EXISTS (SELECT 1 FROM json_each(r.value,'$.players') p WHERE json_extract(p.value,'$.id')=s.player))))",
       )
       .bind(account, account),
     db
       .prepare(
-        "UPDATE games SET host_account=? WHERE host_account IS NULL AND EXISTS (SELECT 1 FROM account_seats s JOIN sessions se ON se.code=s.code WHERE s.account=? AND s.host=1 AND (games.id=s.code || ':' || se.created OR games.id=s.code || ':' || json_extract(se.state,'$.gameStartedAt') OR EXISTS (SELECT 1 FROM json_each(se.state,'$.recaps') r WHERE json_extract(r.value,'$.id')=games.id)))",
+        "UPDATE games SET host_account=? WHERE host_account IS NULL AND EXISTS (SELECT 1 FROM account_seats s JOIN sessions se ON se.code=s.code WHERE s.account=? AND s.host=1 AND (games.id=s.code || ':' || se.created OR games.id=s.code || ':' || json_extract(se.state,'$.gameStartedAt') OR EXISTS (SELECT 1 FROM json_each(se.state,'$.recaps') r WHERE json_extract(r.value,'$.id')=games.id) OR EXISTS (SELECT 1 FROM session_parts sp,json_each(sp.state) r WHERE sp.code=se.code AND sp.part LIKE 'recaps:%' AND json_extract(r.value,'$.id')=games.id)))",
       )
       .bind(account, account),
   ]);

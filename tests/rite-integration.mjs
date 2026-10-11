@@ -3,6 +3,7 @@ import { execFileSync } from 'node:child_process';
 import { writeFileSync, mkdirSync } from 'node:fs';
 import { hostFixtureFetch } from './host-fixture.mjs';
 import { claimSeats } from './claim-seats.mjs';
+import { assembleGame } from '../lib/game/parts.ts';
 import { beginNight } from '../lib/game/engine.ts';
 import { generateBoard, boardMoves } from '../lib/rite/board.ts';
 import { generateLab, solveLab } from '../lib/rite/lab.ts';
@@ -80,9 +81,12 @@ hr = await call('/api/rite', host.token, {
 });
 assert.equal(hr.rite.plans.length, 4);
 await call('/api/rite', seats[0].token, { action: 'riteForce' }, 400);
-const raw = JSON.parse(
-  sql(`SELECT state FROM sessions WHERE code='${host.code}'`)[0].state,
-);
+// Read the assembled table (core row plus parts); persist() writes it back as
+// an old-layout blob, which the server reads and converts.
+const stored = sql(
+  `SELECT state, (SELECT json_group_array(json_array(part, state)) FROM session_parts WHERE code=s.code) AS parts FROM sessions s WHERE code='${host.code}'`,
+)[0];
+const raw = assembleGame(stored.state, JSON.parse(stored.parts)).game;
 raw.players.forEach((p, i) => {
   p.role = p.shown = i === 0 ? 'basilisk' : i === 11 ? 'monster' : 'vigilante';
   p.used = true;

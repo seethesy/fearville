@@ -48,7 +48,7 @@ async function handle(r: Request, c?: Command) {
     requireThat(!c || summary !== null, 'Choose a Rite action.');
     const scoped = attempt === 0 && independentBefore && c ? independentCommand(independentBefore, game, viewer, c) : null;
     if (scoped) {
-      const saved = await saveIndependent(code, scoped);
+      const saved = await saveIndependent(game, scoped);
       if (!saved) continue;
       return json({ code, me: viewer.id, rite: riteView(saved.game, viewer, now), version: saved.version, serverNow: now, summary });
     }

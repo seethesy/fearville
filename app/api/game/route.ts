@@ -123,7 +123,7 @@ export async function POST(r: Request) {
       if (c.preview) return json({ summary, version });
       const scoped = i === 0 && independentBefore ? independentCommand(independentBefore, game, actionActor, c) : null;
       if (scoped) {
-        const saved = await saveIndependent(code, scoped);
+        const saved = await saveIndependent(game, scoped);
         if (!saved) continue;
         return json({ summary, game: view(saved.game, actionActor, saved.version, now, !!game.sandbox && actor.host) });
       }

@@ -1,7 +1,14 @@
 import { database } from '@/db';
 import type { Actor, Command, Game } from './types';
-import { savedGame } from './saved-state';
 import type { ScopedUpdate } from './scoped-update';
+import {
+  SESSION_COLUMNS,
+  loadStored,
+  prepareWrite,
+  runWrite,
+  saveIndependentParts,
+  type SessionRow,
+} from './part-store';
 export const cookieName = 'ct_session';
 export async function hash(token: string) {
   const data = await crypto.subtle.digest(
@@ -56,63 +63,45 @@ export async function authenticatedRead(r: Request) {
   if (!token || token.length > 200) throw Error('AUTH');
   const row = await database()
     .prepare(
-      'SELECT m.code, m.player, m.host, s.state, s.version, s.created FROM members m JOIN sessions s ON s.code = m.code WHERE m.token_hash = ? AND m.expires > ?',
+      `SELECT m.code, m.player, m.host, ${SESSION_COLUMNS} FROM members m JOIN sessions s ON s.code = m.code WHERE m.token_hash = ? AND m.expires > ?`,
     )
     .bind(await hash(token), Date.now())
-    .first<{
-      code: string;
-      player: string;
-      host: number;
-      state: string;
-      version: number;
-      created: number;
-    }>();
+    .first<SessionRow & { code: string; player: string; host: number }>();
   if (!row) throw Error('AUTH');
-  const game = savedGame(row.state, false);
+  const { game, version, created } = await converted(row);
   const actor = { id: row.player, host: !!row.host };
   if (!actor.host && !game.players.some((p) => p.id === actor.id && !p.departed))
     throw Error('AUTH');
-  return { actor, code: row.code, game, version: row.version, created: row.created };
+  return { actor, code: row.code, game, version, created };
 }
 export async function read(code: string) {
   const row = await database()
-    .prepare('SELECT state, version, created FROM sessions WHERE code = ?')
+    .prepare(`SELECT ${SESSION_COLUMNS} FROM sessions s WHERE s.code = ?`)
     .bind(code)
-    .first<{ state: string; version: number; created: number }>();
+    .first<SessionRow>();
   if (!row) throw Error('Session not found.');
-  return {
-    game: savedGame(row.state, false),
-    version: row.version,
-    created: row.created,
-  };
+  return converted(row);
+}
+// Older single-blob rows are split into parts the first time they load.
+// If another request wins the race, that request converts it instead.
+async function converted(row: SessionRow) {
+  const { game, version, created, legacy } = loadStored(row);
+  if (legacy && (await save(game, version, false)))
+    return { game, version: version + 1, created };
+  return { game, version, created };
 }
 export async function save(g: Game, version: number, syncRanked = true) {
-  const snapshots = g.history.filter((entry) => entry.before);
-  const state = JSON.stringify({ ...g, history: g.history.map((entry) => ({ ...entry, before: '' })) });
-  if (state.length > 8_000_000)
-    throw Error(
-      'Session storage is full. End this session and create another.',
-    );
   const db = database();
-  const snapshotStatements = snapshots.map((entry) => db.prepare(
-    'INSERT INTO session_snapshots (code,id,state) SELECT ?,?,? WHERE EXISTS (SELECT 1 FROM sessions WHERE code=? AND version=?) ON CONFLICT(code,id) DO UPDATE SET state=excluded.state',
-  ).bind(g.code, entry.id, entry.before, g.code, version));
-  const update = db
-    .prepare(
-      'UPDATE sessions SET state = ?, version = version + 1 WHERE code = ? AND version = ?',
-    )
-    .bind(state, g.code, version);
-  // Puzzle moves cannot change ranked membership. Keep their CAS write to one
-  // statement instead of rebuilding locks for every seat on every move.
-  if (!syncRanked && !snapshotStatements.length) return (await update.run()).meta.changes === 1;
-  const guard =
-    'EXISTS (SELECT 1 FROM sessions WHERE code=? AND version=? AND state=?)';
+  const write = prepareWrite(db, g, version);
+  // Puzzle moves cannot change ranked membership. Keep their CAS write small
+  // instead of rebuilding locks for every seat on every move.
+  const guard = write.guard;
   const lockStatements: D1PreparedStatement[] = [];
   if (syncRanked && (g.phase === 'lobby' || !g.ranked)) {
     lockStatements.push(
       db
         .prepare(`DELETE FROM ranked_seats WHERE code=? AND ${guard}`)
-        .bind(g.code, g.code, version + 1, state),
+        .bind(g.code, ...write.guardBindings),
     );
   } else if (syncRanked && g.progression?.ranked) {
     for (const seat of g.progression.seats) {
@@ -126,9 +115,7 @@ export async function save(g: Game, version: number, syncRanked = true) {
             seat.account,
             g.code,
             `${g.code}:${g.gameStartedAt}`,
-            g.code,
-            version + 1,
-            state,
+            ...write.guardBindings,
             g.phase,
             `${g.code}:${g.gameStartedAt}`,
           ),
@@ -143,9 +130,7 @@ export async function save(g: Game, version: number, syncRanked = true) {
             seat.account,
             g.code,
             `${g.code}:${g.gameStartedAt}`,
-            g.code,
-            version + 1,
-            state,
+            ...write.guardBindings,
             seat.account,
             g.code,
           ),
@@ -153,8 +138,8 @@ export async function save(g: Game, version: number, syncRanked = true) {
     }
   }
   try {
-    const results = await db.batch([...snapshotStatements, update, ...lockStatements]);
-    return results[snapshotStatements.length].meta.changes === 1;
+    const results = await runWrite(db, write, [], lockStatements);
+    return !!results && results[0].meta.changes === 1;
   } catch (error) {
     if (String(error).includes('ranked_seats.account'))
       throw Error(
@@ -172,29 +157,9 @@ export async function loadDecision(g: Game, command: Command) {
   if (!row) throw Error('This saved decision is no longer available.');
   entry.before = row.state;
 }
-export async function saveIndependent(code: string, update: ScopedUpdate) {
-  const params: (string | number | null)[] = [];
-  let expression = 'state';
-  // json_set creates missing object parents (for the first notebook).
-  if (update.set.length) {
-    expression = `json_set(${expression},${update.set.map(() => '?,json(?)').join(',')})`;
-    for (const [path, value] of update.set) params.push(path, JSON.stringify(value ?? null));
-  }
-  if (update.append) {
-    expression = `json_insert(${expression},?,json(?))`;
-    params.push(update.append[0], JSON.stringify(update.append[1]));
-  }
-  const guards = update.guard.map(() => 'json_extract(state,?) IS json_extract(?,\'$\')');
-  params.push(code);
-  for (const [path, value] of update.guard) params.push(path, JSON.stringify(value ?? null));
-  if (update.messageId) {
-    guards.push("NOT EXISTS (SELECT 1 FROM json_each(state,'$.messages') WHERE json_extract(value,'$.id')=?)");
-    params.push(update.messageId);
-  }
-  const row = await database().prepare(
-    `UPDATE sessions SET state=${expression}, version=version+1 WHERE code=? AND ${guards.join(' AND ')} RETURNING state,version,created`,
-  ).bind(...params).first<{ state: string; version: number; created: number }>();
-  return row ? { game: savedGame(row.state, false), version: row.version, created: row.created } : null;
+/** Save a chat message, notebook or vigil move as its own stored part. */
+export async function saveIndependent(g: Game, update: ScopedUpdate) {
+  return saveIndependentParts(database(), g, update);
 }
 export function json(
   data: unknown,
