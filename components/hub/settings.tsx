@@ -70,6 +70,7 @@ export function SettingsPanel() {
           ['muteInBackground', 'Mute when the app is in the background'],
           ['reducedMotion', 'Reduce motion and death animations'],
           ['largerText', 'Larger text'],
+          ['keepAwake', 'Keep screen awake during games'],
           ['showOnline', 'Show online status to friends'],
         ] as const
       ).map(([key, label]) => (

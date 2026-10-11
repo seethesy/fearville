@@ -8,6 +8,8 @@ export const defaultPreferences = {
   largerText: false,
   showOnline: true,
   showTips: true,
+  // Stop phones auto-locking while seated at a table.
+  keepAwake: true,
 };
 export type Preferences = typeof defaultPreferences;
 export type ProfileDefaults = {
@@ -38,6 +40,7 @@ export function normalizePreferences(value: unknown): Preferences {
     'largerText',
     'showOnline',
     'showTips',
+    'keepAwake',
   ] as const) {
     if (source[key] === undefined) continue;
     if (typeof source[key] !== 'boolean') throw Error('Choose valid settings.');
