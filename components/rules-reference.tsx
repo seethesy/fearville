@@ -1,5 +1,6 @@
 import { GlossaryText } from '@/components/glossary-text';
 import { RoleIcon } from './role-icon';
+import { RiteGuides } from './tutorials/rite-diagram';
 import {
   HMS_ROLES,
   HMS_FIRST,
@@ -13,6 +14,7 @@ import {
   type RoleScript,
 } from '@/lib/game/types';
 import { GLOSSARY } from '@/lib/game/glossary';
+import { roleTips } from '@/lib/game/role-tips';
 
 const teams = [
   {
@@ -190,9 +192,10 @@ function HorrorsOfFearville() {
         <article>
           <h3>How a death resolves</h3>
           <p>
-            A save or an impaired killer prevents a night death. Then the
-            Guardian may die in their ward’s place, and only then do triggers
-            happen (Executioner, Banshee, Hag, Hunter, Monster).
+            A save or an impaired killer prevents a night death. The Guardian
+            may die for their ward. After the Storyteller confirms a fatal night
+            outcome, the Bodyguard learns the target’s name and may take their
+            place. Death triggers then apply to whoever dies.
           </p>
         </article>
       </div>
@@ -215,19 +218,59 @@ function HorrorsOfFearville() {
         </article>
       </div>
       <RoleTeams script="horrors" />
+      <section
+        id="role-tips"
+        className="reference-section"
+        aria-labelledby="role-tips-title"
+      >
+        <p className="eyebrow">HORRORS OF FEARVILLE</p>
+        <h2 id="role-tips-title">Role tips</h2>
+        <p className="muted">
+          Ideas for playing each character. Your private Game flow shows only
+          the tips for the character you believe you are.
+        </p>
+        {teamsFor('horrors').map((team) => (
+          <div key={team.id} className="role-tips-group">
+            <h3>{team.name}</h3>
+            <div className="reference-role-grid">
+              {HOF_ROLES.filter((r) => r.team === team.id).map((r) => (
+                <article key={r.id}>
+                  <h4>{r.name}</h4>
+                  <ul>
+                    {roleTips('horrors', r.id).map((tip) => (
+                      <li key={tip}>{tip}</li>
+                    ))}
+                  </ul>
+                </article>
+              ))}
+            </div>
+          </div>
+        ))}
+      </section>
     </section>
   );
 }
 
 // Shared public reference: never accepts a game state or exposes assigned roles.
 // Inside a game, only that game's script is shown; the public page shows both.
-export function RulesReference({ script }: { script?: RoleScript }) {
+export function RulesReference({
+  script,
+  riteGuides = [],
+}: {
+  script?: RoleScript;
+  // Night Rite patterns whose guides to include (see RiteGuides).
+  riteGuides?: string[];
+}) {
   return (
     <div className="rules-reference">
       <nav className="reference-nav" aria-label="Rules and role sections">
         <a href="#how-to-play">How to play</a>
         <a href="#glossary">Glossary</a>
         <a href="#using-fearville">Using Fearville</a>
+        {(!script || script === 'horrors') && (
+          <a href="#role-tips">Role tips</a>
+        )}
+        {riteGuides.length > 0 && <a href="#night-rite">Night Rite</a>}
         {teamsFor(script ?? 'horrors').map((team) => (
           <a key={team.id} href={`#roles-${script ?? 'horrors'}-${team.id}`}>
             {team.name}
@@ -347,11 +390,23 @@ export function RulesReference({ script }: { script?: RoleScript }) {
           <li>
             <strong>Keep your seat.</strong> Closing a tab does not leave the
             game. Return from the home page in the same browser. Save your
-            private recovery key or link your account to return from another
-            device.
+            Sign in to your account to return from another device.
           </li>
         </ol>
       </section>
+      {riteGuides.length > 0 && (
+        <section
+          id="night-rite"
+          className="reference-section"
+          aria-labelledby="night-rite-title"
+        >
+          <p className="eyebrow">NIGHT RITE</p>
+          <h2 id="night-rite-title">
+            {riteGuides.length === 1 ? 'Your vigil’s puzzle' : 'Puzzle guides'}
+          </h2>
+          <RiteGuides patterns={riteGuides} />
+        </section>
+      )}
       {(!script || script === 'holyMoonStars') && <MoonAndStars />}
       {(!script || script === 'horrors') && <HorrorsOfFearville />}
     </div>

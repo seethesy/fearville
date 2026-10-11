@@ -887,11 +887,11 @@ footer {
   font-size: 0.8rem;
   color: #f6a265;
 }
-.recovery-panel {
+.entry-panel {
   max-width: 520px;
   margin: 50px auto;
 }
-.recovery-panel .field {
+.entry-panel .field {
   margin-top: 25px;
 }
 .table-shell footer {
@@ -1162,6 +1162,12 @@ h3,
   color: var(--foreground);
   letter-spacing: 0.12em;
 }
+.table-setup { order: 1; display: grid; gap: 6px; margin-top: 8px; color: var(--foreground); font: 13px 'Manrope', Arial, sans-serif; line-height: 1.4; }
+.table-setup strong { font-weight: 700; }
+.table-setup small { color: var(--muted-foreground); font-size: 11px; }
+.table-settings { order: 4; margin-top: 10px; }
+.settings-dialog { max-width: min(680px, calc(100vw - 24px)); max-height: min(90dvh, 900px); overflow-y: auto; }
+.settings-dialog .settings-panel { border: 0; padding: 0; box-shadow: none; }
 .session-code > span {
   color: var(--muted-foreground);
   letter-spacing: 0;
@@ -1422,6 +1428,8 @@ h3,
     margin: 0;
     font-size: 0.75rem;
   }
+  .table-setup { width: 100%; order: 2; margin-top: 0; }
+  .table-settings { order: 0; margin: 0; }
   .table-title {
     min-height: 0;
     margin: 0 0 22px;
@@ -2524,7 +2532,17 @@ h3,
 .notebook-player select {
   width: 100%;
   min-height: 44px;
+  color-scheme: dark;
+  color: #f5f1ed;
+  background: #28282e;
+  border-color: #756f77;
 }
+.notebook-player select option { color: #f5f1ed; background: #28282e; }
+.notes-circle { min-width: 480px; min-height: 460px; }
+.notes-seat { display: grid; justify-items: center; gap: 4px; width: 106px; color: #f4ede5; text-align: center; cursor: default; touch-action: auto; }
+.notes-circle .notes-seat .portrait-stage { width: 58px; height: 58px; }
+.notes-seat small { color: #c8c1bd; }
+.notes-seat.is-dead small { color: #f2a4a4; }
 @media (max-width: 480px) {
   .notebook-player {
     grid-template-columns: 1fr auto;
@@ -2639,7 +2657,25 @@ h3,
 .atmosphere-night .ambient-mote { background: #bed6ed; }
 .atmosphere-control { max-width: 1400px; margin: 0 auto; padding: .6rem 1rem 0; text-align: right; }
 .atmosphere-control button { font-size: .75rem; padding: .4rem .7rem; }
-.portrait-stage { display: inline-grid; position: relative; vertical-align: middle; line-height: 1; }
+.portrait-stage { display: inline-grid; position: relative; vertical-align: middle; line-height: 1; width: 64px; height: 64px; flex: 0 0 auto; }
+.portrait-stage > .player-avatar { width: 100%; height: 100%; }
+.avatar-options .portrait-stage, .preset-grid .portrait-stage { width: 48px; height: 48px; }
+.preset-grid .portrait-stage { width: 48px; height: 48px; }
+.avatar-preview .portrait-stage { width: 96px; height: 96px; }
+.circle-seat .portrait-stage { width: 46px; height: 46px; }
+.lobby-seat .portrait-stage, .recap-seat .portrait-stage { width: 58px; height: 58px; }
+.death-preview-dialog { max-width: min(560px, calc(100vw - 24px)); text-align: center; overflow: hidden; }
+.death-preview-stage { position: relative; display: grid; place-items: center; min-height: 310px; isolation: isolate; background: radial-gradient(circle, #34445b, #151b26 72%); border-radius: 14px; }
+.death-preview-stage .portrait-stage { width: 110px; height: 110px; }
+.effect-options { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; }
+.effect-option { display: grid; justify-items: center; gap: 12px; min-height: 120px; padding: 18px 10px; border: 1px solid #625865; border-radius: 12px; background: #24242b; color: #eee8ed; cursor: pointer; }
+.effect-option svg { width: 46px; height: 46px; }
+.effect-option-spirit svg { color: #98fff0; }
+.effect-option-embers svg { color: #ffa15c; }
+.effect-option-petals svg { color: #f49cbe; }
+.effect-option-mist svg { color: #b8a9ff; }
+.effect-option-none svg { color: #b9b7c2; }
+.effect-option.selected { border-color: #ef9a59; background: #382a23; box-shadow: inset 0 0 0 1px #ef9a59; }
 .player-avatar { transition: filter 1s ease, opacity 1s ease, box-shadow .35s ease, border-color .35s ease; }
 .circle-seat .portrait-stage { display: inline-grid; overflow: visible; }
 .cosmetic-preview-stage { display: inline-grid; place-items: center; position: relative; padding: 1rem; }
@@ -2883,6 +2919,41 @@ button.glossary-trigger:focus-visible { outline: 2px solid currentColor; outline
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
+/* Night Rite guide drawings (lib/tutorials/diagrams.ts). */
+.rite-diagram {
+  margin-bottom: 14px;
+  line-height: 0;
+}
+.rite-diagram img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 8px;
+}
+.rite-guides {
+  display: grid;
+  gap: 18px;
+}
+.rite-guide ol {
+  list-style: none;
+  padding: 0;
+  margin: 10px 0 0;
+  display: grid;
+  gap: 16px;
+}
+.rite-guide h4 {
+  margin: 0 0 4px;
+}
+.rite-guide p {
+  margin: 0;
+}
+.rite-guide .rite-guide-summary {
+  color: var(--muted-foreground);
+}
+.rite-guide .rite-diagram {
+  max-width: 420px;
+  margin-bottom: 8px;
+}
 .tutorial-illustration {
   position: relative;
   display: grid;
@@ -3039,4 +3110,27 @@ button.glossary-trigger:focus-visible { outline: 2px solid currentColor; outline
     animation: none;
     transition: none;
   }
+}
+.role-tips-panel {
+  margin-block: 1rem;
+}
+.role-tips-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: .75rem;
+}
+.role-tips-panel ul,
+.role-tips-group ul {
+  padding-left: 1.35rem;
+  margin: .9rem 0 0;
+}
+.role-tips-panel li,
+.role-tips-group li {
+  margin-block: .45rem;
+  line-height: 1.5;
+}
+.role-tips-group {
+  margin-block: 1.5rem;
 }

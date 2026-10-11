@@ -274,7 +274,7 @@ function finishVote(s: Squad, at: number) {
       const last = state.history.pop();
       if (last) state.vials = last.before;
     }
-    state.distance = solveLab(state.vials, 12000)?.length ?? null;
+    state.distance = solveLab(state.vials, 25000)?.length ?? null;
   }
   t.voteResult = { id: vote.id, passed };
   delete t.vote;
@@ -596,7 +596,7 @@ export function riteAction(
     check(next, failure);
     state.blocks = next;
     state.solved = boardSolved(next);
-    state.distance = solveBoard(next, 12000)?.length ?? null;
+    state.distance = solveBoard(next, 25000)?.length ?? null;
     nextTurn(
       s,
       now,
@@ -616,7 +616,7 @@ export function riteAction(
       to: String(c.to),
     });
     state.vials = next;
-    const solution = solveLab(next, 12000);
+    const solution = solveLab(next, 25000);
     if (solution === null) {
       state.vials = structuredClone(state.nightStart);
       state.history = state.history.filter((h) => h.night !== g.night);

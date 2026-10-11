@@ -32,7 +32,7 @@ export async function joinSession(
     requireThat(!game.sandbox, 'Sandbox sessions do not accept live players.');
     requireThat(
       game.phase === 'lobby',
-      'This game has started. Use your recovery key to reconnect.',
+      'This game has started. Rejoin from your account’s saved lobbies.',
     );
     requireThat(game.players.length < MAX_PLAYERS, 'This table is full.');
     assignAvatars(game.players);

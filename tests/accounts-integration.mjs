@@ -28,6 +28,12 @@ assert.equal((await call('/api/accounts/exchange','',{code:nativeCode,verifier:'
 const exchanged=await call('/api/accounts/exchange','',{code:nativeCode,verifier});assert.equal(exchanged.status,200);const tokenA2=exchanged.data.accountToken;
 assert.equal((await call('/api/accounts/exchange','',{code:nativeCode,verifier})).status,400);
 assert.equal((await call('/api/accounts',tokenA2)).data.account.id,a);
+assert.equal((await call('/api/accounts',tokenA2)).data.profile.settings.showTips,true);
+assert.equal((await call('/api/accounts',tokenA2,{action:'roleTips',enabled:false})).status,200);
+assert.equal((await call('/api/accounts',tokenA)).data.profile.settings.showTips,false,
+  'tips preference is shared by account sessions');
+assert.equal((await call('/api/accounts',tokenA,{action:'roleTips',enabled:true})).status,200);
+assert.equal((await call('/api/accounts',tokenA2)).data.profile.settings.showTips,true);
 assert.equal((await call('/api/accounts',tokenA,{action:'signout'},member)).status,200);
 assert.equal((await call('/api/accounts',tokenA)).data.account,null);assert.equal((await call('/api/game','',undefined,member)).status,401);
 assert.equal((await call('/api/accounts',tokenA2,{action:'delete',confirm:'wrong'})).status,400);

@@ -2,6 +2,7 @@
 import { useEffect } from 'react';
 import type { GameView } from '@/lib/game/view';
 import {
+  riteGuideTrigger,
   suppressionReasons,
   walkthroughTriggers,
 } from '@/lib/tutorials/engine';
@@ -69,6 +70,12 @@ export function TableTutorials({
   useEffect(() => {
     if (night) sectionOpened('night');
   }, [night, sectionOpened]);
+
+  // Night 1: the player's own Night Rite guide, ahead of the Rite opening.
+  const guide = riteGuideTrigger(game);
+  useEffect(() => {
+    if (guide) request(guide);
+  }, [guide, request]);
 
   const reasons = suppressionReasons(game);
   useTutorialBlocker('night-choice', reasons.includes('night-choice'));

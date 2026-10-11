@@ -21,7 +21,6 @@ import {
   type Task,
 } from './hms.ts';
 import {
-  threatened,
   seenVisitors,
   morticianFinds,
   psychicSuggestion,
@@ -136,10 +135,19 @@ export function hofNightFields(
             !!choice?.flag,
           ),
         );
-      else
-        notes.push(
-          'If the victim dies, choose a living neighbor to fear next night.',
+      else {
+        const near = target ? livingNeighbors(g, target) : [];
+        fields.push(
+          select(
+            'monsterFear',
+            'If the target dies: neighbor to fear next night',
+            none.concat(near.map((q) => ({ value: q.id, label: q.name }))),
+            near.some((q) => q.id === choice?.fearTarget)
+              ? choice!.fearTarget
+              : (near[0]?.id ?? ''),
+          ),
         );
+      }
       break;
     }
     case 'detective': {
@@ -266,35 +274,6 @@ export function hofNightFields(
       );
       break;
     }
-    case 'bodyguard': {
-      const victims = threatened(g);
-      const offered = !!choice && !choice.pass;
-      fields.push(
-        select(
-          'protect',
-          'Bodyguard dies in place of',
-          none.concat(
-            victims.map((d) => ({
-              value: d.player,
-              label: nameOf(g, d.player),
-            })),
-          ),
-          offered ? (victims[0]?.player ?? '') : '',
-        ),
-        text('info', 'Information (blank uses the calculation)'),
-      );
-      notes.push(
-        victims.length
-          ? `Will be killed tonight: ${victims.map((d) => `${nameOf(g, d.player)} (${d.cause})`).join(', ')}.`
-          : 'Nobody will be killed tonight.',
-        choice
-          ? choice.pass
-            ? 'The Bodyguard declined to die in anyone’s place.'
-            : 'The Bodyguard offered to die in someone’s place.'
-          : 'The Bodyguard has not answered; you may ask them privately.',
-      );
-      break;
-    }
   }
 }
 
@@ -327,17 +306,10 @@ export function hofDeathFields(
         ),
       ),
     );
-  if (d.by === 'monster' && !d.impaired) {
-    const near = livingNeighbors(g, v).filter((q) => q.id !== v.id);
-    fields.push(
-      select(
-        'monsterFear',
-        'Monster: living neighbor feared next night',
-        none.concat(near.map((q) => ({ value: q.id, label: q.name }))),
-        near[0]?.id ?? '',
-      ),
+  if (d.by === 'monster' && d.monsterFear)
+    notes.push(
+      `If ${v.name} dies, the Monster fears ${nameOf(g, d.monsterFear)} next night.`,
     );
-  }
   if (v.role === 'hag')
     notes.push('The Hag may then declare another player to die.');
   if (v.role === 'banshee' && d.cause === 'execution' && healthy(v))
@@ -373,6 +345,28 @@ export function hofControls(
   const confirm = (label: string) => [
     { ...check('confirm', label), required: true },
   ];
+  const offer = s?.deathQueue.find(
+    (d) => d.ready && d.bodyguard && d.bodyguard.decision === undefined,
+  );
+  if (offer && (a.host || a.id === offer.bodyguard?.player)) {
+    const victim = nameOf(g, offer.player);
+    const fields: Field[] = [
+      { key: 'death', label: '', type: 'hidden', value: offer.id },
+    ];
+    add(
+      'bodyguardAccept',
+      'Die in ' + victim + '’s place',
+      `The Storyteller confirmed that ${victim} will die tonight. Take their place?`,
+      fields,
+      true,
+    );
+    add(
+      'bodyguardDecline',
+      'Let ' + victim + ' die',
+      `Decline to take ${victim}’s place.`,
+      fields,
+    );
+  }
   const researchFields = (except: string) =>
     [1, 2, 3].flatMap((i) => [
       select(
@@ -434,7 +428,7 @@ export function hofControls(
       );
     }
     const researchers = g.players.filter(
-      (q) => q.role === 'researcher' && q.alive && !q.used,
+      (q) => q.role === 'researcher' && !q.used,
     );
     if (day && researchers.length)
       add(
@@ -491,7 +485,7 @@ export function hofControls(
       ],
       true,
     );
-  if (day && me.role === 'researcher' && me.alive && !me.used)
+  if (day && me.role === 'researcher' && !me.used)
     add(
       'researcherDeclare',
       'Declare three roles (Researcher)',

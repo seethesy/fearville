@@ -28,12 +28,15 @@ import {
   ST,
   nightChoiceDeadlineFor,
   nightChoiceWindowDeadline,
+  pendingDeath,
+  livingNeighbors,
 } from './hms.ts';
 import { hmsNightFields, deathControl, hmsControls } from './hms-view.ts';
 import { recapOf } from './lobby.ts';
 import { alignmentOf, winnerOf } from '../social/derive.ts';
 import { BASE_XP, mvpShares } from '../social/progression.ts';
 import { isHof, sphinxGlimpse, defaultCharge } from './hof.ts';
+import { roleTips } from './role-tips.ts';
 const select = (
   key: string,
   label: string,
@@ -323,7 +326,7 @@ export function controls(g: Game, a: Actor): Control[] {
     }
     const death = deathControl(g, ps);
     if (death) result.push(death);
-    if (g.phase === 'night' && !death) {
+    if (g.phase === 'night' && !pendingDeath(g)) {
       const t = tasks(g).find((t) => !t.done);
       if (t) {
         const { fields, description } = hmsNightFields(g, t, ps);
@@ -775,6 +778,13 @@ export function view(
                   : undefined,
             })),
             choice: g.nightChoices?.[choiceTask.key] ?? null,
+            fearOptions:
+              choiceTask.role === 'monster'
+                ? g.players.map((p) => ({
+                    target: p.id,
+                    neighbors: livingNeighbors(g, p).map((q) => q.id),
+                  }))
+                : null,
           }
         : null,
     nightConfirmation:
@@ -840,6 +850,12 @@ export function view(
     storytellerAbility:
       a.host && g.hms?.stRole ? (role(g.hms.stRole)?.name ?? null) : null,
     pendingDeaths: a.host ? (g.hms?.deathQueue.length ?? 0) : 0,
+    pendingBodyguard:
+      a.host &&
+      pendingDeath(g)?.bodyguard &&
+      pendingDeath(g)!.bodyguard!.decision === undefined
+        ? nameOf(g, pendingDeath(g)!.bodyguard!.player)
+        : null,
     dawnAnnouncement:
       g.phase !== 'night' && g.phase !== 'lobby'
         ? (g.dawnAnnouncement ?? null)
@@ -952,6 +968,7 @@ export function view(
             name: role(me.shown || me.role)?.name,
             description: role(me.shown || me.role)?.description,
             alignment: alignment({ ...me, role: me.shown || me.role }),
+            tips: roleTips(g.script ?? 'horrors', me.shown || me.role),
           }
         : null,
     tasks: a.host && g.phase === 'night' ? tasks(g) : [],

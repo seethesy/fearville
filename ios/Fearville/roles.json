@@ -206,7 +206,7 @@
     "id": "bodyguard",
     "name": "Bodyguard",
     "team": "townsfolk",
-    "description": "Every night after the first, learn if someone is killed at night. You will be given the option to die in their place.",
+    "description": "After the Storyteller confirms that someone will die at night, learn their name and choose whether to die in their place.",
     "script": "horrors"
   },
   {
@@ -297,7 +297,7 @@
     "id": "researcher",
     "name": "Researcher",
     "team": "traveler",
-    "description": "Once per game, you may declare the role of 3 living players. You win if you are correct about all of them.",
+    "description": "Once per game, even while dead, you may declare the role of 3 living players. You win if you are correct about all of them.",
     "script": "horrors"
   },
   {
@@ -332,7 +332,7 @@
     "id": "monster",
     "name": "Monster",
     "team": "demon",
-    "description": "Every night after the first, visit one player to kill them that night. If they die, one of their living neighbors is feared the following night.",
+    "description": "Every night after the first, visit one player to kill them and choose one of their living neighbors. If the target dies, your chosen neighbor is feared the following night.",
     "script": "horrors"
   },
   {

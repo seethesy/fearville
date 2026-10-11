@@ -1,4 +1,5 @@
 import { IOS_SYMBOLS, TUTORIALS } from './content.ts';
+import { iosDiagramAsset } from './diagrams.ts';
 import { available, stepsFor } from './engine.ts';
 
 // The iPhone app bundles this catalog as tutorials.json, resolved for iOS
@@ -19,6 +20,8 @@ export function iosCatalog() {
         title: s.title,
         body: s.body,
         symbol: s.illustration ? IOS_SYMBOLS[s.illustration] : null,
+        // Night Rite guides: a vector diagram in the asset catalog.
+        diagram: s.diagram ? iosDiagramAsset(s.diagram) : null,
         tab: s.ios?.tab ?? null,
       })),
     })),

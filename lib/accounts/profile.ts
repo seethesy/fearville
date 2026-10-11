@@ -67,3 +67,9 @@ export async function savePreferences(account: string, value: unknown) {
     .run();
   return settings;
 }
+
+export async function saveRoleTipsPreference(account: string, enabled: unknown) {
+  if (typeof enabled !== 'boolean') throw Error('Choose a valid tips setting.');
+  const profile = await profileDefaults(account);
+  return savePreferences(account, { ...profile.settings, showTips: enabled });
+}

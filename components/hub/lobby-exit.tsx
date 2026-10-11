@@ -41,7 +41,7 @@ export function LobbyExit({ game }: { game: GameView }) {
     <div className="lobby-exits">
       <AppLink className="secondary" href="/">
         <Home size={16} />
-        Return home <small>(keep lobby)</small>
+        Return home
       </AppLink>
       {canExit && (
         <button className="danger" onClick={() => setConfirm(true)}>

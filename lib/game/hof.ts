@@ -101,7 +101,8 @@ function canAct(g: Game, p: Player, r: string) {
 }
 export function hofTasks(g: Game): Task[] {
   const s = hms(g);
-  const order = g.night === 1 ? HOF_FIRST : [...refreshedInfoRoles(g), ...HOF_OTHER];
+  const order =
+    g.night === 1 ? HOF_FIRST : [...refreshedInfoRoles(g), ...HOF_OTHER];
   const out: Task[] = [];
   const special = (key: string, name: string) =>
     out.push({ key, role: key, player: '', name, done: g.done.includes(key) });
@@ -194,15 +195,6 @@ export function hofChoiceSpec(
         label: 'Choose a player to kill tonight.',
         flag: 'Stay hidden: nobody detects you visiting them',
         eligible: (q) => living(q) && notMe(q),
-      };
-    case 'bodyguard':
-      return {
-        ...base,
-        count: 0,
-        optional: true,
-        label:
-          'If someone is killed tonight, will you die in their place? Confirm to offer your life, or pass to decline.',
-        eligible: () => false,
       };
   }
   return null;
@@ -439,9 +431,22 @@ export function hofResolve(
       return `Doctor saves ${target.name} tonight.${impaired}`;
     case 'monster':
     case 'wraith':
+      if (t.role === 'monster') {
+        const feared = clean(c.monsterFear) || clean(ctx.choice?.fearTarget);
+        requireThat(
+          !feared || livingNeighbors(g, target).some((q) => q.id === feared),
+          'Choose one of the target’s living neighbors to fear.',
+        );
+      }
       enqueueDeath(g, target.id, roleName(t.role), {
         impaired: !fine,
         by: t.role,
+        ...(t.role === 'monster'
+          ? {
+              monsterFear:
+                clean(c.monsterFear) || clean(ctx.choice?.fearTarget),
+            }
+          : {}),
       });
       send(`You visit ${target.name} to kill them tonight.`);
       return `${roleName(t.role)} attacks ${target.name}${c.hidden === true ? ' (hidden)' : ''}. The death resolves at the end of the night.${impaired}`;
@@ -556,32 +561,6 @@ export function hofResolve(
       send(text);
       return text;
     }
-    case 'bodyguard': {
-      const victims = threatened(g);
-      const protect = clean(c.protect);
-      if (protect) {
-        const item = victims.find((d) => d.player === protect);
-        requireThat(item, 'Choose a player who will be killed tonight.');
-        if (fine) {
-          item.player = p.id;
-          item.cause += `, the Bodyguard took ${nameOf(g, protect)}’s place`;
-          delete item.by;
-        }
-      }
-      const names = victims.map((d) => nameOf(g, d.player));
-      const given = clean(c.info, 2000);
-      const text =
-        given ||
-        (names.length
-          ? `Tonight ${names.join(', ')} ${names.length === 1 ? 'is' : 'are'} attacked.${protect ? ` You die in ${nameOf(g, protect)}’s place.` : ''}`
-          : 'Nobody is killed tonight.');
-      send(text);
-      return (
-        text +
-        (protect && !fine ? ' Impaired: nobody is protected.' : '') +
-        (protect && fine ? ' The death moves to the Bodyguard.' : '')
-      );
-    }
   }
   const info = clean(c.info, 2000);
   if (info) send(info);
@@ -605,6 +584,12 @@ export function guardianFor(g: Game, victim: Player) {
       healthy(q),
   );
 }
+export function bodyguardFor(g: Game, victim: Player) {
+  return g.players.find(
+    (q) =>
+      q.role === 'bodyguard' && q.alive && !q.departed && q.id !== victim.id,
+  );
+}
 export function validateHofTriggers(
   g: Game,
   v: Player,
@@ -618,12 +603,6 @@ export function validateHofTriggers(
         (q) => q.id === haunt && q.alive && team(q.role) === 'minion',
       ),
       'Choose a living Haunt for the Hunter.',
-    );
-  const feared = clean(c.monsterFear);
-  if (feared)
-    requireThat(
-      livingNeighbors(g, v).some((q) => q.id === feared),
-      'Choose one of their living neighbors.',
     );
   void d;
 }
@@ -670,8 +649,8 @@ export function hofAfterKill(
     }
   }
   if (d.by === 'monster' && !d.impaired) {
-    const feared = clean(c.monsterFear);
-    if (feared) {
+    const feared = d.monsterFear;
+    if (feared && person(g, feared).alive) {
       person(g, feared).fearNight = g.night + 1;
       log(
         g,
@@ -755,6 +734,28 @@ export function hofAction(
 ): string | null {
   const s = hms(g);
   switch (c.action) {
+    case 'bodyguardAccept':
+    case 'bodyguardDecline': {
+      const d = s.deathQueue.find((item) => item.id === clean(c.death));
+      requireThat(
+        d?.bodyguard && d.bodyguard.decision === undefined,
+        'This Bodyguard offer is no longer available.',
+      );
+      requireThat(
+        actor.host || actor.id === d.bodyguard.player,
+        'Only the Bodyguard can answer this offer.',
+      );
+      const accepted = c.action === 'bodyguardAccept';
+      d.bodyguard.decision = accepted;
+      log(
+        g,
+        `Bodyguard ${nameOf(g, d.bodyguard.player)} ${accepted ? 'offers to die' : 'declines to die'} in ${nameOf(g, d.player)}’s place.`,
+        now,
+      );
+      return accepted
+        ? 'You offered to die in their place.'
+        : 'You declined the offer.';
+    }
     case 'vigilanteDeclare': {
       requireThat(!actor.host, 'Use “Resolve Vigilante declaration”.');
       const me = person(g, actor.id);
@@ -837,7 +838,7 @@ export function hofAction(
     case 'researcherDeclare': {
       const p = actor.host ? person(g, c.player) : person(g, actor.id);
       requireThat(
-        p.role === 'researcher' && p.alive && !p.used,
+        p.role === 'researcher' && !p.used,
         'This player cannot make a Researcher declaration.',
       );
       requireThat(isDay(g), 'Declarations are made during the day.');

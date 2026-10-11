@@ -212,7 +212,7 @@ export function GameEndPopup({
             disabled={busy}
             onClick={() => void act('leaveLobby')}
           >
-            {game.host ? 'Return home (keep lobby)' : 'Leave lobby'}
+            {game.host ? 'Return home' : 'Leave lobby'}
           </button>
           <button
             className="primary"

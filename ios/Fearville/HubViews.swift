@@ -59,7 +59,6 @@ struct NativeWelcome: View {
                     if guest { NativeJoin(guest: true) }
                     else { Button("Continue as guest") { guest = true }.buttonStyle(.borderedProminent).controlSize(.large) }
                     if store.authenticated { Button("Rejoin your lobby") { store.showingTable = true } }
-                    NativeRecovery()
                     NativeError()
                 }.padding(26)
             }.background(Color.tableBackground)
@@ -78,16 +77,6 @@ struct NativeJoin: View {
             TextField("6-digit session code", text: $code).keyboardType(.numberPad).textContentType(.oneTimeCode).font(.title2.monospaced()).onChange(of: code) { _, value in code = String(value.filter { ($0.isASCII && $0.isLetter) || ($0.isASCII && $0.isNumber) }.prefix(6)).uppercased() }
             Button { Task { await store.enter(action: "join", name: name, code: code) } } label: { Text(store.working ? "Joining…" : "Join game").frame(maxWidth: .infinity) }.buttonStyle(.borderedProminent).controlSize(.large).disabled(store.working || code.count != 6 || (guest && name.trimmingCharacters(in: .whitespaces).isEmpty))
         }.textFieldStyle(.roundedBorder).padding(20).background(Color.tablePanel, in: RoundedRectangle(cornerRadius: 16))
-    }
-}
-struct NativeRecovery: View {
-    @EnvironmentObject var store: TableStore
-    @State private var key = ""
-    var body: some View {
-        DisclosureGroup("Recover a seat on another device") {
-            SecureField("Private recovery key", text: $key).textInputAutocapitalization(.never).autocorrectionDisabled().textFieldStyle(.roundedBorder)
-            Button("Restore my seat") { Task { await store.enter(action: "restore", name: "", recovery: key) } }.disabled(key.isEmpty || store.working)
-        }.font(.callout)
     }
 }
 struct NativePlay: View {
@@ -116,7 +105,6 @@ struct NativePlay: View {
                     Text("Saved lobbies").font(.title2)
                     ForEach(seats) { seat in HStack { VStack(alignment: .leading) { Text(seat.code).font(.headline.monospaced()); Text(seat.host == 1 ? "Storyteller" : seat.hostName + "’s table").font(.caption).foregroundStyle(.secondary) }; Spacer(); Button("Rejoin") { Task { await store.resumeSeat(seat) } }.disabled(store.working) } }
                 }
-                NativeRecovery()
             }.padding(22)
         }.background(Color.tableBackground).navigationTitle("Fearville").navigationBarTitleDisplayMode(.inline).task { await store.refreshAccount() }
     }
@@ -171,7 +159,7 @@ struct NativeSocial: View {
 }
 struct NativeRules: View {
     @State private var script = "horrors"
-    var body: some View { ScriptView(script: script).safeAreaInset(edge: .top) { Picker("Script", selection: $script) { Text("Horrors of Fearville").tag("horrors"); Text("Holy Moon and Stars").tag("holyMoonStars") }.pickerStyle(.segmented).padding().background(Color.tablePanel) }.navigationTitle("Rules & scripts").navigationBarTitleDisplayMode(.inline) }
+    var body: some View { ScriptView(script: script, riteGuides: ["board", "grid", "ritual", "lab"]).safeAreaInset(edge: .top) { Picker("Script", selection: $script) { Text("Horrors of Fearville").tag("horrors"); Text("Holy Moon and Stars").tag("holyMoonStars") }.pickerStyle(.segmented).padding().background(Color.tablePanel) }.navigationTitle("Rules & scripts").navigationBarTitleDisplayMode(.inline) }
 }
 struct NativeAccount: View {
     @EnvironmentObject var store: TableStore
@@ -240,13 +228,14 @@ struct NativeProfileEditor: View {
     @State private var photo: PhotosPickerItem?
     @State private var previewAlive = true
     @State private var editing = false
+    @State private var showingEffectPreview = false
     @State private var busy = false
     @State private var message = ""
     private var nextChange: Double { (store.accountState?.account?.handleChangedAt ?? 0) + 30 * 86400000 }
     private var locked: Bool { store.accountState?.account?.handleChangedAt != nil && nextChange > Date().timeIntervalSince1970 * 1000 }
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
-            HStack(spacing: 20) { NativeAvatar(avatar: avatar, effect: effect, alive: previewAlive).frame(width: 78, height: 78); VStack(alignment: .leading) { Text(username.isEmpty ? "Your identity" : "@" + username).font(.title2); Text(lobbyName).foregroundStyle(.secondary) }; Spacer() }
+            HStack(spacing: 20) { NativeAvatar(avatar: avatar).frame(width: 96, height: 96); VStack(alignment: .leading) { Text(username.isEmpty ? "Your identity" : "@" + username).font(.title2); Text(lobbyName).foregroundStyle(.secondary) }; Spacer() }
             Button(editing ? "Hide profile editor" : "Edit profile & cosmetics") { editing.toggle() }
             if editing {
                 Text("Unique username").font(.headline)
@@ -259,18 +248,38 @@ struct NativeProfileEditor: View {
                 Text("Other players may use the same lobby name.").font(.caption).foregroundStyle(.secondary)
                 Text("Default avatar").font(.headline)
                 LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 4), spacing: 14) {
-                    ForEach(nativeAvatars, id: \.0) { preset in Button { avatar = preset.0 } label: { VStack(spacing: 6) { NativeAvatar(avatar: preset.0).frame(width: 42, height: 42); Text(preset.1).font(.system(size: 9)) }.frame(maxWidth: .infinity).padding(8).background(avatar == preset.0 ? Color.tableAccent.opacity(0.2) : Color.clear, in: RoundedRectangle(cornerRadius: 8)) }.accessibilityLabel(preset.1).accessibilityAddTraits(avatar == preset.0 ? .isSelected : []) }
+                    ForEach(nativeAvatars, id: \.0) { preset in Button { avatar = preset.0 } label: { VStack(spacing: 6) { NativeAvatar(avatar: preset.0).frame(width: 50, height: 50); Text(preset.1).font(.system(size: 11)) }.frame(maxWidth: .infinity).padding(8).background(avatar == preset.0 ? Color.tableAccent.opacity(0.2) : Color.clear, in: RoundedRectangle(cornerRadius: 8)) }.accessibilityLabel(preset.1).accessibilityAddTraits(avatar == preset.0 ? .isSelected : []) }
                 }
                 PhotosPicker(selection: $photo, matching: .images) { Label("Upload a profile photo", systemImage: "photo") }.disabled(busy)
                 Text("Preset collisions receive a temporary random icon in that lobby. Uploaded photos can repeat.").font(.caption).foregroundStyle(.secondary)
-                Picker("Death animation", selection: $effect) { ForEach(nativeEffects, id: \.0) { Text($0.1).tag($0.0) } }
-                Button("Preview death animation") { previewAlive = true; Task { try? await Task.sleep(for: .milliseconds(100)); previewAlive = false; try? await Task.sleep(for: .seconds(2)); previewAlive = true } }.disabled(effect == "none" || store.preferences.reducedMotion)
+                Text("Death animation").font(.headline)
+                LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 2), spacing: 12) {
+                    ForEach(nativeEffects, id: \.0) { option in
+                        Button { effect = option.0; previewAlive = true; showingEffectPreview = true } label: {
+                            VStack(spacing: 10) {
+                                Image(systemName: option.0 == "spirit" ? "sparkles" : option.0 == "embers" ? "flame.fill" : option.0 == "petals" ? "camera.macro" : option.0 == "mist" ? "cloud.fog.fill" : "minus.circle").font(.largeTitle).frame(height: 46)
+                                Text(option.1).font(.subheadline.weight(.semibold))
+                            }.frame(maxWidth: .infinity).padding(12).background(effect == option.0 ? Color.tableAccent.opacity(0.2) : Color.tablePanel, in: RoundedRectangle(cornerRadius: 12)).overlay(RoundedRectangle(cornerRadius: 12).stroke(effect == option.0 ? Color.tableAccent : Color.gray.opacity(0.5)))
+                        }.buttonStyle(.plain).accessibilityAddTraits(effect == option.0 ? .isSelected : [])
+                    }
+                }
                 Button("Save profile") { save(["action": .string("profile"), "lobbyName": .string(lobbyName), "avatar": .string(avatar), "deathEffect": .string(effect)]) }.buttonStyle(.borderedProminent).disabled(busy || lobbyName.trimmingCharacters(in: .whitespaces).isEmpty)
                 if !message.isEmpty { Text(message).font(.callout).foregroundStyle(Color.tableHighlight) }
             }
         }.textFieldStyle(.roundedBorder).padding(20).background(Color.tablePanel, in: RoundedRectangle(cornerRadius: 16))
         .onAppear { let p = store.accountState?.profile; avatar = p?.avatar ?? "ghost"; effect = p?.deathEffect ?? "spirit"; lobbyName = p?.lobbyName ?? store.accountState?.account?.name ?? ""; username = store.accountState?.account?.handle ?? "" }
         .onChange(of: photo) { _, item in Task { busy = true; defer { busy = false }; do { guard let data = try await item?.loadTransferable(type: Data.self), data.count <= 8 * 1024 * 1024, let image = UIImage(data: data) else { throw NSError(domain: "Photo", code: 1, userInfo: [NSLocalizedDescriptionKey: "Choose an image smaller than 8 MB."]) }; avatar = try portrait(image) } catch { message = error.localizedDescription } } }
+        .sheet(isPresented: $showingEffectPreview) {
+            NavigationStack {
+                VStack(spacing: 20) {
+                    NativeAvatar(avatar: avatar, effect: effect, alive: previewAlive).frame(width: 128, height: 128)
+                    if effect == "none" { Text("No death animation.").foregroundStyle(.secondary) }
+                }.frame(maxWidth: .infinity, maxHeight: .infinity).background(Color.tableBackground)
+                    .navigationTitle(nativeEffects.first(where: { $0.0 == effect })?.1 ?? "Death animation")
+                    .toolbar { Button("Done") { showingEffectPreview = false } }
+                    .onAppear { if effect != "none" { Task { try? await Task.sleep(for: .milliseconds(250)); previewAlive = false; try? await Task.sleep(for: .seconds(2)); previewAlive = true } } }
+            }
+        }
     }
     private func save(_ fields: [String: FieldValue]) { busy = true; message = ""; Task { defer { busy = false }; do { try await store.saveAccount(fields); username = store.accountState?.account?.handle ?? username; message = "Saved. Profile defaults apply when you join your next lobby." } catch { message = error.localizedDescription } } }
     private func portrait(_ image: UIImage) throws -> String {

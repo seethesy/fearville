@@ -70,11 +70,11 @@ private enum Keychain {
         do { return try JSONDecoder().decode(T.self, from: data) }
         catch { throw NSError(domain: "Fearville", code: 0, userInfo: [NSLocalizedDescriptionKey: "The server did not return game data. The backend must allow player access before using the native app."]) }
     }
-    func enter(action: String, name: String, code: String = "", recovery: String = "") async {
+    func enter(action: String, name: String, code: String = "") async {
         working = true; error = ""
         defer { working = false }
         do {
-            let reply: SessionReply = try await request("api/session", body: ["action": .string(action), "name": .string(name), "code": .string(code.uppercased()), "recoveryKey": .string(recovery)])
+            let reply: SessionReply = try await request("api/session", body: ["action": .string(action), "name": .string(name), "code": .string(code.uppercased())])
             try Keychain.save(reply.token); token = reply.token; authenticated = true; showingTable = true
             await refresh()
         } catch { self.error = error.localizedDescription }
@@ -98,7 +98,6 @@ private enum Keychain {
         if let next = reply.game { game = next; notice = reply.summary; await refresh() }
         return reply
     }
-    var recoveryKey: String { token }
     func leave() { showingTable = false; online = false; error = ""; NativeAudio.shared.ambient(false) }
     func forgetSeat() { leave(); Keychain.clear(); token = ""; game = nil; authenticated = false; riteState = nil; riteScope = ""; riteVersion = 0; riteServerNow = 0 }
 }

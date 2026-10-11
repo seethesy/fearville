@@ -5,7 +5,7 @@ import SwiftUI
 // clients show the same words. Accounts keep progress on the server; guests
 // keep it per seat on this device and see everything again on a new join.
 
-struct TutorialStepDef: Decodable, Hashable { let title: String; let body: String; let symbol: String?; let tab: String? }
+struct TutorialStepDef: Decodable, Hashable { let title: String; let body: String; let symbol: String?; let tab: String?; let diagram: String? }
 struct TutorialDef: Decodable, Identifiable {
     let id: String; let kind: String; let title: String; let summary: String; let audience: String
     let section: String?; let group: String?; let covers: [String]; let steps: [TutorialStepDef]
@@ -157,6 +157,15 @@ struct TutorialEntry: Equatable { let id: String; var step: Int; let replay: Boo
         request("walkthrough.start")
         if game.day >= 1 && ["discovery", "discussion", "nomination", "defense", "voting", "dayReview"].contains(game.phase) { request("walkthrough.day") }
     }
+    // Night Rite guide: a seated player's own pattern guide during the nights
+    // before the Rite opens (night 1 for everyone), as riteGuideTrigger on web.
+    func riteGuide(for game: GameState, rite: HubJSON?) {
+        guard !game.host, game.phase == "night", game.night >= 1, let rite, !rite.isNull, rite["enabled"].flag else { return }
+        let kind = rite["squad"]["kind"].text
+        let opens = rite["opensNight"].isNull ? 2 : Int(rite["opensNight"].number)
+        guard !kind.isEmpty, game.night < opens else { return }
+        request("guide." + kind)
+    }
     func help(host: Bool, seated: Bool, ownGuides: [String] = []) -> [(String, [TutorialDef])] {
         func fits(_ t: TutorialDef) -> Bool { t.audience == "all" || (t.audience == "host" ? host : seated && !host) }
         let walkthrough = tutorialCatalog.filter { $0.kind == "walkthrough" && fits($0) }
@@ -189,7 +198,10 @@ struct TutorialOverlay: View {
                         Spacer()
                         Text("Step \(index + 1) of \(def.steps.count)").font(.caption).foregroundStyle(.secondary).monospacedDigit()
                     }
-                    if let symbol = step.symbol {
+                    if let diagram = step.diagram {
+                        // Night Rite guide drawing (vector PDF in the asset catalog).
+                        Image(diagram).resizable().scaledToFit().frame(maxWidth: .infinity).clipShape(RoundedRectangle(cornerRadius: 10)).accessibilityHidden(true)
+                    } else if let symbol = step.symbol {
                         Image(systemName: symbol).font(.system(size: 34, weight: .light)).foregroundStyle(Color.tableHighlight)
                             .frame(maxWidth: .infinity, minHeight: 76)
                             .background(LinearGradient(colors: [Color(red: 0.12, green: 0.11, blue: 0.1), Color(red: 0.2, green: 0.15, blue: 0.11)], startPoint: .top, endPoint: .bottom), in: RoundedRectangle(cornerRadius: 10))
@@ -225,10 +237,11 @@ struct HelpView: View {
     @Environment(\.dismiss) private var dismiss
     let host: Bool
     let seated: Bool
+    var ownGuides: [String] = []
     var body: some View {
         List {
             Section { Text("Replay any tour or guide. Skip at any step.") + Text(tutorials.blocked ? " A timed step is in progress, so your choice starts when it ends." : "") }
-            ForEach(tutorials.help(host: host, seated: seated), id: \.0) { title, items in
+            ForEach(tutorials.help(host: host, seated: seated, ownGuides: ownGuides), id: \.0) { title, items in
                 Section(title) {
                     ForEach(items) { item in
                         Button {
@@ -248,5 +261,27 @@ struct HelpView: View {
         }
         .scrollContentBackground(.hidden).background(Color.tableBackground)
         .navigationTitle("Help & tutorials")
+    }
+}
+
+// Night Rite guides on the rules screen: each step with its diagram.
+struct RiteGuideRows: View {
+    let patterns: [String]
+    var body: some View {
+        ForEach(patterns, id: \.self) { kind in
+            if let guide = tutorialCatalog.first(where: { $0.id == "guide." + kind }) {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text(guide.title).font(.headline)
+                    Text(guide.summary).font(.callout).foregroundStyle(.secondary)
+                    ForEach(guide.steps, id: \.self) { step in
+                        if let diagram = step.diagram {
+                            Image(diagram).resizable().scaledToFit().clipShape(RoundedRectangle(cornerRadius: 10)).accessibilityHidden(true)
+                        }
+                        Text(step.title).font(.subheadline.bold())
+                        Text(step.body).fixedSize(horizontal: false, vertical: true)
+                    }
+                }.padding(.vertical, 6)
+            }
+        }
     }
 }

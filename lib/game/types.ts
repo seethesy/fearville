@@ -197,7 +197,7 @@ export const HOF_ROLES: RoleDef[] = [
     'bodyguard',
     'Bodyguard',
     'townsfolk',
-    'Every night after the first, learn if someone is killed at night. You will be given the option to die in their place.',
+    'After the Storyteller confirms that someone will die at night, learn their name and choose whether to die in their place.',
   ],
   [
     'psychic',
@@ -275,7 +275,7 @@ export const HOF_ROLES: RoleDef[] = [
     'researcher',
     'Researcher',
     'traveler',
-    'Once per game, you may declare the role of 3 living players. You win if you are correct about all of them.',
+    'Once per game, even while dead, you may declare the role of 3 living players. You win if you are correct about all of them.',
   ],
   [
     'guardian',
@@ -305,7 +305,7 @@ export const HOF_ROLES: RoleDef[] = [
     'monster',
     'Monster',
     'demon',
-    'Every night after the first, visit one player to kill them that night. If they die, one of their living neighbors is feared the following night.',
+    'Every night after the first, visit one player to kill them and choose one of their living neighbors. If the target dies, your chosen neighbor is feared the following night.',
   ],
   [
     'wraith',
@@ -486,6 +486,7 @@ export type NightChoice = {
   guesses?: { player: string; role: string }[];
   pass?: boolean;
   flag?: boolean; // optional yes/no (Wraith: stay hidden)
+  fearTarget?: string; // Monster's choice of a neighbor to fear if their victim dies
 };
 export type DeathItem = {
   id: string;
@@ -497,6 +498,8 @@ export type DeathItem = {
   impaired?: boolean; // the killing ability was drunk or poisoned
   redirected?: boolean; // already moved by a Fateweaver
   by?: string; // killing character (Horrors of Fearville)
+  monsterFear?: string; // Monster's chosen neighbor, applied only if target dies
+  bodyguard?: { player: string; decision?: boolean }; // offer after a confirmed fatal outcome
   spare?: string; // suggested reason the death does not happen
 };
 export type DawnChange = {
@@ -583,7 +586,6 @@ export const HOF_OTHER = [
   'doctor',
   'monster',
   'wraith',
-  'bodyguard',
   'detective',
   'judge',
   'psychic',

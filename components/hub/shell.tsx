@@ -1,6 +1,14 @@
 'use client';
 /* oxlint-disable next/no-img-element -- Local supplied logo, shared with favicon. */
 import AppLink from '@/components/app-link';
+import { useState } from 'react';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { SettingsPanel } from './settings';
 import { Play, Globe2, BookOpen, UserRound, Settings } from 'lucide-react';
 import { useAccount } from './account-context';
 const navigation = [
@@ -31,6 +39,7 @@ export function HubShell({
   settings?: boolean;
 }) {
   const { state } = useAccount();
+  const [settingsOpen, setSettingsOpen] = useState(false);
   return (
     <div className="hub">
       <AppLink className="skip-link" href="#main-content">
@@ -71,18 +80,26 @@ export function HubShell({
             {subtitle && <p className="muted">{subtitle}</p>}
           </div>
           {settings && (
-            <AppLink
+            <button
               className="icon-button"
-              href="/account?tab=settings"
               aria-label="Settings"
               title="Settings"
+              onClick={() => setSettingsOpen(true)}
             >
               <Settings />
-            </AppLink>
+            </button>
           )}
         </div>
         {children}
       </main>
+      <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
+        <DialogContent className="settings-dialog">
+          <DialogHeader>
+            <DialogTitle>Settings</DialogTitle>
+          </DialogHeader>
+          <SettingsPanel />
+        </DialogContent>
+      </Dialog>
       <footer className="hub-footer">
         <span>Keep your secrets. Find your people.</span>
         <AppLink href="/privacy">Privacy</AppLink>

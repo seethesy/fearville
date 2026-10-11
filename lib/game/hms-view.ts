@@ -344,6 +344,7 @@ export function deathControl(g: Game, ps: Option[]): Control | null {
   const s = hms(g);
   const d = pendingDeath(g);
   if (!d) return null;
+  if (d.bodyguard && d.bodyguard.decision === undefined) return null;
   const v = g.players.find((p) => p.id === d.player)!;
   const reason = preventedBy(g, d);
   const fields: Field[] = [

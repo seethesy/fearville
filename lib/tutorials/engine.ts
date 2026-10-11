@@ -228,6 +228,28 @@ export function walkthroughTriggers(view: TriggerView): string[] {
   return ids;
 }
 
+// Night Rite guide: a seated player's own pattern guide pops up during the
+// nights before the Rite opens (night 1 for everyone who is seated then).
+export interface GuideView {
+  phase: string;
+  host: boolean;
+  sandboxHost?: boolean;
+  night: number;
+  rite?: {
+    host?: boolean;
+    opensNight?: number;
+    squad?: { kind: string };
+  } | null;
+}
+export function riteGuideTrigger(view: GuideView): string | null {
+  const rite = view.rite;
+  if (view.host || view.sandboxHost || !rite || rite.host || !rite.squad)
+    return null;
+  if (view.phase !== 'night' || view.night < 1) return null;
+  if (view.night >= (rite.opensNight ?? 2)) return null;
+  return `guide.${rite.squad.kind}`;
+}
+
 export interface SuppressionView {
   phase: string;
   host: boolean;

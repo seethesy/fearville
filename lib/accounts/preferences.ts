@@ -7,6 +7,7 @@ export const defaultPreferences = {
   reducedMotion: false,
   largerText: false,
   showOnline: true,
+  showTips: true,
 };
 export type Preferences = typeof defaultPreferences;
 export type ProfileDefaults = {
@@ -36,6 +37,7 @@ export function normalizePreferences(value: unknown): Preferences {
     'reducedMotion',
     'largerText',
     'showOnline',
+    'showTips',
   ] as const) {
     if (source[key] === undefined) continue;
     if (typeof source[key] !== 'boolean') throw Error('Choose valid settings.');

@@ -146,7 +146,6 @@ struct NativeSettings: View {
     @State private var loaded = false
     @State private var busy = false
     @State private var message = ""
-    @State private var musicPreview = false
     @State private var delete = false
     @State private var confirmation = ""
     var body: some View {
@@ -154,8 +153,6 @@ struct NativeSettings: View {
             Section("Sound & comfort") {
                 Text("Music · \(Int(preferences.music))%"); Slider(value: $preferences.music, in: 0...100, step: 1).accessibilityLabel("Music volume")
                 Text("Sound effects · \(Int(preferences.sfx))%"); Slider(value: $preferences.sfx, in: 0...100, step: 1).accessibilityLabel("Sound effects volume")
-                Button(musicPreview ? "Stop music preview" : "Preview music") { musicPreview.toggle(); NativeAudio.shared.ambient(musicPreview) }
-                Button("Test sound effect") { NativeAudio.shared.cue() }
                 Toggle("Mute in background", isOn: $preferences.muteInBackground)
                 Toggle("Reduce motion", isOn: $preferences.reducedMotion)
                 Toggle("Larger text", isOn: $preferences.largerText)

@@ -50,6 +50,7 @@ struct GameView: View {
     @State private var selected: GameAction?
     @State private var tab = "game"
     @State private var showHelp = false
+    @State private var showSettings = false
     // Section tutorial for each tab (players only; FEAR-18).
     private func section(for tab: String) -> String? {
         guard !game.host else { return nil }
@@ -63,6 +64,19 @@ struct GameView: View {
         }
     }
     private var voteOpen: Bool { !game.host && game.phase == "voting" && game.active != nil && game.active?.myVote == nil }
+    // Night Rite guides: a player's own vigil pattern; every enabled pattern
+    // for the Storyteller.
+    private var ownGuide: String? {
+        guard !game.host, let rite = store.riteState, !rite.isNull else { return nil }
+        let kind = rite["squad"]["kind"].text
+        return kind.isEmpty ? nil : "guide." + kind
+    }
+    private var riteGuides: [String] {
+        guard let rite = store.riteState, !rite.isNull, rite["enabled"].flag else { return [] }
+        if game.host { return rite["config"]["patterns"].items.map(\.text) }
+        let kind = rite["squad"]["kind"].text
+        return kind.isEmpty ? [] : [kind]
+    }
     // Night Rite: the 30-second night lock, a timed turn, or an open vote.
     private var riteHold: Bool {
         guard !game.host, let puzzle = store.riteState?["puzzle"], !puzzle.isNull else { return false }
@@ -75,11 +89,12 @@ struct GameView: View {
             NavigationStack { FlowView(game: game, selected: $selected).navigationTitle(game.phaseLabel).navigationBarTitleDisplayMode(.inline) }.tabItem { Text("Game") }.tag("game")
             NavigationStack { SeatsView(game: game, selected: $selected).navigationTitle("Seats") }.tabItem { Text("Seats") }.tag("seats")
             NavigationStack { MessagesView(game: game, selected: $selected).navigationTitle("Messages") }.tabItem { Text("Messages") }.tag("messages")
-            NavigationStack { ScriptView(script: game.script ?? "horrors").navigationTitle(game.scriptName ?? "Horrors of Fearville") }.tabItem { Text("Script") }.tag("script")
+            NavigationStack { ScriptView(script: game.script ?? "horrors", riteGuides: riteGuides).navigationTitle(game.scriptName ?? "Horrors of Fearville") }.tabItem { Text("Script") }.tag("script")
             NavigationStack { ControlView(game: game, selected: $selected).navigationTitle(game.host ? "Storyteller" : "Session") }.tabItem { Text("Controls") }.tag("controls")
         }
         .sheet(item: $selected) { action in ActionView(action: action).environmentObject(store) }
-        .sheet(isPresented: $showHelp) { NavigationStack { HelpView(host: game.host, seated: !game.host).toolbar { Button("Done") { showHelp = false } } }.environmentObject(tutorials) }
+        .sheet(isPresented: $showSettings) { NavigationStack { NativeSettings() } }
+        .sheet(isPresented: $showHelp) { NavigationStack { HelpView(host: game.host, seated: !game.host, ownGuides: ownGuide.map { [$0] } ?? []).toolbar { Button("Done") { showHelp = false } } }.environmentObject(tutorials) }
         // Tutorials: seat scope, walkthrough chapters, first-open sections,
         // and the states that hold popups (FEAR-16/17/18).
         .task(id: game.code + ":" + game.me) { tutorials.setScope(game.code + ":" + game.me) }
@@ -87,6 +102,7 @@ struct GameView: View {
             tutorials.walkthrough(for: game)
             if !game.host && game.phase == "night" { tutorials.requestSection("night") }
         }
+        .onChange(of: "\(game.phase)|\(game.night)|\(ownGuide ?? "")|\(tutorials.loaded)", initial: true) { _, _ in tutorials.riteGuide(for: game, rite: store.riteState) }
         .onChange(of: tab, initial: true) { _, next in if let s = section(for: next) { tutorials.requestSection(s) } }
         .onChange(of: tutorials.requestedTab) { _, next in if let next { tab = next; tutorials.requestedTab = nil } }
         .onChange(of: selected?.id, initial: true) { _, open in tutorials.setBlocker("action", open != nil) }
@@ -96,8 +112,8 @@ struct GameView: View {
         .onChange(of: showHelp) { _, open in tutorials.setBlocker("help", open) }
         .safeAreaInset(edge: .top) {
             VStack(spacing: 5) {
-                HStack { Button { store.leave() } label: { Label("Return home", systemImage: "house") }; Spacer(); if game.phase == "lobby" || (!game.host && game.phase == "ended") { Button(game.host ? "Close lobby" : "Leave lobby", role: .destructive) { confirmExit = true } } }
-                HStack { Text(game.code).font(.headline.monospaced()).tracking(3); Spacer(); Button { showHelp = true } label: { Label("Help", systemImage: "questionmark.circle") }.font(.caption); Text(store.online ? (game.host ? "Storyteller" : game.name(game.me)) : "Reconnecting…").font(.caption) }
+                HStack { Button { store.leave() } label: { Label("Return home", systemImage: "house") }; Spacer(); Button { showSettings = true } label: { Image(systemName: "gearshape") }.accessibilityLabel("Settings"); if game.phase == "lobby" || (!game.host && game.phase == "ended") { Button(game.host ? "Close lobby" : "Leave lobby", role: .destructive) { confirmExit = true } } }
+                HStack { if game.phase == "lobby" { Text(game.code).font(.headline.monospaced()).tracking(3) }; Spacer(); Button { showHelp = true } label: { Label("Help", systemImage: "questionmark.circle") }.font(.caption); Text(store.online ? (game.host ? "Storyteller" : game.name(game.me)) : "Reconnecting…").font(.caption) }
                 NativeError()
                 if !store.online { Text("Actions are unavailable until you reconnect. Timers continue.").font(.caption).foregroundStyle(.orange) }
                 if !store.notice.isEmpty { HStack { Text(store.notice.hasPrefix("New") ? store.notice : "Action confirmed.").font(.caption); Spacer(); Button("Dismiss") { store.notice = "" }.font(.caption) } }
@@ -122,11 +138,11 @@ struct FlowView: View {
     @State private var dismissedGlimpse = ""
     var body: some View {
         List {
-            if game.host || store.riteState?["enabled"].flag == true { Section("Night Rite") { NativeRiteView(game: game) } }
+            if !game.host && store.riteState?["enabled"].flag == true { Section("Night Rite") { NativeRiteView(game: game) } }
             if let current = game.glimpse { Section("Sphinx") { Text("Your glimpse of every role is open until the night choice timer ends."); Button("View glimpse") { glimpse = current } } }
             Section {
                 HStack(alignment: .top) {
-                    VStack(alignment: .leading, spacing: 6) { Text(game.phase == "night" ? "Night \(game.night)" : game.day > 0 ? "Day \(game.day)" : "Gather your town.").font(.largeTitle.weight(.regular)); Text((game.scriptName ?? "Horrors of Fearville").uppercased()).font(.caption).tracking(2).foregroundStyle(Color.tableHighlight) }
+                    VStack(alignment: .leading, spacing: 6) { Text(game.phase == "night" ? "Night \(game.night)" : game.day > 0 ? "Day \(game.day)" : "Gather your town.").font(.largeTitle.weight(.regular)) }
                     Spacer()
                     TimelineView(.periodic(from: .now, by: 1)) { context in
                         let seconds = max(0, Int(ceil(game.deadline.map { $0 / 1000 - context.date.timeIntervalSince1970 - store.offset } ?? game.remaining)))
@@ -134,7 +150,6 @@ struct FlowView: View {
                     }
                 }
                 if game.phase == "lobby" { Text(game.host ? "Share the code, then assign each character in Seats." : "Your Storyteller will deal your character when everyone is ready.") }
-                if game.phase == "night" && !game.host { Text("The town is asleep. Check Messages for instructions from your Storyteller and reply with your choices.") }
                 if game.phase == "discovery" { Text("Speak privately with other players and compare what you know.") }
                 if game.phase == "discussion" { Text("Share information and suspicions with the whole town.") }
                 if game.phase == "ended" { Text(game.winner + " wins.").font(.title) }
@@ -143,12 +158,12 @@ struct FlowView: View {
                 ForEach(game.hints, id: \.self) { Text($0).foregroundStyle(.orange) }
             }
             if let character = game.character {
-                Section("Your private character") {
+                Section {
                     if reveal { Text(character.name).font(.title2); Text(character.alignment.uppercased() + " TEAM").font(.caption).foregroundStyle(Color.tableHighlight); GlossaryText(text: character.description) }
                     Button(reveal ? "Hide character" : "Reveal my character") { reveal.toggle() }
                 }
             }
-            if !game.tasks.isEmpty {
+            if game.host && !game.tasks.isEmpty {
                 Section("Night order") {
                     ForEach(game.tasks) { task in
                         HStack {
@@ -278,6 +293,8 @@ struct GlossaryText: View {
 }
 struct ScriptView: View {
     let script: String
+    // Night Rite patterns whose guides to show (see RiteGuideSection).
+    var riteGuides: [String] = []
     private static let all: [ScriptRole] = {
         guard let url = Bundle.main.url(forResource: "roles", withExtension: "json"), let data = try? Data(contentsOf: url), let roles = try? JSONDecoder().decode([ScriptRole].self, from: data) else { return [] }; return roles
     }()
@@ -298,6 +315,7 @@ struct ScriptView: View {
             Label("Keep the game fair", systemImage: "heart").font(.headline)
             Text("Bluffing is welcome; peeking at private screens is not. Respect other players. Specific character rules take precedence.")
         }
+        if !riteGuides.isEmpty { Section("Night Rite") { RiteGuideRows(patterns: riteGuides) } }
         Section { Text("All characters on the script, including those not in play. These are short summaries.") }; Section("Glossary") { ForEach(GLOSSARY) { entry in VStack(alignment: .leading, spacing: 6) { Text(entry.term).font(.headline); Text(entry.definition); if let example = entry.example { Text("Example: " + example).font(.callout).italic().foregroundStyle(.secondary) } }.padding(.vertical, 4) } }; ForEach(roles) { role in VStack(alignment: .leading, spacing: 8) { Text(teamName(role.team).uppercased()).font(.caption).foregroundStyle(Color.tableHighlight); Label(role.name, systemImage: nativeRoleIcon(role.team)).font(.headline); GlossaryText(text: role.description) }.padding(.vertical, 6) } }.scrollContentBackground(.hidden).background(Color.tableBackground) }
 }
 // The Sphinx's nightly glimpse. Opens on its own and closes when the server
@@ -319,25 +337,21 @@ struct ControlView: View {
     @EnvironmentObject var store: TableStore
     let game: GameState
     @Binding var selected: GameAction?
-    @State private var showRecovery = false
-    @State private var confirmLeave = false
     var body: some View {
         List {
             Section("Session") {
                 NavigationLink("Account & saved games") { NativeAccount() }
                 NavigationLink("Help & tutorials") { HelpView(host: game.host, seated: !game.host) }
-                Text("\(game.hostName) is Storytelling. Code: \(game.code)")
-                Button("Save recovery key") { showRecovery = true }
-                Button("Return home (keep lobby)") { store.leave() }
+                Text("\(game.hostName) is Storytelling.")
+                Button("Return home") { store.leave() }
                 Text("Keep the app open and connected to receive private information. No background push notifications are used.").font(.footnote).foregroundStyle(.secondary)
             }
             if game.host {
+                Section("Night vigil setup") { NativeRiteView(game: game) }
                 Section("Storyteller control") { ForEach(game.controls.filter { ["configure","undo","rewind","end","overridePhase"].contains($0.action) }) { action in Button(action.title) { selected = action }.disabled(!store.online) } }
                 Section("Decision history") { ForEach(game.log.reversed()) { item in VStack(alignment: .leading) { Text(Date(timeIntervalSince1970: item.at / 1000), style: .time).font(.caption).foregroundStyle(.secondary); Text(item.text) }.padding(.vertical, 4) } }
             }
         }.scrollContentBackground(.hidden).background(Color.tableBackground)
-        .sheet(isPresented: $showRecovery) { NavigationStack { VStack(alignment: .leading, spacing: 20) { Text("Keep this key private. It restores your seat and expires after 30 days. Anyone with it can access your session."); Text(store.recoveryKey).font(.body.monospaced()).textSelection(.enabled); Button("Copy key") { UIPasteboard.general.setItems([[UIPasteboard.typeAutomatic: store.recoveryKey]], options: [.localOnly: true, .expirationDate: Date().addingTimeInterval(120)]); showRecovery = false } }.padding().navigationTitle("Recovery key").toolbar { Button("Done") { showRecovery = false } } } }
-        .confirmationDialog("Save your recovery key before leaving. Your seat stays in the game.", isPresented: $confirmLeave, titleVisibility: .visible) { Button("Leave this device", role: .destructive) { store.leave() }; Button("Cancel", role: .cancel) {} }
     }
 }
 struct ActionView: View {
