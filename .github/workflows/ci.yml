@@ -1,0 +1,146 @@
+name: CI
+
+# Full checks run here, not in agent sessions (see AGENTS.md).
+# Required status checks for branch protection: `check` and `integration`.
+on:
+  pull_request:
+  push:
+    branches: [main]
+  # Re-run after the formatter pushes a commit: pushes made with GITHUB_TOKEN
+  # don't trigger workflows, but a dispatch does, so the new head gets checks.
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  # Decides whether code changed and auto-formats changed files.
+  # Docs-only changes skip `check` and `integration` (a skipped required check
+  # counts as passing, unlike `paths-ignore`, which would leave it pending).
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      actions: write
+    outputs:
+      code: ${{ steps.changes.outputs.code }}
+      formatted: ${{ steps.format.outputs.pushed }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.ref }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.x # satisfies engines (>=22.13)
+          cache: npm
+      - name: Changed files
+        id: changes
+        run: |
+          if [ "${{ github.event_name }}" = "push" ] || [ "${{ github.ref_name }}" = "main" ]; then
+            echo "code=true" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          base=$(git merge-base origin/main HEAD)
+          git diff --name-only --diff-filter=ACMR "$base" HEAD > changed.txt
+          if grep -qvE '^(docs/|Claude outputs/)|\.md$' changed.txt; then
+            echo "code=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "code=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Auto-format changed files
+        id: format
+        if: github.event_name != 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SAME_REPO: ${{ github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository }}
+          BRANCH: ${{ github.head_ref || github.ref_name }}
+        run: |
+          files=$(grep -E '\.(ts|tsx|js|mjs|cjs|jsx|json|css)$' changed.txt | grep -vE '^(package-lock\.json|Claude outputs/)' | while read -r f; do [ -f "$f" ] && echo "$f"; done || true)
+          [ -z "$files" ] && { echo "pushed=false" >> "$GITHUB_OUTPUT"; exit 0; }
+          npm ci --no-audit --no-fund --loglevel=error
+          if [ "$SAME_REPO" != "true" ]; then
+            # Forks: check only.
+            echo "$files" | xargs npx oxfmt --check
+            echo "pushed=false" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          echo "$files" | xargs npx oxfmt > /dev/null
+          if git diff --quiet || [ "$(git log -1 --format=%an)" = "github-actions[bot]" ]; then
+            git checkout -- .
+            echo "pushed=false" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -qam "style: auto-format changed files (oxfmt)"
+          git push -q origin "HEAD:$BRANCH"
+          gh workflow run ci.yml --ref "$BRANCH"
+          echo "pushed=true" >> "$GITHUB_OUTPUT"
+          echo "Formatted and pushed; CI re-runs on the new commit." >> "$GITHUB_STEP_SUMMARY"
+
+  check:
+    needs: prepare
+    if: needs.prepare.outputs.code == 'true' && needs.prepare.outputs.formatted != 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+          cache: npm
+      - run: npm ci --no-audit --no-fund --loglevel=error
+      - name: Typecheck, lint, unit tests
+        run: |
+          set -o pipefail
+          npm run --silent check 2>&1 | tee check.log
+      - name: Failure summary
+        if: failure()
+        run: |
+          {
+            echo "### check failed"
+            echo '```'
+            head -n 38 check.log
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  integration:
+    needs: prepare
+    if: needs.prepare.outputs.code == 'true' && needs.prepare.outputs.formatted != 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+          cache: npm
+      - run: npm ci --no-audit --no-fund --loglevel=error
+      - name: Integration suites
+        run: |
+          set -o pipefail
+          npm run --silent test:integration 2>&1 | tee integration.log
+      - name: Failure summary
+        if: failure()
+        run: |
+          {
+            echo "### integration failed"
+            echo '```'
+            grep -E '^(FAIL|integration:)' integration.log | head -n 8
+            echo
+            awk '/^FAIL/{p=1} p' integration.log | head -n 28
+            echo '```'
+            echo "Full logs: the integration-logs artifact."
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: integration-logs
+          path: |
+            integration.log
+            work/integration-logs/
+          retention-days: 7
