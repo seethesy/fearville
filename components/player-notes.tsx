@@ -5,6 +5,7 @@ import { scriptRoles } from '@/lib/game/types';
 import type { GameView } from '@/lib/game/view';
 import { RoleIcon } from './role-icon';
 import { PlayerAvatar } from './player-avatar';
+import { SeatChartZoom } from './seat-chart-zoom';
 type Notebook = {
   roles: Record<string, number>;
   players: Record<string, { role: string; confidence: string }>;
@@ -127,6 +128,7 @@ export function PlayerNotes({ game }: { game: GameView }) {
     game.players.length,
     ...game.players.map((p) => p.seat),
   );
+  const chartSize = Math.max(480, seatCount * 48);
   return (
     <div className="player-notebook">
       <section className="panel">
@@ -152,12 +154,13 @@ export function PlayerNotes({ game }: { game: GameView }) {
       </section>
       <section className="panel notes-table-panel">
         <h2>The table</h2>
-        <div className="seat-circle-scroll">
+        <SeatChartZoom width={chartSize} height={chartSize}>
           <div
             className="seat-circle notes-circle"
             style={{
-              minWidth: seatCount > 8 ? seatCount * 48 : 480,
-              minHeight: seatCount > 8 ? seatCount * 43 : 460,
+              width: chartSize,
+              height: chartSize,
+              minWidth: chartSize,
             }}
           >
             <div className="circle-center">
@@ -200,7 +203,7 @@ export function PlayerNotes({ game }: { game: GameView }) {
               );
             })}
           </div>
-        </div>
+        </SeatChartZoom>
       </section>
       <section className="panel">
         <h2>Roles in the game</h2>
@@ -212,6 +215,7 @@ export function PlayerNotes({ game }: { game: GameView }) {
           [
             ['townsfolk', 'Villagers'],
             ['outsider', 'Fools'],
+            ['traveler', 'Travelers'],
             ['minion', 'Haunts'],
             ['demon', 'Horrors'],
           ] as const

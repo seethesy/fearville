@@ -353,6 +353,7 @@ function executeCommand(
     'setScript',
     'correctVote',
     'moveSeat',
+    'assignRole',
     'randomAssign',
     'configure',
     'edit',
@@ -722,6 +723,34 @@ function executeCommand(
       g.assignmentSeed = uuid();
       log(g, 'Randomly assigned characters and setup reminders.', now);
       return summary;
+    }
+    case 'assignRole': {
+      requireThat(g.phase === 'lobby', 'Assign characters in the lobby.');
+      const p = person(g, c.player);
+      const nextRole = clean(c.role);
+      requireThat(
+        scriptRoles(g.script).some((r) => r.id === nextRole),
+        'Choose a character from this script.',
+      );
+      const previousRole = p.role;
+      if (previousRole === nextRole) return `${p.name} already has that character.`;
+      const previousOwner = g.players.find(
+        (q) => q.id !== p.id && q.role === nextRole,
+      );
+      const assign = (target: Player, id: string) => {
+        target.role = id;
+        target.shown = id;
+        delete target.acts;
+        delete target.charge;
+        target.drunk = false;
+        target.feared = false;
+      };
+      if (previousOwner) assign(previousOwner, previousRole);
+      assign(p, nextRole);
+      log(g, `Assigned ${role(nextRole)?.name} to ${p.name}.`, now);
+      return previousOwner
+        ? `Assigned ${role(nextRole)?.name} to ${p.name} and ${previousRole ? 'swapped' : 'cleared'} ${previousOwner.name}'s character.`
+        : `Assigned ${role(nextRole)?.name} to ${p.name}.`;
     }
     case 'configure': {
       if (!g.sandbox)

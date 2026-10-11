@@ -4,6 +4,7 @@ import { ChevronRight, Crown } from 'lucide-react';
 import type { GameView } from '@/lib/game/view';
 import { ALL_ROLES, SCRIPTS, type Team } from '@/lib/game/types';
 import { PlayerAvatar } from './player-avatar';
+import { SeatChartZoom } from './seat-chart-zoom';
 import { TutorialHold } from './tutorials/provider';
 import {
   Dialog,
@@ -367,12 +368,13 @@ export function SessionRecaps({
               <span>{gameDuration(r)}</span>
             </div>
             <p className="muted">{SCRIPTS[r.script]}</p>
-            <div className="seat-circle-scroll">
+            <SeatChartZoom width={Math.max(520, r.players.length * 57)} height={Math.max(520, r.players.length * 57)}>
               <div
                 className="seat-circle recap-circle"
                 style={{
+                  width: Math.max(520, r.players.length * 57),
+                  height: Math.max(520, r.players.length * 57),
                   minWidth: Math.max(520, r.players.length * 57),
-                  minHeight: Math.max(500, r.players.length * 48),
                 }}
               >
                 <div className="circle-center">
@@ -419,7 +421,7 @@ export function SessionRecaps({
                   );
                 })}
               </div>
-            </div>
+            </SeatChartZoom>
           </details>
         );
       })}
