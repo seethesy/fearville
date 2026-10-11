@@ -31,11 +31,11 @@ jobs:
       code: ${{ steps.changes.outputs.code }}
       formatted: ${{ steps.format.outputs.pushed }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           ref: ${{ github.event.pull_request.head.sha || github.ref }}
           fetch-depth: 0
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: 22.x # satisfies engines (>=22.13)
           cache: npm
@@ -87,8 +87,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 22.x
           cache: npm
@@ -106,6 +106,8 @@ jobs:
             head -n 38 check.log
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
+          # Annotations are readable with `gh api .../check-runs/<id>/annotations`.
+          grep -E '^(FAIL |[a-z]+: FAILED)' check.log | head -n 10 | while IFS= read -r line; do echo "::error title=check::$line"; done || true
 
   integration:
     needs: prepare
@@ -113,8 +115,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 22.x
           cache: npm
@@ -135,6 +137,7 @@ jobs:
             echo '```'
             echo "Full logs: the integration-logs artifact."
           } >> "$GITHUB_STEP_SUMMARY"
+          grep -E '^FAIL ' integration.log | head -n 10 | while IFS= read -r line; do echo "::error title=integration::$line"; done || true
       - name: Upload logs
         if: failure()
         uses: actions/upload-artifact@v4
