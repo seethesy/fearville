@@ -1,5 +1,7 @@
 # Fearville: Google and Apple sign-in setup
 
+For own-account Cloudflare hosting, see [Deploy](https://github.com/seethesy/fearville/blob/main/docs/cloudflare-deploy.md). CI installs Worker secrets independently for staging and production; callback URLs must use each environment's origin.
+
 Updated September 8, 2026. The provider integrations are implemented; sign-in becomes available after the credentials are installed on the server. Creating credentials in a provider console does not activate the app by itself.
 
 ## Copy these exact values
