@@ -6,6 +6,8 @@
 
 ## Rules
 
+Own-account build configuration and durable-data transfer are documented in [cloudflare-deploy.md](cloudflare-deploy.md), supplied by FEAR-83. Preserve GitHub's production environment approval and branch protection rules.
+
 - Agents and local machines never deploy. Deploys run in CI only.
 - Migrations in `drizzle/` are **additive only** (new tables, new nullable columns). A destructive change needs two deploys: first stop reading/writing the old field, then remove it in a later release.
 - `npm run build` produces `dist/`; don't commit it.
