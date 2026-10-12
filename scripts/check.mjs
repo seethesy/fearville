@@ -1,6 +1,7 @@
 // Fast local check for agents and CI: typecheck, lint, unit tests.
 // Prints one line per step; output is shown only for a failing step.
 import { spawnSync } from 'node:child_process';
+import { mkdirSync, writeFileSync } from 'node:fs';
 
 const steps = [
   [
@@ -26,6 +27,8 @@ for (const [name, args] of steps) {
   const started = Date.now();
   const result = spawnSync(process.execPath, args, { encoding: 'utf8' });
   const output = `${result.stdout ?? ''}${result.stderr ?? ''}`.trim();
+  mkdirSync('work/check-logs', { recursive: true });
+  writeFileSync(`work/check-logs/${name}.log`, output);
   const seconds = ((Date.now() - started) / 1000).toFixed(1);
   if (result.status === 0) {
     const summary =

@@ -29,6 +29,14 @@ export default function Home() {
     phase: string;
   } | null>(null);
   useEffect(() => {
+    // Shared invite links open the home page with ?join=<code>.
+    const join = new URLSearchParams(window.location.search).get('join')?.toUpperCase() ?? '';
+    if (/^(?:[0-9]{6}|[A-Z]{6})$/.test(join)) {
+      setCode(join);
+      setEntryTab('join');
+    }
+  }, []);
+  useEffect(() => {
     const load = () => {
       void fetch('/api/session', { cache: 'no-store' })
         .then(async (r) => {

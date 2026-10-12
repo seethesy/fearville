@@ -2,6 +2,9 @@
 import AppLink from '@/components/app-link';
 import { NightRite } from '@/components/rite/night-rite';
 import { playCue } from '@/components/hub/audio';
+import { haptic } from '@/lib/native/bridge';
+import { ShareInvite } from '@/components/share-invite';
+import { useKeepAwake, useKeepAwakeSetting } from '@/hooks/use-keep-awake';
 import { LobbyExit } from '@/components/hub/lobby-exit';
 import { GlossaryText } from '@/components/glossary-text';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -188,6 +191,10 @@ export default function Table() {
     [selectedRole, setSelectedRole] = useState(''),
     [dropSeat, setDropSeat] = useState(''),
     [roleError, setRoleError] = useState('');
+  // Keep phones from auto-locking while seated at this table (lobby through
+  // game end). Leaving the table screen unmounts this and releases the lock.
+  const { enabled: keepAwake } = useKeepAwakeSetting();
+  useKeepAwake(keepAwake && !!game);
   const previousPhase = useRef<string | null>(null);
   const phase = game?.phase;
   useEffect(() => {
@@ -377,6 +384,7 @@ export default function Table() {
         throw Error(data.error);
       }
       applyGame(data.game);
+      if (control.action === 'vote') haptic('tap');
       setSelected(null);
       setNotice(data.summary);
     } catch (e) {
@@ -825,6 +833,7 @@ export default function Table() {
                         <strong>Storyteller:</strong> {game.hostName}
                       </p>
                       <div className="code-display">{game.code}</div>
+                      {game.host && !game.sandboxHost && <ShareInvite code={game.code} />}
                       {game.host && (
                         <div className="checklist">
                           <button

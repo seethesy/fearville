@@ -31,7 +31,10 @@ for (let i = 0; i < 5; i++)
       }),
     ),
   );
-await claimSeats(base, players.map((p) => p.token));
+await claimSeats(
+  base,
+  players.map((p) => p.token),
+);
 let g = ok(await call('/api/game', host.token));
 assert.equal(
   (
@@ -75,15 +78,7 @@ ok(
   }),
 );
 assert.equal((await call('/api/game', players[4].token)).status, 401);
-assert.equal(
-  (
-    await call('/api/session', '', {
-      action: 'restore',
-      recoveryKey: players[4].token,
-    })
-  ).status,
-  401,
-);
+assert.equal((await call('/api/session', players[4].token)).status, 401);
 g = ok(await call('/api/game', host.token));
 assert.equal(g.players.length, 4);
 assert.deepEqual(
@@ -117,12 +112,7 @@ ok(
 assert.equal((await call('/api/game', players[3].token)).status, 401);
 ok(await call('/api/session', players[2].token, { action: 'leave' }));
 assert.equal((await call('/api/game', players[2].token)).status, 200);
-ok(
-  await call('/api/session', '', {
-    action: 'restore',
-    recoveryKey: players[2].token,
-  }),
-);
+ok(await call('/api/session', players[2].token));
 g = ok(await call('/api/game', host.token));
 assert.equal(g.players.length, 5);
 assert.equal(g.players.filter((p) => p.departed).length, 1);

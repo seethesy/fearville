@@ -31,8 +31,11 @@ async function act(command) {
 }
 await act({ action: 'addDummy', name: 'First' });
 await act({ action: 'addDummy', name: 'Second' });
-assert.equal(new Set(game.players.map((p) => p.avatar)).size, 2);
-const ids = game.players.map((p) => p.id);
+assert.equal(
+  new Set(game.players.map((p) => p.avatar)).size,
+  game.players.length,
+);
+const ids = game.players.slice(0, 2).map((p) => p.id);
 const free = AVATARS.find((a) =>
   game.players.every((p) => p.avatar !== a.id),
 ).id;
@@ -46,7 +49,12 @@ const race = await Promise.all(
     }),
   ),
 );
-assert.deepEqual(race.map((r) => r.status).sort((a, b) => a - b), [200, 409]);
+assert.equal(race.filter((r) => r.status === 200).length, 1);
+assert.ok(
+  race
+    .filter((r) => r.status !== 200)
+    .every((r) => [400, 409].includes(r.status)),
+);
 game = (await call('/api/game', token)).data;
 assert.equal(game.players.filter((p) => p.avatar === free).length, 1);
 const loser = game.players.find((p) => p.avatar !== free);

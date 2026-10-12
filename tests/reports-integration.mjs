@@ -19,7 +19,7 @@ function sql(statement) {
   mkdirSync('work', { recursive: true });
   const file = `work/${id}.sql`;
   writeFileSync(file, statement);
-  const out = execFileSync(process.execPath, ['node_modules/wrangler/bin/wrangler.js', 'd1', 'execute', 'site-creator-d1', '--local', '--config', 'wrangler.local.json', '--file', file, '--json'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+  const out = execFileSync(process.execPath, ['node_modules/wrangler/bin/wrangler.js', 'd1', 'execute', 'site-creator-d1', '--local', '--persist-to', process.env.CT_D1_PERSIST || '.wrangler/state', '--config', 'wrangler.local.json', '--file', file, '--json'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
   return JSON.parse(out.slice(out.indexOf('['))).map((r) => r.results);
 }
 

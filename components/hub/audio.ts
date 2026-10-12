@@ -2,6 +2,7 @@ import {
   defaultPreferences,
   type Preferences,
 } from '@/lib/accounts/preferences';
+import { nativeCue, type Cue } from '@/lib/native/bridge';
 let preferences = defaultPreferences;
 let context: AudioContext | undefined;
 let music: GainNode | undefined;
@@ -61,5 +62,12 @@ function toneCue(frequency: number) {
   tone.start();
   tone.stop(context.currentTime + 0.3);
 }
-export function playCue() { toneCue(660); }
-export function errorCue() { toneCue(180); }
+// In the app shells cues play natively, which respects the silent switch.
+function cue(kind: Cue, frequency: number) {
+  if (typeof document !== 'undefined' && document.hidden && preferences.muteInBackground) return;
+  if (preferences.sfx <= 0) return;
+  if (nativeCue(kind, (preferences.sfx / 100) * 0.3)) return;
+  toneCue(frequency);
+}
+export function playCue() { cue('phase', 660); }
+export function errorCue() { cue('error', 180); }
