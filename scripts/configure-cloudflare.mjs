@@ -1,5 +1,5 @@
 // Read-only discovery; CI supplies Cloudflare credentials. Never creates or deploys.
-import { writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { readConfig } from './wrangler-config.mjs';
 const account = process.env.CLOUDFLARE_ACCOUNT_ID?.trim();
 const token = process.env.CLOUDFLARE_API_TOKEN?.trim();
@@ -76,4 +76,23 @@ for (const name of names) {
 }
 config.account_id = account;
 writeFileSync('wrangler.jsonc', JSON.stringify(config, null, 2) + '\n');
+// Only public binding metadata is exported. Never include credentials or the
+// account ID supplied through GitHub secrets.
+const bindings = {};
+for (const name of ['staging', 'production']) {
+  const databaseName =
+    process.env[`D1_${name.toUpperCase()}_DATABASE_NAME`] ||
+    config.env[name].d1_databases[0].database_name;
+  const database = data.result.find((item) => item.name === databaseName);
+  if (database)
+    bindings[name] = {
+      database_name: database.name,
+      database_id: database.uuid,
+    };
+}
+mkdirSync('work', { recursive: true });
+writeFileSync(
+  'work/d1-bindings.json',
+  JSON.stringify(bindings, null, 2) + '\n',
+);
 console.log(`Resolved ${names.join(' and ')} DB bindings.`);

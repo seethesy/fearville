@@ -31,6 +31,13 @@ jobs:
           D1_STAGING_DATABASE_NAME: ${{ vars.D1_STAGING_DATABASE_NAME }}
           D1_PRODUCTION_DATABASE_NAME: ${{ vars.D1_PRODUCTION_DATABASE_NAME }}
         run: node scripts/configure-cloudflare.mjs ${{ matrix.environment }}
+      - name: Save non-secret database bindings
+        if: github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository
+        uses: actions/upload-artifact@v4
+        with:
+          name: d1-bindings-${{ matrix.environment }}
+          path: work/d1-bindings.json
+          retention-days: 7
       - run: npm run build
         env:
           CLOUDFLARE_ENV: ${{ matrix.environment }}
