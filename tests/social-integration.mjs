@@ -463,7 +463,8 @@ await ok(
 );
 viewB = await ok(social(tB), 'B after A');
 assert.equal(viewB.stats.games, 1, 'record survives the host session deletion');
-assert.equal(viewB.recent[0].hostName, 'Storyteller A');
+// FEAR-118: a deleted Storyteller's name is anonymised in others' history.
+assert.equal(viewB.recent[0].hostName, 'Former player');
 for (const t of [tB, tC, tD, tE])
   await call('/api/accounts', t, { action: 'delete', confirm: 'DELETE' });
 console.log(
