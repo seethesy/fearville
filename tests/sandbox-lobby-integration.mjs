@@ -58,7 +58,7 @@ assert.ok(pov.data.character);
 
 await act({ action: 'end', winner: 'good' });
 assert.equal(game.phase, 'ended');
-assert.equal(game.recaps.at(-1).players.length, 5);
+assert.equal(game.recaps.at(-1).players.length, ids.length);
 assert.ok(game.controls.some((control) => control.action === 'returnLobby'));
 await act({ action: 'returnLobby' }, ids[0]);
 assert.equal(game.phase, 'lobby');
@@ -85,7 +85,10 @@ for (let i = 1; i <= 5; i++) {
   assert.equal(joined.status, 200, JSON.stringify(joined.data));
   seats.push(joined.data);
 }
-await claimSeats(base, seats.map((s) => s.token));
+await claimSeats(
+  base,
+  seats.map((s) => s.token),
+);
 let shared = (await call('/api/game', lobby.data.token)).data;
 async function sharedAct(tokenForAction, action) {
   const result = await call('/api/game', tokenForAction, {

@@ -1,0 +1,26 @@
+{
+  "permissions": {
+    "deny": [
+      "Read(./node_modules/**)",
+      "Read(./dist/**)",
+      "Read(./.next/**)",
+      "Read(./.vinext/**)",
+      "Read(./.wrangler/**)",
+      "Read(./outputs/**)",
+      "Read(./work/**)",
+      "Read(./package-lock.json)",
+      "Read(./**/*.tsbuildinfo)",
+      "Read(./lib/rite/bank-data.ts)",
+      "Read(./ios/Fearville/glossary.json)",
+      "Read(./ios/Fearville/roles.json)",
+      "Read(./ios/Fearville/tutorials.json)",
+      "Read(./drizzle/meta/**)",
+      "Read(./docs/design/*.png)",
+      "Read(./docs/design/*.svg)",
+      "Read(./artifacts/**)",
+      "Read(./Claude outputs/**)",
+      "Read(./public/*.png)",
+      "Read(./public/fonts/**)"
+    ]
+  }
+}
