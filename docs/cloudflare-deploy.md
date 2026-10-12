@@ -21,7 +21,7 @@ PowerShell: `$env:CLOUDFLARE_ENV='staging'; npm run build`. Build each environme
 
 The flat numbered SQL migrations and Drizzle statement-breakpoint comments work with Wrangler. CI applies `npx wrangler d1 migrations apply DB --remote --env staging --config wrangler.jsonc` before deployment; production substitutes production. Local setup uses `--local` without `--env`. Wrangler tracks migration filenames. Do not replay migrations against the existing Sites schema or edit already applied files.
 
-The account service already reads Worker bindings. Install confidential provider settings as Worker secrets per environment through CI. Public client IDs can be vars or secrets. See `.env.example` for required names and purposes. Preserve AUTH_ENCRYPTION_KEY when moving encrypted identity refresh tokens. Configure Google/Apple callback origins separately; see [account setup](../ACCOUNT-SETUP.md).
+The account service already reads Worker bindings. Install confidential provider settings as Worker secrets per environment through CI. Public client IDs can be vars or secrets. See `.env.example` for required names and purposes. Preserve AUTH_ENCRYPTION_KEY when moving encrypted identity refresh tokens. Configure Google/Apple callback URLs separately for each environment's origin.
 
 ## Durable-data transfer
 
