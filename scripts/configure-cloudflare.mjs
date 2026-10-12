@@ -1,8 +1,8 @@
 // Read-only discovery; CI supplies Cloudflare credentials. Never creates or deploys.
 import { writeFileSync } from 'node:fs';
 import { readConfig } from './wrangler-config.mjs';
-const account = process.env.CLOUDFLARE_ACCOUNT_ID;
-const token = process.env.CLOUDFLARE_API_TOKEN;
+const account = process.env.CLOUDFLARE_ACCOUNT_ID?.trim();
+const token = process.env.CLOUDFLARE_API_TOKEN?.trim();
 if (!account || !token)
   throw new Error(
     'CI must supply CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN.',
@@ -16,7 +16,7 @@ const response = await fetch(
 const data = await response.json();
 if (!response.ok || !data.success)
   throw new Error(
-    'Cloudflare database discovery failed. Check CI token permissions.',
+    `Cloudflare database discovery failed (HTTP ${response.status}; error codes ${(data.errors || []).map((error) => error.code).join(',')}). Check the environment's Account ID and D1 token permissions.`,
   );
 const config = readConfig();
 const names = process.argv[2] ? [process.argv[2]] : ['staging', 'production'];
