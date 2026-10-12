@@ -4,7 +4,10 @@
 // Inert in browsers: window.Capacitor only exists inside the shell.
 
 type Plugin = Record<string, (...args: unknown[]) => Promise<unknown>> & {
-  addListener?: (event: string, handler: (data: Record<string, unknown>) => void) => unknown;
+  addListener?: (
+    event: string,
+    handler: (data: Record<string, unknown>) => void,
+  ) => unknown;
 };
 type CapacitorGlobal = {
   isNativePlatform(): boolean;
@@ -16,10 +19,14 @@ const SHELL_BRIDGE_VERSION = 1;
 
 export function installCapacitorBridge() {
   if (typeof window === 'undefined') return;
-  const w = window as unknown as { Capacitor?: CapacitorGlobal; FearvilleNative?: unknown };
+  const w = window as unknown as {
+    Capacitor?: CapacitorGlobal;
+    FearvilleNative?: unknown;
+  };
   const cap = w.Capacitor;
   if (!cap?.isNativePlatform() || w.FearvilleNative) return;
-  const plugin = (name: string) => (cap.isPluginAvailable(name) ? cap.Plugins[name] : undefined);
+  const plugin = (name: string) =>
+    cap.isPluginAvailable(name) ? cap.Plugins[name] : undefined;
   const haptics = plugin('Haptics'),
     share = plugin('Share'),
     keepAwake = plugin('KeepAwake'),
@@ -30,7 +37,10 @@ export function installCapacitorBridge() {
   const emit = (detail: Record<string, unknown>) =>
     window.dispatchEvent(new CustomEvent('fearville:native', { detail }));
 
-  const methods: Record<string, (args: Record<string, unknown>) => Promise<unknown>> = {};
+  const methods: Record<
+    string,
+    (args: Record<string, unknown>) => Promise<unknown>
+  > = {};
   const capabilities: string[] = [];
   if (haptics) {
     capabilities.push('haptics');
@@ -52,13 +62,19 @@ export function installCapacitorBridge() {
   }
   if (keepAwake) {
     capabilities.push('keepAwake');
-    methods['keepAwake.set'] = (a) => (a.on ? keepAwake.keepAwake() : keepAwake.allowSleep());
+    methods['keepAwake.set'] = (a) =>
+      a.on ? keepAwake.keepAwake() : keepAwake.allowSleep();
   }
   if (secure) {
     capabilities.push('secureStorage');
     methods['secureStorage.get'] = async (a) =>
-      ((await secure.get({ key: a.key }).catch(() => null)) as { value?: string } | null)?.value ?? null;
-    methods['secureStorage.set'] = (a) => secure.set({ key: a.key, value: a.value });
+      (
+        (await secure.get({ key: a.key }).catch(() => null)) as {
+          value?: string;
+        } | null
+      )?.value ?? null;
+    methods['secureStorage.set'] = (a) =>
+      secure.set({ key: a.key, value: a.value });
     methods['secureStorage.remove'] = (a) => secure.remove({ key: a.key });
   }
   if (app?.addListener) {
@@ -71,8 +87,13 @@ export function installCapacitorBridge() {
       const url = typeof e.url === 'string' ? e.url : '';
       if (!url.startsWith('fearville://signin')) return;
       void browser?.close?.().catch(() => {});
-      const params = new URL(url.replace('fearville://', 'https://x/')).searchParams;
-      emit({ type: 'signin', code: params.get('code'), error: params.get('error') });
+      const params = new URL(url.replace('fearville://', 'https://x/'))
+        .searchParams;
+      emit({
+        type: 'signin',
+        code: params.get('code'),
+        error: params.get('error'),
+      });
     });
   }
   network?.addListener?.('networkStatusChange', (s) =>
@@ -82,7 +103,8 @@ export function installCapacitorBridge() {
     // Google refuses OAuth in embedded WebViews: open the flow in the system
     // browser sheet (SFSafariViewController / Custom Tabs).
     capabilities.push('auth');
-    methods['auth.open'] = (a) => browser.open({ url: a.url, presentationStyle: 'popover' });
+    methods['auth.open'] = (a) =>
+      browser.open({ url: a.url, presentationStyle: 'popover' });
   }
 
   w.FearvilleNative = {
@@ -90,7 +112,9 @@ export function installCapacitorBridge() {
     capabilities,
     call: (method: string, args: Record<string, unknown> = {}) => {
       const run = methods[method];
-      return run ? run(args) : Promise.reject(new Error(`Unknown native method ${method}`));
+      return run
+        ? run(args)
+        : Promise.reject(new Error(`Unknown native method ${method}`));
     },
   };
 }

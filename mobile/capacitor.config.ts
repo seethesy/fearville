@@ -3,7 +3,9 @@ import type { CapacitorConfig } from '@capacitor/cli';
 // Option (b) from docs/mobile-shell-decision.md: a bundled start page
 // (www/index.html) navigates to the hosted site; only these hosts stay in
 // the WebView. Set FEARVILLE_URL to try another environment.
-const site = new URL(process.env.FEARVILLE_URL ?? 'https://staging.fearville.app');
+const site = new URL(
+  process.env.FEARVILLE_URL ?? 'https://staging.fearville.app',
+);
 
 const config: CapacitorConfig = {
   appId: 'app.fearville.shell',
