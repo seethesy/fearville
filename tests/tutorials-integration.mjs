@@ -19,6 +19,8 @@ const d1 = (file) =>
       'execute',
       'site-creator-d1',
       '--local',
+      '--persist-to',
+      process.env.CT_D1_PERSIST || '.wrangler/state',
       '--config',
       'wrangler.local.json',
       '--file',

@@ -48,3 +48,7 @@ xcuserdata/
 /mobile/node_modules
 /mobile/ios
 /mobile/android
+
+# local outputs (screenshots, previews), kept on disk but not in git
+/Claude outputs/
+/artifacts/

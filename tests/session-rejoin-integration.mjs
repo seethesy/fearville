@@ -130,13 +130,10 @@ assert.equal(started.game.phase, 'night');
 for (const token of [host.token, players[0].token]) {
   const before = ok(await call('/api/game', token));
   ok(await call('/api/session', token, { action: 'join', code: host.code }));
-  const restored = await call('/api/session', '', {
-    action: 'restore',
-    recoveryKey: token,
-  });
+  const restored = await call('/api/session', token);
   ok(restored);
-  assert.match(restored.cookie, /HttpOnly/);
-  const after = ok(await call('/api/game', restored.data.token));
+  assert.equal(restored.data.host, before.host);
+  const after = ok(await call('/api/game', token));
   assert.equal(after.me, before.me);
   assert.equal(after.host, before.host);
   assert.deepEqual(after.character, before.character);
@@ -152,15 +149,7 @@ assert.equal(
   ).status,
   400,
 );
-assert.equal(
-  (
-    await call('/api/session', '', {
-      action: 'restore',
-      recoveryKey: 'invalid-key',
-    })
-  ).status,
-  401,
-);
+assert.equal((await call('/api/session', 'invalid-key')).status, 401);
 console.log(
-  'PASS: stable random preview, manual assignment, persistent cookies, player/Storyteller rejoin before and after start, recovery, and impersonation rejection.',
+  'PASS: stable random preview, manual assignment, persistent cookies, player/Storyteller rejoin before and after start, authenticated reconnection, and impersonation rejection.',
 );

@@ -68,7 +68,7 @@ export function installCapacitorBridge() {
     );
     // Sign-in returns through fearville://signin?code=… (lib/accounts/callback.ts).
     app.addListener('appUrlOpen', (e) => {
-      const url = String(e.url ?? '');
+      const url = typeof e.url === 'string' ? e.url : '';
       if (!url.startsWith('fearville://signin')) return;
       void browser?.close?.().catch(() => {});
       const params = new URL(url.replace('fearville://', 'https://x/')).searchParams;
