@@ -279,7 +279,8 @@ export default function Account() {
             <AlertDialogDescription>
               This permanently removes your profile, friends, saved seats, and
               sign-in connections, and closes games you host. Finished games
-              remain in other players’ records without your account link.
+              keep your seat as an anonymous “Former player”, and star ratings
+              you gave stay without your comment.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <label className="field">
