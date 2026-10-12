@@ -34,7 +34,7 @@ node scripts/import-d1.mjs --database DB --mode local --file /private/export.jso
 
 For remote transfer use `--mode remote`, the source owner's `--config` and credentials, and target `--env production`. Export refuses overwrite. Import requires migrated, empty durable tables and refuses merges. Keep snapshots private and outside Git; remove them after verification. Verify row counts and contents before cutover. A failed import can leave a partial target: restore/recreate the empty target before retrying.
 
-Live sessions, snapshots, members, account-seat links, invites, ranked locks, login sessions, OAuth flows, native codes and rate limits are excluded. Players sign in again and create new lobbies. `node tests/d1-transfer-integration.mjs` verifies all nine durable tables through two local D1 copies, exclusions and nonempty-target rejection.
+Live sessions, session parts, snapshots, members, account-seat links, invites, ranked locks, login sessions, OAuth flows, native codes and rate limits are excluded. Players sign in again and create new lobbies. Reports are included as durable moderation records. Older sources without a reports table and old nine-table exports are supported. `node tests/d1-transfer-integration.mjs` verifies all ten durable tables through two local D1 copies, exclusions and nonempty-target rejection.
 
 ### Sites source access limit
 

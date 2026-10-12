@@ -2,7 +2,7 @@
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { argumentsFor, extractDump, tables, wrangler } from './d1-transfer.mjs';
+import { argumentsFor, extractDump, tables, optionalTables, wrangler } from './d1-transfer.mjs';
 import { Miniflare } from 'miniflare';
 import { readConfig } from './wrangler-config.mjs';
 const options = argumentsFor(process.argv.slice(2), true);
@@ -30,13 +30,15 @@ try {
     });
     try {
       const db = await mf.getD1Database('DB');
+      const schema = (await db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all()).results;
+      const selected = tables.filter((table) => !optionalTables.includes(table) || schema.some((row) => row.name === table));
       const rows = await db.batch(
-        tables.map((table) => db.prepare(`SELECT * FROM "${table}"`)),
+        selected.map((table) => db.prepare(`SELECT * FROM "${table}"`)),
       );
       dump = {
         format: 'fearville-d1-v1',
         tables: Object.fromEntries(
-          tables.map((table, i) => [table, rows[i].results]),
+          tables.map((table) => [table, selected.includes(table) ? rows[selected.indexOf(table)].results : []]),
         ),
       };
     } finally {

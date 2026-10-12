@@ -14,7 +14,11 @@ export const tables = [
   'game_players',
   'storyteller_ratings',
   'tutorial_progress',
+  'player_reports',
 ];
+// Older Sites snapshots predate reporting. Missing optional tables are empty;
+// every core account/history table is still required.
+export const optionalTables = ['player_reports'];
 export function argumentsFor(argv, allowSqlSource = false) {
   const options = {};
   for (let i = 0; i < argv.length; i += 2) {
@@ -64,6 +68,8 @@ export function extractDump(sql) {
     db.exec(sql);
     const data = Object.fromEntries(
       tables.map((table) => {
+        if (optionalTables.includes(table) && !db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name=?").get(table))
+          return [table, []];
         const rows = db.prepare(`SELECT * FROM "${table}"`).all();
         return [table, rows];
       }),
@@ -82,15 +88,18 @@ function literal(value) {
 export function importSql(dump) {
   if (
     dump.format !== 'fearville-d1-v1' ||
-    Object.keys(dump.tables).sort().join() !== [...tables].sort().join()
+    !dump.tables ||
+    Object.keys(dump.tables).some((table) => !tables.includes(table)) ||
+    tables.some((table) => !optionalTables.includes(table) && !(table in dump.tables))
   )
     throw new Error('Invalid transfer format or table set.');
   const sql = [
     '-- Apply migrations first. Import once into an empty database.',
   ];
   for (const table of tables) {
-    if (!Array.isArray(dump.tables[table])) throw new Error('Invalid rows.');
-    for (const row of dump.tables[table]) {
+    const rows = table in dump.tables ? dump.tables[table] : (optionalTables.includes(table) ? [] : undefined);
+    if (!Array.isArray(rows)) throw new Error('Invalid rows.');
+    for (const row of rows) {
       const columns = Object.keys(row);
       if (!columns.length || columns.some((key) => !/^[a-z_]+$/.test(key)))
         throw new Error('Invalid column names.');

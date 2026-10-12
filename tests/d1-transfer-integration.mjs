@@ -3,7 +3,7 @@ import { spawnSync } from 'node:child_process';
 import { mkdtempSync, rmSync, writeFileSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { tmpdir } from 'node:os';
-import { extractDump, importSql, tables } from '../scripts/d1-transfer.mjs';
+import { extractDump, importSql, tables, optionalTables } from '../scripts/d1-transfer.mjs';
 // Exercise the remote SQL parser too, with synthetic data only.
 const parsed = extractDump(
   tables
@@ -15,6 +15,12 @@ const parsed = extractDump(
 );
 assert.ok(tables.every((t) => parsed.tables[t][0].value === "O'Brien"));
 assert.ok(importSql(parsed).includes("'O''Brien'"));
+const legacy = extractDump(tables.filter((t) => !optionalTables.includes(t)).map((t) => `CREATE TABLE "${t}" (value TEXT);`).join('\n'));
+assert.deepEqual(legacy.tables.player_reports, []);
+delete legacy.tables.player_reports;
+assert.doesNotThrow(() => importSql(legacy), 'Old nine-table exports remain importable.');
+assert.throws(() => importSql({ ...legacy, tables: { ...legacy.tables, unknown_table: [] } }), /Invalid transfer/);
+assert.throws(() => importSql({ ...legacy, tables: { ...legacy.tables, player_reports: null } }), /Invalid rows/);
 const temp = mkdtempSync(path.join(tmpdir(), 'fearville-roundtrip-'));
 function run(args) {
   const result = spawnSync(process.execPath, args, {
@@ -52,7 +58,10 @@ try {
     INSERT INTO game_players(game,player,account,name,role,team,won,alive) VALUES ('g','p','b','B','watchman','good',1,1);
     INSERT INTO storyteller_ratings VALUES ('g','b','a',5,'Great\nnight',2);
     INSERT INTO tutorial_progress VALUES ('a','intro','completed',2);
-    INSERT INTO sessions VALUES ('123456','{}',0,1);
+    INSERT INTO player_reports(id,kind,reason,reporter_account,target_account,target_name,content,created) VALUES ('r','player','other','a','b','B','reported handle',2);
+    INSERT INTO sessions(code,state,version,created) VALUES ('123456','{}',0,1);
+    INSERT INTO session_parts(code,part,state,rev) VALUES ('123456','chat:00000','[]',1);
+    INSERT INTO session_snapshots(code,id,state) VALUES ('123456','snapshot','{}');
     INSERT INTO account_sessions(hash,account,expires) VALUES ('private','a',99999999);
   `,
   );
@@ -82,7 +91,7 @@ try {
     '--persist-to',
     path.join(temp, 'target'),
   ]);
-  for (const table of [...tables, 'sessions', 'account_sessions']) {
+  for (const table of [...tables, 'sessions', 'session_parts', 'session_snapshots', 'account_sessions']) {
     const query = (name) =>
       JSON.parse(
         run([
@@ -112,7 +121,7 @@ try {
   ]);
   assert.notEqual(repeat.status, 0, 'Import refuses a nonempty target.');
   console.log(
-    'PASS: all nine durable tables round-trip with identical rows; live sessions and login credentials excluded; nonempty target rejected.',
+    `PASS: all ${tables.length} durable tables round-trip with identical rows; live sessions, parts, snapshots and login credentials excluded; legacy exports supported; nonempty target rejected.`,
   );
 } finally {
   rmSync(temp, { recursive: true, force: true });
