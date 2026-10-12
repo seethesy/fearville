@@ -26,7 +26,8 @@ hosting provider (Cloudflare Workers + D1) on Fearville's behalf.
 | Session recaps (seat names, roles, decisions, revealed notes and chat) | `games.recap`, `sessions.state.recaps` | Post-game recap for participants | Yes, while linked | Other user content / Messages: Other in-app messages | Indefinite | Name, photo, notes and messages removed |
 | Storyteller ratings given: stars and optional comment | `storyteller_ratings` | Storyteller feedback | Yes | Other user content | 14-day edit window, then kept | Stars kept anonymously, comment deleted |
 | Storyteller ratings received | `storyteller_ratings` | Storyteller stats | Yes | Other user content | While the account exists | Deleted |
-| Live table state: seat name, role, votes, night choices, private notes, chat | `sessions.state` | Run the game | Linked via saved seat while signed in | Gameplay content; Messages: Other in-app messages | Until the table is closed | Hosted tables deleted; player seats renamed "Former player", notes and messages removed |
+| Live table state: seat name, role, votes, night choices, private notes, chat | `sessions.state`, `session_parts`, `session_snapshots` | Run the game | Linked via saved seat while signed in | Gameplay content; Messages: Other in-app messages | Until the table is closed | Hosted tables deleted; player seats renamed "Former player", photos, notes and messages removed, including rewind snapshots |
+| Player reports: reason, optional note, reporter/target links, handle or message snapshot, resolution | `player_reports` | Moderate abuse | Yes while account/seat links exist | Other user content | Retained for moderation | Reporter links and notes removed; reports about the account lose name, content snapshot and resolution text; anonymous metadata retained |
 | Seat credentials (hashed) | `members.token_hash`, `account_seats` | Rejoin a seat | Yes | Identifiers: Device or other IDs | 30 days | Deleted |
 | Sign-in sessions (hashed) | `account_sessions` | Stay signed in | Yes | Identifiers | 30 days | Deleted |
 | Tutorial progress | `tutorial_progress` | Show each tutorial once | Yes | Usage data: Product interaction | While the account exists | Deleted |
@@ -43,7 +44,6 @@ Guests: a random seat credential (hashed) plus whatever they type at the table
 | Problem reports with optional screenshot and contact email | FEAR-111 | User content: Customer support; Contact info: Email (optional) |
 | Push device tokens (APNs/FCM) | FEAR-100 | Identifiers: Device ID. Deleted with the account |
 | Purchase records (trust ledger, Stripe/Apple/Google receipts) | FEAR-44/75/76 | Purchases: Purchase history. Keep only what refunds and tax require, unlinked from personal data on deletion (FEAR-77) |
-| Player reports and moderation actions | FEAR-119 | Other user content. Reports a deleted account filed are anonymised |
 
 ## Deletion
 

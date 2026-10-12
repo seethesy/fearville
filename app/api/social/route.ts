@@ -19,6 +19,7 @@ import {
 import { rateStoryteller } from '@/lib/social/ratings';
 import { socialView } from '@/lib/social/view';
 import { setPrivacy } from '@/lib/social/privacy';
+import { blockSeat } from '@/lib/social/reports';
 
 const id = (value: unknown) =>
   typeof value === 'string' && value.length > 0 && value.length < 100
@@ -64,6 +65,9 @@ export async function POST(r: Request) {
         break;
       case 'block':
         await blockAccount(a.id, id(body.account), now);
+        break;
+      case 'blockSeat':
+        await blockSeat(a.id, body.code, body.player, now);
         break;
       case 'unblock':
         await unblockAccount(a.id, id(body.account));

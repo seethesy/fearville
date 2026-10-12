@@ -2,6 +2,7 @@ import { database } from '@/db';
 import { normalizeHandle } from './derive';
 import { privacyFor } from './privacy';
 import { HANDLE_COOLDOWN } from '@/lib/accounts/preferences';
+import { isObjectionableHandle, OBJECTIONABLE_HANDLE } from './moderation';
 
 export type PublicAccount = {
   id: string;
@@ -58,6 +59,7 @@ export async function areFriends(a: string, b: string) {
 
 export async function setHandle(account: string, value: unknown) {
   const handle = normalizeHandle(value);
+  if (isObjectionableHandle(handle)) throw Error(OBJECTIONABLE_HANDLE);
   const db = database();
   const taken = await db
     .prepare('SELECT id FROM accounts WHERE handle=? AND id<>?')

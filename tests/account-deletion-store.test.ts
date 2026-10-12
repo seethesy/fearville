@@ -172,3 +172,18 @@ void test('account deletion retries a concurrent chat save and removes the new p
     f.sqlite.close();
   }
 });
+
+void test('account deletion anonymises report snapshots and reporter seat links', async () => {
+  const f = fixture();
+  try {
+    await f.seed();
+    f.sqlite.exec("INSERT INTO player_reports(id,kind,reason,target_account,target_name,content,note,resolution,created) VALUES ('target','chat','other','deleted','Xavier Quill','private chat','private notebook','Xavier Quill warned',1)");
+    f.sqlite.exec("INSERT INTO player_reports(id,kind,reason,reporter_account,reporter_seat,note,created) VALUES ('reporter','player','other','deleted','DELETE:px','private notebook',1)");
+    f.sqlite.exec("INSERT INTO player_reports(id,kind,reason,reporter_seat,note,created) VALUES ('guest','chat','other','DELETE:px','private notebook',1)");
+    await deleteAccountData(f.db, 'deleted');
+    const reports = f.sqlite.prepare('SELECT * FROM player_reports').all();
+    assert.equal(reports.length, 3, 'anonymous report metadata survives');
+    for (const privateText of ['Xavier Quill', 'private chat', 'private notebook', 'DELETE:px', 'deleted'])
+      assert.ok(!JSON.stringify(reports).includes(privateText));
+  } finally { f.sqlite.close(); }
+});

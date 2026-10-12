@@ -321,3 +321,38 @@ export const tutorialProgress = sqliteTable(
   },
   (t) => [primaryKey({ columns: [t.account, t.tutorial] })],
 );
+
+// Player reports (FEAR-119) for the admin moderation queue. `content` is a
+// snapshot of the reported text (chat message, handle or rating comment) at
+// report time. kind: player | chat | rating. status: open | dismissed | actioned
+export const playerReports = sqliteTable(
+  'player_reports',
+  {
+    id: text('id').primaryKey(),
+    kind: text('kind').notNull(),
+    reason: text('reason').notNull(),
+    note: text('note').notNull().default(''),
+    reporterAccount: text('reporter_account').references(() => accounts.id, {
+      onDelete: 'set null',
+    }),
+    // Guests report with their seat (code:player); never a credential.
+    reporterSeat: text('reporter_seat'),
+    targetAccount: text('target_account').references(() => accounts.id, {
+      onDelete: 'set null',
+    }),
+    targetName: text('target_name').notNull().default(''),
+    code: text('code'),
+    game: text('game'),
+    messageId: text('message_id'),
+    content: text('content').notNull().default(''),
+    status: text('status').notNull().default('open'),
+    created: integer('created').notNull(),
+    resolvedBy: text('resolved_by'),
+    resolvedAt: integer('resolved_at'),
+    resolution: text('resolution'),
+  },
+  (t) => [
+    index('idx_player_reports_status').on(t.status, t.created),
+    index('idx_player_reports_target').on(t.targetAccount),
+  ],
+);
