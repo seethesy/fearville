@@ -55,6 +55,9 @@ if (!response.ok || !data.success) {
   );
 }
 const config = readConfig();
+console.log(
+  `Available D1 database names: ${JSON.stringify(data.result.map((database) => database.name))}`,
+);
 const names = process.argv[2] ? [process.argv[2]] : ['staging', 'production'];
 if (names.some((name) => !['staging', 'production'].includes(name)))
   throw new Error('Expected staging or production.');
