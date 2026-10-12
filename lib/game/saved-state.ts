@@ -121,13 +121,19 @@ function currentGame(game: Game, includeHistory = true): Game {
   if (includeHistory && game.history)
     current.history = game.history.map((entry) => ({
       ...entry,
-      before: entry.before ? JSON.stringify(currentGame(JSON.parse(entry.before) as Game)) : '',
+      before: entry.before
+        ? JSON.stringify(currentGame(JSON.parse(entry.before) as Game))
+        : '',
     }));
   return current;
 }
 
 export function savedGame(state: string, includeHistory = true): Game {
-  const game = JSON.parse(state) as Game;
+  return savedGameValue(JSON.parse(state) as Game, includeHistory);
+}
+
+/** Validate and normalise an already parsed (or assembled) saved game. */
+export function savedGameValue(game: Game, includeHistory = true): Game {
   if (!game.script || !Object.hasOwn(SCRIPTS, game.script))
     throw Error(
       'This saved table uses a retired script. Create a new table with Horrors of Fearville or Holy Moon and Stars.',

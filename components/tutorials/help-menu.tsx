@@ -11,6 +11,7 @@ import {
 import { helpSections } from '@/lib/tutorials/engine';
 import { useTutorials } from './provider';
 import { RoleTipsToggle } from '@/components/role-tips';
+import { KeepAwakeToggle } from '@/components/keep-awake-toggle';
 
 // FEAR-20: replay any tutorial or guide on demand. Lists only what applies
 // to this viewer: the player walkthrough for seated players, the Storyteller
@@ -99,6 +100,12 @@ export function HelpMenu({
             <section className="help-section">
               <p className="eyebrow">ROLE TIPS</p>
               <RoleTipsToggle session={tipSession} />
+            </section>
+          )}
+          {tipSession && (
+            <section className="help-section">
+              <p className="eyebrow">SCREEN</p>
+              <KeepAwakeToggle />
             </section>
           )}
         </DialogContent>
