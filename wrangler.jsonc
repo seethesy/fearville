@@ -21,7 +21,7 @@
         {
           "binding": "DB",
           "database_name": "fearville-staging",
-          "database_id": "00000000-0000-4000-8000-000000000001",
+          "database_id": "bc2ceaef-1022-4e01-abfa-44a022ed52aa",
           "migrations_dir": "drizzle",
         },
       ],
@@ -34,7 +34,7 @@
         {
           "binding": "DB",
           "database_name": "fearville-production",
-          "database_id": "00000000-0000-4000-8000-000000000002",
+          "database_id": "ee5bb171-1470-433f-8610-4ed13f1a5a56",
           "migrations_dir": "drizzle",
         },
       ],

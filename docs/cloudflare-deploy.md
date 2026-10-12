@@ -2,11 +2,11 @@
 
 Deployments run only through CI (FEAR-107). This PR never deploys or changes DNS. The live Sites project remains `appgprj_6aa01c8cdd5481918e87fb99e4d99696`.
 
-`wrangler.jsonc` defines local development plus separate staging/production Workers, DB bindings, custom domains, nodejs_compat and Drizzle migrations. IDs ending in 001/002 are explicit bootstrap placeholders, not discovered production IDs.
+`wrangler.jsonc` defines local development plus separate staging/production Workers, DB bindings, custom domains, nodejs_compat and Drizzle migrations. The staging and production IDs were discovered from the target Cloudflare account in CI. The zero UUID is used only for local development.
 
 ## Resolve database IDs in CI
 
-FEAR-82 stores CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID in GitHub secrets. GitHub cannot reveal their values. Supply them to `node scripts/configure-cloudflare.mjs` in CI. The helper reads the Cloudflare API to resolve databases named fearville-staging and fearville-production. Optional D1_STAGING_DATABASE_NAME and D1_PRODUCTION_DATABASE_NAME override these names. Missing databases fail with a provisioning message (FEAR-105); the helper never creates databases. Keep the resolved configuration in the CI checkout.
+FEAR-82 stores CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID in GitHub environment secrets. GitHub cannot reveal their values. Supply them to `node scripts/configure-cloudflare.mjs staging` (or production) in a job bound to that GitHub environment. The helper refreshes the selected binding from the Cloudflare API; optional D1_STAGING_DATABASE_NAME and D1_PRODUCTION_DATABASE_NAME override the default names. Missing databases fail explicitly; the helper never creates databases. Non-secret database names and IDs are saved as a seven-day CI artifact. Credentials and the secret-supplied account ID are excluded from that artifact. Keep the resolved account configuration in the CI checkout.
 
 ```sh
 npm ci
