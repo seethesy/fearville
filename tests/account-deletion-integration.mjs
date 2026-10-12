@@ -130,10 +130,21 @@ assert.ok(
 
 // Seed private data in the split layout and a rewind snapshot, rather than
 // only the core row. Deletion must clean all of these storage surfaces.
-const live = rows(`SELECT s.state, a.player FROM sessions s JOIN account_seats a ON a.code=s.code WHERE a.account=${q(X)} AND a.host=0`)[0];
+const live = rows(
+  `SELECT s.state, a.player FROM sessions s JOIN account_seats a ON a.code=s.code WHERE a.account=${q(X)} AND a.host=0`,
+)[0];
 const core = JSON.parse(live.state);
 core.players.find((p) => p.id === live.player).avatar = PHOTO;
-const messages = [{ id: 'private-message', from: live.player, to: 'all', text: CHAT, at: 1, kind: 'chat' }];
+const messages = [
+  {
+    id: 'private-message',
+    from: live.player,
+    to: 'all',
+    text: CHAT,
+    at: 1,
+    kind: 'chat',
+  },
+];
 const notebook = { text: NOTE, roles: {}, players: {} };
 const snapshot = { ...core, messages, notebooks: { [live.player]: notebook } };
 delete snapshot.storageLayout;

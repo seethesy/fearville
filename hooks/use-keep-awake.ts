@@ -38,7 +38,11 @@ export function useKeepAwake(active: boolean) {
 export function useKeepAwakeSetting() {
   const { state, preferences, preview } = useAccount();
   const account = !!state?.account;
-  const guestEnabled = useSyncExternalStore(subscribeGuestSetting, readGuestSetting, () => true);
+  const guestEnabled = useSyncExternalStore(
+    subscribeGuestSetting,
+    readGuestSetting,
+    () => true,
+  );
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const enabled = account ? preferences.keepAwake : guestEnabled;
@@ -59,7 +63,10 @@ export function useKeepAwakeSetting() {
     setBusy(true);
     preview({ ...preferences, keepAwake: next });
     try {
-      await accountAction({ action: 'preferences', settings: { ...preferences, keepAwake: next } });
+      await accountAction({
+        action: 'preferences',
+        settings: { ...preferences, keepAwake: next },
+      });
     } catch (e) {
       preview(previous);
       setError(e instanceof Error ? e.message : 'Could not save this setting.');

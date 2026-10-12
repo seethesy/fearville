@@ -18,7 +18,11 @@ import {
   revokeApple,
 } from '@/lib/accounts/service';
 import { random } from '@/lib/accounts/oidc';
-import { savePreferences, saveProfile, saveRoleTipsPreference } from '@/lib/accounts/profile';
+import {
+  savePreferences,
+  saveProfile,
+  saveRoleTipsPreference,
+} from '@/lib/accounts/profile';
 import { setHandle } from '@/lib/social/friends';
 export async function GET(r: Request) {
   try {

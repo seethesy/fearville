@@ -10,7 +10,13 @@
 //   removed, rater moved to a one-off tombstone row) so Storyteller averages
 //   stay correct.
 import { isPresetAvatar } from '../game/avatars.ts';
-import { SESSION_COLUMNS, loadStored, prepareWrite, isPartConflict, type SessionRow } from '../game/part-store.ts';
+import {
+  SESSION_COLUMNS,
+  loadStored,
+  prepareWrite,
+  isPartConflict,
+  type SessionRow,
+} from '../game/part-store.ts';
 
 export const FORMER_PLAYER = 'Former player';
 
@@ -172,14 +178,29 @@ async function deleteAccountAttempt(db: D1Database, account: string) {
       // Abort the entire account deletion if a concurrent core action won.
       // The malformed JSON is evaluated only when this write did not apply.
       db
-        .prepare(`SELECT json('account deletion conflict') WHERE NOT (${write.guard})`)
+        .prepare(
+          `SELECT json('account deletion conflict') WHERE NOT (${write.guard})`,
+        )
         .bind(...write.guardBindings),
     );
-    const snapshots = (await db.prepare('SELECT id, state FROM session_snapshots WHERE code = ?')
-      .bind(seat.code).all<{ id: string; state: string }>()).results;
+    const snapshots = (
+      await db
+        .prepare('SELECT id, state FROM session_snapshots WHERE code = ?')
+        .bind(seat.code)
+        .all<{ id: string; state: string }>()
+    ).results;
     for (const snapshot of snapshots)
-      statements.push(db.prepare('UPDATE session_snapshots SET state = ? WHERE code = ? AND id = ?')
-        .bind(anonymiseJson(snapshot.state, [{ player: seat.player, name }]), seat.code, snapshot.id));
+      statements.push(
+        db
+          .prepare(
+            'UPDATE session_snapshots SET state = ? WHERE code = ? AND id = ?',
+          )
+          .bind(
+            anonymiseJson(snapshot.state, [{ player: seat.player, name }]),
+            seat.code,
+            snapshot.id,
+          ),
+      );
   }
 
   statements.push(
@@ -205,8 +226,12 @@ export async function deleteAccountData(db: D1Database, account: string) {
       await deleteAccountAttempt(db, account);
       return;
     } catch (error) {
-      if (!isPartConflict(error) && !/malformed JSON/.test(String(error))) throw error;
-      if (attempt === 3) throw Error('The table changed. Please try deleting your account again.');
+      if (!isPartConflict(error) && !/malformed JSON/.test(String(error)))
+        throw error;
+      if (attempt === 3)
+        throw Error(
+          'The table changed. Please try deleting your account again.',
+        );
     }
   }
 }
