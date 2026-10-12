@@ -4,8 +4,10 @@ name: CI
 # Required status checks for branch protection: `check` and `integration`.
 on:
   pull_request:
+    paths-ignore: ['docs/**', '*.md', 'Claude outputs/**']
   push:
     branches: [main]
+    paths-ignore: ['docs/**', '*.md', 'Claude outputs/**']
   # Re-run after the formatter pushes a commit: pushes made with GITHUB_TOKEN
   # don't trigger workflows, but a dispatch does, so the new head gets checks.
   workflow_dispatch:
@@ -60,6 +62,8 @@ jobs:
           SAME_REPO: ${{ github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository }}
           BRANCH: ${{ github.head_ref || github.ref_name }}
         run: |
+          # Dispatches on main have no PR changed-file list.
+          [ -f changed.txt ] || { echo "pushed=false" >> "$GITHUB_OUTPUT"; exit 0; }
           files=$(grep -E '\.(ts|tsx|js|mjs|cjs|jsx|json|css)$' changed.txt | grep -vE '^(package-lock\.json|Claude outputs/)' | while read -r f; do [ -f "$f" ] && echo "$f"; done || true)
           [ -z "$files" ] && { echo "pushed=false" >> "$GITHUB_OUTPUT"; exit 0; }
           npm ci --no-audit --no-fund --loglevel=error
@@ -99,15 +103,16 @@ jobs:
           npm run --silent check 2>&1 | tee check.log
       - name: Failure summary
         if: failure()
-        run: |
-          {
-            echo "### check failed"
-            echo '```'
-            head -n 38 check.log
-            echo '```'
-          } >> "$GITHUB_STEP_SUMMARY"
-          # Annotations are readable with `gh api .../check-runs/<id>/annotations`.
-          grep -E '^(FAIL |[a-z]+: FAILED)' check.log | head -n 10 | while IFS= read -r line; do echo "::error title=check::$line"; done || true
+        run: node scripts/ci-summary.mjs check.log
+      - name: Upload full check logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: check-logs
+          path: |
+            check.log
+            work/check-logs/
+          retention-days: 7
 
   integration:
     needs: prepare
@@ -127,17 +132,7 @@ jobs:
           npm run --silent test:integration 2>&1 | tee integration.log
       - name: Failure summary
         if: failure()
-        run: |
-          {
-            echo "### integration failed"
-            echo '```'
-            grep -E '^(FAIL|integration:)' integration.log | head -n 8
-            echo
-            awk '/^FAIL/{p=1} p' integration.log | head -n 28
-            echo '```'
-            echo "Full logs: the integration-logs artifact."
-          } >> "$GITHUB_STEP_SUMMARY"
-          grep -E '^FAIL ' integration.log | head -n 10 | while IFS= read -r line; do echo "::error title=integration::$line"; done || true
+        run: node scripts/ci-summary.mjs integration.log
       - name: Upload logs
         if: failure()
         uses: actions/upload-artifact@v4
