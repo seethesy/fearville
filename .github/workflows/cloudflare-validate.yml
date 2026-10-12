@@ -10,7 +10,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        environment: [staging, production]
+        # Production secrets retain their required reviewer/protected-branch
+        # policy. PRs validate staging; dispatch from main validates both.
+        environment: ${{ fromJSON(github.event_name == 'pull_request' && '["staging"]' || '["staging","production"]') }}
     environment: ${{ matrix.environment }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
