@@ -206,6 +206,21 @@ async function deleteAccountAttempt(db: D1Database, account: string) {
   statements.push(
     db
       .prepare(
+        "UPDATE player_reports SET target_account = NULL, target_name = ?, content = '', note = '', resolution = NULL WHERE target_account = ?",
+      )
+      .bind(FORMER_PLAYER, account),
+    db
+      .prepare(
+        "UPDATE player_reports SET reporter_account = NULL, reporter_seat = NULL, note = '' WHERE reporter_account = ? OR reporter_seat IN (SELECT code || ':' || player FROM account_seats WHERE account = ?)",
+      )
+      .bind(account, account),
+    db
+      .prepare(
+        'UPDATE player_reports SET resolved_by = NULL WHERE resolved_by = ?',
+      )
+      .bind(account),
+    db
+      .prepare(
         'DELETE FROM members WHERE EXISTS (SELECT 1 FROM account_seats a WHERE a.account = ? AND a.code = members.code AND a.player = members.player)',
       )
       .bind(account),

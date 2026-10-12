@@ -28,6 +28,13 @@ export default function Privacy() {
         </p>
         <h2>How data is used</h2>
         <p>
+          Player reports store the reason, an optional note and a snapshot of
+          the reported handle, chat message or Storyteller comment for
+          moderation. On account deletion, report links and notes you submitted
+          are removed; reports about you lose your name and content snapshot.
+          Anonymous report metadata is retained for moderation.
+        </p>
+        <p>
           Data is used only to run Fearville and is stored with the app’s
           hosting provider. No advertising, no tracking across apps or websites,
           and no data is sold or shared for others’ purposes. Network addresses
