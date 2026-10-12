@@ -121,7 +121,9 @@ function currentGame(game: Game, includeHistory = true): Game {
   if (includeHistory && game.history)
     current.history = game.history.map((entry) => ({
       ...entry,
-      before: entry.before ? JSON.stringify(currentGame(JSON.parse(entry.before) as Game)) : '',
+      before: entry.before
+        ? JSON.stringify(currentGame(JSON.parse(entry.before) as Game))
+        : '',
     }));
   return current;
 }

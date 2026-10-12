@@ -10,7 +10,11 @@ import {
   memberExpiry,
   memberCookie as cookie,
 } from '@/lib/game/join';
-import { createStatements, prepareWrite, runWrite } from '@/lib/game/part-store';
+import {
+  createStatements,
+  prepareWrite,
+  runWrite,
+} from '@/lib/game/part-store';
 import {
   auth,
   hash,
@@ -27,7 +31,10 @@ export async function GET(r: Request) {
   try {
     const { actor, code, game } = await authenticatedRead(r);
     const player = game.players.find((p) => p.id === actor.id);
-    requireThat(actor.host || (player && !player.departed), 'This seat is no longer available.');
+    requireThat(
+      actor.host || (player && !player.departed),
+      'This seat is no longer available.',
+    );
     return json({
       code,
       host: actor.host,
@@ -159,9 +166,13 @@ export async function POST(r: Request) {
           'This seat is no longer available.',
         );
         if (account) await attachMember(await hash(tokenOf(r)), account.id);
-        return json({ code: current.code, token: tokenOf(r), resumed: true }, 200, {
-          'Set-Cookie': cookie(r, tokenOf(r)),
-        });
+        return json(
+          { code: current.code, token: tokenOf(r), resumed: true },
+          200,
+          {
+            'Set-Cookie': cookie(r, tokenOf(r)),
+          },
+        );
       }
     }
     const defaults = account

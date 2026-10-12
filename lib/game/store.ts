@@ -48,7 +48,9 @@ export async function authMember(
     code: member.code,
   };
 }
-export async function auth(r: Request): Promise<{ actor: Actor; code: string }> {
+export async function auth(
+  r: Request,
+): Promise<{ actor: Actor; code: string }> {
   const { actor, code } = await authMember(r);
   const { game } = await read(code);
   if (
@@ -70,7 +72,10 @@ export async function authenticatedRead(r: Request) {
   if (!row) throw Error('AUTH');
   const { game, version, created } = await converted(row);
   const actor = { id: row.player, host: !!row.host };
-  if (!actor.host && !game.players.some((p) => p.id === actor.id && !p.departed))
+  if (
+    !actor.host &&
+    !game.players.some((p) => p.id === actor.id && !p.departed)
+  )
     throw Error('AUTH');
   return { actor, code: row.code, game, version, created };
 }
@@ -150,10 +155,15 @@ export async function save(g: Game, version: number, syncRanked = true) {
 }
 export async function loadDecision(g: Game, command: Command) {
   if (command.action !== 'undo' && command.action !== 'rewind') return;
-  const entry = command.action === 'undo' ? g.history.at(-1) : g.history.find((h) => h.id === command.history);
+  const entry =
+    command.action === 'undo'
+      ? g.history.at(-1)
+      : g.history.find((h) => h.id === command.history);
   if (!entry || entry.before) return;
-  const row = await database().prepare('SELECT state FROM session_snapshots WHERE code=? AND id=?')
-    .bind(g.code, entry.id).first<{ state: string }>();
+  const row = await database()
+    .prepare('SELECT state FROM session_snapshots WHERE code=? AND id=?')
+    .bind(g.code, entry.id)
+    .first<{ state: string }>();
   if (!row) throw Error('This saved decision is no longer available.');
   entry.before = row.state;
 }

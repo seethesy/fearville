@@ -29,7 +29,12 @@ async function handle(r: Request, c?: Command) {
       'AUTH',
     );
     const changed = tick(game, now);
-    if (c && ['configureRite', 'riteForce', 'riteRedeal', 'ritePassTurn'].includes(c.action)) {
+    if (
+      c &&
+      ['configureRite', 'riteForce', 'riteRedeal', 'ritePassTurn'].includes(
+        c.action,
+      )
+    ) {
       requireThat(viewer.host, 'Only the Storyteller can do that.');
       if (c.epoch === undefined || c.night === undefined)
         requireThat(
@@ -43,17 +48,30 @@ async function handle(r: Request, c?: Command) {
         );
       snapshot(game, 'Night Rite: ' + c.action, now);
     }
-    const independentBefore = c && !viewer.host && !changed ? structuredClone(game) : null;
+    const independentBefore =
+      c && !viewer.host && !changed ? structuredClone(game) : null;
     const summary = c ? riteAction(game, viewer, c, now) : undefined;
     requireThat(!c || summary !== null, 'Choose a Rite action.');
-    const scoped = attempt === 0 && independentBefore && c ? independentCommand(independentBefore, game, viewer, c) : null;
+    const scoped =
+      attempt === 0 && independentBefore && c
+        ? independentCommand(independentBefore, game, viewer, c)
+        : null;
     if (scoped) {
       const saved = await saveIndependent(game, scoped);
       if (!saved) continue;
-      return json({ code, me: viewer.id, rite: riteView(saved.game, viewer, now), version: saved.version, serverNow: now, summary });
+      return json({
+        code,
+        me: viewer.id,
+        rite: riteView(saved.game, viewer, now),
+        version: saved.version,
+        serverNow: now,
+        summary,
+      });
     }
     if ((changed || c) && !(await save(game, version, false))) {
-      await new Promise((resolve) => setTimeout(resolve, 8 + Math.floor(Math.random() * 24)));
+      await new Promise((resolve) =>
+        setTimeout(resolve, 8 + Math.floor(Math.random() * 24)),
+      );
       continue;
     }
     return json({

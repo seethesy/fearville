@@ -61,7 +61,8 @@ export function loadStored(row: SessionRow, includeHistory = false) {
   };
 }
 
-const WRITE_GUARD = 'EXISTS (SELECT 1 FROM sessions WHERE code=? AND write_id=?)';
+const WRITE_GUARD =
+  'EXISTS (SELECT 1 FROM sessions WHERE code=? AND write_id=?)';
 
 export type PreparedWrite = {
   /** The core compare-and-set. Callers may batch their own statements right after it. */
@@ -115,9 +116,7 @@ export function prepareWrite(
         `INSERT INTO session_parts (code,part,state,rev) SELECT ?,?,'',0 WHERE ${WRITE_GUARD} AND NOT EXISTS (SELECT 1 FROM session_parts WHERE code=? AND part=? AND rev=?)`,
       )
       .bind(g.code, key, ...guardBindings, g.code, key, rev);
-  const changes = loaded
-    ? partChanges(loaded.parts, stored.parts)
-    : null;
+  const changes = loaded ? partChanges(loaded.parts, stored.parts) : null;
   if (!changes) {
     // Not loaded through this store: replace every part.
     after.push(
@@ -142,7 +141,9 @@ export function prepareWrite(
     after.push(
       expect(key, rev),
       db
-        .prepare(`DELETE FROM session_parts WHERE code=? AND part=? AND ${WRITE_GUARD}`)
+        .prepare(
+          `DELETE FROM session_parts WHERE code=? AND part=? AND ${WRITE_GUARD}`,
+        )
         .bind(g.code, key, ...guardBindings),
     );
   const commit = () => {
@@ -175,7 +176,12 @@ export async function runWrite(
   extra: D1PreparedStatement[] = [],
 ) {
   try {
-    const results = await db.batch([write.update, ...between, ...write.after, ...extra]);
+    const results = await db.batch([
+      write.update,
+      ...between,
+      ...write.after,
+      ...extra,
+    ]);
     if (results[0].meta.changes === 1) write.commit();
     return results;
   } catch (error) {
@@ -189,11 +195,15 @@ export function createStatements(db: D1Database, g: Game, created: number) {
   const stored = splitGame(g);
   return [
     db
-      .prepare('INSERT INTO sessions (code,state,version,created) VALUES (?,?,0,?)')
+      .prepare(
+        'INSERT INTO sessions (code,state,version,created) VALUES (?,?,0,?)',
+      )
       .bind(g.code, stored.core, created),
     ...[...stored.parts].map(([key, state]) =>
       db
-        .prepare('INSERT INTO session_parts (code,part,state,rev) VALUES (?,?,?,1)')
+        .prepare(
+          'INSERT INTO session_parts (code,part,state,rev) VALUES (?,?,?,1)',
+        )
         .bind(g.code, key, state),
     ),
   ];
@@ -226,18 +236,32 @@ export async function saveIndependentParts(
 
   if (update.append) {
     const message = JSON.stringify(update.append[1]);
-    const chats = [...loaded.parts.keys()].filter((key) => key.startsWith('chat:')).sort();
+    const chats = [...loaded.parts.keys()]
+      .filter((key) => key.startsWith('chat:'))
+      .sort();
     const last = chats.at(-1);
     const lastPart = last ? loaded.parts.get(last)! : null;
     const duplicate =
       "NOT EXISTS (SELECT 1 FROM session_parts c, json_each(c.state) m WHERE c.code=? AND c.part LIKE 'chat:%' AND json_extract(m.value,'$.id')=?)";
     const duplicateParams = [g.code, update.messageId ?? ''];
-    if (last && lastPart && lastPart.state.length + message.length < CHUNK_TARGET) {
+    if (
+      last &&
+      lastPart &&
+      lastPart.state.length + message.length < CHUNK_TARGET
+    ) {
       const row = await db
         .prepare(
           `UPDATE session_parts SET state=json_insert(state,'$[#]',json(?)), rev=rev+1 WHERE code=? AND part=? AND NOT EXISTS (SELECT 1 FROM session_parts n WHERE n.code=? AND n.part LIKE 'chat:%' AND n.part>?) AND ${duplicate} AND ${condition} RETURNING rev`,
         )
-        .bind(message, g.code, last, g.code, last, ...duplicateParams, ...params)
+        .bind(
+          message,
+          g.code,
+          last,
+          g.code,
+          last,
+          ...duplicateParams,
+          ...params,
+        )
         .first<{ rev: number }>();
       // The stored text is now SQLite's serialisation; mark it stale so a later
       // full save from this object rewrites the chunk under its new revision.
@@ -258,12 +282,16 @@ export async function saveIndependentParts(
   const key = partOfPath(path);
   if (!key || value === undefined) return null;
   const state = JSON.stringify(value);
-  if (state.length * 3 > PART_LIMIT && new TextEncoder().encode(state).length > PART_LIMIT)
+  if (
+    state.length * 3 > PART_LIMIT &&
+    new TextEncoder().encode(state).length > PART_LIMIT
+  )
     return null; // the full save reports the size error
   if (key.startsWith('rite:')) {
     const meta = loaded.parts.get('rite');
     if (!meta) return null;
-    condition += ' AND EXISTS (SELECT 1 FROM session_parts WHERE code=? AND part=? AND rev=?)';
+    condition +=
+      ' AND EXISTS (SELECT 1 FROM session_parts WHERE code=? AND part=? AND rev=?)';
     params.push(g.code, 'rite', meta.rev);
   }
   const rev = loaded.parts.get(key)?.rev ?? 0;

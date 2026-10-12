@@ -79,17 +79,15 @@ export async function recordResult(
     );
   }
   statements.push(
-    db
-      .prepare(`UPDATE games SET recap=? WHERE id=? AND ${guard}`)
-      .bind(
-        JSON.stringify({
-          ...recapOf(g, ended),
-          id: record.id,
-          started: record.started,
-        }),
-        record.id,
-        ...guarded,
-      ),
+    db.prepare(`UPDATE games SET recap=? WHERE id=? AND ${guard}`).bind(
+      JSON.stringify({
+        ...recapOf(g, ended),
+        id: record.id,
+        started: record.started,
+      }),
+      record.id,
+      ...guarded,
+    ),
     db
       .prepare(`DELETE FROM ranked_seats WHERE game=? AND ${guard}`)
       .bind(record.id, ...guarded),

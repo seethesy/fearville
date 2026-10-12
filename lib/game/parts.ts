@@ -89,13 +89,19 @@ function chunks(list: unknown[]) {
 /** Split a game into its stored core and parts. Throws on an oversized part. */
 export function splitGame(game: Game): StoredGame {
   const parts = new Map<string, string>();
-  const core: Record<string, unknown> = { ...game, [LAYOUT_KEY]: STORAGE_LAYOUT };
+  const core: Record<string, unknown> = {
+    ...game,
+    [LAYOUT_KEY]: STORAGE_LAYOUT,
+  };
   const addList = (prefix: string, list: unknown[]) =>
     chunks(list).forEach((text, i) => {
       const key = partKey(prefix, i);
       parts.set(key, guard(key, text));
     });
-  for (const [field, prefix] of Object.entries(LISTS) as [ListField, string][]) {
+  for (const [field, prefix] of Object.entries(LISTS) as [
+    ListField,
+    string,
+  ][]) {
     let list = game[field] as unknown[] | undefined;
     if (!Array.isArray(list)) continue;
     core[field] = [];
@@ -139,7 +145,8 @@ export function assembleGame(
   parts: Iterable<[string, string]>,
 ): { game: Game; legacy: boolean } {
   const core = JSON.parse(coreText) as Record<string, unknown>;
-  if (core[LAYOUT_KEY] !== STORAGE_LAYOUT) return { game: core as Game, legacy: true };
+  if (core[LAYOUT_KEY] !== STORAGE_LAYOUT)
+    return { game: core as Game, legacy: true };
   delete core[LAYOUT_KEY];
   const sorted = [...parts].sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
   const recapChat: [number, string][] = [];
@@ -152,7 +159,9 @@ export function assembleGame(
     if (field) {
       // Independent saves can add the first part of a list or notebook the
       // core never had; any stored part means the field exists.
-      const list = Array.isArray(core[field]) ? (core[field] as unknown[]) : (core[field] = []);
+      const list = Array.isArray(core[field])
+        ? (core[field] as unknown[])
+        : (core[field] = []);
       list.push(...(JSON.parse(text) as unknown[]));
     } else if (prefix === 'recapchat') {
       recapChat.push([Number(rest.split(':')[0]), text]);
@@ -169,7 +178,8 @@ export function assembleGame(
   const recaps = core.recaps as { messages?: unknown[] }[] | undefined;
   for (const [index, text] of recapChat) {
     const messages = recaps?.[index]?.messages;
-    if (Array.isArray(messages)) messages.push(...(JSON.parse(text) as unknown[]));
+    if (Array.isArray(messages))
+      messages.push(...(JSON.parse(text) as unknown[]));
   }
   return { game: core as Game, legacy: false };
 }
@@ -188,7 +198,8 @@ export function partChanges(
   const deletes: PartChanges['deletes'] = [];
   for (const [key, state] of next) {
     const old = loaded.get(key);
-    if (!old || old.state !== state) upserts.push({ key, state, rev: old?.rev ?? 0 });
+    if (!old || old.state !== state)
+      upserts.push({ key, state, rev: old?.rev ?? 0 });
   }
   for (const [key, old] of loaded)
     if (!next.has(key)) deletes.push({ key, rev: old.rev });
