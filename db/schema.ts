@@ -12,14 +12,38 @@ export const sessions = sqliteTable('sessions', {
   state: text('state').notNull(),
   version: integer('version').notNull().default(0),
   created: integer('created').notNull(),
+  // Unique id of the save that produced this row; statements batched with a
+  // save run only if that exact save applied.
+  writeId: text('write_id'),
 });
+// Chat, log, notebooks, Night Rite vigils and recaps are stored apart from
+// sessions.state so each action rewrites only what it changed and no stored
+// value nears Durable Object storage's 2 MB cap. See lib/game/parts.ts.
+export const sessionParts = sqliteTable(
+  'session_parts',
+  {
+    code: text('code')
+      .notNull()
+      .references(() => sessions.code, { onDelete: 'cascade' }),
+    part: text('part').notNull(),
+    state: text('state').notNull(),
+    rev: integer('rev').notNull().default(0),
+  },
+  (t) => [primaryKey({ columns: [t.code, t.part] })],
+);
 // Decision snapshots are read only when the Storyteller rewinds. Keeping them
 // out of the live table avoids copying every past decision on each move/poll.
-export const sessionSnapshots = sqliteTable('session_snapshots', {
-  code: text('code').notNull().references(() => sessions.code, { onDelete: 'cascade' }),
-  id: text('id').notNull(),
-  state: text('state').notNull(),
-}, (t) => [primaryKey({ columns: [t.code, t.id] })]);
+export const sessionSnapshots = sqliteTable(
+  'session_snapshots',
+  {
+    code: text('code')
+      .notNull()
+      .references(() => sessions.code, { onDelete: 'cascade' }),
+    id: text('id').notNull(),
+    state: text('state').notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.code, t.id] })],
+);
 export const members = sqliteTable(
   'members',
   {

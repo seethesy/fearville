@@ -28,6 +28,7 @@ import {
   ActivityArt,
 } from './art';
 import { errorCue } from '@/components/hub/audio';
+import { haptic } from '@/lib/native/bridge';
 type Reply = {
   rite: RiteView;
   serverNow: number;
@@ -77,6 +78,7 @@ export function NightRite({
     setError(message);
     setFlash(true);
     errorCue();
+    haptic('error');
     setTimeout(() => setFlash(false), 400);
   }, []);
   const send: Send = async (action, payload = {}) => {
@@ -104,6 +106,7 @@ export function NightRite({
       setNotice(next.summary ?? '');
       if (next.summary?.includes('falters') || next.summary?.includes('ruined'))
         fail(next.summary);
+      else if (!game.host) haptic('tap');
     } catch (e) {
       fail(
         e instanceof Error ? e.message : 'That action could not be completed.',
