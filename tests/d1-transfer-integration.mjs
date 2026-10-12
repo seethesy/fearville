@@ -3,7 +3,12 @@ import { spawnSync } from 'node:child_process';
 import { mkdtempSync, rmSync, writeFileSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { tmpdir } from 'node:os';
-import { extractDump, importSql, tables, optionalTables } from '../scripts/d1-transfer.mjs';
+import {
+  extractDump,
+  importSql,
+  tables,
+  optionalTables,
+} from '../scripts/d1-transfer.mjs';
 // Exercise the remote SQL parser too, with synthetic data only.
 const parsed = extractDump(
   tables
@@ -15,12 +20,31 @@ const parsed = extractDump(
 );
 assert.ok(tables.every((t) => parsed.tables[t][0].value === "O'Brien"));
 assert.ok(importSql(parsed).includes("'O''Brien'"));
-const legacy = extractDump(tables.filter((t) => !optionalTables.includes(t)).map((t) => `CREATE TABLE "${t}" (value TEXT);`).join('\n'));
+const legacy = extractDump(
+  tables
+    .filter((t) => !optionalTables.includes(t))
+    .map((t) => `CREATE TABLE "${t}" (value TEXT);`)
+    .join('\n'),
+);
 assert.deepEqual(legacy.tables.player_reports, []);
 delete legacy.tables.player_reports;
-assert.doesNotThrow(() => importSql(legacy), 'Old nine-table exports remain importable.');
-assert.throws(() => importSql({ ...legacy, tables: { ...legacy.tables, unknown_table: [] } }), /Invalid transfer/);
-assert.throws(() => importSql({ ...legacy, tables: { ...legacy.tables, player_reports: null } }), /Invalid rows/);
+assert.doesNotThrow(
+  () => importSql(legacy),
+  'Old nine-table exports remain importable.',
+);
+assert.throws(
+  () =>
+    importSql({ ...legacy, tables: { ...legacy.tables, unknown_table: [] } }),
+  /Invalid transfer/,
+);
+assert.throws(
+  () =>
+    importSql({
+      ...legacy,
+      tables: { ...legacy.tables, player_reports: null },
+    }),
+  /Invalid rows/,
+);
 const temp = mkdtempSync(path.join(tmpdir(), 'fearville-roundtrip-'));
 function run(args) {
   const result = spawnSync(process.execPath, args, {
@@ -91,7 +115,13 @@ try {
     '--persist-to',
     path.join(temp, 'target'),
   ]);
-  for (const table of [...tables, 'sessions', 'session_parts', 'session_snapshots', 'account_sessions']) {
+  for (const table of [
+    ...tables,
+    'sessions',
+    'session_parts',
+    'session_snapshots',
+    'account_sessions',
+  ]) {
     const query = (name) =>
       JSON.parse(
         run([

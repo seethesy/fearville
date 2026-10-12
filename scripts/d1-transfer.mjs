@@ -68,7 +68,14 @@ export function extractDump(sql) {
     db.exec(sql);
     const data = Object.fromEntries(
       tables.map((table) => {
-        if (optionalTables.includes(table) && !db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name=?").get(table))
+        if (
+          optionalTables.includes(table) &&
+          !db
+            .prepare(
+              "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?",
+            )
+            .get(table)
+        )
           return [table, []];
         const rows = db.prepare(`SELECT * FROM "${table}"`).all();
         return [table, rows];
@@ -90,14 +97,21 @@ export function importSql(dump) {
     dump.format !== 'fearville-d1-v1' ||
     !dump.tables ||
     Object.keys(dump.tables).some((table) => !tables.includes(table)) ||
-    tables.some((table) => !optionalTables.includes(table) && !(table in dump.tables))
+    tables.some(
+      (table) => !optionalTables.includes(table) && !(table in dump.tables),
+    )
   )
     throw new Error('Invalid transfer format or table set.');
   const sql = [
     '-- Apply migrations first. Import once into an empty database.',
   ];
   for (const table of tables) {
-    const rows = table in dump.tables ? dump.tables[table] : (optionalTables.includes(table) ? [] : undefined);
+    const rows =
+      table in dump.tables
+        ? dump.tables[table]
+        : optionalTables.includes(table)
+          ? []
+          : undefined;
     if (!Array.isArray(rows)) throw new Error('Invalid rows.');
     for (const row of rows) {
       const columns = Object.keys(row);
