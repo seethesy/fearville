@@ -1,10 +1,30 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useSyncExternalStore } from 'react';
 import { useAccount, accountAction } from '@/components/hub/account-context';
 import { keepScreenAwake } from '@/lib/native/keep-awake';
 
 const GUEST_KEY = 'fearville:keep-awake';
 const CHANGED = 'fearville:keep-awake-changed';
+let guestFallback = true;
+
+function readGuestSetting() {
+  try {
+    return localStorage.getItem(GUEST_KEY) === null
+      ? guestFallback
+      : localStorage.getItem(GUEST_KEY) !== 'false';
+  } catch {
+    return guestFallback;
+  }
+}
+
+function subscribeGuestSetting(changed: () => void) {
+  window.addEventListener(CHANGED, changed);
+  window.addEventListener('storage', changed);
+  return () => {
+    window.removeEventListener(CHANGED, changed);
+    window.removeEventListener('storage', changed);
+  };
+}
 
 /** Keep the screen on while `active` (seated at a table) is true. */
 export function useKeepAwake(active: boolean) {
@@ -18,28 +38,15 @@ export function useKeepAwake(active: boolean) {
 export function useKeepAwakeSetting() {
   const { state, preferences, preview } = useAccount();
   const account = !!state?.account;
-  const [guestEnabled, setGuestEnabled] = useState(true);
+  const guestEnabled = useSyncExternalStore(subscribeGuestSetting, readGuestSetting, () => true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  useEffect(() => {
-    if (account) return;
-    const read = () => {
-      try {
-        setGuestEnabled(localStorage.getItem(GUEST_KEY) !== 'false');
-      } catch {
-        setGuestEnabled(true);
-      }
-    };
-    read();
-    window.addEventListener(CHANGED, read);
-    return () => window.removeEventListener(CHANGED, read);
-  }, [account]);
   const enabled = account ? preferences.keepAwake : guestEnabled;
   async function setEnabled(next: boolean) {
     if (busy) return;
     setError('');
     if (!account) {
-      setGuestEnabled(next);
+      guestFallback = next;
       try {
         localStorage.setItem(GUEST_KEY, String(next));
       } catch {

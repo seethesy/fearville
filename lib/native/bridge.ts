@@ -113,10 +113,9 @@ export function haptic(kind: Haptic) {
   }
   // Android browsers vibrate; Safari has no vibration API.
   const nav = browserNavigator();
-  const vibrate = nav?.vibrate;
-  if (typeof vibrate === 'function') {
+  if (typeof nav?.vibrate === 'function') {
     try {
-      (vibrate as (pattern: number | number[]) => boolean).call(nav, VIBRATION[kind]);
+      nav.vibrate(VIBRATION[kind]);
     } catch {
       // Some browsers block vibration without a recent gesture.
     }
