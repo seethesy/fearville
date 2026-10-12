@@ -5,12 +5,14 @@ import path from 'node:path';
 import { argumentsFor, extractDump, tables, wrangler } from './d1-transfer.mjs';
 import { Miniflare } from 'miniflare';
 import { readConfig } from './wrangler-config.mjs';
-const options = argumentsFor(process.argv.slice(2));
+const options = argumentsFor(process.argv.slice(2), true);
 const temp = mkdtempSync(path.join(tmpdir(), 'fearville-export-'));
 try {
   const file = path.join(temp, 'snapshot.sql');
   let dump;
-  if (options.mode === 'local') {
+  if (options['source-sql']) {
+    dump = extractDump(readFileSync(options['source-sql'], 'utf8'));
+  } else if (options.mode === 'local') {
     const config = readConfig(options.config || 'wrangler.jsonc');
     const bindings = (options.env ? config.env[options.env] : config)
       .d1_databases;

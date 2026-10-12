@@ -38,6 +38,6 @@ Live sessions, snapshots, members, account-seat links, invites, ranked locks, lo
 
 ### Sites source access limit
 
-Sites tools confirm DB and its live schema but only expose paginated viewer rows (25 per page, maximum offset 10000), with possible value truncation. They expose no SQL snapshot, database UUID or source Cloudflare credential. Do not use truncated viewer data as a lossless export. Request a full SQL export from the Sites owner/support, or obtain direct source D1 access. If no export is available, a fresh start requires Art's explicit confirmation. Actual transfer and cutover remain pending; no live data is discarded by this PR.
+Sites tools confirm DB and its live schema but only expose paginated viewer rows (25 per page, maximum offset 10000), with possible value truncation. They expose no SQL snapshot, database UUID or source Cloudflare credential. Do not use truncated viewer data as a lossless export. Request a full SQL export from the Sites owner/support, or obtain direct source D1 access. Convert an owner-supplied SQL snapshot with `node scripts/export-d1.mjs --source-sql /private/sites.sql --file /private/export.json`, then use the normal import command. If no export is available, a fresh start requires Art's explicit confirmation. Actual transfer and cutover remain pending; no live data is discarded by this PR.
 
 References: [D1 migrations](https://developers.cloudflare.com/d1/reference/migrations/), [D1 import/export](https://developers.cloudflare.com/d1/best-practices/import-export-data/).

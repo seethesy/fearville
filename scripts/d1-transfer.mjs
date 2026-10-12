@@ -15,13 +15,14 @@ export const tables = [
   'storyteller_ratings',
   'tutorial_progress',
 ];
-export function argumentsFor(argv) {
+export function argumentsFor(argv, allowSqlSource = false) {
   const options = {};
   for (let i = 0; i < argv.length; i += 2) {
     if (!argv[i].startsWith('--') || !argv[i + 1])
       throw new Error('Expected --option value pairs.');
     options[argv[i].slice(2)] = argv[i + 1];
   }
+  if (allowSqlSource && options['source-sql'] && options.file) return options;
   if (
     !options.database ||
     !options.file ||
