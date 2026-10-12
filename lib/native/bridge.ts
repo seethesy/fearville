@@ -35,7 +35,8 @@ export const NATIVE_EVENT = 'fearville:native';
 
 function host(): NativeHost | undefined {
   if (typeof window === 'undefined') return undefined;
-  const native = (window as unknown as { FearvilleNative?: NativeHost }).FearvilleNative;
+  const native = (window as unknown as { FearvilleNative?: NativeHost })
+    .FearvilleNative;
   return native && typeof native.call === 'function' ? native : undefined;
 }
 
@@ -52,7 +53,9 @@ export function bridgeVersion() {
 /** Capabilities the current shell offers (empty in a browser). */
 export function capabilities(): Capability[] {
   const list = host()?.capabilities;
-  return Array.isArray(list) ? (list.filter((c) => typeof c === 'string') as Capability[]) : [];
+  return Array.isArray(list)
+    ? (list.filter((c) => typeof c === 'string') as Capability[])
+    : [];
 }
 
 export function hasCapability(capability: Capability) {
@@ -93,7 +96,8 @@ export const secureStorage = {
     return result.ok && typeof result.value === 'string' ? result.value : null;
   },
   async set(key: SecureKey, value: string): Promise<boolean> {
-    return (await call('secureStorage', 'secureStorage.set', { key, value })).ok;
+    return (await call('secureStorage', 'secureStorage.set', { key, value }))
+      .ok;
   },
   async remove(key: SecureKey): Promise<boolean> {
     return (await call('secureStorage', 'secureStorage.remove', { key })).ok;
@@ -103,7 +107,10 @@ export const secureStorage = {
 // ── Haptics ─────────────────────────────────────────────────────────────────
 
 export type Haptic = 'tap' | 'error';
-const VIBRATION: Record<Haptic, number | number[]> = { tap: 10, error: [30, 40, 30] };
+const VIBRATION: Record<Haptic, number | number[]> = {
+  tap: 10,
+  error: [30, 40, 30],
+};
 
 /** Light tap on votes and Rite moves; error buzz on an illegal move or timeout. */
 export function haptic(kind: Haptic) {
@@ -132,7 +139,10 @@ export type Cue = 'phase' | 'error';
  */
 export function nativeCue(kind: Cue, volume: number) {
   if (!hasCapability('audio')) return false;
-  void call('audio', 'audio.cue', { kind, volume: Math.max(0, Math.min(1, volume)) });
+  void call('audio', 'audio.cue', {
+    kind,
+    volume: Math.max(0, Math.min(1, volume)),
+  });
   return true;
 }
 
@@ -145,25 +155,35 @@ export type LifecycleEvent = 'resume' | 'pause' | 'online' | 'offline';
  * from the OS; in a browser from page visibility and online/offline events.
  * Returns an unsubscribe function.
  */
-export function onLifecycle(handler: (event: LifecycleEvent) => void): () => void {
+export function onLifecycle(
+  handler: (event: LifecycleEvent) => void,
+): () => void {
   if (typeof window === 'undefined') return () => {};
   const native = hasCapability('lifecycle');
   const fromNative = (event: Event) => {
-    const detail = (event as CustomEvent<{ type?: string; state?: string }>).detail;
-    if (detail?.type === 'lifecycle' && ['resume', 'pause', 'online', 'offline'].includes(detail.state ?? ''))
+    const detail = (event as CustomEvent<{ type?: string; state?: string }>)
+      .detail;
+    if (
+      detail?.type === 'lifecycle' &&
+      ['resume', 'pause', 'online', 'offline'].includes(detail.state ?? '')
+    )
       handler(detail.state as LifecycleEvent);
   };
   const visibility = () =>
-    handler(typeof document !== 'undefined' && document.hidden ? 'pause' : 'resume');
+    handler(
+      typeof document !== 'undefined' && document.hidden ? 'pause' : 'resume',
+    );
   const online = () => handler('online');
   const offline = () => handler('offline');
   if (native) window.addEventListener(NATIVE_EVENT, fromNative);
-  else if (typeof document !== 'undefined') document.addEventListener('visibilitychange', visibility);
+  else if (typeof document !== 'undefined')
+    document.addEventListener('visibilitychange', visibility);
   window.addEventListener('online', online);
   window.addEventListener('offline', offline);
   return () => {
     window.removeEventListener(NATIVE_EVENT, fromNative);
-    if (typeof document !== 'undefined') document.removeEventListener('visibilitychange', visibility);
+    if (typeof document !== 'undefined')
+      document.removeEventListener('visibilitychange', visibility);
     window.removeEventListener('online', online);
     window.removeEventListener('offline', offline);
   };
@@ -174,7 +194,11 @@ export function onLifecycle(handler: (event: LifecycleEvent) => void): () => voi
 export type ShareResult = 'shared' | 'copied' | 'cancelled' | 'unavailable';
 
 /** Share a table invite link: native sheet, Web Share, then the clipboard. */
-export async function share(content: { title: string; text?: string; url: string }): Promise<ShareResult> {
+export async function share(content: {
+  title: string;
+  text?: string;
+  url: string;
+}): Promise<ShareResult> {
   if (hasCapability('share')) {
     const result = await call('share', 'share.open', content);
     if (result.ok) return result.value === false ? 'cancelled' : 'shared';
@@ -185,7 +209,8 @@ export async function share(content: { title: string; text?: string; url: string
       await nav.share(content);
       return 'shared';
     } catch (error) {
-      if ((error as { name?: string })?.name === 'AbortError') return 'cancelled';
+      if ((error as { name?: string })?.name === 'AbortError')
+        return 'cancelled';
     }
   }
   if (typeof nav?.clipboard?.writeText === 'function') {

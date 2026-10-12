@@ -16,7 +16,9 @@ import { Brand, HubShell } from '@/components/hub/shell';
 import { RulesBrowser } from '@/components/hub/rules-browser';
 
 function inviteCode() {
-  const join = new URLSearchParams(window.location.search).get('join')?.toUpperCase() ?? '';
+  const join =
+    new URLSearchParams(window.location.search).get('join')?.toUpperCase() ??
+    '';
   return /^(?:[0-9]{6}|[A-Z]{6})$/.test(join) ? join : '';
 }
 
@@ -31,7 +33,11 @@ export default function Home() {
     [custom, setCustom] = useState(false),
     [entryTab, setEntryTab] = useState('join');
   const [name, setName] = useState('');
-  const sharedCode = useSyncExternalStore(subscribeInvite, inviteCode, () => '');
+  const sharedCode = useSyncExternalStore(
+    subscribeInvite,
+    inviteCode,
+    () => '',
+  );
   const [enteredCode, setCode] = useState<string>();
   const code = enteredCode ?? sharedCode;
   const [busy, setBusy] = useState(false),
