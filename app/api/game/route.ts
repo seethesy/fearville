@@ -90,11 +90,17 @@ export async function POST(r: Request) {
       const canRebase = canApplyLatest(actionActor, c);
       if (tick(game, now)) {
         if (!(await save(game, version, false))) {
-          await new Promise((resolve) => setTimeout(resolve, 8 + Math.floor(Math.random() * 24)));
+          await new Promise((resolve) =>
+            setTimeout(resolve, 8 + Math.floor(Math.random() * 24)),
+          );
           continue;
         }
-        if (canRebase || (actionActor.host && c.action === 'edit' && c.base)) continue;
-        return json({ error: 'The timer advanced the game. Review the current phase.' }, 409);
+        if (canRebase || (actionActor.host && c.action === 'edit' && c.base))
+          continue;
+        return json(
+          { error: 'The timer advanced the game. Review the current phase.' },
+          409,
+        );
       }
       if (
         ![
@@ -107,7 +113,9 @@ export async function POST(r: Request) {
           'saveNotebook',
           'returnLobby',
         ].includes(c.action) &&
-        c.version !== version && !canRebase && !canApplyUnchangedEdit(game, actionActor, c)
+        c.version !== version &&
+        !canRebase &&
+        !canApplyUnchangedEdit(game, actionActor, c)
       )
         return json(
           { error: 'The table changed. Review this action again.' },
@@ -116,20 +124,50 @@ export async function POST(r: Request) {
       if (c.action === 'returnLobby' && before === 'ended')
         await syncResult(game, game.gameStartedAt ?? created, now, version);
       await loadDecision(game, c);
-      const independentBefore = ['chat', 'saveNotebook'].includes(c.action) ? structuredClone(game) : null;
-      const rankedBefore = JSON.stringify([game.ranked, game.progression, game.gameStartedAt, game.phase === 'lobby', game.phase === 'ended']);
+      const independentBefore = ['chat', 'saveNotebook'].includes(c.action)
+        ? structuredClone(game)
+        : null;
+      const rankedBefore = JSON.stringify([
+        game.ranked,
+        game.progression,
+        game.gameStartedAt,
+        game.phase === 'lobby',
+        game.phase === 'ended',
+      ]);
       const summary = execute(game, actionActor, c, now);
       if (c.action === 'start') await prepareProgression(game);
       if (c.preview) return json({ summary, version });
-      const scoped = i === 0 && independentBefore ? independentCommand(independentBefore, game, actionActor, c) : null;
+      const scoped =
+        i === 0 && independentBefore
+          ? independentCommand(independentBefore, game, actionActor, c)
+          : null;
       if (scoped) {
-        const saved = await saveIndependent(code, scoped);
+        const saved = await saveIndependent(game, scoped);
         if (!saved) continue;
-        return json({ summary, game: view(saved.game, actionActor, saved.version, now, !!game.sandbox && actor.host) });
+        return json({
+          summary,
+          game: view(
+            saved.game,
+            actionActor,
+            saved.version,
+            now,
+            !!game.sandbox && actor.host,
+          ),
+        });
       }
-      const rankedChanged = rankedBefore !== JSON.stringify([game.ranked, game.progression, game.gameStartedAt, game.phase === 'lobby', game.phase === 'ended']);
+      const rankedChanged =
+        rankedBefore !==
+        JSON.stringify([
+          game.ranked,
+          game.progression,
+          game.gameStartedAt,
+          game.phase === 'lobby',
+          game.phase === 'ended',
+        ]);
       if (!(await save(game, version, rankedChanged))) {
-        await new Promise((resolve) => setTimeout(resolve, 8 + Math.floor(Math.random() * 24)));
+        await new Promise((resolve) =>
+          setTimeout(resolve, 8 + Math.floor(Math.random() * 24)),
+        );
         continue;
       }
       // Record the result when the game ends; withdraw it if the Storyteller

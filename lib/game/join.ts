@@ -5,6 +5,7 @@ import type { ProfileDefaults } from '@/lib/accounts/preferences';
 import type { DeathEffectId } from './cosmetics';
 import { requireThat, log } from './engine';
 import { read, cookieName } from './store';
+import { prepareWrite, runWrite } from './part-store';
 
 export const memberExpiry = () => Date.now() + 1000 * 60 * 60 * 24 * 30;
 export function memberCookie(r: Request, token: string) {
@@ -65,13 +66,8 @@ export async function joinSession(
           invitation.account,
         ]
       : [];
+    const write = prepareWrite(db, game, version, inviteGuard, inviteBindings);
     const statements = [
-      db
-        .prepare(
-          'UPDATE sessions SET state = ?, version = version + 1 WHERE code = ? AND version = ?' +
-            inviteGuard,
-        )
-        .bind(JSON.stringify(game), code, version, ...inviteBindings),
       db
         .prepare(
           'INSERT INTO members (token_hash,code,player,host,expires) SELECT ?,?,?,0,? WHERE changes() = 1',
@@ -91,7 +87,8 @@ export async function joinSession(
           )
           .bind(invitation.id, tokenHash),
       );
-    const results = await db.batch(statements);
+    const results = await runWrite(db, write, statements);
+    if (!results) continue;
     if (results[0].meta.changes === 1) return true;
     if (invitation) {
       const waiting = await db

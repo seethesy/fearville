@@ -3,6 +3,7 @@ import { execFileSync } from 'node:child_process';
 import { writeFileSync, mkdirSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import { hostFixtureFetch } from './host-fixture.mjs';
+import { assembleGame } from '../lib/game/parts.ts';
 import { configureRite, tickRite, beginRiteNight } from '../lib/rite/engine.ts';
 import { snapshot, execute, setPhase } from '../lib/game/engine.ts';
 import { boardMoves } from '../lib/rite/board.ts';
@@ -59,10 +60,13 @@ function sql(statement) {
   );
   return JSON.parse(result)[0].results;
 }
+// Tables are stored as a core row plus parts (lib/game/parts.ts). Writing a
+// whole blob back (put) is the old layout, which the server reads and converts.
 function raw(code) {
-  return JSON.parse(
-    sql(`SELECT state FROM sessions WHERE code='${code}'`)[0].state,
+  const [row] = sql(
+    `SELECT state, (SELECT json_group_array(json_array(part, state)) FROM session_parts WHERE code=s.code) AS parts FROM sessions s WHERE code='${code}'`,
   );
+  return assembleGame(row.state, JSON.parse(row.parts)).game;
 }
 function put(game) {
   const state = JSON.stringify(game);
