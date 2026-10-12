@@ -41,6 +41,8 @@ function sql(statement) {
       'execute',
       'site-creator-d1',
       '--local',
+      '--persist-to',
+      process.env.CT_D1_PERSIST || '.wrangler/state',
       '--config',
       'wrangler.local.json',
       '--file',
@@ -125,6 +127,19 @@ assert.ok(
     rows(`SELECT state FROM sessions WHERE code=${q(lobby.data.code)}`),
   ).includes(NAME),
 );
+
+// Seed private data in the split layout and a rewind snapshot, rather than
+// only the core row. Deletion must clean all of these storage surfaces.
+const live = rows(`SELECT s.state, a.player FROM sessions s JOIN account_seats a ON a.code=s.code WHERE a.account=${q(X)} AND a.host=0`)[0];
+const core = JSON.parse(live.state);
+core.players.find((p) => p.id === live.player).avatar = PHOTO;
+const messages = [{ id: 'private-message', from: live.player, to: 'all', text: CHAT, at: 1, kind: 'chat' }];
+const notebook = { text: NOTE, roles: {}, players: {} };
+const snapshot = { ...core, messages, notebooks: { [live.player]: notebook } };
+delete snapshot.storageLayout;
+sql(`UPDATE sessions SET state=${q(JSON.stringify(core))} WHERE code=${q(lobby.data.code)};
+INSERT INTO session_parts(code,part,state,rev) VALUES (${q(lobby.data.code)},'chat:00000',${q(JSON.stringify(messages))},1),(${q(lobby.data.code)},${q('notes:' + live.player)},${q(JSON.stringify(notebook))},1);
+INSERT INTO session_snapshots(code,id,state) VALUES (${q(lobby.data.code)},'private-snapshot',${q(JSON.stringify(snapshot))});`);
 
 assert.equal(
   (

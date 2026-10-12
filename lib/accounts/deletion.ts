@@ -10,6 +10,7 @@
 //   removed, rater moved to a one-off tombstone row) so Storyteller averages
 //   stay correct.
 import { isPresetAvatar } from '../game/avatars.ts';
+import { SESSION_COLUMNS, loadStored, prepareWrite, isPartConflict, type SessionRow } from '../game/part-store.ts';
 
 export const FORMER_PLAYER = 'Former player';
 
@@ -58,6 +59,8 @@ export function anonymiseSeat(
               ),
           )
           .map(walk);
+      } else if (key === 'before' && typeof child === 'string' && child) {
+        out[key] = JSON.stringify(walk(JSON.parse(child)));
       } else out[key] = walk(child);
     }
     if (out.id === playerId && typeof out.name === 'string') {
@@ -81,7 +84,7 @@ function anonymiseJson(
   return JSON.stringify(value);
 }
 
-export async function deleteAccountData(db: D1Database, account: string) {
+async function deleteAccountAttempt(db: D1Database, account: string) {
   const now = Date.now();
   const statements: D1PreparedStatement[] = [];
 
@@ -152,28 +155,31 @@ export async function deleteAccountData(db: D1Database, account: string) {
   const liveSeats = (
     await db
       .prepare(
-        'SELECT s.code AS code, s.state AS state, s.version AS version, a.player AS player FROM account_seats a JOIN sessions s ON s.code = a.code WHERE a.account = ? AND a.host = 0',
+        `SELECT s.code AS code, ${SESSION_COLUMNS}, a.player AS player FROM account_seats a JOIN sessions s ON s.code = a.code WHERE a.account = ? AND a.host = 0`,
       )
       .bind(account)
-      .all<{ code: string; state: string; version: number; player: string }>()
+      .all<SessionRow & { code: string; player: string }>()
   ).results;
   for (const seat of liveSeats) {
-    const state = JSON.parse(seat.state) as {
-      players?: { id: string; name: string }[];
-    };
-    const name = state.players?.find((p) => p.id === seat.player)?.name;
+    const { game } = loadStored(seat, true);
+    const name = game.players.find((p) => p.id === seat.player)?.name;
     if (!name) continue;
+    Object.assign(game, anonymiseSeat(game, seat.player, name));
+    const write = prepareWrite(db, game, seat.version);
     statements.push(
+      write.update,
+      ...write.after,
+      // Abort the entire account deletion if a concurrent core action won.
+      // The malformed JSON is evaluated only when this write did not apply.
       db
-        .prepare(
-          'UPDATE sessions SET state = ?, version = version + 1 WHERE code = ? AND version = ?',
-        )
-        .bind(
-          JSON.stringify(anonymiseSeat(state, seat.player, name)),
-          seat.code,
-          seat.version,
-        ),
+        .prepare(`SELECT json('account deletion conflict') WHERE NOT (${write.guard})`)
+        .bind(...write.guardBindings),
     );
+    const snapshots = (await db.prepare('SELECT id, state FROM session_snapshots WHERE code = ?')
+      .bind(seat.code).all<{ id: string; state: string }>()).results;
+    for (const snapshot of snapshots)
+      statements.push(db.prepare('UPDATE session_snapshots SET state = ? WHERE code = ? AND id = ?')
+        .bind(anonymiseJson(snapshot.state, [{ player: seat.player, name }]), seat.code, snapshot.id));
   }
 
   statements.push(
@@ -191,4 +197,16 @@ export async function deleteAccountData(db: D1Database, account: string) {
     db.prepare('DELETE FROM accounts WHERE id = ?').bind(account),
   );
   await db.batch(statements);
+}
+
+export async function deleteAccountData(db: D1Database, account: string) {
+  for (let attempt = 0; attempt < 4; attempt++) {
+    try {
+      await deleteAccountAttempt(db, account);
+      return;
+    } catch (error) {
+      if (!isPartConflict(error) && !/malformed JSON/.test(String(error))) throw error;
+      if (attempt === 3) throw Error('The table changed. Please try deleting your account again.');
+    }
+  }
 }
