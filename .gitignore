@@ -29,6 +29,7 @@ yarn-error.log*
 # local environment
 .env*
 !.env.example
+.dev.vars*
 *.p8
 
 # deployment and generated files

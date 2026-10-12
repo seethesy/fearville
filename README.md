@@ -1,5 +1,7 @@
 # Fearville
 
+Own-account Cloudflare configuration and durable-data transfer: [Deploy](docs/deploy.md). Deployments run through CI only.
+
 A text-only, in-person game companion: a web app, shared Cloudflare Worker/D1 backend, and native SwiftUI iPhone client. Both clients use the same server-authoritative rules and action forms.
 
 ## Run the web app locally
