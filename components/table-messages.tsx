@@ -30,7 +30,10 @@ export function TableMessages({
   const feed = useRef<HTMLDivElement>(null);
   const nearBottom = useRef(true);
   const [thread, setThread] = useState<'host' | 'channel'>('host');
-  const [reporting, setReporting] = useState<{ id: string; from: string } | null>(null);
+  const [reporting, setReporting] = useState<{
+    id: string;
+    from: string;
+  } | null>(null);
   const { state: account } = useAccount();
   const inChannel = !game.host && thread === 'channel' && !!game.channel;
   const to = game.host ? recipient : inChannel ? 'channel' : 'host';
@@ -279,7 +282,9 @@ export function TableMessages({
                             ? player?.name
                             : 'Storyteller'}
               </small>
-              <p>{m.kind === 'info' ? <GlossaryText text={m.text} /> : m.text}</p>
+              <p>
+                {m.kind === 'info' ? <GlossaryText text={m.text} /> : m.text}
+              </p>
               <time dateTime={new Date(m.at).toISOString()}>
                 {new Date(m.at).toLocaleTimeString([], {
                   hour: '2-digit',

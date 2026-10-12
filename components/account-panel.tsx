@@ -121,8 +121,8 @@ export function AccountPanel({ compact = false }: { compact?: boolean }) {
           </div>
           <p className="hint">
             By continuing you agree to the{' '}
-            <AppLink href="/terms">terms and community rules</AppLink>. Fearville
-            has no tolerance for abusive or objectionable content.
+            <AppLink href="/terms">terms and community rules</AppLink>.
+            Fearville has no tolerance for abusive or objectionable content.
           </p>
           {state && !state.providers.google && !state.providers.apple && (
             <p className="hint">

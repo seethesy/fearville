@@ -151,13 +151,17 @@ export async function POST(r: Request) {
         if (!saved) continue;
         return json({
           summary,
-          game: await withoutBlockedChat(view(
-            saved.game,
-            actionActor,
-            saved.version,
-            now,
-            !!game.sandbox && actor.host,
-          ), code, actor.id),
+          game: await withoutBlockedChat(
+            view(
+              saved.game,
+              actionActor,
+              saved.version,
+              now,
+              !!game.sandbox && actor.host,
+            ),
+            code,
+            actor.id,
+          ),
         });
       }
       const rankedChanged =
