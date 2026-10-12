@@ -1,6 +1,6 @@
 'use client';
 import AppLink from '@/components/app-link';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useSyncExternalStore } from 'react';
 import {
   ArrowRight,
   Ghost,
@@ -15,27 +15,31 @@ import { useAccount, accountAction } from '@/components/hub/account-context';
 import { Brand, HubShell } from '@/components/hub/shell';
 import { RulesBrowser } from '@/components/hub/rules-browser';
 
+function inviteCode() {
+  const join = new URLSearchParams(window.location.search).get('join')?.toUpperCase() ?? '';
+  return /^(?:[0-9]{6}|[A-Z]{6})$/.test(join) ? join : '';
+}
+
+function subscribeInvite(changed: () => void) {
+  window.addEventListener('popstate', changed);
+  return () => window.removeEventListener('popstate', changed);
+}
+
 export default function Home() {
   const { state, error: accountError } = useAccount();
   const [guest, setGuest] = useState(false),
     [custom, setCustom] = useState(false),
     [entryTab, setEntryTab] = useState('join');
-  const [name, setName] = useState(''),
-    [code, setCode] = useState('');
+  const [name, setName] = useState('');
+  const sharedCode = useSyncExternalStore(subscribeInvite, inviteCode, () => '');
+  const [enteredCode, setCode] = useState<string>();
+  const code = enteredCode ?? sharedCode;
   const [busy, setBusy] = useState(false),
     [error, setError] = useState('');
   const [session, setSession] = useState<{
     code: string;
     phase: string;
   } | null>(null);
-  useEffect(() => {
-    // Shared invite links open the home page with ?join=<code>.
-    const join = new URLSearchParams(window.location.search).get('join')?.toUpperCase() ?? '';
-    if (/^(?:[0-9]{6}|[A-Z]{6})$/.test(join)) {
-      setCode(join);
-      setEntryTab('join');
-    }
-  }, []);
   useEffect(() => {
     const load = () => {
       void fetch('/api/session', { cache: 'no-store' })

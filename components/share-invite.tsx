@@ -29,7 +29,7 @@ export function ShareInvite({ code }: { code: string }) {
       >
         <Share2 size={16} aria-hidden /> Share invite link
       </button>
-      {status && <span className="muted" role="status"> {status}</span>}
+      {status && <output className="muted"> {status}</output>}
     </p>
   );
 }
