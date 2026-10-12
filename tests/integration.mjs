@@ -147,12 +147,9 @@ assert.equal(state.ballots[0].count, 4);
 assert.equal(state.leader.target, b);
 const expired = await call('/api/game', 'invalid');
 assert.equal(expired.status, 401);
-const restored = await call('/api/session', '', {
-  action: 'restore',
-  recoveryKey: host,
-});
+const restored = await call('/api/session', host);
 assert.equal(restored.status, 200);
 assert.equal(restored.data.code, code);
 console.log(
-  'PASS: parallel joins, unique seats, private roles/messages, permission checks, read-only previews, automatic phase transitions, concurrent ballots, and recovery.',
+  'PASS: parallel joins, unique seats, private roles/messages, permission checks, read-only previews, automatic phase transitions, concurrent ballots, and authenticated reconnection.',
 );

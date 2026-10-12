@@ -27,6 +27,8 @@ execFileSync(
     'execute',
     'site-creator-d1',
     '--local',
+    '--persist-to',
+    process.env.CT_D1_PERSIST || '.wrangler/state',
     '--config',
     'wrangler.local.json',
     '--file',
@@ -47,7 +49,7 @@ async function call(path, account = '', body, member = '') {
     },
     ...(body ? { body: JSON.stringify(body) } : {}),
   });
-  return { status: response.status, data: await json(response,path) };
+  return { status: response.status, data: await json(response, path) };
 }
 const social = (account, body, member) =>
   call('/api/social', account, body, member);
@@ -288,7 +290,11 @@ for (const name of ['Guest 1', 'Guest 2', 'Guest 3'])
   guests.push(
     await ok(call('/api/session', '', { action: 'join', code, name }), name),
   );
-await claimSeats(base, [seatB.token, seatF.token, ...guests.map((g) => g.token)]);
+await claimSeats(base, [
+  seatB.token,
+  seatF.token,
+  ...guests.map((g) => g.token),
+]);
 // Guest 3 signs in later and saves the seat: the record must pick it up.
 const guestToken = guests[2].token;
 async function action(payload, token = hostToken) {
@@ -348,16 +354,26 @@ assert.equal(viewA.recent[0].storyteller, true);
 viewB = await ok(social(tB), 'B post');
 assert.deepEqual(viewB.stats.town, { wins: 0, losses: 1 });
 assert.deepEqual(viewB.stats.evil, { wins: 0, losses: 0 });
-assert.deepEqual(viewB.stats.roles.map(({ role, name, team, played, wins, losses }) => ({ role, name, team, played, wins, losses })), [
-  {
-    role: 'judge',
-    name: 'Judge',
-    team: 'good',
-    played: 1,
-    wins: 0,
-    losses: 1,
-  },
-]);
+assert.deepEqual(
+  viewB.stats.roles.map(({ role, name, team, played, wins, losses }) => ({
+    role,
+    name,
+    team,
+    played,
+    wins,
+    losses,
+  })),
+  [
+    {
+      role: 'judge',
+      name: 'Judge',
+      team: 'good',
+      played: 1,
+      wins: 0,
+      losses: 1,
+    },
+  ],
+);
 assert.equal(viewB.friends.find((f) => f.id === A).together, 1);
 assert.equal(viewB.friends.find((f) => f.id === F).together, 1);
 assert.equal(viewB.recent[0].roleName, 'Judge');
@@ -454,4 +470,11 @@ console.log(
   'PASS: handles, friend requests (accept, decline, cancel, mutual, remove, block), profiles, invitations (send, accept, decline, single use, seating), recorded results with late seat attachment, Storyteller ratings and averages, rewind withdrawal, and deletion.',
 );
 
-async function json(response,path) { const text=await response.text(); try { return JSON.parse(text); } catch { throw Error(path+" returned "+response.status+": "+text); } }
+async function json(response, path) {
+  const text = await response.text();
+  try {
+    return JSON.parse(text);
+  } catch {
+    throw Error(path + ' returned ' + response.status + ': ' + text);
+  }
+}

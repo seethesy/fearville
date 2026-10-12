@@ -21,6 +21,8 @@ function sql(content) {
       'execute',
       'site-creator-d1',
       '--local',
+      '--persist-to',
+      process.env.CT_D1_PERSIST || '.wrangler/state',
       '--config',
       'wrangler.local.json',
       '--file',
@@ -243,12 +245,17 @@ try {
   assert.equal(me.stats.elo, priorElo);
   assert.ok(me.stats.progression.xp > both);
   const settledXp = me.stats.progression.xp;
-  // Emulate an interrupted post-vote persistence step: polling reconciles it.
+  // Routine polling must not rewrite durable game records.
   sql(
     `UPDATE game_players SET mvp_votes=0,mvp_xp=0 WHERE game='${archived.id}';`,
   );
+  const afterInterruptedWrite = (await ok(social(1))).stats.progression.xp;
+  assert.ok(afterInterruptedWrite < settledXp);
   await ok(call('/api/game', '', undefined, first.host));
-  assert.equal((await ok(social(1))).stats.progression.xp, settledXp);
+  assert.equal(
+    (await ok(social(1))).stats.progression.xp,
+    afterInterruptedWrite,
+  );
   // Visibility is enforced for strangers, friends, self, direct history and blocks.
   const profile = () =>
     call('/api/social/profile?handle=' + handles[1], accounts[6]);

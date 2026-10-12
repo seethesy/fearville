@@ -38,6 +38,8 @@ function sql(query) {
       'execute',
       'site-creator-d1',
       '--local',
+      '--persist-to',
+      process.env.CT_D1_PERSIST || '.wrangler/state',
       '--config',
       'wrangler.local.json',
       '--file',
@@ -118,16 +120,12 @@ assert.equal(own.rite.puzzle.phase, 'turn');
 assert.equal(own.rite.puzzle.clues.filter((c) => c.hidden).length, 2);
 assert.ok(own.rite.puzzle.clues.some((c) => c.forged));
 assert.ok(!JSON.stringify(own.rite).includes('solution'));
-await call(
-  '/api/rite',
-  seats[0].token,
-  {
-    action: 'riteGridSubmit',
-    epoch: own.rite.epoch,
-    night: 2,
-    solution: grid.state.solution,
-  },
-);
+await call('/api/rite', seats[0].token, {
+  action: 'riteGridSubmit',
+  epoch: own.rite.epoch,
+  night: 2,
+  solution: grid.state.solution,
+});
 hr = await call('/api/rite', host.token);
 await call(
   '/api/game',
