@@ -208,6 +208,10 @@ try {
   voter.socket.send(JSON.stringify({ type: 'action', id: voteID, command }));
   const voteAck = await voter.next((f) => f.type === 'ack' && f.id === voteID);
   assert.equal(voteAck.ok, true);
+  if (voteAck.committedAt !== undefined) {
+    assert.ok(voteAck.committedAt <= voteAck.serverNow);
+    assert.ok(voteAck.committedAt > 0);
+  }
   assert.equal(voteAck.data.game.active.votes[actors[1].id], true);
   voter.socket.send(
     JSON.stringify({

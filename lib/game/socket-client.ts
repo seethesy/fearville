@@ -66,6 +66,11 @@ export class TableConnection {
   constructor(options: ConnectionOptions) {
     this.options = options;
   }
+  // Headless clients can learn their seat from the authenticated handshake.
+  // A browser's known identity can never be replaced by a received frame.
+  setIdentity(me: string) {
+    if (!this.options.me && typeof me === 'string' && me) this.options.me = me;
+  }
   private setTimer(fn: () => void, ms: number) {
     return (this.options.setTimer ?? setTimeout)(fn, ms);
   }
