@@ -125,5 +125,5 @@ jobs:
             echo "Commit: $DEPLOY_SHA"
             echo "Result: $RESULT"
             echo "Migrations: tracked additive D1 migrations applied before deploy."
-            echo "Smoke: expected SHA/environment, D1, Durable Object and sandbox create/join."
+            echo "Smoke: expected SHA/environment, D1, Durable Object, sandbox create/resume and multiplayer create/join."
           } >> "$GITHUB_STEP_SUMMARY"

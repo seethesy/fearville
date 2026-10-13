@@ -2,7 +2,7 @@
 
 **Deploy** runs automatically after successful `CI` on the current main commit. It validates that both real `check` and `integration` jobs passed, rejects PR/fork/superseded runs, checks out that exact SHA, and deploys staging. A manual dispatch on main can select a tested main SHA and environment.
 
-The selected job uses its GitHub environment credentials, resolves the D1 binding, sets `BUILD_ID`/`SENTRY_RELEASE`, builds that environment, uploads private browser/Worker source maps to Sentry, removes browser maps from public assets, applies additive migrations, deploys, then checks health and sandbox create/join. Temporary smoke accounts and tables are removed even if a check fails. No test-authentication endpoint is exposed.
+The selected job uses its GitHub environment credentials, resolves the D1 binding, sets `BUILD_ID`/`SENTRY_RELEASE`, builds that environment, uploads private browser/Worker source maps to Sentry, removes browser maps from public assets, applies additive migrations, deploys, then checks health, sandbox creation/host resume and multiplayer create/join. Sandboxes intentionally reject live-player joins. Temporary smoke accounts and tables are removed even if a check fails. No test-authentication endpoint is exposed.
 
 Sentry defaults to the FEAR-112 projects `fearville-web` and `fearville-server`. Override `SENTRY_WEB_PROJECT`/`SENTRY_SERVER_PROJECT` as GitHub environment variables if needed. Store `SENTRY_AUTH_TOKEN` and `SENTRY_ORG` per environment. Actual event capture remains FEAR-110; this pipeline prepares release/source-map metadata.
 
