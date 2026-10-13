@@ -192,7 +192,7 @@ export function NightRite({
             <p className="rite-state">Preparing the vigils’ puzzles…</p>
           )}
           {mode === 'play' && r.squads.length > 0 && (
-            <div className="rite-host">
+            <div className="rite-host" data-tutorial="rite-host">
               <p>
                 {r.squads.filter((s) => s.completeNight).length} of{' '}
                 {r.squads.length} vigils complete · {r.needed} needed
@@ -325,6 +325,7 @@ function RiteSetup({
   return (
     <form
       className="rite-setup"
+      data-tutorial="rite-setup"
       onSubmit={(e) => {
         e.preventDefault();
         void send('configureRite', {

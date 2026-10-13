@@ -12,7 +12,11 @@ import {
   type TutorialEvent,
   type TutorialState,
 } from '../lib/tutorials/engine.ts';
-import { riteGuideTrigger } from '../lib/tutorials/engine.ts';
+import {
+  hostSectionFor,
+  hostTourTriggers,
+  riteGuideTrigger,
+} from '../lib/tutorials/engine.ts';
 import { RITE_DIAGRAMS } from '../lib/tutorials/diagrams.ts';
 import { PATTERNS } from '../lib/rite/types.ts';
 import { TUTORIALS, tutorial } from '../lib/tutorials/content.ts';
@@ -520,7 +524,11 @@ void test('tutorial definitions are well formed', () => {
 });
 
 void test('every web target exists in the table or a component', () => {
-  const sources = ['app/table/page.tsx', 'components/tutorials/help-menu.tsx']
+  const sources = [
+    'app/table/page.tsx',
+    'components/tutorials/help-menu.tsx',
+    'components/rite/night-rite.tsx',
+  ]
     .map((f) => readFileSync(new URL('../' + f, import.meta.url), 'utf8'))
     .join('\n');
   for (const t of TUTORIALS)
@@ -581,4 +589,178 @@ void test('every Night Rite pattern has a guide with a diagram, shown on night 1
   }).flatMap((s) => s.items.map((i) => i.id));
   assert.ok(ids.includes('guide.board'));
   assert.ok(!ids.includes('guide.lab'));
+});
+
+// ---------------------------------------------------------------------------
+// FEAR-19: Storyteller tour
+// ---------------------------------------------------------------------------
+const TOUR = ['tour.lobby', 'tour.play'];
+const HOST_SECTIONS = ['section.host-seats', 'section.host-controls'];
+
+void test('the Storyteller tour follows the lobby and the started game, for the Storyteller only', () => {
+  const t = (phase: string, host: boolean, sandboxHost = false) =>
+    hostTourTriggers({ phase, host, day: 1, sandboxHost });
+  assert.deepEqual(t('lobby', true), ['tour.lobby']);
+  assert.deepEqual(t('night', true), ['tour.play']);
+  assert.deepEqual(t('nomination', true), ['tour.play']);
+  assert.deepEqual(t('ended', true), []);
+  for (const phase of ['lobby', 'night', 'nomination', 'ended']) {
+    assert.deepEqual(t(phase, false), [], `no tour for a player in ${phase}`);
+    // A sandbox host viewing as a seated player sees what that player sees.
+    assert.deepEqual(t(phase, false, true), []);
+  }
+  assert.equal(hostSectionFor(true, 'seats'), 'host-seats');
+  assert.equal(hostSectionFor(true, 'control'), 'host-controls');
+  assert.equal(hostSectionFor(true, 'flow'), '');
+  assert.equal(hostSectionFor(false, 'seats'), '');
+  assert.equal(hostSectionFor(false, 'control'), '');
+});
+
+void test('the Storyteller tour and Storyteller sections are Storyteller-only content', () => {
+  for (const id of [...TOUR, ...HOST_SECTIONS]) {
+    const t = tutorial(id);
+    assert.ok(t, id);
+    assert.equal(t.audience, 'host', `${id} is for the Storyteller`);
+  }
+  for (const t of TUTORIALS.filter((x) => x.kind === 'tour'))
+    assert.equal(t.audience, 'host', `${t.id} is for the Storyteller`);
+  // Players are never offered any of it, even from Help.
+  const player = helpSections({
+    platform: 'web',
+    host: false,
+    seated: true,
+    seen: {},
+  }).flatMap((s) => s.items.map((i) => i.id));
+  for (const id of [...TOUR, ...HOST_SECTIONS])
+    assert.ok(!player.includes(id), `player Help lists ${id}`);
+  const host = helpSections({
+    platform: 'web',
+    host: true,
+    seated: false,
+    seen: {},
+  });
+  const tour = host.find((s) => s.title === 'Storyteller tour');
+  assert.deepEqual(
+    tour?.items.map((i) => i.id),
+    ['tour.lobby'],
+    'one Help entry for the whole tour',
+  );
+  const hostIds = host.flatMap((s) => s.items.map((i) => i.id));
+  for (const id of HOST_SECTIONS) assert.ok(hostIds.includes(id), id);
+});
+
+void test('accounts see the tour once; replay from Help plays both chapters', () => {
+  // First time hosting: shown, then marked seen.
+  let s = run(
+    [
+      { type: 'request', id: 'tour.lobby' },
+      { type: 'pump', blocked: false },
+    ],
+    loaded(),
+  );
+  assert.equal(s.active?.id, 'tour.lobby');
+  const steps = stepsFor(tutorial('tour.lobby')!, 'web').length;
+  for (let i = 0; i < steps; i++) s = reduce(s, { type: 'next' });
+  assert.equal(s.seen['tour.lobby'], 'completed');
+  assert.equal(
+    s.seen['section.host-seats'],
+    'completed',
+    'the lobby chapter covers the Seats section it visits',
+  );
+  // Hosting again (same account, progress loaded from the server): not shown.
+  s = run(
+    [
+      { type: 'request', id: 'tour.lobby' },
+      { type: 'pump', blocked: false },
+    ],
+    loaded({ 'tour.lobby': 'completed', 'tour.play': 'completed' }),
+  );
+  assert.equal(s.active, null);
+  // Replay from Help: both chapters, from the start, without unmarking.
+  s = run(
+    [
+      { type: 'replay', id: 'tour.lobby' },
+      { type: 'pump', blocked: false },
+    ],
+    s,
+  );
+  assert.equal(s.active?.id, 'tour.lobby');
+  assert.deepEqual(
+    s.queue.map((e) => e.id),
+    ['tour.play'],
+  );
+  assert.equal(s.seen['tour.lobby'], 'completed');
+});
+
+void test('skipping the tour ends only the tour', () => {
+  let s = run(
+    [
+      { type: 'request', id: 'tour.lobby' },
+      { type: 'request', id: 'section.host-controls' },
+      { type: 'pump', blocked: false },
+      { type: 'skip' },
+    ],
+    loaded(),
+  );
+  assert.equal(s.seen['tour.lobby'], 'skipped');
+  assert.equal(s.seen['tour.play'], 'skipped', 'the whole tour ends');
+  assert.equal(
+    s.seen['section.host-seats'],
+    undefined,
+    'a skip never counts as covering a section',
+  );
+  s = reduce(s, { type: 'pump', blocked: false });
+  assert.equal(
+    s.active?.id,
+    'section.host-controls',
+    'other queued tutorials still show',
+  );
+  // The play chapter is not requested again once skipped.
+  s = run([{ type: 'request', id: 'tour.play' }], s);
+  assert.ok(!s.queue.some((e) => e.id === 'tour.play'));
+});
+
+void test('guests see the tour every time they host a table', () => {
+  const store = new Map<string, string>();
+  const kv = {
+    getItem: (k: string) => store.get(k) ?? null,
+    setItem: (k: string, v: string) => void store.set(k, v),
+  };
+  writeGuest(kv, 'AAAAAA:host', { 'tour.lobby': 'completed' });
+  // Refreshing the same table keeps it seen.
+  assert.deepEqual(readGuest(kv, 'AAAAAA:host'), [
+    { id: 'tour.lobby', status: 'completed' },
+  ]);
+  // A new table is a new scope: nothing is seen, so the tour shows again.
+  assert.ok(isNewScope(kv, 'BBBBBB:host'));
+  assert.deepEqual(readGuest(kv, 'BBBBBB:host'), []);
+  const s = run(
+    [
+      { type: 'request', id: 'tour.lobby' },
+      { type: 'pump', blocked: false },
+    ],
+    loaded(
+      Object.fromEntries(
+        readGuest(kv, 'BBBBBB:host').map((i) => [i.id, i.status]),
+      ),
+    ),
+  );
+  assert.equal(s.active?.id, 'tour.lobby');
+});
+
+void test('tour steps open real table tabs', () => {
+  const tabs = [
+    'flow',
+    'seats',
+    'messages',
+    'recap',
+    'script',
+    'cosmetic',
+    'control',
+  ];
+  for (const t of TUTORIALS) {
+    if (t.tab) assert.ok(tabs.includes(t.tab), `${t.id}: tab ${t.tab}`);
+    for (const s of t.steps)
+      if (s.tab) assert.ok(tabs.includes(s.tab), `${t.id}: tab ${s.tab}`);
+  }
 });
