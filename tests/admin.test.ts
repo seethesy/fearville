@@ -8,7 +8,11 @@ import {
 } from '../lib/admin/policy.ts';
 import { COMMANDS, parseCommand } from '../lib/admin/commands.ts';
 import { UI_TEXT, validateText, formatText } from '../lib/ui-text/registry.ts';
-import { auditValue, auditTarget, auditParameters } from '../lib/admin/audit-value.ts';
+import {
+  auditValue,
+  auditTarget,
+  auditParameters,
+} from '../lib/admin/audit-value.ts';
 void test('admin audit omits hidden game information and credentials recursively', () => {
   const result = auditValue({
     code: 'ABCDEF',
@@ -22,7 +26,11 @@ void test('admin audit omits hidden game information and credentials recursively
     players: [{ id: 'p' }],
     nested: { status: 'ended' },
   });
-  assert.ok(!JSON.stringify(auditParameters({ input: 'xp give alice 500' })).includes('alice'));
+  assert.ok(
+    !JSON.stringify(auditParameters({ input: 'xp give alice 500' })).includes(
+      'alice',
+    ),
+  );
   assert.notEqual(auditTarget('xp give', 'alice'), 'alice');
 });
 const email = 'sybertechlabs@gmail.com';

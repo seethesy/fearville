@@ -514,19 +514,71 @@ try {
     null,
   );
   assert.equal((await command('report dismiss dismiss', true)).status, 400);
-  const moderationRoom = await req('/api/session', 'reporter', { action: 'create', name: 'Reporter' });
-  const moderationSeat = await req('/api/session', 'reported', { action: 'join', code: moderationRoom.code, name: 'Reported' });
+  const moderationRoom = await req('/api/session', 'reporter', {
+    action: 'create',
+    name: 'Reporter',
+  });
+  const moderationSeat = await req('/api/session', 'reported', {
+    action: 'join',
+    code: moderationRoom.code,
+    name: 'Reported',
+  });
   const removedMessage = randomUUID();
-  assert.equal((await req('/api/game', 'reported', { action: 'chat', to: 'host', text: 'Remove this reported chat', messageId: removedMessage }, { Authorization: 'Bearer ' + moderationSeat.token })).status, 200);
-  await db.prepare("INSERT INTO player_reports(id,kind,reason,target_account,code,message_id,content,created) VALUES ('remove-chat','chat','other','reported',?,?,?,?)").bind(moderationRoom.code, removedMessage, 'Remove this reported chat', Date.now()).run();
+  assert.equal(
+    (
+      await req(
+        '/api/game',
+        'reported',
+        {
+          action: 'chat',
+          to: 'host',
+          text: 'Remove this reported chat',
+          messageId: removedMessage,
+        },
+        { Authorization: 'Bearer ' + moderationSeat.token },
+      )
+    ).status,
+    200,
+  );
+  await db
+    .prepare(
+      "INSERT INTO player_reports(id,kind,reason,target_account,code,message_id,content,created) VALUES ('remove-chat','chat','other','reported',?,?,?,?)",
+    )
+    .bind(
+      moderationRoom.code,
+      removedMessage,
+      'Remove this reported chat',
+      Date.now(),
+    )
+    .run();
   await ok('report remove-chat remove', true);
-  const moderatedView = await req('/api/game', 'reporter', undefined, { Authorization: 'Bearer ' + moderationRoom.token });
-  assert.ok(!moderatedView.messages.some((message) => message.id === removedMessage));
-  await db.prepare("INSERT INTO games(id,code,host_account,host_name,winner,reason,players,days,nights,started,ended) VALUES ('moderation-rating','ABCDEF','reporter','Reporter','good','test',5,1,1,1,2)").run();
-  await db.prepare("INSERT INTO storyteller_ratings(game,rater,storyteller,stars,comment,created) VALUES ('moderation-rating','reported','reporter',4,'Remove this rating comment',2)").run();
-  await db.prepare("INSERT INTO player_reports(id,kind,reason,target_account,game,content,created) VALUES ('remove-rating','rating','other','reported','moderation-rating','Remove this rating comment',2)").run();
+  const moderatedView = await req('/api/game', 'reporter', undefined, {
+    Authorization: 'Bearer ' + moderationRoom.token,
+  });
+  assert.ok(
+    !moderatedView.messages.some((message) => message.id === removedMessage),
+  );
+  await db
+    .prepare(
+      "INSERT INTO games(id,code,host_account,host_name,winner,reason,players,days,nights,started,ended) VALUES ('moderation-rating','ABCDEF','reporter','Reporter','good','test',5,1,1,1,2)",
+    )
+    .run();
+  await db
+    .prepare(
+      "INSERT INTO storyteller_ratings(game,rater,storyteller,stars,comment,created) VALUES ('moderation-rating','reported','reporter',4,'Remove this rating comment',2)",
+    )
+    .run();
+  await db
+    .prepare(
+      "INSERT INTO player_reports(id,kind,reason,target_account,game,content,created) VALUES ('remove-rating','rating','other','reported','moderation-rating','Remove this rating comment',2)",
+    )
+    .run();
   await ok('report remove-rating remove', true);
-  const moderatedRating = await db.prepare("SELECT stars,comment FROM storyteller_ratings WHERE game='moderation-rating'").first();
+  const moderatedRating = await db
+    .prepare(
+      "SELECT stars,comment FROM storyteller_ratings WHERE game='moderation-rating'",
+    )
+    .first();
   assert.equal(moderatedRating.stars, 4);
   assert.equal(moderatedRating.comment, '');
   await db

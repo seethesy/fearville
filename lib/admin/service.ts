@@ -626,7 +626,10 @@ export async function auditLog(params: URLSearchParams) {
     if (value) {
       filters.push(key + '=?');
       if (key === 'target') {
-        const account = await db().prepare('SELECT id FROM accounts WHERE id=? OR handle=?').bind(value, value.replace(/^@/, '')).first<{ id: string }>();
+        const account = await db()
+          .prepare('SELECT id FROM accounts WHERE id=? OR handle=?')
+          .bind(value, value.replace(/^@/, ''))
+          .first<{ id: string }>();
         values.push(account ? auditTarget('inspect', account.id) : value);
       } else values.push(value);
     }
