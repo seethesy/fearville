@@ -4,7 +4,8 @@
 import type { RiteDiagram } from './diagrams.ts';
 
 export type TutorialKind = 'walkthrough' | 'section' | 'tour' | 'guide';
-// player: seated players only (never the Storyteller). host: Storyteller only.
+// player: seated players only (never the Storyteller). host: Storyteller only
+// (the tour and Storyteller-only sections; never requested for players).
 export type TutorialAudience = 'player' | 'host' | 'all';
 export type Platform = 'web' | 'ios';
 // Tabs on the iPhone client (GameView).
@@ -42,6 +43,9 @@ export interface TutorialStep {
   // Web: the value of a `data-tutorial` attribute to spotlight. A missing
   // target shows the step as a centered card.
   target?: string;
+  // Web: the tab to open while this step shows (overrides the tutorial's
+  // `tab`). Lets a tour walk across tabs.
+  tab?: string;
   illustration?: Illustration;
   // Night Rite guides: an explanatory drawing shown instead of the icon tile.
   diagram?: RiteDiagram;

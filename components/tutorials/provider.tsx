@@ -138,13 +138,18 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
     dispatch({ type: 'pump', blocked });
   }, [blocked, state.active, state.queue, state.loaded]);
 
-  // Open the tutorial's tab when it starts.
+  // Open the tutorial's tab when it starts, and a step's own tab when a tour
+  // moves between tabs (FEAR-19).
   const activeId = state.active?.id;
+  const activeStep = state.active?.step ?? 0;
   useEffect(() => {
     if (!activeId) return;
-    const tab = tutorial(activeId)?.tab;
+    const t = tutorial(activeId);
+    if (!t) return;
+    const step = stepsFor(t, 'web')[activeStep];
+    const tab = step?.tab ?? t.tab;
     if (tab) navigator.current?.(tab);
-  }, [activeId]);
+  }, [activeId, activeStep]);
 
   // Stable callbacks: components call these from effects.
   const accountRef = useRef(account);

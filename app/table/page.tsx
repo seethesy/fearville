@@ -676,7 +676,7 @@ export default function Table() {
               </div>
             )}
             {game.host && (
-              <div className="timer-actions">
+              <div className="timer-actions" data-tutorial="timer-actions">
                 {game.controls
                   .filter((c) =>
                     ['pause', 'resume', 'extend'].includes(c.action),
@@ -791,7 +791,7 @@ export default function Table() {
               <span>Rules</span>
             </TabsTrigger>
             {game.host && (
-              <TabsTrigger value="control">
+              <TabsTrigger value="control" data-tutorial="tab-control">
                 <Settings aria-hidden="true" />
                 <span>Controls</span>
               </TabsTrigger>
@@ -866,7 +866,12 @@ export default function Table() {
                       <p>
                         <strong>Storyteller:</strong> {game.hostName}
                       </p>
-                      <div className="code-display">{game.code}</div>
+                      <div
+                        className="code-display"
+                        data-tutorial="session-code"
+                      >
+                        {game.code}
+                      </div>
                       {game.host && !game.sandboxHost && (
                         <ShareInvite code={game.code} />
                       )}
@@ -1153,7 +1158,7 @@ export default function Table() {
                   />
                 )}
                 {game.phase === 'lobby' && (
-                  <section className="panel">
+                  <section className="panel" data-tutorial="host-setup">
                     <h2>{game.scriptName}</h2>
                     {game.controls
                       .filter((c) => c.action === 'setScript')
@@ -1185,7 +1190,7 @@ export default function Table() {
                 )}
 
                 {game.host && game.phase === 'lobby' && (
-                  <section className="panel">
+                  <section className="panel" data-tutorial="host-assign">
                     <h2>Assign the town’s characters.</h2>
                     <p className="muted">
                       Edit each seat to choose its character manually, or start
@@ -1373,7 +1378,7 @@ export default function Table() {
                 mode="setup"
               />
               <div className="workspace-grid">
-                <section className="panel">
+                <section className="panel" data-tutorial="host-controls">
                   <p className="eyebrow">STORYTELLER CONTROL</p>
                   <h2>Your ruling, at every step.</h2>
                   <div className="control-list">

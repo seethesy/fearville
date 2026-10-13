@@ -70,6 +70,7 @@ export function TutorialOverlay({
   // Measure the target; follow scrolling and resizing.
   useLayoutEffect(() => {
     const el = findTarget(step.target);
+    let scrolled = !!el;
     if (el)
       el.scrollIntoView({
         block: 'center',
@@ -81,6 +82,12 @@ export function TutorialOverlay({
       frame = requestAnimationFrame(() => {
         const current = findTarget(step.target);
         if (!current) return setRect(null);
+        // A step that switched tabs finds its target only after the new tab
+        // renders; bring it into view then.
+        if (!scrolled) {
+          scrolled = true;
+          current.scrollIntoView({ block: 'center', behavior: 'auto' });
+        }
         const r = current.getBoundingClientRect();
         setRect({
           top: r.top - PAD,
