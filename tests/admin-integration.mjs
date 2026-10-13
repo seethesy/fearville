@@ -372,7 +372,20 @@ try {
     epoch: 'old',
     status: 'open',
     timerless: true,
-    squads: [{ id: 'test', kind: 'grid', members: [victim], state: { type: 'grid', solution: [], clues: [], placements: {}, submissions: {} } }],
+    squads: [
+      {
+        id: 'test',
+        kind: 'grid',
+        members: [victim],
+        state: {
+          type: 'grid',
+          solution: [],
+          clues: [],
+          placements: {},
+          submissions: {},
+        },
+      },
+    ],
     plans: [],
     resolvedNight: 0,
   };
