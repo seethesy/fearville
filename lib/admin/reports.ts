@@ -143,6 +143,7 @@ export async function reportPlan(
   );
   return {
     statements,
+    tables: report.code ? [report.code] : [],
     target: report.id,
     before,
     after: { decision, status, resolution },

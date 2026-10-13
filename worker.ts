@@ -1,5 +1,6 @@
 import handler from 'vinext/server/fetch-handler';
 import { runtimeEnvironment, environmentHeaders } from './lib/runtime/config';
+import { GET as tableSocket } from './app/api/table/socket/route';
 export { EnvironmentProbe } from './lib/runtime/probe';
 export { GameTable } from './lib/game/table-object';
 export default {
@@ -8,6 +9,8 @@ export default {
     bindings: Cloudflare.Env,
     context: ExecutionContext,
   ) {
+    if (new URL(request.url).pathname === '/api/table/socket')
+      return tableSocket(request);
     const response = await handler.fetch(request, bindings, context);
     if (
       response.status === 101 ||
