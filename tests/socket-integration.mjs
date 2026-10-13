@@ -325,6 +325,11 @@ try {
       'unchanged viewer gets no push',
     );
   const revoked = clients[18];
+  assert.equal(
+    revoked.socket.readyState,
+    1,
+    'unrelated seat stays connected through reconnect',
+  );
   const closed = new Promise((resolve) =>
     revoked.socket.addEventListener('close', resolve, { once: true }),
   );

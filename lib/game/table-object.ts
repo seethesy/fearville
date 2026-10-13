@@ -855,24 +855,22 @@ export class GameTable extends DurableObject {
         command.action === 'configureRite' || command.action.startsWith('rite'),
       );
       const failed = 'error' in result && !!result.error;
-      socket.send(
-        JSON.stringify({
-          type: 'ack',
-          id,
-          ok: !failed,
-          error: 'error' in result ? result.error : undefined,
-          status: 'status' in result ? result.status : undefined,
-          summary: 'summary' in result ? result.summary : undefined,
-          data: result,
-          serverNow: Date.now(),
-          version:
-            'game' in result
-              ? result.game?.version
-              : 'version' in result
-                ? result.version
-                : this.meta!.version,
-        }),
-      );
+      this.acknowledge(socket, {
+        type: 'ack',
+        id,
+        ok: !failed,
+        error: 'error' in result ? result.error : undefined,
+        status: 'status' in result ? result.status : undefined,
+        summary: 'summary' in result ? result.summary : undefined,
+        data: result,
+        serverNow: Date.now(),
+        version:
+          'game' in result
+            ? result.game?.version
+            : 'version' in result
+              ? result.version
+              : this.meta!.version,
+      });
     } catch (error) {
       if (!id) {
         socket.close(1008, 'Invalid table message.');
@@ -880,15 +878,20 @@ export class GameTable extends DurableObject {
       }
       const response = errorResponse(error);
       const body = (await response.json()) as { error: string };
-      socket.send(
-        JSON.stringify({
-          type: 'ack',
-          id,
-          ok: false,
-          ...body,
-          status: response.status,
-        }),
-      );
+      this.acknowledge(socket, {
+        type: 'ack',
+        id,
+        ok: false,
+        ...body,
+        status: response.status,
+      });
+    }
+  }
+  private acknowledge(socket: WebSocket, ack: unknown) {
+    try {
+      socket.send(JSON.stringify(ack));
+    } catch {
+      /* Dropped after commit: the receipt is replayed on reconnect. */
     }
   }
   webSocketClose(socket: WebSocket) {
