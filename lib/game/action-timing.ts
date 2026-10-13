@@ -10,7 +10,7 @@ export async function timedActionFetch(input: string, init: RequestInit) {
   try {
     const body =
       typeof init.body === 'string'
-        ? JSON.stringify({ ...JSON.parse(init.body), requestId: id })
+        ? JSON.stringify({ ...JSON.parse(init.body), requestId: id, compactRecaps: true })
         : init.body;
     return await fetch(input, { ...init, body });
   } finally {

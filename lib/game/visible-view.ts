@@ -19,6 +19,7 @@ export async function tableView(
   now: number,
   sandboxHost = false,
   credentialViewer = actor.id,
+  compactRecaps = false,
 ) {
   const hidden = await hiddenChatSenders(game.code, credentialViewer);
   return {
@@ -33,6 +34,7 @@ export async function tableView(
       version,
       now,
       sandboxHost,
+      compactRecaps,
     ),
     blockedChatSenders: hidden,
   };

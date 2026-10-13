@@ -68,6 +68,12 @@ Sandbox shows request round-trip time and the arrival time of the matching
 push after send, using a request ID without including credentials in URLs.
 Friends, invites and presence polling is unchanged.
 
+Socket frames and the current web client defer archived chat/decision
+transcripts; opening a player's recap fetches that game's full detail through
+the authenticated table recap endpoint. This prevents past heavy-chat games
+from enlarging every routine push. Older native HTTP clients retain their full
+recap response; the compact mode and deferred-detail fields are additive.
+
 CI opens nineteen actual Miniflare sockets, checks each payload against its
 authorized `view()`, verifies private information and notes stay private, tests
 hash suppression for unrelated viewers, and closes a revoked seat's socket.

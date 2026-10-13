@@ -266,7 +266,7 @@ export default function Table() {
       const promise = (async () => {
         try {
           const r = await fetch(
-            `/api/game${sandboxPov === 'host' ? '' : `?pov=${encodeURIComponent(sandboxPov)}`}`,
+            `/api/game?compactRecaps=1${sandboxPov === 'host' ? '' : `&pov=${encodeURIComponent(sandboxPov)}`}`,
             {
               cache: 'no-store',
               credentials: 'same-origin',

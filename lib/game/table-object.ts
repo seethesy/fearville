@@ -384,6 +384,7 @@ export class GameTable extends DurableObject {
               now,
               !!g.sandbox && actor.host,
               actor.id,
+              c.compactRecaps === true,
             ),
           };
     });
@@ -566,7 +567,7 @@ export class GameTable extends DurableObject {
           ),
         };
         const data = {
-          ...view(filtered, seat.viewer, version, now, seat.sandboxHost),
+          ...view(filtered, seat.viewer, version, now, seat.sandboxHost, true),
           blockedChatSenders: hidden,
         };
         const fingerprint = await hash(viewContent(data));
@@ -633,6 +634,7 @@ export class GameTable extends DurableObject {
           now,
           sandboxHost,
           actor.id,
+          true,
         );
         server.send(
           JSON.stringify({ type: 'view', version, serverNow: now, data }),
