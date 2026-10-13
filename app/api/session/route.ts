@@ -1,5 +1,10 @@
+import { requirePlayerAccount } from '@/lib/admin/access';
 import { database } from '@/db';
-import { accountAuth, attachMember } from '@/lib/accounts/service';
+import {
+  accountAuth,
+  attachMember,
+  requirePlayerRequest,
+} from '@/lib/accounts/service';
 import { profileDefaults } from '@/lib/accounts/profile';
 import { newGame, uuid } from '@/lib/game/types';
 import { newSandboxGame } from '@/lib/game/sandbox';
@@ -48,6 +53,7 @@ export async function GET(r: Request) {
 export async function POST(r: Request) {
   try {
     checkOrigin(r);
+    await requirePlayerRequest(r);
     requireThat(
       Number(r.headers.get('content-length') || 0) < 16000,
       'Request is too large.',
@@ -136,6 +142,7 @@ export async function POST(r: Request) {
       return json({ error: 'The table changed. Please try again.' }, 409);
     }
     const account = await accountAuth(r);
+    if (account) await requirePlayerAccount(account.id);
     if (
       (body.action === 'create' || body.action === 'createSandbox') &&
       !account

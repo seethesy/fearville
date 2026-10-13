@@ -309,3 +309,33 @@ void test('deleting a table removes its parts', async () => {
     0,
   );
 });
+
+void test('independent part writes reject a revoked credential in the same SQL write', async () => {
+  const { db, sqlite } = d1();
+  await db.batch(createStatements(db, table(), 1));
+  sqlite
+    .prepare(
+      "INSERT INTO members(token_hash,code,player,host,expires) VALUES ('credential','PARTS1','host',1,9999999999999)",
+    )
+    .run();
+  const { game } = await load(db, 'PARTS1');
+  const actor = { id: game.players[0].id, host: false };
+  const before = structuredClone(game);
+  const command: Command = {
+    action: 'chat',
+    text: 'Blocked after revocation',
+    messageId: crypto.randomUUID(),
+  };
+  execute(game, actor, command, 50);
+  const update = independentCommand(before, game, actor, command)!;
+  sqlite.prepare("DELETE FROM members WHERE token_hash='credential'").run();
+  const result = await saveIndependentParts(
+    db,
+    game,
+    update,
+    ' AND EXISTS (SELECT 1 FROM members WHERE token_hash=?)',
+    ['credential'],
+  );
+  assert.equal(result, null);
+  assert.equal((await load(db, 'PARTS1')).game.messages.length, 0);
+});

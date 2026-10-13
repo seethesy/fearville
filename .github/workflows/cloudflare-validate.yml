@@ -6,7 +6,26 @@ on:
 permissions:
   contents: read
 jobs:
+  pr-dry-run:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22.x
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npm run build
+        env:
+          CLOUDFLARE_ENV: staging
+      - name: Package Worker without deployment
+        run: npx wrangler deploy --env staging --dry-run
+      - name: Verify local D1 transfer
+        run: node tests/d1-transfer-integration.mjs
   dry-run:
+    if: github.event_name == 'workflow_dispatch'
     strategy:
       fail-fast: false
       matrix:

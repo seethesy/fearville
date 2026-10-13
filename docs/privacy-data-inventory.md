@@ -31,6 +31,9 @@ hosting provider (Cloudflare Workers + D1) on Fearville's behalf.
 | Seat credentials (hashed) | `members.token_hash`, `account_seats` | Rejoin a seat | Yes | Identifiers: Device or other IDs | 30 days | Deleted |
 | Sign-in sessions (hashed) | `account_sessions` | Stay signed in | Yes | Identifiers | 30 days | Deleted |
 | Tutorial progress | `tutorial_progress` | Show each tutorial once | Yes | Usage data: Product interaction | While the account exists | Deleted |
+| Admin XP adjustments and granted items | `admin_progression`, `account_items` | Administrative progression and ownership | Yes | Gameplay content | While the account exists | Deleted by cascade |
+| Administrative audit metadata, decisions and reasons | `admin_audit` | Hold administrative actions accountable | Restricted; account targets are one-way references | Other user content | Retained, append-only | Direct player names/emails and hidden game fields are not copied into the log; operational metadata and moderator reasons remain |
+| Published UI text and its versions | `ui_text_versions` | Live official text and rollback | Editor's admin ID | Other user content | Retained, append-only | Official published text remains |
 | IP address (hashed with action and minute) | `rate_limits.key` | Abuse prevention | No | Not stored in a linkable form | About 2 minutes | n/a |
 
 Guests: a random seat credential (hashed) plus whatever they type at the table

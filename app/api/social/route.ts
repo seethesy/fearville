@@ -1,3 +1,4 @@
+import { requirePlayerAccount, requireUnmuted } from '@/lib/admin/access';
 import { json, errorResponse, checkOrigin, limited } from '@/lib/game/store';
 import { accountAuth } from '@/lib/accounts/service';
 import { memberCookie } from '@/lib/game/join';
@@ -30,6 +31,7 @@ export async function GET(r: Request) {
   try {
     const a = await accountAuth(r);
     if (!a) return json({ error: 'Sign in to see your friends.' }, 401);
+    await requirePlayerAccount(a.id);
     return json(await socialView(a.id, Date.now()));
   } catch (e) {
     return errorResponse(e);
@@ -42,6 +44,8 @@ export async function POST(r: Request) {
     const a = await accountAuth(r);
     if (!a)
       return json({ error: 'Sign in to use friends and invitations.' }, 401);
+    await requirePlayerAccount(a.id);
+    await requireUnmuted(a.id);
     await limited(r, 'social', 120);
     const raw = await r.text();
     if (raw.length > 8000) throw Error('Request is too large.');

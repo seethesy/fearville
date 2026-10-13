@@ -17,6 +17,14 @@ export function iosCatalog() {
       group: t.group ?? null,
       covers: t.covers ?? [],
       steps: stepsFor(t, 'ios').map((s) => ({
+        titleKey:
+          t.kind === 'walkthrough'
+            ? `tutorial.${t.id}.${t.steps.findIndex((original) => (original.ios?.body ?? original.body) === s.body)}.${t.steps.find((original) => (original.ios?.body ?? original.body) === s.body)?.ios?.title ? 'ios.' : ''}title`
+            : null,
+        bodyKey:
+          t.kind === 'walkthrough'
+            ? `tutorial.${t.id}.${t.steps.findIndex((original) => (original.ios?.body ?? original.body) === s.body)}.${t.steps.find((original) => (original.ios?.body ?? original.body) === s.body)?.ios?.body ? 'ios.' : ''}body`
+            : null,
         title: s.title,
         body: s.body,
         symbol: s.illustration ? IOS_SYMBOLS[s.illustration] : null,

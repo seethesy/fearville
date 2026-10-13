@@ -735,7 +735,7 @@ export type Game = {
   log: Log[];
   history: { id: string; text: string; before: string; at: number }[];
 };
-export type Actor = { id: string; host: boolean };
+export type Actor = { id: string; host: boolean; credentialHash?: string };
 export type Command = { action: string; [key: string]: unknown };
 export type Option = { value: string; label: string };
 export type Field = {

@@ -2,6 +2,9 @@ import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import './hub.css';
 import './rite.css';
+import './admin.css';
+import { TextProvider } from '@/components/ui-text';
+import { AccountBoundary } from '@/components/admin/boundary';
 import { AccountProvider } from '@/components/hub/account-context';
 import { TutorialProvider } from '@/components/tutorials/provider';
 export const viewport: Viewport = {
@@ -23,7 +26,11 @@ export default function RootLayout({
     <html lang="en" className="dark">
       <body>
         <AccountProvider>
-          <TutorialProvider>{children}</TutorialProvider>
+          <TextProvider>
+            <AccountBoundary>
+              <TutorialProvider>{children}</TutorialProvider>
+            </AccountBoundary>
+          </TextProvider>
         </AccountProvider>
       </body>
     </html>

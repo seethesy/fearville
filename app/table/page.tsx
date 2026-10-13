@@ -1,4 +1,5 @@
 'use client';
+import { UiText } from '@/components/ui-text';
 import AppLink from '@/components/app-link';
 import { NightRite } from '@/components/rite/night-rite';
 import { playCue } from '@/components/hub/audio';
@@ -338,7 +339,12 @@ export default function Table() {
       return;
     }
     if (control.fields.every((field) => field.type === 'hidden')) {
-      void submit(control, Object.fromEntries(control.fields.map((field) => [field.key, field.value ?? ''])));
+      void submit(
+        control,
+        Object.fromEntries(
+          control.fields.map((field) => [field.key, field.value ?? '']),
+        ),
+      );
       return;
     }
     setSelected(control);
@@ -362,7 +368,11 @@ export default function Table() {
           ...payload,
           action: control.action,
           ...(control.action === 'edit'
-            ? { base: Object.fromEntries(control.fields.map((field) => [field.key, field.value ?? ''])) }
+            ? {
+                base: Object.fromEntries(
+                  control.fields.map((field) => [field.key, field.value ?? '']),
+                ),
+              }
             : {}),
           ...(game?.sandboxHost && sandboxPov !== 'host'
             ? { pov: sandboxPov }
@@ -413,12 +423,15 @@ export default function Table() {
         summary?: string;
         game?: GameView;
       };
-      if (!response.ok) throw Error(data.error || 'Could not assign the character.');
+      if (!response.ok)
+        throw Error(data.error || 'Could not assign the character.');
       if (data.game) applyGame(data.game);
       setNotice(data.summary ?? 'Character assigned.');
       setSelectedRole('');
     } catch (e) {
-      setRoleError(e instanceof Error ? e.message : 'Could not assign the character.');
+      setRoleError(
+        e instanceof Error ? e.message : 'Could not assign the character.',
+      );
       await refresh();
     } finally {
       setDropSeat('');
@@ -543,7 +556,13 @@ export default function Table() {
           <span className="table-script">{game.scriptName}</span>
           {game.roleDistribution && (
             <span className="table-setup">
-              <strong>{game.customRoleDistribution ? 'Custom' : 'Standard'} setup · {game.players.length} players</strong>
+              <strong>
+                {game.customRoleDistribution ? 'Custom' : 'Standard'} setup ·{' '}
+                <UiText
+                  id="lobby.players"
+                  values={{ count: game.players.length }}
+                />
+              </strong>
               <small>
                 {TEAM_ORDER.filter(
                   (t) => t !== 'traveler' || game.script === 'horrors',
@@ -561,8 +580,11 @@ export default function Table() {
             {online ? 'Live updates' : 'Reconnecting…'}
           </span>
           <span className="table-population">
-            {game.players.length} players ·{' '}
-            {game.players.filter((p) => p.alive).length} alive
+            <UiText
+              id="lobby.players"
+              values={{ count: game.players.length }}
+            />{' '}
+            · {game.players.filter((p) => p.alive).length} alive
           </span>
           <button
             className="icon-button table-settings"
@@ -718,7 +740,11 @@ export default function Table() {
           <TabsList className="table-tabs" aria-label="Game navigation">
             <TabsTrigger value="flow">
               <Play aria-hidden="true" />
-              <span>{game.phase === 'lobby' ? 'Lobby' : 'Game flow'}</span>
+              <span>
+                <UiText
+                  id={game.phase === 'lobby' ? 'lobby.tab' : 'flow.tab'}
+                />
+              </span>
             </TabsTrigger>
             {game.phase === 'lobby' && !game.host ? (
               <>
@@ -791,7 +817,10 @@ export default function Table() {
               <NightRite key={`${game.code}:${game.me}:play`} game={game} />
             )}
             {game.character && (
-              <RoleTipsPanel tips={game.character.tips} session={`${game.code}:${game.me}`} />
+              <RoleTipsPanel
+                tips={game.character.tips}
+                session={`${game.code}:${game.me}`}
+              />
             )}
             {game.phase === 'lobby' && (
               <div data-tutorial="seating">
@@ -833,7 +862,9 @@ export default function Table() {
                         <strong>Storyteller:</strong> {game.hostName}
                       </p>
                       <div className="code-display">{game.code}</div>
-                      {game.host && !game.sandboxHost && <ShareInvite code={game.code} />}
+                      {game.host && !game.sandboxHost && (
+                        <ShareInvite code={game.code} />
+                      )}
                       {game.host && (
                         <div className="checklist">
                           <button
@@ -861,18 +892,18 @@ export default function Table() {
                             ? pendingDeath.title
                             : game.pendingBodyguard
                               ? 'Waiting for the Bodyguard'
-                            : first?.name || 'The night is complete.'}
+                              : first?.name || 'The night is complete.'}
                         </h2>
                         <p className="muted">
                           {pendingDeath
                             ? 'Resolve this death before the next night task: prevention, the Fateweaver, then any triggered abilities.'
                             : game.pendingBodyguard
                               ? `${game.pendingBodyguard} has been told who will die and may take their place.`
-                            : first
-                              ? game.nightConfirmation?.choice
-                                ? 'The player sent their choice. Open the action to review and confirm it.'
-                                : 'Waiting for the player’s choice, or open the action to enter it yourself.'
-                              : 'Review the town, then announce dawn.'}
+                              : first
+                                ? game.nightConfirmation?.choice
+                                  ? 'The player sent their choice. Open the action to review and confirm it.'
+                                  : 'Waiting for the player’s choice, or open the action to enter it yourself.'
+                                : 'Review the town, then announce dawn.'}
                         </p>
                         <ol className="night-list">
                           {game.tasks.map((t, i) => (
@@ -1123,10 +1154,19 @@ export default function Table() {
                       .filter((c) => c.action === 'setScript')
                       .map((c) => button(c))}
                     <h3>Role distribution</h3>
-                    <p className="muted">{game.customRoleDistribution ? 'Custom counts are visible to everyone at the table.' : 'Standard counts are visible to everyone at the table.'}</p>
+                    <p className="muted">
+                      {game.customRoleDistribution
+                        ? 'Custom counts are visible to everyone at the table.'
+                        : 'Standard counts are visible to everyone at the table.'}
+                    </p>
                     <div className="actions">
                       {game.controls
-                        .filter((c) => ['setRoleDistribution', 'resetRoleDistribution'].includes(c.action))
+                        .filter((c) =>
+                          [
+                            'setRoleDistribution',
+                            'resetRoleDistribution',
+                          ].includes(c.action),
+                        )
                         .map((c) => button(c))}
                     </div>
                   </section>
@@ -1158,9 +1198,15 @@ export default function Table() {
                   </section>
                 )}
                 {game.phase === 'lobby' && roleError && (
-                  <p className="error" role="alert">{roleError}</p>
+                  <p className="error" role="alert">
+                    {roleError}
+                  </p>
                 )}
-                <div className={game.phase === 'lobby' ? 'role-assignment-layout' : ''}>
+                <div
+                  className={
+                    game.phase === 'lobby' ? 'role-assignment-layout' : ''
+                  }
+                >
                   {game.phase === 'lobby' && (
                     <RoleAssignmentPalette
                       game={game}
@@ -1168,112 +1214,124 @@ export default function Table() {
                       onSelect={setSelectedRole}
                     />
                   )}
-                <div className="seat-grid">
-                  {game.players.map((p) => (
-                    <section
-                      className={`panel seat-card${dropSeat === p.id ? ' role-drop-target' : ''}`}
-                      key={p.id}
-                      onDragOver={(event) => {
-                        if (game.phase !== 'lobby') return;
-                        event.preventDefault();
-                        event.dataTransfer.dropEffect = 'move';
-                        setDropSeat(p.id);
-                      }}
-                      onDragLeave={() => setDropSeat('')}
-                      onDrop={(event) => {
-                        event.preventDefault();
-                        setDropSeat('');
-                        void assignSeatRole(p.id, event.dataTransfer.getData('text/plain'));
-                      }}
-                    >
-                      <PlayerAvatar
-                        avatar={p.avatar}
-                        id={p.id}
-                        dead={!p.alive}
-                        deathEffect={p.deathEffect}
-                        publicDead={!p.publicAlive}
-                      />
-                      <p className="eyebrow">
-                        SEAT {p.seat.toString().padStart(2, '0')} ·{' '}
-                        {p.alive ? 'ALIVE' : 'DEAD'}
-                      </p>
-                      <h2>
-                        {p.name}
-                        {p.departed ? ' · Left table' : ''}
-                      </h2>
-                      {game.host && (
-                        <p className="role-name">
-                          <RoleIcon role={p.role ?? ''} /> (
-                          {role(p.role ?? '')?.name || 'Assign a character'})
-                          {p.role === 'drunk' && (
-                            <small>
-                              Shown {role(p.shown ?? '')?.name || '—'}
-                            </small>
-                          )}
+                  <div className="seat-grid">
+                    {game.players.map((p) => (
+                      <section
+                        className={`panel seat-card${dropSeat === p.id ? ' role-drop-target' : ''}`}
+                        key={p.id}
+                        onDragOver={(event) => {
+                          if (game.phase !== 'lobby') return;
+                          event.preventDefault();
+                          event.dataTransfer.dropEffect = 'move';
+                          setDropSeat(p.id);
+                        }}
+                        onDragLeave={() => setDropSeat('')}
+                        onDrop={(event) => {
+                          event.preventDefault();
+                          setDropSeat('');
+                          void assignSeatRole(
+                            p.id,
+                            event.dataTransfer.getData('text/plain'),
+                          );
+                        }}
+                      >
+                        <PlayerAvatar
+                          avatar={p.avatar}
+                          id={p.id}
+                          dead={!p.alive}
+                          deathEffect={p.deathEffect}
+                          publicDead={!p.publicAlive}
+                        />
+                        <p className="eyebrow">
+                          SEAT {p.seat.toString().padStart(2, '0')} ·{' '}
+                          {p.alive ? 'ALIVE' : 'DEAD'}
                         </p>
-                      )}
-                      <p className="muted">
-                        {p.ghost ? 'Dead vote available' : 'Dead vote spent'}
-                        {p.nominated ? ' · Nominated today' : ''}
-                        {p.hasNominated ? ' · Nomination used' : ''}
-                      </p>
-                      {game.host && (
-                        <>
-                          {game.phase === 'lobby' && (
-                            <div className="seat-role-assignment">
-                              <label className="field">
-                                Assign character
-                                <select
-                                  aria-label={`Assign character to ${p.name}`}
-                                  disabled={busy}
-                                  value={p.role ?? ''}
-                                  onChange={(event) => void assignSeatRole(p.id, event.target.value)}
-                                >
-                                  <option value="">Choose a character</option>
-                                  {scriptRoles(game.script).map((r) => (
-                                    <option key={r.id} value={r.id}>{r.name}</option>
-                                  ))}
-                                </select>
-                              </label>
-                              {selectedRole && (
-                                <button
-                                  type="button"
-                                  className="secondary"
-                                  disabled={busy}
-                                  onClick={() => void assignSeatRole(p.id, selectedRole)}
-                                >
-                                  Assign {role(selectedRole)?.name}
-                                </button>
-                              )}
-                            </div>
-                          )}
-                          <p className="tags">
-                            {p.feared ? 'FEARED ' : ''}
-                            {p.protected ? 'PROTECTED ' : ''}
-                            {p.used ? 'ABILITY USED' : ''}
+                        <h2>
+                          {p.name}
+                          {p.departed ? ' · Left table' : ''}
+                        </h2>
+                        {game.host && (
+                          <p className="role-name">
+                            <RoleIcon role={p.role ?? ''} /> (
+                            {role(p.role ?? '')?.name || 'Assign a character'})
+                            {p.role === 'drunk' && (
+                              <small>
+                                Shown {role(p.shown ?? '')?.name || '—'}
+                              </small>
+                            )}
                           </p>
-                          {p.notes && <p>{p.notes}</p>}
-                          <button
-                            className="secondary"
-                            onClick={() => {
-                              setChatPlayer(p.id);
-                              setActiveTab('messages');
-                            }}
-                          >
-                            Open conversation
-                          </button>
-                          {button(
-                            game.controls.find(
-                              (c) =>
-                                c.action === 'edit' &&
-                                c.fields[0].value === p.id,
-                            )!,
-                          )}
-                        </>
-                      )}
-                    </section>
-                  ))}
-                </div>
+                        )}
+                        <p className="muted">
+                          {p.ghost ? 'Dead vote available' : 'Dead vote spent'}
+                          {p.nominated ? ' · Nominated today' : ''}
+                          {p.hasNominated ? ' · Nomination used' : ''}
+                        </p>
+                        {game.host && (
+                          <>
+                            {game.phase === 'lobby' && (
+                              <div className="seat-role-assignment">
+                                <label className="field">
+                                  Assign character
+                                  <select
+                                    aria-label={`Assign character to ${p.name}`}
+                                    disabled={busy}
+                                    value={p.role ?? ''}
+                                    onChange={(event) =>
+                                      void assignSeatRole(
+                                        p.id,
+                                        event.target.value,
+                                      )
+                                    }
+                                  >
+                                    <option value="">Choose a character</option>
+                                    {scriptRoles(game.script).map((r) => (
+                                      <option key={r.id} value={r.id}>
+                                        {r.name}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </label>
+                                {selectedRole && (
+                                  <button
+                                    type="button"
+                                    className="secondary"
+                                    disabled={busy}
+                                    onClick={() =>
+                                      void assignSeatRole(p.id, selectedRole)
+                                    }
+                                  >
+                                    Assign {role(selectedRole)?.name}
+                                  </button>
+                                )}
+                              </div>
+                            )}
+                            <p className="tags">
+                              {p.feared ? 'FEARED ' : ''}
+                              {p.protected ? 'PROTECTED ' : ''}
+                              {p.used ? 'ABILITY USED' : ''}
+                            </p>
+                            {p.notes && <p>{p.notes}</p>}
+                            <button
+                              className="secondary"
+                              onClick={() => {
+                                setChatPlayer(p.id);
+                                setActiveTab('messages');
+                              }}
+                            >
+                              Open conversation
+                            </button>
+                            {button(
+                              game.controls.find(
+                                (c) =>
+                                  c.action === 'edit' &&
+                                  c.fields[0].value === p.id,
+                              )!,
+                            )}
+                          </>
+                        )}
+                      </section>
+                    ))}
+                  </div>
                 </div>
               </>
             )}
@@ -1392,10 +1450,19 @@ export default function Table() {
                         }
                         disabled={busy}
                         aria-pressed={status.active}
-                        aria-label={status.locked ? `Edit ${confirmation.playerName}'s character` : `${status.active ? 'Remove' : 'Add'} ${status.name.toLowerCase()} for ${confirmation.playerName}`}
+                        aria-label={
+                          status.locked
+                            ? `Edit ${confirmation.playerName}'s character`
+                            : `${status.active ? 'Remove' : 'Add'} ${status.name.toLowerCase()} for ${confirmation.playerName}`
+                        }
                         onClick={() => {
                           if (status.locked) {
-                            const edit = game.controls.find((control) => control.action === 'edit' && control.fields[0]?.value === confirmation.playerId);
+                            const edit = game.controls.find(
+                              (control) =>
+                                control.action === 'edit' &&
+                                control.fields[0]?.value ===
+                                  confirmation.playerId,
+                            );
                             if (edit) open(edit);
                             return;
                           }
@@ -1403,18 +1470,71 @@ export default function Table() {
                             open({
                               action: 'setPlayerStatus',
                               title: `Redirect ${confirmation.playerName}`,
-                              description: 'Choose the player whose ability receives the redirect.',
+                              description:
+                                'Choose the player whose ability receives the redirect.',
                               fields: [
-                                { key: 'player', label: '', type: 'hidden', value: confirmation.playerId },
-                                { key: 'status', label: '', type: 'hidden', value: status.key },
-                                { key: 'active', label: '', type: 'hidden', value: true },
-                                { key: 'night', label: '', type: 'hidden', value: game.night },
-                                { key: 'target', label: 'Redirect target', type: 'select', required: true, options: game.players.filter((player) => player.id !== confirmation.playerId).map((player) => ({ value: player.id, label: player.name })), value: game.players.find((player) => player.id !== confirmation.playerId)?.id ?? '' },
+                                {
+                                  key: 'player',
+                                  label: '',
+                                  type: 'hidden',
+                                  value: confirmation.playerId,
+                                },
+                                {
+                                  key: 'status',
+                                  label: '',
+                                  type: 'hidden',
+                                  value: status.key,
+                                },
+                                {
+                                  key: 'active',
+                                  label: '',
+                                  type: 'hidden',
+                                  value: true,
+                                },
+                                {
+                                  key: 'night',
+                                  label: '',
+                                  type: 'hidden',
+                                  value: game.night,
+                                },
+                                {
+                                  key: 'target',
+                                  label: 'Redirect target',
+                                  type: 'select',
+                                  required: true,
+                                  options: game.players
+                                    .filter(
+                                      (player) =>
+                                        player.id !== confirmation.playerId,
+                                    )
+                                    .map((player) => ({
+                                      value: player.id,
+                                      label: player.name,
+                                    })),
+                                  value:
+                                    game.players.find(
+                                      (player) =>
+                                        player.id !== confirmation.playerId,
+                                    )?.id ?? '',
+                                },
                               ],
                             });
                             return;
                           }
-                          void submit({ action: 'setPlayerStatus', title: 'Change player state', description: '', fields: [] }, { player: confirmation.playerId, status: status.key, active: !status.active, night: game.night });
+                          void submit(
+                            {
+                              action: 'setPlayerStatus',
+                              title: 'Change player state',
+                              description: '',
+                              fields: [],
+                            },
+                            {
+                              player: confirmation.playerId,
+                              status: status.key,
+                              active: !status.active,
+                              night: game.night,
+                            },
+                          );
                         }}
                       >
                         {status.active

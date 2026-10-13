@@ -1,3 +1,6 @@
+import { removalPlan } from '@/lib/admin/lobbies';
+import { allowlisted } from '@/lib/admin/policy';
+import { adminAllowlist } from '@/lib/admin/access';
 import { database } from '@/db';
 import { hash } from '@/lib/game/store';
 import { random, validateIdentity, encryptToken, type Provider } from './oidc';
@@ -78,6 +81,12 @@ export async function callback(r: Request, provider: Provider) {
       clientID(provider),
       flow.nonce,
     );
+    const elevated =
+      provider === 'google' &&
+      identity.verified &&
+      allowlisted(identity.email, adminAllowlist());
+    if (elevated && flow.account)
+      throw Error('Sign out before signing in to the dedicated admin account.');
     const identityKey = provider + ':' + identity.subject;
     const db = database();
     let existing = await db
@@ -96,6 +105,14 @@ export async function callback(r: Request, provider: Provider) {
         .first())
     )
       throw Error('Your account no longer exists.');
+    if (flow.account) {
+      const linked = await db
+        .prepare('SELECT role FROM accounts WHERE id=?')
+        .bind(flow.account)
+        .first<{ role: string }>();
+      if (linked?.role === 'admin')
+        throw Error('Admin accounts cannot link another provider.');
+    }
     let displayName = identity.name;
     if (provider === 'apple' && params.get('user')) {
       try {
@@ -149,18 +166,68 @@ export async function callback(r: Request, provider: Provider) {
         .prepare('UPDATE identities SET refresh_token=? WHERE id=?')
         .bind(refresh, identityKey)
         .run();
-    if (flow.member) await attachMember(flow.member, existing.account);
+    const account = await db
+      .prepare('SELECT role,banned FROM accounts WHERE id=?')
+      .bind(existing.account)
+      .first<{ role: string; banned: string | null }>();
+    if (account?.banned !== null) throw Error('This account is banned.');
+    if (account?.role === 'admin' && !elevated)
+      throw Error('Admin access requires allowlisted Google sign-in.');
+    if (elevated) {
+      // First promotion invalidates old player/provider sessions and saved credentials.
+      const removal = await removalPlan(existing.account);
+      await db.batch([
+        ...removal.statements,
+        db.prepare('DELETE FROM admin_assertions'),
+        db
+          .prepare(
+            "UPDATE accounts SET role='admin',google_email=?,admin_revision=admin_revision+1 WHERE id=?",
+          )
+          .bind(identity.email.toLowerCase(), existing.account),
+        db
+          .prepare('DELETE FROM account_sessions WHERE account=?')
+          .bind(existing.account),
+        db
+          .prepare('DELETE FROM native_codes WHERE account=?')
+          .bind(existing.account),
+        db
+          .prepare(
+            'DELETE FROM members WHERE EXISTS (SELECT 1 FROM account_seats a WHERE a.account=? AND a.code=members.code AND a.player=members.player)',
+          )
+          .bind(existing.account),
+        db
+          .prepare('DELETE FROM friendships WHERE requester=? OR addressee=?')
+          .bind(existing.account, existing.account),
+        db
+          .prepare('DELETE FROM session_invites WHERE sender=? OR recipient=?')
+          .bind(existing.account, existing.account),
+        db
+          .prepare('DELETE FROM admin_progression WHERE account=?')
+          .bind(existing.account),
+        db
+          .prepare('DELETE FROM account_items WHERE account=?')
+          .bind(existing.account),
+        db
+          .prepare('UPDATE game_players SET account=NULL WHERE account=?')
+          .bind(existing.account),
+        db
+          .prepare('UPDATE games SET host_account=NULL WHERE host_account=?')
+          .bind(existing.account),
+      ]);
+    } else if (flow.member) await attachMember(flow.member, existing.account);
     if (flow.native_challenge) {
       const code = random();
       await db
         .prepare(
-          'INSERT INTO native_codes (hash,account,challenge,expires) VALUES (?,?,?,?)',
+          'INSERT INTO native_codes (hash,account,challenge,expires,provider,verified_email) VALUES (?,?,?,?,?,?)',
         )
         .bind(
           await hash(code),
           existing.account,
           flow.native_challenge,
           Date.now() + 60000,
+          provider,
+          identity.verified ? identity.email.toLowerCase() : '',
         )
         .run();
       return new Response(null, {
@@ -173,7 +240,11 @@ export async function callback(r: Request, provider: Provider) {
         },
       });
     }
-    const accountToken = await createAccountSession(existing.account);
+    const accountToken = await createAccountSession(
+      existing.account,
+      provider,
+      identity.verified ? identity.email.toLowerCase() : '',
+    );
     const headers = new Headers({
       Location: origin + '/',
       'Cache-Control': 'no-store',

@@ -44,8 +44,12 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
   const refresh = useCallback(async () => {
     try {
       const r = await fetch('/api/accounts', { cache: 'no-store' });
-      if (!r.ok)
-        throw Error('Account service is unavailable. Please try again.');
+      if (!r.ok) {
+        const failure = (await r.json()) as { error?: string };
+        throw Error(
+          failure.error || 'Account service is unavailable. Please try again.',
+        );
+      }
       const data = (await r.json()) as AccountView;
       setState(data);
       setError('');

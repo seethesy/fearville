@@ -48,10 +48,10 @@ struct SessionReply: Decodable { let code: String; let token: String }
 struct ActionReply: Decodable { let summary: String; let version: Int?; let game: GameState? }
 struct APIError: Decodable { let error: String }
 struct ScriptRole: Decodable, Identifiable { let id: String; let name: String; let team: String; let description: String; let script: String? }
-struct AccountProfile: Decodable { let id: String; let name: String; let email: String; let handle: String?; let handleChangedAt: Double? }
+struct AccountProfile: Decodable { let role: String?; let id: String; let name: String; let email: String; let handle: String?; let handleChangedAt: Double? }
 struct ProviderAvailability: Decodable { let google: Bool; let apple: Bool }
 struct SavedSeat: Decodable, Identifiable { let id: String; let code: String; let player: String; let host: Int; let phase: String; let hostName: String }
-struct AccountState: Decodable { let account: AccountProfile?; let providers: ProviderAvailability; let connections: [String]; let seats: [SavedSeat]; let profile: NativeProfileDefaults? }
+struct AccountState: Decodable { let items: [String]?; let account: AccountProfile?; let providers: ProviderAvailability; let connections: [String]; let seats: [SavedSeat]; let profile: NativeProfileDefaults? }
 struct SignInStart: Decodable { let url: String }
 struct SignInExchange: Decodable { let accountToken: String }
 struct OKReply: Decodable { let ok: Bool }

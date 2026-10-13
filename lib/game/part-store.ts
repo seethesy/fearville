@@ -218,6 +218,8 @@ export async function saveIndependentParts(
   db: D1Database,
   g: Game,
   update: ScopedUpdate,
+  coreCondition = '',
+  coreBindings: unknown[] = [],
 ) {
   const loaded = loadedStates.get(g);
   if (!loaded || loaded.legacy) return null;
@@ -228,7 +230,8 @@ export async function saveIndependentParts(
     condition += " AND json_extract(state,?) IS json_extract(?,'$')";
     params.push(path, JSON.stringify(value ?? null));
   }
-  condition += ')';
+  condition += coreCondition + ')';
+  params.push(...coreBindings);
   const done = (key: string, state: string, rev: number) => {
     loaded.parts.set(key, { state, rev });
     return { game: g, version: loaded.version, created: loaded.created };

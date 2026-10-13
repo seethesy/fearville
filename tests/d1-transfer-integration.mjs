@@ -82,6 +82,10 @@ try {
     INSERT INTO game_players(game,player,account,name,role,team,won,alive) VALUES ('g','p','b','B','watchman','good',1,1);
     INSERT INTO storyteller_ratings VALUES ('g','b','a',5,'Great\nnight',2);
     INSERT INTO tutorial_progress VALUES ('a','intro','completed',2);
+    INSERT INTO admin_progression(account,xp_offset) VALUES ('a',250);
+    INSERT INTO account_items(account,item) VALUES ('a','title:founder');
+    INSERT INTO ui_text_versions(key,value,at,admin) VALUES ('home.welcome','Staging welcome',2,'admin');
+    INSERT INTO admin_audit(id,at,admin,action,target,parameters,result) VALUES ('audit',2,'admin','xp give','a','{}','success');
     INSERT INTO player_reports(id,kind,reason,reporter_account,target_account,target_name,content,created) VALUES ('r','player','other','a','b','B','reported handle',2);
     INSERT INTO sessions(code,state,version,created) VALUES ('123456','{}',0,1);
     INSERT INTO session_parts(code,part,state,rev) VALUES ('123456','chat:00000','[]',1);

@@ -30,6 +30,8 @@ private enum Keychain {
     @Published var offset: Double = 0
     @Published var notice = ""
     @Published var authenticated = false
+    @Published var textOverrides: [String: HubJSON] = [:]
+    @Published var accountLoaded = false
     @Published var accountState: AccountState?
     @Published var showingTable = false
     @Published var socialState: HubJSON?
@@ -110,7 +112,8 @@ private enum Keychain {
 }
 extension TableStore {
     func refreshAccount() async {
-        do { let next: AccountState = try await request("api/accounts"); accountState = next; preferences = next.profile?.settings ?? NativePreferences(); NativeAudio.shared.apply(preferences) }
+        defer { accountLoaded = true }
+        do { let next: AccountState = try await request("api/accounts"); accountState = next; if next.account?.role == "admin" { forgetSeat() }; preferences = next.profile?.settings ?? NativePreferences(); NativeAudio.shared.apply(preferences) }
         catch { self.error = error.localizedDescription }
     }
     func signIn(provider: String, link: Bool = false) async {
@@ -152,7 +155,7 @@ extension TableStore {
         try Keychain.save(value); token = value; authenticated = true; showingTable = true
     }
     func attachCurrentSeat() async {
-        do { let next: AccountState = try await request("api/accounts", body: ["action": .string("attach")]); accountState = next; preferences = next.profile?.settings ?? NativePreferences(); NativeAudio.shared.apply(preferences) }
+        do { let next: AccountState = try await request("api/accounts", body: ["action": .string("attach")]); accountState = next; if next.account?.role == "admin" { forgetSeat() }; preferences = next.profile?.settings ?? NativePreferences(); NativeAudio.shared.apply(preferences) }
         catch { self.error = error.localizedDescription }
     }
     func endAccount(delete: Bool = false) async {

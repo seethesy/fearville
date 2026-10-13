@@ -1,0 +1,143 @@
+.admin-shell {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: clamp(18px, 4vw, 48px);
+  padding-bottom: calc(36px + env(safe-area-inset-bottom));
+  min-height: 100dvh;
+}
+.admin-shell header,
+.admin-shell nav,
+.admin-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+.admin-shell nav {
+  justify-content: flex-start;
+  margin: 24px 0;
+}
+.admin-shell .panel {
+  margin: 20px 0;
+  padding: 24px;
+}
+.admin-shell h1 {
+  font-size: clamp(32px, 6vw, 52px);
+}
+.admin-shell h2 {
+  font-size: 24px;
+}
+.admin-shell p {
+  margin: 12px 0;
+}
+.admin-scrollback {
+  background: #080b13;
+  border: 1px solid #414657;
+  border-radius: 12px;
+  max-height: 52vh;
+  min-height: 160px;
+  overflow: auto;
+  padding: 18px;
+  margin: 20px 0;
+}
+.admin-shell pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 13px;
+  max-height: 420px;
+  overflow: auto;
+  padding: 12px;
+  background: #080b13;
+}
+.admin-shell input:not([type='checkbox']),
+.admin-text-dialog textarea {
+  font-size: 16px;
+  padding: 12px;
+  max-width: 100%;
+  background: #141925;
+  color: inherit;
+  border: 1px solid #555c70;
+  border-radius: 8px;
+}
+.admin-shell label {
+  display: grid;
+  gap: 6px;
+}
+.admin-actions label {
+  display: flex;
+  align-items: center;
+}
+.admin-shell button {
+  min-height: 44px;
+}
+.admin-confirm {
+  border: 1px solid #e6c76d;
+  border-radius: 12px;
+  padding: 16px;
+  margin-top: 20px;
+}
+.admin-filters {
+  display: flex;
+  gap: 12px;
+  align-items: end;
+  flex-wrap: wrap;
+}
+.admin-text-row {
+  padding: 12px 0;
+  border-bottom: 1px solid #363b49;
+}
+.admin-text-row small {
+  color: #9aa3b8;
+}
+.editable-text {
+  outline: 1px dashed #e6c76d;
+  outline-offset: 4px;
+  cursor: text;
+  border-radius: 2px;
+}
+.editable-text:focus {
+  outline: 3px solid #e6c76d;
+}
+.admin-text-dialog {
+  max-height: 90dvh;
+  overflow-y: auto;
+}
+.admin-text-dialog textarea {
+  width: 100%;
+}
+.admin-plain {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.admin-shell details {
+  padding: 12px 0;
+}
+.admin-shell summary {
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 600px) {
+  .admin-shell .panel {
+    padding: 16px;
+  }
+  .admin-filters label {
+    width: 100%;
+  }
+  .admin-shell nav button {
+    flex: 1;
+  }
+  .admin-shell code {
+    overflow-wrap: anywhere;
+  }
+}
+
+button.editable-text {
+  font: inherit;
+  color: inherit;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  text-align: inherit;
+  min-height: 0;
+}

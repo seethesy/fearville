@@ -24,4 +24,5 @@ npm run check      # typecheck + lint + unit tests
 - [docs/social-system.md](docs/social-system.md): progression, Elo, stats, privacy
 - [docs/features.md](docs/features.md): sessions, scripts, tutorials, social, hub
 - [docs/night-rite.md](docs/night-rite.md): Night Rite puzzles
+- [docs/admin-runbook.md](docs/admin-runbook.md): admin access, console, audit and live text
 - [AGENTS.md](AGENTS.md): repo map and rules for coding agents

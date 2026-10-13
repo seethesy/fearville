@@ -1,5 +1,6 @@
 'use client';
 import { useState } from 'react';
+import { ITEM_CATALOG } from '@/lib/admin/catalog';
 import { Upload } from 'lucide-react';
 import { useAccount, accountAction } from './account-context';
 import { AVATARS } from '@/lib/game/avatars';
@@ -60,6 +61,18 @@ export function ProfileEditor() {
           <p className="muted">Your look, at every table.</p>
         </div>
       </div>
+      {!!state?.items?.length && (
+        <section>
+          <h3>Awarded items</h3>
+          <ul>
+            {state.items.map((id) => (
+              <li key={id}>
+                {ITEM_CATALOG.find((item) => item.id === id)?.name ?? id}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
       <details className="profile-options">
         <summary className="secondary">Edit profile & cosmetics</summary>
         <form

@@ -43,6 +43,13 @@ export default function Privacy() {
         </p>
         <h2>Retention</h2>
         <p>
+          Administrative decisions are recorded in a restricted, permanent audit
+          log. It keeps operational metadata and moderation reasons with one-way
+          account references, without copying player names, private notes, night
+          choices or credentials. Published official text retains its version
+          history.
+        </p>
+        <p>
           Seat credentials and sign-in sessions expire after 30 days.
           Invitations expire after 24 hours. Account data is kept while the
           account exists. Finished-game records are kept for other players’

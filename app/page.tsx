@@ -1,4 +1,5 @@
 'use client';
+import { UiText, useText } from '@/components/ui-text';
 import AppLink from '@/components/app-link';
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import {
@@ -28,6 +29,7 @@ function subscribeInvite(changed: () => void) {
 }
 
 export default function Home() {
+  const text = useText();
   const { state, error: accountError } = useAccount();
   const [guest, setGuest] = useState(false),
     [custom, setCustom] = useState(false),
@@ -99,7 +101,7 @@ export default function Home() {
     >
       {!signedIn && (
         <label className="field">
-          Lobby name
+          <UiText id="lobby.name" />
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
@@ -111,7 +113,7 @@ export default function Home() {
         </label>
       )}
       <label className="field">
-        Session code
+        <UiText id="lobby.code" />
         <input
           className="code-input"
           value={code}
@@ -133,7 +135,9 @@ export default function Home() {
         {busy ? 'Joining…' : 'Join game'}
         <ArrowRight size={18} />
       </button>
-      <p className="hint">Enter the 6-digit code from your Storyteller.</p>
+      <p className="hint">
+        <UiText id="lobby.codeHint" />
+      </p>
     </form>
   );
   const saved = session && (
@@ -170,8 +174,8 @@ export default function Home() {
     return (
       <HubShell
         active="Play"
-        title="Choose your game."
-        subtitle="Gather the town. The night is yours."
+        title={text('home.choose')}
+        subtitle={text('home.subtitle')}
       >
         {saved}
         <div className="play-layout">
@@ -186,7 +190,9 @@ export default function Home() {
                 <button className="mode-button" key={mode} disabled>
                   <Icon size={24} />
                   <span>{mode}</span>
-                  <small>Coming soon</small>
+                  <small>
+                    <UiText id="home.soon" />
+                  </small>
                 </button>
               ))}
               <button
@@ -195,7 +201,9 @@ export default function Home() {
                 onClick={() => setCustom(!custom)}
               >
                 <WandSparkles size={24} />
-                <span>Custom</span>
+                <span>
+                  <UiText id="home.custom" />
+                </span>
                 <ArrowRight size={20} />
               </button>
             </div>
@@ -207,14 +215,14 @@ export default function Home() {
                   disabled={busy}
                   onClick={() => void enter('create')}
                 >
-                  Create a lobby
+                  <UiText id="home.create" />
                 </button>
                 <button
                   className="secondary full"
                   disabled={busy}
                   onClick={() => void enter('createSandbox')}
                 >
-                  Open sandbox
+                  <UiText id="home.sandbox" />
                 </button>
                 <p className="hint">
                   Sandbox includes practice players and no timers.
@@ -311,9 +319,11 @@ export default function Home() {
         <section id="play" className="public-play">
           <div className="public-heading">
             <p className="eyebrow">A TOWN FULL OF SECRETS</p>
-            <h1>Welcome to Fearville.</h1>
+            <h1>
+              <UiText id="home.welcome" />
+            </h1>
             <p className="muted">
-              A game of hidden roles, tall tales, and suspicious friends.
+              <UiText id="home.webTagline" />
             </p>
           </div>
           <section id="signin" className="signin-section">
@@ -325,7 +335,7 @@ export default function Home() {
                 sessionStorage.setItem('fearville-guest', 'true');
               }}
             >
-              Continue as guest
+              <UiText id="home.guest" />
               <ArrowRight size={18} />
             </button>
           </section>

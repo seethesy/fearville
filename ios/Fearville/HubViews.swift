@@ -11,6 +11,7 @@ struct NativeError: View {
     var body: some View { if !store.error.isEmpty { Text(store.error).foregroundStyle(.red).font(.callout).accessibilityAddTraits(.updatesFrequently) } }
 }
 struct NativeHub: View {
+    @EnvironmentObject var store: TableStore
     @State private var selection = 0
     private let tabs = [("Play", "play.fill"), ("Social", "globe"), ("Rules", "book"), ("Account", "person.crop.circle")]
     var body: some View {
@@ -28,7 +29,7 @@ struct NativeHub: View {
                         Image(systemName: tabs[i].1).font(.title3).frame(maxWidth: .infinity).frame(height: 50)
                             .foregroundStyle(selection == i ? Color.tableHighlight : .secondary)
                             .background(selection == i ? Color.tableAccent.opacity(0.15) : .clear, in: RoundedRectangle(cornerRadius: 12))
-                    }.accessibilityLabel(tabs[i].0).accessibilityAddTraits(selection == i ? .isSelected : [])
+                    }.accessibilityLabel(store.uiText("nav." + tabs[i].0.lowercased(), fallback: tabs[i].0)).accessibilityAddTraits(selection == i ? .isSelected : [])
                 }
             }.padding(.horizontal, 18).padding(.vertical, 8).background(Color.tablePanel)
         }
@@ -53,11 +54,11 @@ struct NativeWelcome: View {
             ScrollView {
                 VStack(spacing: 28) {
                     Image("FearvilleLogo").resizable().scaledToFit().frame(width: 86, height: 86).accessibilityHidden(true)
-                    NativeTitle(text: "Welcome to Fearville.")
-                    Text("Hidden roles. Tall tales. Suspicious friends.").foregroundStyle(.secondary).multilineTextAlignment(.center)
+                    NativeTitle(text: store.uiText("home.welcome", fallback: "Welcome to Fearville."))
+                    Text(store.uiText("home.tagline", fallback: "Hidden roles. Tall tales. Suspicious friends.")).foregroundStyle(.secondary).multilineTextAlignment(.center)
                     NativeSignIn()
                     if guest { NativeJoin(guest: true) }
-                    else { Button("Continue as guest") { guest = true }.buttonStyle(.borderedProminent).controlSize(.large) }
+                    else { Button(store.uiText("home.guest", fallback: "Continue as guest")) { guest = true }.buttonStyle(.borderedProminent).controlSize(.large) }
                     if store.authenticated { Button("Rejoin your lobby") { store.showingTable = true } }
                     NativeError()
                 }.padding(26)
@@ -72,10 +73,11 @@ struct NativeJoin: View {
     @State private var code = ""
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            if guest { TextField("Lobby name", text: $name).textContentType(.nickname).onChange(of: name) { _, value in name = String(value.prefix(32)) } }
+            if guest { TextField(store.uiText("lobby.name", fallback: "Lobby name"), text: $name).textContentType(.nickname).onChange(of: name) { _, value in name = String(value.prefix(32)) } }
+            Text(store.uiText("lobby.code", fallback: "Session code"))
             Text("Have a code? Join below!").font(.headline)
             TextField("6-digit session code", text: $code).keyboardType(.numberPad).textContentType(.oneTimeCode).font(.title2.monospaced()).onChange(of: code) { _, value in code = String(value.filter { ($0.isASCII && $0.isLetter) || ($0.isASCII && $0.isNumber) }.prefix(6)).uppercased() }
-            Button { Task { await store.enter(action: "join", name: name, code: code) } } label: { Text(store.working ? "Joining…" : "Join game").frame(maxWidth: .infinity) }.buttonStyle(.borderedProminent).controlSize(.large).disabled(store.working || code.count != 6 || (guest && name.trimmingCharacters(in: .whitespaces).isEmpty))
+            Button { Task { await store.enter(action: "join", name: name, code: code) } } label: { Text(store.working ? "Joining…" : store.uiText("home.join", fallback: "Join game")).frame(maxWidth: .infinity) }.buttonStyle(.borderedProminent).controlSize(.large).disabled(store.working || code.count != 6 || (guest && name.trimmingCharacters(in: .whitespaces).isEmpty))
         }.textFieldStyle(.roundedBorder).padding(20).background(Color.tablePanel, in: RoundedRectangle(cornerRadius: 16))
     }
 }
@@ -85,17 +87,17 @@ struct NativePlay: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 22) {
-                NativeTitle(text: "Choose your game.")
-                Text("Gather the town. The night is yours.").foregroundStyle(.secondary)
+                NativeTitle(text: store.uiText("home.choose", fallback: "Choose your game."))
+                Text(store.uiText("home.subtitle", fallback: "Gather the town. The night is yours.")).foregroundStyle(.secondary)
                 if store.authenticated { Button("Rejoin your lobby") { store.showingTable = true }.buttonStyle(.bordered) }
                 VStack(spacing: 12) {
                     ForEach(["Standard", "Quickplay", "Rated"], id: \.self) { mode in
-                        Button {} label: { HStack { Text(mode).font(.headline); Spacer(); Text("Coming soon").font(.caption) }.padding(22).frame(maxWidth: .infinity).background(Color.tablePanel, in: RoundedRectangle(cornerRadius: 12)) }.disabled(true).opacity(0.45).accessibilityLabel(mode + ", coming soon")
+                        Button {} label: { HStack { Text(mode).font(.headline); Spacer(); Text(store.uiText("home.soon", fallback: "Coming soon")).font(.caption) }.padding(22).frame(maxWidth: .infinity).background(Color.tablePanel, in: RoundedRectangle(cornerRadius: 12)) }.disabled(true).opacity(0.45).accessibilityLabel(mode + ", coming soon")
                     }
-                    Button { custom.toggle() } label: { HStack { Label("Custom", systemImage: "wand.and.stars").font(.headline); Spacer(); Image(systemName: "arrow.right") }.padding(22).background(Color.tableAccent.opacity(0.18), in: RoundedRectangle(cornerRadius: 12)).overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.tableAccent)) }
+                    Button { custom.toggle() } label: { HStack { Label(store.uiText("home.custom", fallback: "Custom"), systemImage: "wand.and.stars").font(.headline); Spacer(); Image(systemName: "arrow.right") }.padding(22).background(Color.tableAccent.opacity(0.18), in: RoundedRectangle(cornerRadius: 12)).overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.tableAccent)) }
                     if custom {
-                        Button("Create a lobby") { Task { await store.enter(action: "create", name: "") } }.buttonStyle(.borderedProminent).controlSize(.large)
-                        Button("Open sandbox") { Task { await store.enter(action: "createSandbox", name: "") } }.buttonStyle(.bordered).controlSize(.large)
+                        Button(store.uiText("home.create", fallback: "Create a lobby")) { Task { await store.enter(action: "create", name: "") } }.buttonStyle(.borderedProminent).controlSize(.large)
+                        Button(store.uiText("home.sandbox", fallback: "Open sandbox")) { Task { await store.enter(action: "createSandbox", name: "") } }.buttonStyle(.bordered).controlSize(.large)
                         Text("Sandbox has practice players and no timers.").font(.footnote).foregroundStyle(.secondary)
                     }
                 }.disabled(store.working)
@@ -236,6 +238,7 @@ struct NativeProfileEditor: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
             HStack(spacing: 20) { NativeAvatar(avatar: avatar).frame(width: 96, height: 96); VStack(alignment: .leading) { Text(username.isEmpty ? "Your identity" : "@" + username).font(.title2); Text(lobbyName).foregroundStyle(.secondary) }; Spacer() }
+            if let items = store.accountState?.items, !items.isEmpty { Text("Awarded items").font(.headline); ForEach(items, id: \.self) { item in Text(item.replacingOccurrences(of: ":", with: " · ")).font(.callout) } }
             Button(editing ? "Hide profile editor" : "Edit profile & cosmetics") { editing.toggle() }
             if editing {
                 Text("Unique username").font(.headline)

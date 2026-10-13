@@ -1,3 +1,4 @@
+import { requirePlayerAccount } from '@/lib/admin/access';
 import { database } from '@/db';
 import { deleteAccountData } from '@/lib/accounts/deletion';
 import {
@@ -46,6 +47,7 @@ export async function POST(r: Request) {
       settings?: unknown;
       [key: string]: unknown;
     };
+    if (body.action !== 'signout') await requirePlayerAccount(a.id);
     const db = database();
     if (body.action === 'profile') {
       await saveProfile(a.id, body);
