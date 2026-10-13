@@ -63,7 +63,7 @@ import { RateStoryteller } from '@/components/social/rate-storyteller';
 import { TableMessages } from '@/components/table-messages';
 import { TableHistory } from '@/components/table-history';
 import { useTableSocket } from '@/hooks/use-table-socket';
-import { timedActionFetch } from '@/lib/game/action-timing';
+import { TableActions } from '@/hooks/use-table-actions';
 import { TableMembership } from '@/components/table-membership';
 import { RulesReference } from '@/components/rules-reference';
 import { HelpMenu } from '@/components/tutorials/help-menu';
@@ -363,7 +363,7 @@ export default function Table() {
     setBusy(true);
     setError('');
     try {
-      const r = await timedActionFetch('/api/game', {
+      const r = await socket.fetch('/api/game', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -410,7 +410,7 @@ export default function Table() {
     setBusy(true);
     setRoleError('');
     try {
-      const response = await timedActionFetch('/api/game', {
+      const response = await socket.fetch('/api/game', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -538,1152 +538,1171 @@ export default function Table() {
         ? [rite.squad.kind]
         : [];
   return (
-    <TableAtmosphere night={game.phase === 'night'}>
-      <TableTutorials
-        game={game}
-        tab={tab}
-        setTab={setActiveTab}
-        dialogOpen={!!selected || settingsOpen}
-      />
-      <main
-        className={`table-shell ${game.host ? 'host-table' : 'player-table'}`}
-      >
-        <header className="brand table-header">
-          <AppLink href="/" className="table-wordmark">
-            Fearville
-          </AppLink>
-          <span className="table-identity">
-            {game.host ? 'STORYTELLER' : name(game.me)}
-          </span>
-          <span className="table-script">{game.scriptName}</span>
-          {game.roleDistribution && (
-            <span className="table-setup">
-              <strong>
-                {game.customRoleDistribution ? 'Custom' : 'Standard'} setup ·{' '}
-                <UiText
-                  id="lobby.players"
-                  values={{ count: game.players.length }}
-                />
-              </strong>
-              <small>
-                {TEAM_ORDER.filter(
-                  (t) => t !== 'traveler' || game.script === 'horrors',
-                )
-                  .map(
-                    (t) =>
-                      `${game.roleDistribution![t]} ${game.roleDistribution![t] === 1 ? TEAM_NAMES[t].replace(/s$/, '') : TEAM_NAMES[t]}`,
-                  )
-                  .join(' · ')}
-              </small>
-            </span>
-          )}
-          <span className="connection">
-            <Radio size={14} aria-hidden="true" />{' '}
-            {online ? 'Live updates' : 'Reconnecting…'}
-          </span>
-          <span className="table-population">
-            <UiText
-              id="lobby.players"
-              values={{ count: game.players.length }}
-            />{' '}
-            · {game.players.filter((p) => p.alive).length} alive
-          </span>
-          <button
-            className="icon-button table-settings"
-            data-tutorial="table-settings"
-            aria-label="Settings"
-            title="Settings"
-            onClick={() => setSettingsOpen(true)}
-          >
-            <Settings aria-hidden="true" />
-          </button>
-          <HelpMenu
-            host={game.host}
-            seated={!game.host && !game.sandboxHost}
-            tipSession={`${game.code}:${game.me}`}
-            ownGuides={ownGuide ? [ownGuide] : []}
-          />
-        </header>
-        <LobbyExit game={game} />
-        {game.sandboxHost && (
-          <section
-            className="panel sandbox-toolbar"
-            aria-label="Sandbox point of view"
-          >
-            <div>
-              <p className="eyebrow">SANDBOX · TIMERS DISABLED</p>
-              <strong>
-                {sandboxPov === 'host'
-                  ? 'Storyteller view'
-                  : `Viewing as ${name(sandboxPov)}`}
-              </strong>
-              <p className="hint">
-                {socket.connected ? 'Live socket' : 'HTTP fallback'}
-                {' · '}Action RTT:{' '}
-                {socket.rtt === undefined
-                  ? '—'
-                  : `${Math.round(socket.rtt)} ms`}
-                {' · '}Push since send:{' '}
-                {socket.push === undefined
-                  ? '—'
-                  : `${Math.round(socket.push)} ms`}
-              </p>
-            </div>
-            <label className="field">
-              Point of view
-              <select
-                value={sandboxPov}
-                onChange={(event) => {
-                  setSelected(null);
-                  setSandboxPov(event.target.value);
-                }}
-              >
-                <option value="host">Storyteller</option>
-                {game.players
-                  .filter((player) => player.dummy)
-                  .map((player) => (
-                    <option key={player.id} value={player.id}>
-                      {player.name}
-                    </option>
-                  ))}
-              </select>
-            </label>
-          </section>
-        )}
-        {!online && (
-          <p className="error" aria-live="polite">
-            {connectionError || 'Connection interrupted.'} Your table reconnects
-            automatically. Actions are disabled until then. Timers continue on
-            the server.
-          </p>
-        )}
-        <div className="table-title">
-          <div>
-            <h1>
-              {game.phase === 'lobby'
-                ? 'Gather your town.'
-                : game.phase === 'ended'
-                  ? game.winner + ' wins.'
-                  : `${game.phaseLabel}${game.phase === 'night' ? ' ' + game.night : game.day ? ' · Day ' + game.day : ''}`}
-            </h1>
-          </div>
-          <div className="timer-toolbar">
-            {(displayDeadline || game.remaining) && (
-              <div
-                data-tutorial="clock"
-                className={`clock-box ${(displayDeadline || game.remaining) && seconds <= 20 ? 'timer-urgent' : ''}`}
-              >
-                <span>
-                  {nightWindowActive
-                    ? 'NIGHT CHOICES'
-                    : game.deadline
-                      ? 'TIME REMAINING'
-                      : 'PAUSED'}
-                </span>
-                <strong>{clock}</strong>
-              </div>
-            )}
-            {game.host && (
-              <div className="timer-actions" data-tutorial="timer-actions">
-                {game.controls
-                  .filter((c) =>
-                    ['pause', 'resume', 'extend'].includes(c.action),
-                  )
-                  .map((c) => button(c))}
-              </div>
-            )}
-          </div>
-        </div>
-        <GameEndPopup
+    <TableActions.Provider value={socket.fetch}>
+      <TableAtmosphere night={game.phase === 'night'}>
+        <TableTutorials
           game={game}
-          refresh={refresh}
-          onReturn={() => setActiveTab('flow')}
+          tab={tab}
+          setTab={setActiveTab}
+          dialogOpen={!!selected || settingsOpen}
         />
-        {notice && (
-          <div className="notice" aria-live="polite">
-            <span>{notice}</span>
-            <button onClick={() => setNotice('')} aria-label="Dismiss update">
-              Dismiss
-            </button>
-          </div>
-        )}
-        {!selected && error && (
-          <p className="error" role="alert">
-            {error}
-          </p>
-        )}
-        {game.host && (
-          <NightChoiceNotice
-            game={game}
-            onReview={() => {
-              const c = game.controls.find((c) => c.action === 'night');
-              if (c) open(c);
-            }}
-          />
-        )}
-        {game.glimpse && (
-          <SphinxGlimpse
-            key={game.glimpse.id}
-            glimpse={game.glimpse}
-            now={now + offset}
-          />
-        )}
-        {game.nightIntroduction && (
-          <NightIntroduction
-            key={game.nightIntroduction.id}
-            information={game.nightIntroduction}
-          />
-        )}
-        {game.nightChoice && (
-          <TableNightChoice
-            key={game.nightChoice.round + game.nightChoice.task}
-            game={game}
-            now={now + offset}
-            prompt={game.nightChoice}
-            refresh={refresh}
-          />
-        )}
-        <TableDawn key={game.code + game.me} game={game} />
-        <Tabs
-          className="game-tabs"
-          value={tab}
-          onValueChange={(value) => setActiveTab(String(value))}
-          orientation={compact || !game.host ? 'horizontal' : 'vertical'}
+        <main
+          className={`table-shell ${game.host ? 'host-table' : 'player-table'}`}
         >
-          <TabsList className="table-tabs" aria-label="Game navigation">
-            <TabsTrigger value="flow">
-              <Play aria-hidden="true" />
-              <span>
-                <UiText
-                  id={game.phase === 'lobby' ? 'lobby.tab' : 'flow.tab'}
-                />
+          <header className="brand table-header">
+            <AppLink href="/" className="table-wordmark">
+              Fearville
+            </AppLink>
+            <span className="table-identity">
+              {game.host ? 'STORYTELLER' : name(game.me)}
+            </span>
+            <span className="table-script">{game.scriptName}</span>
+            {game.roleDistribution && (
+              <span className="table-setup">
+                <strong>
+                  {game.customRoleDistribution ? 'Custom' : 'Standard'} setup ·{' '}
+                  <UiText
+                    id="lobby.players"
+                    values={{ count: game.players.length }}
+                  />
+                </strong>
+                <small>
+                  {TEAM_ORDER.filter(
+                    (t) => t !== 'traveler' || game.script === 'horrors',
+                  )
+                    .map(
+                      (t) =>
+                        `${game.roleDistribution![t]} ${game.roleDistribution![t] === 1 ? TEAM_NAMES[t].replace(/s$/, '') : TEAM_NAMES[t]}`,
+                    )
+                    .join(' · ')}
+                </small>
               </span>
-            </TabsTrigger>
-            {game.phase === 'lobby' && !game.host ? (
-              <>
-                <TabsTrigger value="cosmetic" data-tutorial="tab-cosmetic">
-                  <Users aria-hidden="true" />
-                  <span>Cosmetic</span>
-                </TabsTrigger>
+            )}
+            <span className="connection">
+              <Radio size={14} aria-hidden="true" />{' '}
+              {online ? 'Live updates' : 'Reconnecting…'}
+            </span>
+            <span className="table-population">
+              <UiText
+                id="lobby.players"
+                values={{ count: game.players.length }}
+              />{' '}
+              · {game.players.filter((p) => p.alive).length} alive
+            </span>
+            <button
+              className="icon-button table-settings"
+              data-tutorial="table-settings"
+              aria-label="Settings"
+              title="Settings"
+              onClick={() => setSettingsOpen(true)}
+            >
+              <Settings aria-hidden="true" />
+            </button>
+            <HelpMenu
+              host={game.host}
+              seated={!game.host && !game.sandboxHost}
+              tipSession={`${game.code}:${game.me}`}
+              ownGuides={ownGuide ? [ownGuide] : []}
+            />
+          </header>
+          <LobbyExit game={game} />
+          {game.sandboxHost && (
+            <section
+              className="panel sandbox-toolbar"
+              aria-label="Sandbox point of view"
+            >
+              <div>
+                <p className="eyebrow">SANDBOX · TIMERS DISABLED</p>
+                <strong>
+                  {sandboxPov === 'host'
+                    ? 'Storyteller view'
+                    : `Viewing as ${name(sandboxPov)}`}
+                </strong>
+                <p className="hint">
+                  {socket.connected ? 'Live socket' : 'HTTP fallback'}
+                  {' · '}Action RTT:{' '}
+                  {socket.rtt === undefined
+                    ? '—'
+                    : `${Math.round(socket.rtt)} ms`}
+                  {' · '}Push since send:{' '}
+                  {socket.push === undefined
+                    ? '—'
+                    : `${Math.round(socket.push)} ms`}
+                </p>
+              </div>
+              <label className="field">
+                Point of view
+                <select
+                  value={sandboxPov}
+                  onChange={(event) => {
+                    setSelected(null);
+                    setSandboxPov(event.target.value);
+                  }}
+                >
+                  <option value="host">Storyteller</option>
+                  {game.players
+                    .filter((player) => player.dummy)
+                    .map((player) => (
+                      <option key={player.id} value={player.id}>
+                        {player.name}
+                      </option>
+                    ))}
+                </select>
+              </label>
+            </section>
+          )}
+          {!online && (
+            <p className="error" aria-live="polite">
+              {connectionError || 'Connection interrupted.'} Your table
+              reconnects automatically. Actions are disabled until then. Timers
+              continue on the server.
+            </p>
+          )}
+          <div className="table-title">
+            <div>
+              <h1>
+                {game.phase === 'lobby'
+                  ? 'Gather your town.'
+                  : game.phase === 'ended'
+                    ? game.winner + ' wins.'
+                    : `${game.phaseLabel}${game.phase === 'night' ? ' ' + game.night : game.day ? ' · Day ' + game.day : ''}`}
+              </h1>
+            </div>
+            <div className="timer-toolbar">
+              {(displayDeadline || game.remaining) && (
+                <div
+                  data-tutorial="clock"
+                  className={`clock-box ${(displayDeadline || game.remaining) && seconds <= 20 ? 'timer-urgent' : ''}`}
+                >
+                  <span>
+                    {nightWindowActive
+                      ? 'NIGHT CHOICES'
+                      : game.deadline
+                        ? 'TIME REMAINING'
+                        : 'PAUSED'}
+                  </span>
+                  <strong>{clock}</strong>
+                </div>
+              )}
+              {game.host && (
+                <div className="timer-actions" data-tutorial="timer-actions">
+                  {game.controls
+                    .filter((c) =>
+                      ['pause', 'resume', 'extend'].includes(c.action),
+                    )
+                    .map((c) => button(c))}
+                </div>
+              )}
+            </div>
+          </div>
+          <GameEndPopup
+            game={game}
+            refresh={refresh}
+            onReturn={() => setActiveTab('flow')}
+          />
+          {notice && (
+            <div className="notice" aria-live="polite">
+              <span>{notice}</span>
+              <button onClick={() => setNotice('')} aria-label="Dismiss update">
+                Dismiss
+              </button>
+            </div>
+          )}
+          {!selected && error && (
+            <p className="error" role="alert">
+              {error}
+            </p>
+          )}
+          {game.host && (
+            <NightChoiceNotice
+              game={game}
+              onReview={() => {
+                const c = game.controls.find((c) => c.action === 'night');
+                if (c) open(c);
+              }}
+            />
+          )}
+          {game.glimpse && (
+            <SphinxGlimpse
+              key={game.glimpse.id}
+              glimpse={game.glimpse}
+              now={now + offset}
+            />
+          )}
+          {game.nightIntroduction && (
+            <NightIntroduction
+              key={game.nightIntroduction.id}
+              information={game.nightIntroduction}
+            />
+          )}
+          {game.nightChoice && (
+            <TableNightChoice
+              key={game.nightChoice.round + game.nightChoice.task}
+              game={game}
+              now={now + offset}
+              prompt={game.nightChoice}
+              refresh={refresh}
+            />
+          )}
+          <TableDawn key={game.code + game.me} game={game} />
+          <Tabs
+            className="game-tabs"
+            value={tab}
+            onValueChange={(value) => setActiveTab(String(value))}
+            orientation={compact || !game.host ? 'horizontal' : 'vertical'}
+          >
+            <TabsList className="table-tabs" aria-label="Game navigation">
+              <TabsTrigger value="flow">
+                <Play aria-hidden="true" />
+                <span>
+                  <UiText
+                    id={game.phase === 'lobby' ? 'lobby.tab' : 'flow.tab'}
+                  />
+                </span>
+              </TabsTrigger>
+              {game.phase === 'lobby' && !game.host ? (
+                <>
+                  <TabsTrigger value="cosmetic" data-tutorial="tab-cosmetic">
+                    <Users aria-hidden="true" />
+                    <span>Cosmetic</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="recap">
+                    <BookOpen aria-hidden="true" />
+                    <span>Session Recap</span>
+                  </TabsTrigger>
+                </>
+              ) : (
+                <>
+                  <TabsTrigger value="seats" data-tutorial="tab-notes">
+                    <Users aria-hidden="true" />
+                    <span>{game.host ? 'Seats' : 'Notes'}</span>{' '}
+                    <span className="count">{game.players.length}</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="messages" data-tutorial="tab-messages">
+                    <MessageSquare aria-hidden="true" />
+                    <span>Messages</span>{' '}
+                    <MessageBadge key={game.code + game.me} game={game} />
+                  </TabsTrigger>
+                </>
+              )}
+              {game.host && (
                 <TabsTrigger value="recap">
                   <BookOpen aria-hidden="true" />
                   <span>Session Recap</span>
                 </TabsTrigger>
-              </>
-            ) : (
-              <>
-                <TabsTrigger value="seats" data-tutorial="tab-notes">
-                  <Users aria-hidden="true" />
-                  <span>{game.host ? 'Seats' : 'Notes'}</span>{' '}
-                  <span className="count">{game.players.length}</span>
-                </TabsTrigger>
-                <TabsTrigger value="messages" data-tutorial="tab-messages">
-                  <MessageSquare aria-hidden="true" />
-                  <span>Messages</span>{' '}
-                  <MessageBadge key={game.code + game.me} game={game} />
-                </TabsTrigger>
-              </>
-            )}
-            {game.host && (
-              <TabsTrigger value="recap">
+              )}
+              <TabsTrigger
+                value="script"
+                aria-label="Rules & roles"
+                data-tutorial="tab-rules"
+              >
                 <BookOpen aria-hidden="true" />
-                <span>Session Recap</span>
+                <span>Rules</span>
               </TabsTrigger>
-            )}
-            <TabsTrigger
-              value="script"
-              aria-label="Rules & roles"
-              data-tutorial="tab-rules"
-            >
-              <BookOpen aria-hidden="true" />
-              <span>Rules</span>
-            </TabsTrigger>
-            {game.host && (
-              <TabsTrigger value="control" data-tutorial="tab-control">
-                <Settings aria-hidden="true" />
-                <span>Controls</span>
-              </TabsTrigger>
-            )}
-          </TabsList>
-          <TabsContent value="cosmetic" data-tutorial="cosmetic-panel">
-            {!game.host && game.phase === 'lobby' && (
-              <>
-                <AvatarPicker
-                  key={'avatar:' + game.code + game.me}
-                  game={game}
-                  refresh={refresh}
+              {game.host && (
+                <TabsTrigger value="control" data-tutorial="tab-control">
+                  <Settings aria-hidden="true" />
+                  <span>Controls</span>
+                </TabsTrigger>
+              )}
+            </TabsList>
+            <TabsContent value="cosmetic" data-tutorial="cosmetic-panel">
+              {!game.host && game.phase === 'lobby' && (
+                <>
+                  <AvatarPicker
+                    key={'avatar:' + game.code + game.me}
+                    game={game}
+                    refresh={refresh}
+                  />
+                  <TableMembership
+                    key={game.code + game.me}
+                    game={game}
+                    refresh={refresh}
+                    cosmetic
+                  />
+                </>
+              )}
+            </TabsContent>
+            <TabsContent value="recap" data-tutorial="recap-panel">
+              <SessionRecaps game={game} />
+            </TabsContent>
+            <TabsContent value="flow">
+              {(!game.host || game.phase !== 'lobby') && (
+                <NightRite key={`${game.code}:${game.me}:play`} game={game} />
+              )}
+              {game.character && (
+                <RoleTipsPanel
+                  tips={game.character.tips}
+                  session={`${game.code}:${game.me}`}
                 />
-                <TableMembership
-                  key={game.code + game.me}
-                  game={game}
-                  refresh={refresh}
-                  cosmetic
-                />
-              </>
-            )}
-          </TabsContent>
-          <TabsContent value="recap" data-tutorial="recap-panel">
-            <SessionRecaps game={game} />
-          </TabsContent>
-          <TabsContent value="flow">
-            {(!game.host || game.phase !== 'lobby') && (
-              <NightRite key={`${game.code}:${game.me}:play`} game={game} />
-            )}
-            {game.character && (
-              <RoleTipsPanel
-                tips={game.character.tips}
-                session={`${game.code}:${game.me}`}
-              />
-            )}
-            {game.phase === 'lobby' && (
-              <div data-tutorial="seating">
-                <TableSeating game={game} refresh={refresh} />
-              </div>
-            )}
-            <div className="workspace-grid flow-dashboard">
-              {(game.host ||
-                game.phase !== 'night' ||
-                core.length > 0 ||
-                game.hints.length > 0) && (
-                <section
-                  className="panel flow-panel"
-                  data-tutorial="flow-panel"
-                >
-                  {game.phase !== 'night' && (
-                    <p className="eyebrow">
-                      {game.phase === 'lobby' ? 'SESSION SETUP' : 'TOWN SQUARE'}
-                    </p>
-                  )}
-                  {game.phase === 'lobby' ? (
-                    <>
-                      <h2>
-                        {game.host
-                          ? 'Invite your players.'
-                          : 'You’re at the table.'}
-                      </h2>
-                      <p className="muted">
-                        {game.host
-                          ? 'Share the code ' +
-                            game.code +
-                            '. Players join on their own devices. Randomly assign roles below, or choose each character manually in Seats.'
-                          : 'Your Storyteller will assign characters and begin the game. Keep this screen open.'}
+              )}
+              {game.phase === 'lobby' && (
+                <div data-tutorial="seating">
+                  <TableSeating game={game} refresh={refresh} />
+                </div>
+              )}
+              <div className="workspace-grid flow-dashboard">
+                {(game.host ||
+                  game.phase !== 'night' ||
+                  core.length > 0 ||
+                  game.hints.length > 0) && (
+                  <section
+                    className="panel flow-panel"
+                    data-tutorial="flow-panel"
+                  >
+                    {game.phase !== 'night' && (
+                      <p className="eyebrow">
+                        {game.phase === 'lobby'
+                          ? 'SESSION SETUP'
+                          : 'TOWN SQUARE'}
                       </p>
-                      <p data-tutorial="script">
-                        <strong>Selected script:</strong> {game.scriptName}
-                      </p>
-                      <p>
-                        <strong>Storyteller:</strong> {game.hostName}
-                      </p>
-                      <div
-                        className="code-display"
-                        data-tutorial="session-code"
-                      >
-                        {game.code}
-                      </div>
-                      {game.host && !game.sandboxHost && (
-                        <ShareInvite code={game.code} />
-                      )}
-                      {game.host && (
-                        <div className="checklist">
-                          <button
-                            className="secondary"
-                            onClick={() => setActiveTab('seats')}
-                          >
-                            Manually assign roles
-                          </button>
-                          {game.issues.length ? (
-                            game.issues.map((s) => <p key={s}>{s}</p>)
-                          ) : (
-                            <p>All setup checks passed. Ready to deal.</p>
-                          )}
-                        </div>
-                      )}
-                      <div data-tutorial="invite-friends">
-                        <InviteFriends code={game.code} />
-                      </div>
-                    </>
-                  ) : game.phase === 'night' ? (
-                    game.host ? (
+                    )}
+                    {game.phase === 'lobby' ? (
                       <>
                         <h2>
-                          {pendingDeath
-                            ? pendingDeath.title
-                            : game.pendingBodyguard
-                              ? 'Waiting for the Bodyguard'
-                              : first?.name || 'The night is complete.'}
+                          {game.host
+                            ? 'Invite your players.'
+                            : 'You’re at the table.'}
                         </h2>
                         <p className="muted">
-                          {pendingDeath
-                            ? 'Resolve this death before the next night task: prevention, the Fateweaver, then any triggered abilities.'
-                            : game.pendingBodyguard
-                              ? `${game.pendingBodyguard} has been told who will die and may take their place.`
-                              : first
-                                ? game.nightConfirmation?.choice
-                                  ? 'The player sent their choice. Open the action to review and confirm it.'
-                                  : 'Waiting for the player’s choice, or open the action to enter it yourself.'
-                                : 'Review the town, then announce dawn.'}
+                          {game.host
+                            ? 'Share the code ' +
+                              game.code +
+                              '. Players join on their own devices. Randomly assign roles below, or choose each character manually in Seats.'
+                            : 'Your Storyteller will assign characters and begin the game. Keep this screen open.'}
                         </p>
-                        <ol className="night-list">
-                          {game.tasks.map((t, i) => (
-                            <li
-                              key={t.key}
-                              className={
-                                t.done
-                                  ? 'completed'
-                                  : first?.key === t.key
-                                    ? 'current'
-                                    : ''
-                              }
-                            >
-                              <span>
-                                {t.done ? '✓' : String(i + 1).padStart(2, '0')}
-                              </span>
-                              {t.name}
-                              <small>
-                                {t.done
-                                  ? 'Complete'
-                                  : first?.key === t.key
-                                    ? 'Up next'
-                                    : ''}
-                              </small>
-                            </li>
-                          ))}
-                        </ol>
-                      </>
-                    ) : null
-                  ) : (
-                    <>
-                      <h2>
-                        {game.active
-                          ? name(game.active.target) + ' is nominated'
-                          : game.phase === 'discovery'
-                            ? 'Find a quiet conversation.'
-                            : game.phase === 'discussion'
-                              ? 'Let the town talk.'
-                              : game.phase === 'nomination'
-                                ? 'Who will you nominate?'
-                                : game.phase === 'dayReview'
-                                  ? 'The day’s decision.'
-                                  : 'Thank you for playing.'}
-                      </h2>
-                      <p className="muted">
-                        {game.active
-                          ? `Nominated by ${name(game.active.by)}. ${game.active.threshold} yes votes needed to qualify for execution.`
-                          : game.phase === 'discovery'
-                            ? 'Speak with other players and compare what you know.'
-                            : game.phase === 'discussion'
-                              ? 'Share information and suspicions with the whole group.'
-                              : game.phase === 'nomination'
-                                ? 'Each living player may nominate once today.'
-                                : game.phase === 'dayReview'
-                                  ? 'The Storyteller confirms the execution and any character effects before the next night.'
-                                  : ''}
-                      </p>
-                      {game.active && (
-                        <p className="ballot-callout">
-                          {game.phase === 'defense'
-                            ? 'Defense is in progress.'
-                            : game.host
-                              ? 'Votes are visible to everyone.'
-                              : !game.active.eligible.includes(game.me)
-                                ? 'You do not vote on this nomination.'
-                                : !game.active.myVoteSubmitted
-                                  ? 'Your vote has not been submitted.'
-                                  : game.active.myVote === null
-                                    ? 'Your vote: ABSTAIN'
-                                    : game.active.myVote
-                                      ? 'Your vote: YES'
-                                      : 'Your vote: NO'}
+                        <p data-tutorial="script">
+                          <strong>Selected script:</strong> {game.scriptName}
                         </p>
-                      )}
-                      {game.active && game.phase === 'voting' && (
-                        <section
-                          className="public-votes"
-                          aria-label="Live votes"
+                        <p>
+                          <strong>Storyteller:</strong> {game.hostName}
+                        </p>
+                        <div
+                          className="code-display"
+                          data-tutorial="session-code"
                         >
-                          <h3>
-                            Live votes ·{' '}
-                            {
-                              game.active.eligible.filter((id) =>
-                                Object.hasOwn(game.active!.votes, id),
-                              ).length
-                            }
-                            /{game.active.eligible.length} answered
-                          </h3>
-                          <p className="muted">
-                            Voting ends as soon as all eligible players answer.
-                            The nominee does not vote. After voting, nominations
-                            resume with 30 extra seconds.
-                          </p>
-                          {game.players.map((p) => (
-                            <div className="membership-row" key={p.id}>
-                              <span>{p.name}</span>
-                              <strong>
-                                {p.id === game.active!.target
-                                  ? 'Nominee'
-                                  : !game.active!.eligible.includes(p.id)
-                                    ? 'Not voting'
-                                    : game.active!.votes[p.id] === true
-                                      ? 'Yes'
-                                      : game.active!.votes[p.id] === false
-                                        ? 'No'
-                                        : game.active!.votes[p.id] === null
-                                          ? 'Abstained'
-                                          : 'Waiting'}
-                              </strong>
-                              {game.host &&
-                                game.active!.eligible.includes(p.id) && (
-                                  <StorytellerVote
-                                    player={p.id}
-                                    name={p.name}
-                                    ballot={game.active!.id}
-                                    vote={game.active!.votes[p.id]}
-                                    version={game.version}
-                                    completed={false}
-                                    refresh={refresh}
-                                  />
-                                )}
-                            </div>
-                          ))}
-                        </section>
-                      )}
-                      {game.ballots.length > 0 && (
-                        <div className="ballots">
-                          {game.ballots.map((b) => (
-                            <div key={b.id}>
-                              <span>{name(b.target)}</span>
-                              <strong>
-                                {b.count} <small>yes</small>
-                              </strong>
-                              <details className="ballot-vote-details">
-                                <summary>View submitted votes</summary>
-                                <p className="muted">
-                                  Character rules may affect the counted total.
-                                  Unanswered votes are recorded as abstentions
-                                  when voting closes.
-                                </p>
-                                {b.correctable && (
-                                  <p className="hint">
-                                    Storyteller: change a vote below before the
-                                    next nomination. Totals update immediately.
-                                  </p>
-                                )}
-                                {Object.entries(b.votes).map(([id, yes]) => (
-                                  <p key={id}>
-                                    {name(id)}:{' '}
-                                    {id === b.target
-                                      ? 'Nominee · not counted'
-                                      : yes === null
-                                        ? 'Abstained'
-                                        : yes
-                                          ? 'Yes'
-                                          : 'No'}
-                                    {b.correctable &&
-                                      b.eligible.includes(id) && (
-                                        <StorytellerVote
-                                          player={id}
-                                          name={name(id)}
-                                          ballot={b.id}
-                                          vote={yes}
-                                          version={game.version}
-                                          completed={true}
-                                          refresh={refresh}
-                                        />
-                                      )}
-                                  </p>
-                                ))}
-                              </details>
-                            </div>
-                          ))}
-                          <p>
-                            {game.leader.tied
-                              ? 'Tied for the lead · no execution'
-                              : game.leader.target
-                                ? game.leader.name + ' leads the vote'
-                                : 'No qualifying nominee'}
-                          </p>
+                          {game.code}
                         </div>
-                      )}
-                    </>
-                  )}
-                  {game.phase === 'ended' && (
-                    <RateStoryteller code={game.code} host={game.host} />
-                  )}
-                  {game.hints.map((h) => (
-                    <p className="error" key={h}>
-                      {h}
-                    </p>
-                  ))}
-                  <div className="actions" data-tutorial="flow-actions">
-                    {core.map((c, i) => button(c, i === 0))}
-                  </div>
-                </section>
-              )}
-              {!game.host && game.phase !== 'lobby' && game.character && (
-                <section className="panel character-panel">
-                  <button
-                    className="secondary full"
-                    data-tutorial="character-reveal"
-                    onClick={() => setRevealed(!revealed)}
-                  >
-                    {revealed ? 'Hide character' : 'Reveal my character'}
-                  </button>
-                  {revealed && (
-                    <div className="character-reveal">
-                      <h2>{game.character.name}</h2>
-                      <p className="alignment">
-                        {game.character.alignment} team
-                      </p>
-                      <p>
-                        <GlossaryText text={game.character.description} />
-                      </p>
-                    </div>
-                  )}
-                </section>
-              )}
-            </div>
-          </TabsContent>
-          <TabsContent value="seats" keepMounted>
-            {!game.host && (
-              <>
-                {game.phase !== 'lobby' && (
-                  <div data-tutorial="notes-panel">
-                    <PlayerNotes
-                      key={'notes:' + game.code + game.me + game.gameStartedAt}
-                      game={game}
-                    />
-                  </div>
-                )}
-              </>
-            )}
-            {game.host && (
-              <>
-                {game.phase === 'lobby' && (
-                  <TableMembership
-                    key={`host-membership:${game.code}`}
-                    game={game}
-                    refresh={refresh}
-                  />
-                )}
-                {game.phase === 'lobby' && (
-                  <section className="panel" data-tutorial="host-setup">
-                    <h2>{game.scriptName}</h2>
-                    {game.controls
-                      .filter((c) => c.action === 'setScript')
-                      .map((c) => button(c))}
-                    <h3>Role distribution</h3>
-                    <p className="muted">
-                      {game.customRoleDistribution
-                        ? 'Custom counts are visible to everyone at the table.'
-                        : 'Standard counts are visible to everyone at the table.'}
-                    </p>
-                    <div className="actions">
-                      {game.controls
-                        .filter((c) =>
-                          [
-                            'setRoleDistribution',
-                            'resetRoleDistribution',
-                          ].includes(c.action),
-                        )
-                        .map((c) => button(c))}
-                    </div>
-                  </section>
-                )}
-                {game.host && game.phase === 'lobby' && (
-                  <RolePicker
-                    key={`${game.script}:${game.players.map((p) => p.role).join(',')}`}
-                    game={game}
-                    refresh={refresh}
-                  />
-                )}
-
-                {game.host && game.phase === 'lobby' && (
-                  <section className="panel" data-tutorial="host-assign">
-                    <h2>Assign the town’s characters.</h2>
-                    <p className="muted">
-                      Edit each seat to choose its character manually, or start
-                      with a random setup and adjust it. Roles are revealed only
-                      when you begin the game.
-                    </p>
-                    <div className="actions">
-                      {game.controls
-                        .filter((c) => c.action === 'randomAssign')
-                        .map((c) => button(c, true))}
-                      {game.controls
-                        .filter((c) => c.action === 'configure')
-                        .map((c) => button(c))}
-                    </div>
-                  </section>
-                )}
-                {game.phase === 'lobby' && roleError && (
-                  <p className="error" role="alert">
-                    {roleError}
-                  </p>
-                )}
-                <div
-                  className={
-                    game.phase === 'lobby' ? 'role-assignment-layout' : ''
-                  }
-                >
-                  {game.phase === 'lobby' && (
-                    <RoleAssignmentPalette
-                      game={game}
-                      selected={selectedRole}
-                      onSelect={setSelectedRole}
-                    />
-                  )}
-                  <div className="seat-grid">
-                    {game.players.map((p) => (
-                      <section
-                        className={`panel seat-card${dropSeat === p.id ? ' role-drop-target' : ''}`}
-                        key={p.id}
-                        onDragOver={(event) => {
-                          if (game.phase !== 'lobby') return;
-                          event.preventDefault();
-                          event.dataTransfer.dropEffect = 'move';
-                          setDropSeat(p.id);
-                        }}
-                        onDragLeave={() => setDropSeat('')}
-                        onDrop={(event) => {
-                          event.preventDefault();
-                          setDropSeat('');
-                          void assignSeatRole(
-                            p.id,
-                            event.dataTransfer.getData('text/plain'),
-                          );
-                        }}
-                      >
-                        <PlayerAvatar
-                          avatar={p.avatar}
-                          id={p.id}
-                          dead={!p.alive}
-                          deathEffect={p.deathEffect}
-                          publicDead={!p.publicAlive}
-                        />
-                        <p className="eyebrow">
-                          SEAT {p.seat.toString().padStart(2, '0')} ·{' '}
-                          {p.alive ? 'ALIVE' : 'DEAD'}
-                        </p>
-                        <h2>
-                          {p.name}
-                          {p.departed ? ' · Left table' : ''}
-                        </h2>
-                        {game.host && (
-                          <p className="role-name">
-                            <RoleIcon role={p.role ?? ''} /> (
-                            {role(p.role ?? '')?.name || 'Assign a character'})
-                            {p.role === 'drunk' && (
-                              <small>
-                                Shown {role(p.shown ?? '')?.name || '—'}
-                              </small>
-                            )}
-                          </p>
+                        {game.host && !game.sandboxHost && (
+                          <ShareInvite code={game.code} />
                         )}
-                        <p className="muted">
-                          {p.ghost ? 'Dead vote available' : 'Dead vote spent'}
-                          {p.nominated ? ' · Nominated today' : ''}
-                          {p.hasNominated ? ' · Nomination used' : ''}
-                        </p>
                         {game.host && (
-                          <>
-                            {game.phase === 'lobby' && (
-                              <div className="seat-role-assignment">
-                                <label className="field">
-                                  Assign character
-                                  <select
-                                    aria-label={`Assign character to ${p.name}`}
-                                    disabled={busy}
-                                    value={p.role ?? ''}
-                                    onChange={(event) =>
-                                      void assignSeatRole(
-                                        p.id,
-                                        event.target.value,
-                                      )
-                                    }
-                                  >
-                                    <option value="">Choose a character</option>
-                                    {scriptRoles(game.script).map((r) => (
-                                      <option key={r.id} value={r.id}>
-                                        {r.name}
-                                      </option>
-                                    ))}
-                                  </select>
-                                </label>
-                                {selectedRole && (
-                                  <button
-                                    type="button"
-                                    className="secondary"
-                                    disabled={busy}
-                                    onClick={() =>
-                                      void assignSeatRole(p.id, selectedRole)
-                                    }
-                                  >
-                                    Assign {role(selectedRole)?.name}
-                                  </button>
-                                )}
-                              </div>
-                            )}
-                            <p className="tags">
-                              {p.feared ? 'FEARED ' : ''}
-                              {p.protected ? 'PROTECTED ' : ''}
-                              {p.used ? 'ABILITY USED' : ''}
-                            </p>
-                            {p.notes && <p>{p.notes}</p>}
+                          <div className="checklist">
                             <button
                               className="secondary"
-                              onClick={() => {
-                                setChatPlayer(p.id);
-                                setActiveTab('messages');
-                              }}
+                              onClick={() => setActiveTab('seats')}
                             >
-                              Open conversation
+                              Manually assign roles
                             </button>
-                            {button(
-                              game.controls.find(
-                                (c) =>
-                                  c.action === 'edit' &&
-                                  c.fields[0].value === p.id,
-                              )!,
+                            {game.issues.length ? (
+                              game.issues.map((s) => <p key={s}>{s}</p>)
+                            ) : (
+                              <p>All setup checks passed. Ready to deal.</p>
                             )}
-                          </>
+                          </div>
                         )}
-                      </section>
-                    ))}
-                  </div>
-                </div>
-              </>
-            )}
-          </TabsContent>
-          <TabsContent
-            value="messages"
-            keepMounted
-            data-tutorial="messages-panel"
-          >
-            <TableMessages
-              key={`${game.code}:${game.me}:${game.gameStartedAt}`}
-              game={game}
-              recipient={chatPlayer}
-              onRecipient={setChatPlayer}
-              online={online}
-              refresh={refresh}
-              active={activeTab === 'messages'}
-            />
-          </TabsContent>
-          <TabsContent value="script">
-            <div className="panel" data-tutorial="rules-panel">
-              <h2>Rules & roles</h2>
-              <AppLink className="quiet-link" href="/rules">
-                Open the full reference page →
-              </AppLink>
-              <RulesReference script={game.script} riteGuides={riteGuides} />
-            </div>
-          </TabsContent>
-          {game.host && (
-            <TabsContent value="control">
-              <NightRite
-                key={`${game.code}:${game.me}:setup`}
-                game={game}
-                mode="setup"
-              />
-              <div className="workspace-grid">
-                <section className="panel" data-tutorial="host-controls">
-                  <p className="eyebrow">STORYTELLER CONTROL</p>
-                  <h2>Your ruling, at every step.</h2>
-                  <div className="control-list">
-                    {game.controls
-                      .filter((c) =>
-                        [
-                          'configure',
-                          'undo',
-                          'rewind',
-                          'end',
-                          'overridePhase',
-                        ].includes(c.action),
-                      )
-                      .map((c) => (
-                        <div key={c.action}>
-                          <p>
-                            <GlossaryText text={c.description} />
-                          </p>
-                          {button(c)}
+                        <div data-tutorial="invite-friends">
+                          <InviteFriends code={game.code} />
                         </div>
-                      ))}
-                  </div>
-                </section>
-                <TableHistory
-                  key={`${game.code}:${game.me}:${game.gameStartedAt}`}
-                  game={game}
-                  open={open}
-                />
+                      </>
+                    ) : game.phase === 'night' ? (
+                      game.host ? (
+                        <>
+                          <h2>
+                            {pendingDeath
+                              ? pendingDeath.title
+                              : game.pendingBodyguard
+                                ? 'Waiting for the Bodyguard'
+                                : first?.name || 'The night is complete.'}
+                          </h2>
+                          <p className="muted">
+                            {pendingDeath
+                              ? 'Resolve this death before the next night task: prevention, the Fateweaver, then any triggered abilities.'
+                              : game.pendingBodyguard
+                                ? `${game.pendingBodyguard} has been told who will die and may take their place.`
+                                : first
+                                  ? game.nightConfirmation?.choice
+                                    ? 'The player sent their choice. Open the action to review and confirm it.'
+                                    : 'Waiting for the player’s choice, or open the action to enter it yourself.'
+                                  : 'Review the town, then announce dawn.'}
+                          </p>
+                          <ol className="night-list">
+                            {game.tasks.map((t, i) => (
+                              <li
+                                key={t.key}
+                                className={
+                                  t.done
+                                    ? 'completed'
+                                    : first?.key === t.key
+                                      ? 'current'
+                                      : ''
+                                }
+                              >
+                                <span>
+                                  {t.done
+                                    ? '✓'
+                                    : String(i + 1).padStart(2, '0')}
+                                </span>
+                                {t.name}
+                                <small>
+                                  {t.done
+                                    ? 'Complete'
+                                    : first?.key === t.key
+                                      ? 'Up next'
+                                      : ''}
+                                </small>
+                              </li>
+                            ))}
+                          </ol>
+                        </>
+                      ) : null
+                    ) : (
+                      <>
+                        <h2>
+                          {game.active
+                            ? name(game.active.target) + ' is nominated'
+                            : game.phase === 'discovery'
+                              ? 'Find a quiet conversation.'
+                              : game.phase === 'discussion'
+                                ? 'Let the town talk.'
+                                : game.phase === 'nomination'
+                                  ? 'Who will you nominate?'
+                                  : game.phase === 'dayReview'
+                                    ? 'The day’s decision.'
+                                    : 'Thank you for playing.'}
+                        </h2>
+                        <p className="muted">
+                          {game.active
+                            ? `Nominated by ${name(game.active.by)}. ${game.active.threshold} yes votes needed to qualify for execution.`
+                            : game.phase === 'discovery'
+                              ? 'Speak with other players and compare what you know.'
+                              : game.phase === 'discussion'
+                                ? 'Share information and suspicions with the whole group.'
+                                : game.phase === 'nomination'
+                                  ? 'Each living player may nominate once today.'
+                                  : game.phase === 'dayReview'
+                                    ? 'The Storyteller confirms the execution and any character effects before the next night.'
+                                    : ''}
+                        </p>
+                        {game.active && (
+                          <p className="ballot-callout">
+                            {game.phase === 'defense'
+                              ? 'Defense is in progress.'
+                              : game.host
+                                ? 'Votes are visible to everyone.'
+                                : !game.active.eligible.includes(game.me)
+                                  ? 'You do not vote on this nomination.'
+                                  : !game.active.myVoteSubmitted
+                                    ? 'Your vote has not been submitted.'
+                                    : game.active.myVote === null
+                                      ? 'Your vote: ABSTAIN'
+                                      : game.active.myVote
+                                        ? 'Your vote: YES'
+                                        : 'Your vote: NO'}
+                          </p>
+                        )}
+                        {game.active && game.phase === 'voting' && (
+                          <section
+                            className="public-votes"
+                            aria-label="Live votes"
+                          >
+                            <h3>
+                              Live votes ·{' '}
+                              {
+                                game.active.eligible.filter((id) =>
+                                  Object.hasOwn(game.active!.votes, id),
+                                ).length
+                              }
+                              /{game.active.eligible.length} answered
+                            </h3>
+                            <p className="muted">
+                              Voting ends as soon as all eligible players
+                              answer. The nominee does not vote. After voting,
+                              nominations resume with 30 extra seconds.
+                            </p>
+                            {game.players.map((p) => (
+                              <div className="membership-row" key={p.id}>
+                                <span>{p.name}</span>
+                                <strong>
+                                  {p.id === game.active!.target
+                                    ? 'Nominee'
+                                    : !game.active!.eligible.includes(p.id)
+                                      ? 'Not voting'
+                                      : game.active!.votes[p.id] === true
+                                        ? 'Yes'
+                                        : game.active!.votes[p.id] === false
+                                          ? 'No'
+                                          : game.active!.votes[p.id] === null
+                                            ? 'Abstained'
+                                            : 'Waiting'}
+                                </strong>
+                                {game.host &&
+                                  game.active!.eligible.includes(p.id) && (
+                                    <StorytellerVote
+                                      player={p.id}
+                                      name={p.name}
+                                      ballot={game.active!.id}
+                                      vote={game.active!.votes[p.id]}
+                                      version={game.version}
+                                      completed={false}
+                                      refresh={refresh}
+                                    />
+                                  )}
+                              </div>
+                            ))}
+                          </section>
+                        )}
+                        {game.ballots.length > 0 && (
+                          <div className="ballots">
+                            {game.ballots.map((b) => (
+                              <div key={b.id}>
+                                <span>{name(b.target)}</span>
+                                <strong>
+                                  {b.count} <small>yes</small>
+                                </strong>
+                                <details className="ballot-vote-details">
+                                  <summary>View submitted votes</summary>
+                                  <p className="muted">
+                                    Character rules may affect the counted
+                                    total. Unanswered votes are recorded as
+                                    abstentions when voting closes.
+                                  </p>
+                                  {b.correctable && (
+                                    <p className="hint">
+                                      Storyteller: change a vote below before
+                                      the next nomination. Totals update
+                                      immediately.
+                                    </p>
+                                  )}
+                                  {Object.entries(b.votes).map(([id, yes]) => (
+                                    <p key={id}>
+                                      {name(id)}:{' '}
+                                      {id === b.target
+                                        ? 'Nominee · not counted'
+                                        : yes === null
+                                          ? 'Abstained'
+                                          : yes
+                                            ? 'Yes'
+                                            : 'No'}
+                                      {b.correctable &&
+                                        b.eligible.includes(id) && (
+                                          <StorytellerVote
+                                            player={id}
+                                            name={name(id)}
+                                            ballot={b.id}
+                                            vote={yes}
+                                            version={game.version}
+                                            completed={true}
+                                            refresh={refresh}
+                                          />
+                                        )}
+                                    </p>
+                                  ))}
+                                </details>
+                              </div>
+                            ))}
+                            <p>
+                              {game.leader.tied
+                                ? 'Tied for the lead · no execution'
+                                : game.leader.target
+                                  ? game.leader.name + ' leads the vote'
+                                  : 'No qualifying nominee'}
+                            </p>
+                          </div>
+                        )}
+                      </>
+                    )}
+                    {game.phase === 'ended' && (
+                      <RateStoryteller code={game.code} host={game.host} />
+                    )}
+                    {game.hints.map((h) => (
+                      <p className="error" key={h}>
+                        {h}
+                      </p>
+                    ))}
+                    <div className="actions" data-tutorial="flow-actions">
+                      {core.map((c, i) => button(c, i === 0))}
+                    </div>
+                  </section>
+                )}
+                {!game.host && game.phase !== 'lobby' && game.character && (
+                  <section className="panel character-panel">
+                    <button
+                      className="secondary full"
+                      data-tutorial="character-reveal"
+                      onClick={() => setRevealed(!revealed)}
+                    >
+                      {revealed ? 'Hide character' : 'Reveal my character'}
+                    </button>
+                    {revealed && (
+                      <div className="character-reveal">
+                        <h2>{game.character.name}</h2>
+                        <p className="alignment">
+                          {game.character.alignment} team
+                        </p>
+                        <p>
+                          <GlossaryText text={game.character.description} />
+                        </p>
+                      </div>
+                    )}
+                  </section>
+                )}
               </div>
             </TabsContent>
-          )}
-        </Tabs>
-        <Dialog
-          open={!!selected}
-          onOpenChange={(v) => {
-            if (!v && !busy) setSelected(null);
-          }}
-        >
-          <DialogContent className="action-dialog">
-            <DialogHeader>
-              <DialogTitle>{actionControl?.title}</DialogTitle>
-              <DialogDescription>
-                {actionControl && (
-                  <GlossaryText text={actionControl.description} />
-                )}
-              </DialogDescription>
-            </DialogHeader>
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                void submit();
-              }}
-            >
-              {confirmation && (
+            <TabsContent value="seats" keepMounted>
+              {!game.host && (
                 <>
-                  {confirmation.ability && (
-                    <div className="ability-reminder">
-                      <strong>
-                        {confirmation.playerName || 'Night task'} ability
-                      </strong>
-                      <p>
-                        <GlossaryText text={confirmation.ability} />
-                      </p>
+                  {game.phase !== 'lobby' && (
+                    <div data-tutorial="notes-panel">
+                      <PlayerNotes
+                        key={
+                          'notes:' + game.code + game.me + game.gameStartedAt
+                        }
+                        game={game}
+                      />
                     </div>
                   )}
-                  <div className="status-bubbles" aria-label="Player status">
-                    {confirmation.statuses.map((status) => (
-                      <button
-                        type="button"
-                        key={status.key}
-                        className={
-                          status.active ? 'status-active' : 'status-inactive'
-                        }
-                        disabled={busy}
-                        aria-pressed={status.active}
-                        aria-label={
-                          status.locked
-                            ? `Edit ${confirmation.playerName}'s character`
-                            : `${status.active ? 'Remove' : 'Add'} ${status.name.toLowerCase()} for ${confirmation.playerName}`
-                        }
-                        onClick={() => {
-                          if (status.locked) {
-                            const edit = game.controls.find(
-                              (control) =>
-                                control.action === 'edit' &&
-                                control.fields[0]?.value ===
-                                  confirmation.playerId,
+                </>
+              )}
+              {game.host && (
+                <>
+                  {game.phase === 'lobby' && (
+                    <TableMembership
+                      key={`host-membership:${game.code}`}
+                      game={game}
+                      refresh={refresh}
+                    />
+                  )}
+                  {game.phase === 'lobby' && (
+                    <section className="panel" data-tutorial="host-setup">
+                      <h2>{game.scriptName}</h2>
+                      {game.controls
+                        .filter((c) => c.action === 'setScript')
+                        .map((c) => button(c))}
+                      <h3>Role distribution</h3>
+                      <p className="muted">
+                        {game.customRoleDistribution
+                          ? 'Custom counts are visible to everyone at the table.'
+                          : 'Standard counts are visible to everyone at the table.'}
+                      </p>
+                      <div className="actions">
+                        {game.controls
+                          .filter((c) =>
+                            [
+                              'setRoleDistribution',
+                              'resetRoleDistribution',
+                            ].includes(c.action),
+                          )
+                          .map((c) => button(c))}
+                      </div>
+                    </section>
+                  )}
+                  {game.host && game.phase === 'lobby' && (
+                    <RolePicker
+                      key={`${game.script}:${game.players.map((p) => p.role).join(',')}`}
+                      game={game}
+                      refresh={refresh}
+                    />
+                  )}
+
+                  {game.host && game.phase === 'lobby' && (
+                    <section className="panel" data-tutorial="host-assign">
+                      <h2>Assign the town’s characters.</h2>
+                      <p className="muted">
+                        Edit each seat to choose its character manually, or
+                        start with a random setup and adjust it. Roles are
+                        revealed only when you begin the game.
+                      </p>
+                      <div className="actions">
+                        {game.controls
+                          .filter((c) => c.action === 'randomAssign')
+                          .map((c) => button(c, true))}
+                        {game.controls
+                          .filter((c) => c.action === 'configure')
+                          .map((c) => button(c))}
+                      </div>
+                    </section>
+                  )}
+                  {game.phase === 'lobby' && roleError && (
+                    <p className="error" role="alert">
+                      {roleError}
+                    </p>
+                  )}
+                  <div
+                    className={
+                      game.phase === 'lobby' ? 'role-assignment-layout' : ''
+                    }
+                  >
+                    {game.phase === 'lobby' && (
+                      <RoleAssignmentPalette
+                        game={game}
+                        selected={selectedRole}
+                        onSelect={setSelectedRole}
+                      />
+                    )}
+                    <div className="seat-grid">
+                      {game.players.map((p) => (
+                        <section
+                          className={`panel seat-card${dropSeat === p.id ? ' role-drop-target' : ''}`}
+                          key={p.id}
+                          onDragOver={(event) => {
+                            if (game.phase !== 'lobby') return;
+                            event.preventDefault();
+                            event.dataTransfer.dropEffect = 'move';
+                            setDropSeat(p.id);
+                          }}
+                          onDragLeave={() => setDropSeat('')}
+                          onDrop={(event) => {
+                            event.preventDefault();
+                            setDropSeat('');
+                            void assignSeatRole(
+                              p.id,
+                              event.dataTransfer.getData('text/plain'),
                             );
-                            if (edit) open(edit);
-                            return;
-                          }
-                          if (status.key === 'redirected' && !status.active) {
-                            open({
-                              action: 'setPlayerStatus',
-                              title: `Redirect ${confirmation.playerName}`,
-                              description:
-                                'Choose the player whose ability receives the redirect.',
-                              fields: [
-                                {
-                                  key: 'player',
-                                  label: '',
-                                  type: 'hidden',
-                                  value: confirmation.playerId,
-                                },
-                                {
-                                  key: 'status',
-                                  label: '',
-                                  type: 'hidden',
-                                  value: status.key,
-                                },
-                                {
-                                  key: 'active',
-                                  label: '',
-                                  type: 'hidden',
-                                  value: true,
-                                },
-                                {
-                                  key: 'night',
-                                  label: '',
-                                  type: 'hidden',
-                                  value: game.night,
-                                },
-                                {
-                                  key: 'target',
-                                  label: 'Redirect target',
-                                  type: 'select',
-                                  required: true,
-                                  options: game.players
-                                    .filter(
-                                      (player) =>
-                                        player.id !== confirmation.playerId,
-                                    )
-                                    .map((player) => ({
-                                      value: player.id,
-                                      label: player.name,
-                                    })),
-                                  value:
-                                    game.players.find(
-                                      (player) =>
-                                        player.id !== confirmation.playerId,
-                                    )?.id ?? '',
-                                },
-                              ],
-                            });
-                            return;
-                          }
-                          void submit(
-                            {
-                              action: 'setPlayerStatus',
-                              title: 'Change player state',
-                              description: '',
-                              fields: [],
-                            },
-                            {
-                              player: confirmation.playerId,
-                              status: status.key,
-                              active: !status.active,
-                              night: game.night,
-                            },
-                          );
-                        }}
-                      >
-                        {status.active
-                          ? status.name
-                          : `Not ${status.name.toLowerCase()}`}
-                      </button>
-                    ))}
+                          }}
+                        >
+                          <PlayerAvatar
+                            avatar={p.avatar}
+                            id={p.id}
+                            dead={!p.alive}
+                            deathEffect={p.deathEffect}
+                            publicDead={!p.publicAlive}
+                          />
+                          <p className="eyebrow">
+                            SEAT {p.seat.toString().padStart(2, '0')} ·{' '}
+                            {p.alive ? 'ALIVE' : 'DEAD'}
+                          </p>
+                          <h2>
+                            {p.name}
+                            {p.departed ? ' · Left table' : ''}
+                          </h2>
+                          {game.host && (
+                            <p className="role-name">
+                              <RoleIcon role={p.role ?? ''} /> (
+                              {role(p.role ?? '')?.name || 'Assign a character'}
+                              )
+                              {p.role === 'drunk' && (
+                                <small>
+                                  Shown {role(p.shown ?? '')?.name || '—'}
+                                </small>
+                              )}
+                            </p>
+                          )}
+                          <p className="muted">
+                            {p.ghost
+                              ? 'Dead vote available'
+                              : 'Dead vote spent'}
+                            {p.nominated ? ' · Nominated today' : ''}
+                            {p.hasNominated ? ' · Nomination used' : ''}
+                          </p>
+                          {game.host && (
+                            <>
+                              {game.phase === 'lobby' && (
+                                <div className="seat-role-assignment">
+                                  <label className="field">
+                                    Assign character
+                                    <select
+                                      aria-label={`Assign character to ${p.name}`}
+                                      disabled={busy}
+                                      value={p.role ?? ''}
+                                      onChange={(event) =>
+                                        void assignSeatRole(
+                                          p.id,
+                                          event.target.value,
+                                        )
+                                      }
+                                    >
+                                      <option value="">
+                                        Choose a character
+                                      </option>
+                                      {scriptRoles(game.script).map((r) => (
+                                        <option key={r.id} value={r.id}>
+                                          {r.name}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  </label>
+                                  {selectedRole && (
+                                    <button
+                                      type="button"
+                                      className="secondary"
+                                      disabled={busy}
+                                      onClick={() =>
+                                        void assignSeatRole(p.id, selectedRole)
+                                      }
+                                    >
+                                      Assign {role(selectedRole)?.name}
+                                    </button>
+                                  )}
+                                </div>
+                              )}
+                              <p className="tags">
+                                {p.feared ? 'FEARED ' : ''}
+                                {p.protected ? 'PROTECTED ' : ''}
+                                {p.used ? 'ABILITY USED' : ''}
+                              </p>
+                              {p.notes && <p>{p.notes}</p>}
+                              <button
+                                className="secondary"
+                                onClick={() => {
+                                  setChatPlayer(p.id);
+                                  setActiveTab('messages');
+                                }}
+                              >
+                                Open conversation
+                              </button>
+                              {button(
+                                game.controls.find(
+                                  (c) =>
+                                    c.action === 'edit' &&
+                                    c.fields[0].value === p.id,
+                                )!,
+                              )}
+                            </>
+                          )}
+                        </section>
+                      ))}
+                    </div>
                   </div>
                 </>
               )}
-              {confirmation?.choice && (
-                <div className="ballot-callout">
-                  <p>
-                    {confirmation.choice.pass
-                      ? 'The player passed.'
-                      : [
+            </TabsContent>
+            <TabsContent
+              value="messages"
+              keepMounted
+              data-tutorial="messages-panel"
+            >
+              <TableMessages
+                key={`${game.code}:${game.me}:${game.gameStartedAt}`}
+                game={game}
+                recipient={chatPlayer}
+                onRecipient={setChatPlayer}
+                online={online}
+                refresh={refresh}
+                active={activeTab === 'messages'}
+              />
+            </TabsContent>
+            <TabsContent value="script">
+              <div className="panel" data-tutorial="rules-panel">
+                <h2>Rules & roles</h2>
+                <AppLink className="quiet-link" href="/rules">
+                  Open the full reference page →
+                </AppLink>
+                <RulesReference script={game.script} riteGuides={riteGuides} />
+              </div>
+            </TabsContent>
+            {game.host && (
+              <TabsContent value="control">
+                <NightRite
+                  key={`${game.code}:${game.me}:setup`}
+                  game={game}
+                  mode="setup"
+                />
+                <div className="workspace-grid">
+                  <section className="panel" data-tutorial="host-controls">
+                    <p className="eyebrow">STORYTELLER CONTROL</p>
+                    <h2>Your ruling, at every step.</h2>
+                    <div className="control-list">
+                      {game.controls
+                        .filter((c) =>
                           [
-                            confirmation.choice.target,
-                            confirmation.choice.target2,
-                            confirmation.choice.target3 ?? '',
-                          ].filter(Boolean).length
-                            ? 'Player selected: ' +
-                              [
-                                confirmation.choice.target,
-                                confirmation.choice.target2,
-                                confirmation.choice.target3 ?? '',
-                              ]
-                                .filter(Boolean)
-                                .map(name)
-                                .join(', ') +
-                              '.'
-                            : '',
-                          confirmation.choice.text
-                            ? `Question: “${confirmation.choice.text}”`
-                            : '',
-                          confirmation.choice.guesses?.length
-                            ? 'Guesses: ' +
-                              confirmation.choice.guesses
-                                .map(
-                                  (g) =>
-                                    `${name(g.player)} as ${role(g.role)?.name ?? g.role}`,
-                                )
-                                .join(', ') +
-                              '.'
-                            : '',
-                        ]
-                          .filter(Boolean)
-                          .join(' ')}
+                            'configure',
+                            'undo',
+                            'rewind',
+                            'end',
+                            'overridePhase',
+                          ].includes(c.action),
+                        )
+                        .map((c) => (
+                          <div key={c.action}>
+                            <p>
+                              <GlossaryText text={c.description} />
+                            </p>
+                            {button(c)}
+                          </div>
+                        ))}
+                    </div>
+                  </section>
+                  <TableHistory
+                    key={`${game.code}:${game.me}:${game.gameStartedAt}`}
+                    game={game}
+                    open={open}
+                  />
+                </div>
+              </TabsContent>
+            )}
+          </Tabs>
+          <Dialog
+            open={!!selected}
+            onOpenChange={(v) => {
+              if (!v && !busy) setSelected(null);
+            }}
+          >
+            <DialogContent className="action-dialog">
+              <DialogHeader>
+                <DialogTitle>{actionControl?.title}</DialogTitle>
+                <DialogDescription>
+                  {actionControl && (
+                    <GlossaryText text={actionControl.description} />
+                  )}
+                </DialogDescription>
+              </DialogHeader>
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  void submit();
+                }}
+              >
+                {confirmation && (
+                  <>
+                    {confirmation.ability && (
+                      <div className="ability-reminder">
+                        <strong>
+                          {confirmation.playerName || 'Night task'} ability
+                        </strong>
+                        <p>
+                          <GlossaryText text={confirmation.ability} />
+                        </p>
+                      </div>
+                    )}
+                    <div className="status-bubbles" aria-label="Player status">
+                      {confirmation.statuses.map((status) => (
+                        <button
+                          type="button"
+                          key={status.key}
+                          className={
+                            status.active ? 'status-active' : 'status-inactive'
+                          }
+                          disabled={busy}
+                          aria-pressed={status.active}
+                          aria-label={
+                            status.locked
+                              ? `Edit ${confirmation.playerName}'s character`
+                              : `${status.active ? 'Remove' : 'Add'} ${status.name.toLowerCase()} for ${confirmation.playerName}`
+                          }
+                          onClick={() => {
+                            if (status.locked) {
+                              const edit = game.controls.find(
+                                (control) =>
+                                  control.action === 'edit' &&
+                                  control.fields[0]?.value ===
+                                    confirmation.playerId,
+                              );
+                              if (edit) open(edit);
+                              return;
+                            }
+                            if (status.key === 'redirected' && !status.active) {
+                              open({
+                                action: 'setPlayerStatus',
+                                title: `Redirect ${confirmation.playerName}`,
+                                description:
+                                  'Choose the player whose ability receives the redirect.',
+                                fields: [
+                                  {
+                                    key: 'player',
+                                    label: '',
+                                    type: 'hidden',
+                                    value: confirmation.playerId,
+                                  },
+                                  {
+                                    key: 'status',
+                                    label: '',
+                                    type: 'hidden',
+                                    value: status.key,
+                                  },
+                                  {
+                                    key: 'active',
+                                    label: '',
+                                    type: 'hidden',
+                                    value: true,
+                                  },
+                                  {
+                                    key: 'night',
+                                    label: '',
+                                    type: 'hidden',
+                                    value: game.night,
+                                  },
+                                  {
+                                    key: 'target',
+                                    label: 'Redirect target',
+                                    type: 'select',
+                                    required: true,
+                                    options: game.players
+                                      .filter(
+                                        (player) =>
+                                          player.id !== confirmation.playerId,
+                                      )
+                                      .map((player) => ({
+                                        value: player.id,
+                                        label: player.name,
+                                      })),
+                                    value:
+                                      game.players.find(
+                                        (player) =>
+                                          player.id !== confirmation.playerId,
+                                      )?.id ?? '',
+                                  },
+                                ],
+                              });
+                              return;
+                            }
+                            void submit(
+                              {
+                                action: 'setPlayerStatus',
+                                title: 'Change player state',
+                                description: '',
+                                fields: [],
+                              },
+                              {
+                                player: confirmation.playerId,
+                                status: status.key,
+                                active: !status.active,
+                                night: game.night,
+                              },
+                            );
+                          }}
+                        >
+                          {status.active
+                            ? status.name
+                            : `Not ${status.name.toLowerCase()}`}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+                {confirmation?.choice && (
+                  <div className="ballot-callout">
+                    <p>
+                      {confirmation.choice.pass
+                        ? 'The player passed.'
+                        : [
+                            [
+                              confirmation.choice.target,
+                              confirmation.choice.target2,
+                              confirmation.choice.target3 ?? '',
+                            ].filter(Boolean).length
+                              ? 'Player selected: ' +
+                                [
+                                  confirmation.choice.target,
+                                  confirmation.choice.target2,
+                                  confirmation.choice.target3 ?? '',
+                                ]
+                                  .filter(Boolean)
+                                  .map(name)
+                                  .join(', ') +
+                                '.'
+                              : '',
+                            confirmation.choice.text
+                              ? `Question: “${confirmation.choice.text}”`
+                              : '',
+                            confirmation.choice.guesses?.length
+                              ? 'Guesses: ' +
+                                confirmation.choice.guesses
+                                  .map(
+                                    (g) =>
+                                      `${name(g.player)} as ${role(g.role)?.name ?? g.role}`,
+                                  )
+                                  .join(', ') +
+                                '.'
+                              : '',
+                          ]
+                            .filter(Boolean)
+                            .join(' ')}
+                    </p>
+                    {!followChoice && (
+                      <button
+                        type="button"
+                        className="secondary"
+                        onClick={() => setFollowChoice(true)}
+                      >
+                        Use player’s choice
+                      </button>
+                    )}
+                  </div>
+                )}
+                {actionControl?.fields.map((f) => (
+                  <FieldInput
+                    key={f.key}
+                    field={eligibleField(
+                      f,
+                      actionControl,
+                      effectiveValues,
+                      game,
+                    )}
+                    value={effectiveValues[f.key]}
+                    onChange={(v) => {
+                      const next = { ...effectiveValues, [f.key]: v };
+                      if (['target', 'target2', 'target3'].includes(f.key))
+                        setFollowChoice(false);
+                      for (const field of actionControl.fields) {
+                        const options = eligibleField(
+                          field,
+                          actionControl,
+                          next,
+                          game,
+                        ).options;
+                        if (
+                          options &&
+                          next[field.key] &&
+                          !options.some(
+                            (o) => o.value === String(next[field.key]),
+                          )
+                        )
+                          next[field.key] = '';
+                      }
+                      setValues(next);
+                    }}
+                  />
+                ))}
+                {error && (
+                  <p role="alert" className="error">
+                    {error}
                   </p>
-                  {!followChoice && (
+                )}
+                {checkConfirmation ? (
+                  <div className="confirmation-actions">
                     <button
                       type="button"
-                      className="secondary"
-                      onClick={() => setFollowChoice(true)}
+                      className="confirmation-no"
+                      aria-label="Cancel"
+                      disabled={busy}
+                      onClick={() => setSelected(null)}
                     >
-                      Use player’s choice
+                      <X aria-hidden="true" />
                     </button>
-                  )}
-                </div>
-              )}
-              {actionControl?.fields.map((f) => (
-                <FieldInput
-                  key={f.key}
-                  field={eligibleField(f, actionControl, effectiveValues, game)}
-                  value={effectiveValues[f.key]}
-                  onChange={(v) => {
-                    const next = { ...effectiveValues, [f.key]: v };
-                    if (['target', 'target2', 'target3'].includes(f.key))
-                      setFollowChoice(false);
-                    for (const field of actionControl.fields) {
-                      const options = eligibleField(
-                        field,
-                        actionControl,
-                        next,
-                        game,
-                      ).options;
-                      if (
-                        options &&
-                        next[field.key] &&
-                        !options.some(
-                          (o) => o.value === String(next[field.key]),
-                        )
-                      )
-                        next[field.key] = '';
+                    <button
+                      className="confirmation-yes"
+                      aria-label="Confirm"
+                      disabled={busy || !online}
+                    >
+                      <Check aria-hidden="true" />
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    className="primary full"
+                    disabled={
+                      busy ||
+                      !online ||
+                      (selected?.action === 'night' && !confirmation)
                     }
-                    setValues(next);
-                  }}
-                />
-              ))}
-              {error && (
-                <p role="alert" className="error">
-                  {error}
-                </p>
-              )}
-              {checkConfirmation ? (
-                <div className="confirmation-actions">
-                  <button
-                    type="button"
-                    className="confirmation-no"
-                    aria-label="Cancel"
-                    disabled={busy}
-                    onClick={() => setSelected(null)}
                   >
-                    <X aria-hidden="true" />
+                    {busy ? 'Applying…' : selected?.title || 'Apply'}
                   </button>
-                  <button
-                    className="confirmation-yes"
-                    aria-label="Confirm"
-                    disabled={busy || !online}
-                  >
-                    <Check aria-hidden="true" />
-                  </button>
-                </div>
-              ) : (
-                <button
-                  className="primary full"
-                  disabled={
-                    busy ||
-                    !online ||
-                    (selected?.action === 'night' && !confirmation)
-                  }
-                >
-                  {busy ? 'Applying…' : selected?.title || 'Apply'}
-                </button>
-              )}
-            </form>
-          </DialogContent>
-        </Dialog>
-        <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
-          <DialogContent className="settings-dialog">
-            <DialogHeader>
-              <DialogTitle>Settings</DialogTitle>
-            </DialogHeader>
-            <SettingsPanel />
-          </DialogContent>
-        </Dialog>
-      </main>
-    </TableAtmosphere>
+                )}
+              </form>
+            </DialogContent>
+          </Dialog>
+          <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
+            <DialogContent className="settings-dialog">
+              <DialogHeader>
+                <DialogTitle>Settings</DialogTitle>
+              </DialogHeader>
+              <SettingsPanel />
+            </DialogContent>
+          </Dialog>
+        </main>
+      </TableAtmosphere>
+    </TableActions.Provider>
   );
 }

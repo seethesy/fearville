@@ -1,13 +1,26 @@
 import { DurableObject } from 'cloudflare:workers';
 import { database } from '@/db';
 import { checkSeatAccount } from '@/lib/admin/access';
-import { readD1, saveD1, loadDecision, hash, errorResponse } from './store';
+import {
+  readD1,
+  saveD1,
+  loadDecision,
+  hash,
+  errorResponse,
+  limited,
+} from './store';
 import { inheritStored } from './part-store';
 import { execute, tick, snapshot, requireThat, nextDeadline } from './engine';
 import { riteAction, tickRite } from '../rite/engine';
 import { tableView } from './visible-view';
 import { view } from './view';
-import { TABLE_API_VERSION, viewContent } from './socket-protocol';
+import {
+  TABLE_API_VERSION,
+  viewContent,
+  actionID,
+  normalizeCommand,
+  type ActionAck,
+} from './socket-protocol';
 import { BUILD_ID } from '../runtime/build';
 import { allowlisted } from '../admin/policy';
 import { adminAllowlist } from '../admin/access';
@@ -24,6 +37,7 @@ import type { Actor, Command, Game } from './types';
 
 export const TABLE_RETENTION = 30 * 24 * 60 * 60 * 1000;
 type SocketSeat = {
+  code: string;
   actor: Actor;
   viewer: Actor;
   sandboxHost: boolean;
@@ -71,6 +85,19 @@ export class GameTable extends DurableObject {
       version: loaded.version,
       created: loaded.created,
       retainAt: this.meta?.retainAt ?? Date.now() + TABLE_RETENTION,
+      receipts:
+        reset && this.meta?.projection
+          ? Object.fromEntries(
+              Object.entries(this.meta.receipts ?? {}).map(
+                ([seat, receipts]) => [
+                  seat,
+                  receipts.filter(
+                    (ack) => !ack.ok || ack.version !== this.meta!.version,
+                  ),
+                ],
+              ),
+            )
+          : this.meta?.receipts,
     };
     // Compatibility admin/account transactions can redact snapshots in D1.
     // Import them on an external revision, so a rewind cannot restore PII.
@@ -222,6 +249,7 @@ export class GameTable extends DurableObject {
     now: number,
     removed?: string,
     cause?: string,
+    receipt?: { seat: string; ack: ActionAck },
   ) {
     const before = this.game!,
       oldMeta = this.meta!;
@@ -260,6 +288,14 @@ export class GameTable extends DurableObject {
         now,
       },
     };
+    if (receipt)
+      meta.receipts = {
+        ...oldMeta.receipts,
+        [receipt.seat]: [
+          ...(oldMeta.receipts?.[receipt.seat] ?? []),
+          receipt.ack,
+        ].slice(-100),
+      };
     this.parts.save(next, meta);
     this.game = next;
     this.meta = meta;
@@ -289,105 +325,200 @@ export class GameTable extends DurableObject {
   action(code: string, actor: Actor, c: Command, rite = false) {
     return this.queue.run(async () => {
       await this.current(code, actor);
-      const now = Date.now();
-      const caughtUp = structuredClone(this.game!);
-      if (tick(caughtUp, now)) await this.commit(caughtUp, actor, 'tick', now);
-      const g = structuredClone(this.game!),
-        version = this.meta!.version;
-      const viewer = this.viewer(g, actor, c.pov);
-      if (rite) {
-        if (
-          ['configureRite', 'riteForce', 'riteRedeal', 'ritePassTurn'].includes(
-            c.action,
-          )
-        ) {
-          requireThat(viewer.host, 'Only the Storyteller can do that.');
-          if (c.epoch === undefined || c.night === undefined)
-            requireThat(
-              c.version === version,
-              'The table changed. Refresh setup before saving.',
-            );
-          else
-            requireThat(
-              c.epoch === (g.rite?.epoch ?? '') && c.night === g.night,
-              'This Rite action belongs to an earlier window.',
-            );
-          snapshot(g, 'Night Rite: ' + c.action, now);
-        }
-      } else if (
-        ![
-          'vote',
-          'chat',
-          'nightChoice',
-          'mvpVote',
-          'claimSeat',
-          'leaveSeat',
-          'saveNotebook',
-          'returnLobby',
-        ].includes(c.action) &&
-        c.version !== version &&
-        !canApplyLatest(viewer, c) &&
-        !canApplyUnchangedEdit(g, viewer, c)
-      )
-        return {
-          error: 'The table changed. Review this action again.',
-          status: 409,
-        };
-      if (c.action === 'returnLobby' && g.phase === 'ended')
-        await syncResult(
-          g,
-          g.gameStartedAt ?? this.meta!.created,
-          now,
-          version,
-        );
-      if (c.action === 'undo' || c.action === 'rewind') {
-        const entry =
-          c.action === 'undo'
-            ? g.history.at(-1)
-            : g.history.find((h) => h.id === c.history);
-        if (entry) entry.before = this.parts.snapshot(entry.id);
-        await loadDecision(g, c);
-      }
-      const summary = rite
-        ? riteAction(g, viewer, c, now)
-        : execute(g, viewer, c, now);
-      requireThat(summary !== null, 'Choose a Rite action.');
-      if (c.action === 'start') await prepareProgression(g);
-      if (c.preview) return { summary, version };
-      // Preparing bank puzzles here avoids generators and writes on GET.
-      tickRite(g, now);
-      await this.commit(
-        g,
-        actor,
-        c.action,
-        now,
-        undefined,
-        typeof c.requestId === 'string' && c.requestId.length < 100
-          ? c.requestId
-          : undefined,
-      );
-      return rite
-        ? {
-            code,
-            me: viewer.id,
-            rite: riteView(g, viewer, now),
-            version: this.meta!.version,
-            serverNow: now,
-            summary,
+      c = normalizeCommand(c);
+      const id = actionID(c.requestId) ? c.requestId : undefined;
+      const cached =
+        id && this.meta!.receipts?.[actor.id]?.find((ack) => ack.id === id);
+      if (cached) return this.actionReply(code, actor, c, rite, cached);
+      try {
+        const now = Date.now();
+        const caughtUp = structuredClone(this.game!);
+        if (tick(caughtUp, now))
+          await this.commit(caughtUp, actor, 'tick', now);
+        const g = structuredClone(this.game!),
+          version = this.meta!.version;
+        const viewer = this.viewer(g, actor, c.pov);
+        if (rite) {
+          if (
+            [
+              'configureRite',
+              'riteForce',
+              'riteRedeal',
+              'ritePassTurn',
+            ].includes(c.action)
+          ) {
+            requireThat(viewer.host, 'Only the Storyteller can do that.');
+            if (c.epoch === undefined || c.night === undefined)
+              requireThat(
+                c.version === version,
+                'The table changed. Refresh setup before saving.',
+              );
+            else
+              requireThat(
+                c.epoch === (g.rite?.epoch ?? '') && c.night === g.night,
+                'This Rite action belongs to an earlier window.',
+              );
+            snapshot(g, 'Night Rite: ' + c.action, now);
           }
-        : {
-            summary,
-            game: await tableView(
-              g,
-              viewer,
-              this.meta!.version,
-              now,
-              !!g.sandbox && actor.host,
-              actor.id,
-              c.compactRecaps === true,
-            ),
-          };
+        } else if (
+          ![
+            'vote',
+            'chat',
+            'nightChoice',
+            'mvpVote',
+            'claimSeat',
+            'leaveSeat',
+            'saveNotebook',
+            'returnLobby',
+          ].includes(c.action) &&
+          c.version !== version &&
+          !canApplyLatest(viewer, c) &&
+          !canApplyUnchangedEdit(g, viewer, c)
+        )
+          throw Error('The table changed. Review this action again.');
+        if (c.action === 'returnLobby' && g.phase === 'ended')
+          await syncResult(
+            g,
+            g.gameStartedAt ?? this.meta!.created,
+            now,
+            version,
+          );
+        if (c.action === 'undo' || c.action === 'rewind') {
+          const entry =
+            c.action === 'undo'
+              ? g.history.at(-1)
+              : g.history.find((h) => h.id === c.history);
+          if (entry) entry.before = this.parts.snapshot(entry.id);
+          await loadDecision(g, c);
+        }
+        const summary = rite
+          ? riteAction(g, viewer, c, now)
+          : execute(g, viewer, c, now);
+        requireThat(summary !== null, 'Choose a Rite action.');
+        if (c.action === 'start') await prepareProgression(g);
+        if (c.preview) {
+          if (id)
+            this.remember(actor.id, {
+              type: 'ack',
+              id,
+              ok: true,
+              summary,
+              version,
+            });
+          return { summary, version };
+        }
+        // Preparing bank puzzles here avoids generators and writes on GET.
+        tickRite(g, now);
+        await this.commit(
+          g,
+          actor,
+          c.action,
+          now,
+          undefined,
+          id,
+          id
+            ? {
+                seat: actor.id,
+                ack: {
+                  type: 'ack',
+                  id,
+                  ok: true,
+                  summary,
+                  version: version + 1,
+                },
+              }
+            : undefined,
+        );
+        return rite
+          ? {
+              code,
+              me: viewer.id,
+              rite: riteView(g, viewer, now),
+              version: this.meta!.version,
+              serverNow: now,
+              summary,
+            }
+          : {
+              summary,
+              game: await tableView(
+                g,
+                viewer,
+                this.meta!.version,
+                now,
+                !!g.sandbox && actor.host,
+                actor.id,
+                c.compactRecaps === true,
+              ),
+            };
+      } catch (error) {
+        // A persisted success survives projection/effect failures. Retrying
+        // flushes those intents before returning the receipt, never executes twice.
+        if (!id) {
+          if (
+            error instanceof Error &&
+            error.message === 'The table changed. Review this action again.'
+          )
+            return { error: error.message, status: 409 };
+          throw error;
+        }
+        if (this.meta!.receipts?.[actor.id]?.some((ack) => ack.id === id))
+          throw error;
+        const response = errorResponse(error);
+        const body = (await response.json()) as { error: string };
+        const ack: ActionAck = {
+          type: 'ack',
+          id,
+          ok: false,
+          error: body.error,
+          status:
+            body.error === 'The table changed. Review this action again.'
+              ? 409
+              : response.status,
+        };
+        this.remember(actor.id, ack);
+        return { error: ack.error, status: ack.status };
+      }
     });
+  }
+  private remember(seat: string, ack: ActionAck) {
+    this.meta!.receipts = {
+      ...this.meta!.receipts,
+      [seat]: [...(this.meta!.receipts?.[seat] ?? []), ack].slice(-100),
+    };
+    this.parts.save(this.game!, this.meta!);
+  }
+  private async actionReply(
+    code: string,
+    actor: Actor,
+    c: Command,
+    rite: boolean,
+    ack: ActionAck,
+  ) {
+    if (!ack.ok) return { error: ack.error, status: ack.status ?? 400 };
+    if (c.preview) return { summary: ack.summary, version: ack.version };
+    const now = Date.now(),
+      viewer = this.viewer(this.game!, actor, c.pov);
+    return rite
+      ? {
+          code,
+          me: viewer.id,
+          rite: riteView(this.game!, viewer, now),
+          version: this.meta!.version,
+          serverNow: now,
+          summary: ack.summary,
+        }
+      : {
+          summary: ack.summary,
+          game: await tableView(
+            this.game!,
+            viewer,
+            this.meta!.version,
+            now,
+            !!this.game!.sandbox && actor.host,
+            actor.id,
+            c.compactRecaps === true,
+          ),
+        };
   }
   join(
     code: string,
@@ -614,6 +745,7 @@ export class GameTable extends DurableObject {
         const sandboxHost = !!game.sandbox && actor.host;
         this.ctx.acceptWebSocket(server, [actor.id]);
         server.serializeAttachment({
+          code,
           actor,
           viewer,
           sandboxHost,
@@ -640,6 +772,7 @@ export class GameTable extends DurableObject {
           JSON.stringify({ type: 'view', version, serverNow: now, data }),
         );
         server.serializeAttachment({
+          code,
           actor,
           viewer,
           sandboxHost,
@@ -651,9 +784,79 @@ export class GameTable extends DurableObject {
       }
     });
   }
-  webSocketMessage(socket: WebSocket, message: string | ArrayBuffer) {
-    if (message === 'ping') socket.send('pong');
-    else socket.close(1008, 'Use HTTP for table actions.');
+  async webSocketMessage(socket: WebSocket, message: string | ArrayBuffer) {
+    if (message === 'ping') {
+      socket.send('pong');
+      return;
+    }
+    let id: string | undefined;
+    try {
+      requireThat(
+        typeof message === 'string' && message.length < 20000,
+        'Request is too large.',
+      );
+      const frame = JSON.parse(message as string);
+      requireThat(
+        frame.type === 'action' && actionID(frame.id),
+        'Choose an action.',
+      );
+      id = frame.id;
+      const seat = socket.deserializeAttachment() as SocketSeat;
+      await limited(
+        new Request('https://table.internal/action', {
+          headers: { 'cf-connecting-ip': seat.actor.credentialHash! },
+        }),
+        'table-action',
+        600,
+      );
+      const command = {
+        ...normalizeCommand(frame.command),
+        requestId: id,
+        compactRecaps: true,
+        pov: seat.sandboxHost ? seat.viewer.id : undefined,
+      };
+      const result = await this.action(
+        seat.code,
+        seat.actor,
+        command,
+        command.action === 'configureRite' || command.action.startsWith('rite'),
+      );
+      const failed = 'error' in result && !!result.error;
+      socket.send(
+        JSON.stringify({
+          type: 'ack',
+          id,
+          ok: !failed,
+          error: 'error' in result ? result.error : undefined,
+          status: 'status' in result ? result.status : undefined,
+          summary: 'summary' in result ? result.summary : undefined,
+          data: result,
+          serverNow: Date.now(),
+          version:
+            'game' in result
+              ? result.game?.version
+              : 'version' in result
+                ? result.version
+                : this.meta!.version,
+        }),
+      );
+    } catch (error) {
+      if (!id) {
+        socket.close(1008, 'Invalid table message.');
+        return;
+      }
+      const response = errorResponse(error);
+      const body = (await response.json()) as { error: string };
+      socket.send(
+        JSON.stringify({
+          type: 'ack',
+          id,
+          ok: false,
+          ...body,
+          status: response.status,
+        }),
+      );
+    }
   }
   webSocketClose(socket: WebSocket) {
     socket.close(1000, 'Connection closed.');

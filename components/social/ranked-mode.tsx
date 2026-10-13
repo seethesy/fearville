@@ -1,4 +1,5 @@
 'use client';
+import { useTableActions } from '@/hooks/use-table-actions';
 import { useState } from 'react';
 import type { GameView } from '@/lib/game/view';
 
@@ -9,13 +10,14 @@ export function RankedMode({
   game: GameView;
   refresh: () => Promise<void>;
 }) {
+  const actionFetch = useTableActions();
   const [busy, setBusy] = useState(false),
     [error, setError] = useState('');
   async function choose(ranked: boolean) {
     setBusy(true);
     setError('');
     try {
-      const r = await fetch('/api/game', {
+      const r = await actionFetch('/api/game', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

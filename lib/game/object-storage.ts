@@ -6,6 +6,7 @@ import {
 } from './parts.ts';
 import { savedGameValue } from './saved-state.ts';
 import type { Game } from './types.ts';
+import type { ActionAck } from './socket-protocol.ts';
 
 export type TableMeta = {
   code: string;
@@ -13,6 +14,7 @@ export type TableMeta = {
   created: number;
   retainAt: number;
   timerThrough?: number;
+  receipts?: Record<string, Omit<ActionAck, 'data' | 'serverNow'>[]>;
   projection?: {
     id: string;
     version: number;

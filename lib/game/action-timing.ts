@@ -1,7 +1,11 @@
 export type ActionTiming = { id: string; started: number; duration?: number };
 export async function timedActionFetch(input: string, init: RequestInit) {
   const started = performance.now(),
-    id = crypto.randomUUID();
+    id =
+      typeof init.body === 'string' &&
+      typeof JSON.parse(init.body).requestId === 'string'
+        ? (JSON.parse(init.body).requestId as string)
+        : crypto.randomUUID();
   const announce = (detail: ActionTiming) =>
     window.dispatchEvent(
       new CustomEvent('fearville:action-timing', { detail }),

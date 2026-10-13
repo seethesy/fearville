@@ -1,4 +1,5 @@
 'use client';
+import { useTableActions } from '@/hooks/use-table-actions';
 import { GlossaryText } from '@/components/glossary-text';
 import { useEffect, useState } from 'react';
 import { Check, X } from 'lucide-react';
@@ -28,6 +29,7 @@ export function TableNightChoice({
   prompt: NonNullable<GameView['nightChoice']>;
   refresh: () => Promise<void>;
 }) {
+  const actionFetch = useTableActions();
   const [open, setOpen] = useState(!prompt.choice);
   const [guesses, setGuesses] = useState<
     Record<string, { role: string; confidence: string }>
@@ -98,7 +100,7 @@ export function TableNightChoice({
     setBusy(true);
     setError('');
     try {
-      const r = await fetch('/api/game', {
+      const r = await actionFetch('/api/game', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

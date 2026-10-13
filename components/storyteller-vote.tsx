@@ -1,4 +1,5 @@
 'use client';
+import { useTableActions } from '@/hooks/use-table-actions';
 import { useState } from 'react';
 import { VoteChoices } from './vote-choices';
 export function StorytellerVote({
@@ -18,6 +19,7 @@ export function StorytellerVote({
   completed: boolean;
   refresh: () => Promise<void>;
 }) {
+  const actionFetch = useTableActions();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   return (
@@ -30,7 +32,7 @@ export function StorytellerVote({
           setBusy(true);
           setError('');
           try {
-            const r = await fetch('/api/game', {
+            const r = await actionFetch('/api/game', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({

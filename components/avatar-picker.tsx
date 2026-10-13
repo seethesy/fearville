@@ -1,4 +1,5 @@
 'use client';
+import { useTableActions } from '@/hooks/use-table-actions';
 import { useState } from 'react';
 import { AVATARS, defaultAvatar } from '@/lib/game/avatars';
 import type { GameView } from '@/lib/game/view';
@@ -49,6 +50,7 @@ export function AvatarPicker({
   refresh: () => Promise<void>;
 }) {
   const me = game.players.find((p) => p.id === game.me);
+  const actionFetch = useTableActions();
   const [choice, setChoice] = useState<string | null>(null);
   const [effect, setEffect] = useState<DeathEffectId | null>(null);
   const [busy, setBusy] = useState(false);
@@ -80,7 +82,7 @@ export function AvatarPicker({
     setError('');
     setNotice('');
     try {
-      const response = await fetch('/api/game', {
+      const response = await actionFetch('/api/game', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

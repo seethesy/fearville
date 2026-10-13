@@ -586,7 +586,7 @@ export function riteAction(
     s.state.submissions[actor.id] = structuredClone(c.solution);
     return 'Your submission was recorded.';
   }
-  if (c.action === 'riteRitualPerform') {
+  if (c.action === 'riteRitualPerform' || c.action === 'riteRitualPick') {
     check(s.state.type === 'ritual', failure);
     const ritual = s.state.rituals[actor.id];
     check(
@@ -597,6 +597,7 @@ export function riteAction(
       failure,
     );
     ritual.altar = structuredClone(c.altar);
+    if (c.action === 'riteRitualPick') return 'Your altar was saved.';
     const ok = ritual.target.every((t) =>
       ritual.altar.some((a) => a.control === t.control && a.value === t.value),
     );
@@ -650,7 +651,7 @@ export function riteAction(
     state.solved = boardSolved(next);
     state.distance =
       solveBoard(next, 1500, performance.now() + 4)?.length ?? null;
-    recordMove(
+    nextTurn(
       s,
       now,
       'move',
