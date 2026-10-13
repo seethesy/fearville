@@ -167,10 +167,15 @@ try {
       (f) => f.type === 'view' && f.version === version,
     );
     assert.equal(frame.cause, 'timing-public');
-    assert.deepEqual(frame.data, JSON.parse(JSON.stringify({
-      ...view(stored, actors[i], version, frame.serverNow),
-      blockedChatSenders: [],
-    })));
+    assert.deepEqual(
+      frame.data,
+      JSON.parse(
+        JSON.stringify({
+          ...view(stored, actors[i], version, frame.serverNow),
+          blockedChatSenders: [],
+        }),
+      ),
+    );
     if (i > 0)
       for (const other of game.players.filter((p) => p.id !== actors[i].id)) {
         const content = JSON.stringify(frame.data);
