@@ -1393,7 +1393,11 @@ export default function Table() {
                       ))}
                   </div>
                 </section>
-                <TableHistory key={`${game.code}:${game.me}:${game.gameStartedAt}`} game={game} open={open} />
+                <TableHistory
+                  key={`${game.code}:${game.me}:${game.gameStartedAt}`}
+                  game={game}
+                  open={open}
+                />
               </div>
             </TabsContent>
           )}

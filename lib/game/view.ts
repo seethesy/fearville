@@ -87,9 +87,27 @@ export function controls(g: Game, a: Actor): Control[] {
     description: string,
     fields: Field[] = [],
     danger = false,
-  ) => result.push({ action, title, description, fields: a.host && action !== 'edit' && !fields.some((f) => f.key === 'phaseToken')
-    ? [...fields, { key: 'phaseToken', label: '', type: 'hidden', value: `${g.day}:${g.night}:${g.phase}` }]
-    : fields, danger });
+  ) =>
+    result.push({
+      action,
+      title,
+      description,
+      fields:
+        a.host &&
+        action !== 'edit' &&
+        !fields.some((f) => f.key === 'phaseToken')
+          ? [
+              ...fields,
+              {
+                key: 'phaseToken',
+                label: '',
+                type: 'hidden',
+                value: `${g.day}:${g.night}:${g.phase}`,
+              },
+            ]
+          : fields,
+      danger,
+    });
   if (!a.host && g.phase === 'lobby') {
     const me = g.players.find((p) => p.id === a.id);
     if (me?.seat)
@@ -169,11 +187,22 @@ export function controls(g: Game, a: Actor): Control[] {
           'Change role distribution',
           'Set the number of characters in each group. The totals are shown to every player. Counts must add up to the number of players.',
           TEAM_ORDER.filter((team) => SR.some((r) => r.team === team)).map(
-            (team) => num(team, TEAM_NAMES[team], distribution[team], 0, g.players.length),
+            (team) =>
+              num(
+                team,
+                TEAM_NAMES[team],
+                distribution[team],
+                0,
+                g.players.length,
+              ),
           ),
         );
         if (g.roleDistribution)
-          add('resetRoleDistribution', 'Use standard distribution', 'Restore the standard role counts for this script and player count.');
+          add(
+            'resetRoleDistribution',
+            'Use standard distribution',
+            'Restore the standard role counts for this script and player count.',
+          );
       }
     }
     if (g.phase === 'lobby') {
@@ -679,7 +708,14 @@ export function controls(g: Game, a: Actor): Control[] {
         'undo',
         'Undo last decision',
         'Restore the preceding game state. Messages remain; any active timer pauses.',
-        [{ key: 'history', label: '', type: 'hidden', value: g.history.at(-1)!.id }],
+        [
+          {
+            key: 'history',
+            label: '',
+            type: 'hidden',
+            value: g.history.at(-1)!.id,
+          },
+        ],
         true,
       );
       add(
@@ -827,22 +863,67 @@ export function view(
             task: currentTask.key,
             playerId: actingPlayer?.id ?? '',
             playerName: actingPlayer?.name ?? '',
-            impaired: !!actingPlayer && (!actingPlayer.alive || !healthy(actingPlayer)),
+            impaired:
+              !!actingPlayer && (!actingPlayer.alive || !healthy(actingPlayer)),
             ability:
               role(currentTask.role)?.description ??
               (currentTask.role === 'nightmareRuling'
                 ? 'Privately resolve the Nightmare’s requested redirect before the haunted ability lands.'
                 : ''),
-            statuses: actingPlayer && actingPlayer.id !== ST ? [
-              ...(isHof(g) ? [{ key: 'feared', name: 'Feared', active: !!actingPlayer.feared || !!actingPlayer.poisoned }] : []),
-              { key: 'drunk', name: 'Drunk', active: !!actingPlayer.drunk || actingPlayer.role === 'drunk', locked: actingPlayer.role === 'drunk' },
-              { key: 'protected', name: 'Protected', active: !!actingPlayer.protected },
-              ...(isMoon(g) ? [{ key: 'marked', name: 'Marked', active: !!actingPlayer.marked }] : []),
-              ...(isMoon(g) && g.hms?.nightmare ? [
-                { key: 'haunted', name: 'Haunted', active: g.hms.nightmare.bound === actingPlayer.id },
-                ...(g.hms.nightmare.bound === actingPlayer.id ? [{ key: 'redirected', name: 'Redirected', active: !!g.hms.nightmareRedirectTarget }] : []),
-              ] : []),
-            ] : [],
+            statuses:
+              actingPlayer && actingPlayer.id !== ST
+                ? [
+                    ...(isHof(g)
+                      ? [
+                          {
+                            key: 'feared',
+                            name: 'Feared',
+                            active:
+                              !!actingPlayer.feared || !!actingPlayer.poisoned,
+                          },
+                        ]
+                      : []),
+                    {
+                      key: 'drunk',
+                      name: 'Drunk',
+                      active:
+                        !!actingPlayer.drunk || actingPlayer.role === 'drunk',
+                      locked: actingPlayer.role === 'drunk',
+                    },
+                    {
+                      key: 'protected',
+                      name: 'Protected',
+                      active: !!actingPlayer.protected,
+                    },
+                    ...(isMoon(g)
+                      ? [
+                          {
+                            key: 'marked',
+                            name: 'Marked',
+                            active: !!actingPlayer.marked,
+                          },
+                        ]
+                      : []),
+                    ...(isMoon(g) && g.hms?.nightmare
+                      ? [
+                          {
+                            key: 'haunted',
+                            name: 'Haunted',
+                            active: g.hms.nightmare.bound === actingPlayer.id,
+                          },
+                          ...(g.hms.nightmare.bound === actingPlayer.id
+                            ? [
+                                {
+                                  key: 'redirected',
+                                  name: 'Redirected',
+                                  active: !!g.hms.nightmareRedirectTarget,
+                                },
+                              ]
+                            : []),
+                        ]
+                      : []),
+                  ]
+                : [],
             choice: g.nightChoices?.[currentTask.key] ?? null,
           }
         : null,
