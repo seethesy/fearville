@@ -1,5 +1,5 @@
 'use client';
-import { useTableActions } from '@/hooks/use-table-actions';
+import { useTableActions, useTableOnline } from '@/hooks/use-table-actions';
 import { GlossaryText } from '@/components/glossary-text';
 import { useState } from 'react';
 import {
@@ -19,10 +19,12 @@ export function RolePicker({
   refresh: () => Promise<void>;
 }) {
   const actionFetch = useTableActions();
+  const online = useTableOnline();
   const [selected, setSelected] = useState<string[]>(() =>
     game.players.map((p) => p.role).filter((r): r is string => !!r),
   );
-  const [busy, setBusy] = useState(false);
+  const [pendingAction, setBusy] = useState(false);
+  const busy = pendingAction || !online;
   const [error, setError] = useState('');
   const counts = game.roleDistribution;
   const ROLES = scriptRoles(game.script);

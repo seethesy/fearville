@@ -28,7 +28,7 @@ import {
 } from './art';
 import { errorCue, playCue } from '@/components/hub/audio';
 import { haptic } from '@/lib/native/bridge';
-import { useTableActions } from '@/hooks/use-table-actions';
+import { useTableActions, useTableOnline } from '@/hooks/use-table-actions';
 import { optimisticPuzzle } from '@/lib/rite/optimistic';
 type Reply = {
   rite: RiteView;
@@ -49,6 +49,7 @@ export function NightRite({
   mode?: 'play' | 'setup';
 }) {
   const actionFetch = useTableActions();
+  const online = useTableOnline();
   const [prediction, setPrediction] = useState<RitePuzzleView | null>(null);
   const sending = useRef(false);
   const [reply, setReply] = useState<Reply>({
@@ -99,7 +100,7 @@ export function NightRite({
     setTimeout(() => setFlash(false), 400);
   }, []);
   const send: Send = async (action, payload = {}) => {
-    if (sending.current) return;
+    if (sending.current || !online) return;
     sending.current = true;
     setBusy(true);
     setError('');
@@ -196,7 +197,7 @@ export function NightRite({
                 config={r.config}
                 plans={r.plans}
                 send={send}
-                busy={busy}
+                busy={busy || !online}
               />
             )}
           {mode === 'play' && r.preparing && (
@@ -214,13 +215,13 @@ export function NightRite({
                   squad={s}
                   game={game}
                   send={send}
-                  busy={busy}
+                  busy={busy || !online}
                 />
               ))}
               {r.status === 'open' && game.phase === 'night' && (
                 <button
                   className="secondary"
-                  disabled={busy}
+                  disabled={busy || !online}
                   onClick={() => void send('riteForce')}
                 >
                   Close Rite now
@@ -278,25 +279,30 @@ export function NightRite({
                   <p className="rite-state">Your vigil’s puzzle is complete.</p>
                 )}
                 {own.type === 'board' && (
-                  <Escape puzzle={own} send={send} busy={busy} />
+                  <Escape puzzle={own} send={send} busy={busy || !online} />
                 )}
                 {own.type === 'lab' && (
                   <Laboratory
                     key={own.turn ?? own.vote?.id ?? own.phase}
                     puzzle={own}
                     send={send}
-                    busy={busy}
+                    busy={busy || !online}
                   />
                 )}
                 {own.type === 'grid' && (
-                  <Sphinx key={r.epoch} puzzle={own} send={send} busy={busy} />
+                  <Sphinx
+                    key={r.epoch}
+                    puzzle={own}
+                    send={send}
+                    busy={busy || !online}
+                  />
                 )}
                 {own.type === 'ritual' && (
                   <Divination
                     key={JSON.stringify(own.altar)}
                     puzzle={own}
                     send={send}
-                    busy={busy}
+                    busy={busy || !online}
                     name={(id) =>
                       game.players.find((p) => p.id === id)?.name ?? 'Player'
                     }

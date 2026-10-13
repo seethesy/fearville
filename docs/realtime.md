@@ -77,6 +77,16 @@ Sandbox shows request round-trip time and the arrival time of the matching
 push after send, using a request ID without including credentials in URLs.
 Friends, invites and presence polling is unchanged.
 
+Reconnect starts after socket close/error, browser visibility/online/focus,
+and native lifecycle resume. Retry delays grow from 250 ms to at most 5 s
+with jitter; resume and Retry replace even a socket that still reports OPEN.
+The client sends `hello` with `lastVersion`, receives a full authorized view
+and fresh `serverNow`, then resends pending actions in order using their
+original ids. Rejected stale actions remain visible in the initiating form.
+One second without a caught-up socket shows Reconnecting; fifteen seconds
+shows Offline and Retry. Server controls and Rite moves stay disabled during
+recovery. Reconnection reuses the existing HttpOnly seat cookie.
+
 Socket frames and the current web client defer archived chat/decision
 transcripts; opening a player's recap fetches that game's full detail through
 the authenticated table recap endpoint. This prevents past heavy-chat games

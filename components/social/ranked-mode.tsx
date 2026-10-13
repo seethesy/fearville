@@ -1,5 +1,5 @@
 'use client';
-import { useTableActions } from '@/hooks/use-table-actions';
+import { useTableActions, useTableOnline } from '@/hooks/use-table-actions';
 import { useState } from 'react';
 import type { GameView } from '@/lib/game/view';
 
@@ -11,8 +11,10 @@ export function RankedMode({
   refresh: () => Promise<void>;
 }) {
   const actionFetch = useTableActions();
-  const [busy, setBusy] = useState(false),
+  const online = useTableOnline();
+  const [pendingAction, setBusy] = useState(false),
     [error, setError] = useState('');
+  const busy = pendingAction || !online;
   async function choose(ranked: boolean) {
     setBusy(true);
     setError('');

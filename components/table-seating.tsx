@@ -1,5 +1,5 @@
 'use client';
-import { useTableActions } from '@/hooks/use-table-actions';
+import { useTableActions, useTableOnline } from '@/hooks/use-table-actions';
 import { useState } from 'react';
 import { PlayerAvatar } from './player-avatar';
 import { SeatChartZoom } from './seat-chart-zoom';
@@ -13,7 +13,9 @@ export function TableSeating({
   refresh: () => Promise<void>;
 }) {
   const actionFetch = useTableActions();
-  const [busy, setBusy] = useState(false);
+  const online = useTableOnline();
+  const [pendingAction, setBusy] = useState(false);
+  const busy = pendingAction || !online;
   const [error, setError] = useState('');
   const me = game.players.find((p) => p.id === game.me);
   const count = Math.max(
