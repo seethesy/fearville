@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Fearville</title>
+  <style>
+    :root { color-scheme: dark; }
+    body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #120d14; color: #eadfcf; font: 16px/1.5 system-ui, sans-serif; text-align: center; padding: 24px; box-sizing: border-box; }
+    h1 { font-family: Georgia, serif; font-weight: 400; letter-spacing: .04em; margin: 0 0 8px; }
+    p { color: #b7a99a; margin: 0 0 20px; }
+    button { font: inherit; padding: 12px 28px; border-radius: 999px; border: 1px solid #8a6d4a; background: #2a1d24; color: inherit; }
+    [hidden] { display: none; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Fearville</h1>
+    <p id="status">Lighting the lanterns…</p>
+    <button id="retry" hidden>Retry</button>
+  </main>
+  <script src="site.js"></script>
+  <script>
+    // Bundled offline/error page (server.errorPath). The WebView shows it
+    // whenever the hosted site fails to load. No plugins here: Android does
+    // not expose them to the error page, and none are needed.
+    const SITE = window.FEARVILLE_SITE || 'https://fearville.app/';
+    const status = document.getElementById('status');
+    const retry = document.getElementById('retry');
+    function show() {
+      status.textContent = 'Can\u2019t reach Fearville. Check your connection.';
+      retry.hidden = false;
+    }
+    function open() {
+      retry.hidden = true;
+      status.textContent = 'Lighting the lanterns\u2026';
+      location.replace(SITE);
+    }
+    retry.addEventListener('click', open);
+    window.addEventListener('online', open);
+    show();
+  </script>
+</body>
+</html>

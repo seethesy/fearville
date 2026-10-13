@@ -25,7 +25,7 @@ export async function GET(r: Request) {
     );
     url.search = new URLSearchParams({
       client_id: clientID(flow.provider),
-      redirect_uri: callbackURL(flow.provider),
+      redirect_uri: callbackURL(flow.provider, r),
       response_type: 'code',
       scope: flow.provider === 'google' ? 'openid email profile' : 'name email',
       state: ticket,

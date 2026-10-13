@@ -33,7 +33,9 @@ export function installCapacitorBridge() {
     secure = plugin('SecureStoragePlugin'),
     app = plugin('App'),
     network = plugin('Network'),
-    browser = plugin('Browser');
+    browser = plugin('Browser'),
+    // iOS only: ASWebAuthenticationSession (mobile/native/ios).
+    authSheet = plugin('FearvilleAuth');
   const emit = (detail: Record<string, unknown>) =>
     window.dispatchEvent(new CustomEvent('fearville:native', { detail }));
 
@@ -42,6 +44,12 @@ export function installCapacitorBridge() {
     (args: Record<string, unknown>) => Promise<unknown>
   > = {};
   const capabilities: string[] = [];
+  // Sign-in returns through fearville://signin?code=… (lib/accounts/callback.ts).
+  const emitSignin = (url: string) => {
+    const params = new URL(url.replace('fearville://', 'https://x/'))
+      .searchParams;
+    emit({ type: 'signin', code: params.get('code'), error: params.get('error') });
+  };
   if (haptics) {
     capabilities.push('haptics');
     methods['haptics.play'] = (a) =>
@@ -82,29 +90,34 @@ export function installCapacitorBridge() {
     app.addListener('appStateChange', (s) =>
       emit({ type: 'lifecycle', state: s.isActive ? 'resume' : 'pause' }),
     );
-    // Sign-in returns through fearville://signin?code=… (lib/accounts/callback.ts).
+    // Android: Custom Tabs hand fearville://signin?code=… back to the app.
     app.addListener('appUrlOpen', (e) => {
       const url = typeof e.url === 'string' ? e.url : '';
       if (!url.startsWith('fearville://signin')) return;
       void browser?.close?.().catch(() => {});
-      const params = new URL(url.replace('fearville://', 'https://x/'))
-        .searchParams;
-      emit({
-        type: 'signin',
-        code: params.get('code'),
-        error: params.get('error'),
-      });
+      emitSignin(url);
     });
   }
   network?.addListener?.('networkStatusChange', (s) =>
     emit({ type: 'lifecycle', state: s.connected ? 'online' : 'offline' }),
   );
-  if (browser) {
-    // Google refuses OAuth in embedded WebViews: open the flow in the system
-    // browser sheet (SFSafariViewController / Custom Tabs).
+  if (authSheet || browser) {
+    // Google refuses OAuth in embedded WebViews, so sign-in runs in the
+    // system's sign-in browser: ASWebAuthenticationSession on iOS, Custom
+    // Tabs on Android. Either way the result arrives as a 'signin' event.
     capabilities.push('auth');
-    methods['auth.open'] = (a) =>
-      browser.open({ url: a.url, presentationStyle: 'popover' });
+    methods['auth.open'] = async (a) => {
+      if (authSheet) {
+        const result = (await authSheet.start({ url: a.url })) as {
+          url?: string;
+          cancelled?: boolean;
+        };
+        if (result?.url) emitSignin(result.url);
+        return !result?.cancelled;
+      }
+      await browser!.open({ url: a.url });
+      return true;
+    };
   }
 
   w.FearvilleNative = {

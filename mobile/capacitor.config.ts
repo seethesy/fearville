@@ -1,8 +1,11 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
-// Option (b) from docs/mobile-shell-decision.md: a bundled start page
-// (www/index.html) navigates to the hosted site; only these hosts stay in
-// the WebView. Set FEARVILLE_URL to try another environment.
+// Option (a) from docs/mobile-shell-decision.md (approved): the WebView loads
+// the hosted, server-rendered site directly, so the site is the app origin and
+// every plugin is available to it. Links to any other host open in the system
+// browser. When the site can't load, the WebView shows the bundled
+// www/error.html (server.errorPath) with a Retry button.
+// Set FEARVILLE_URL to try another environment, then run `npm run sync`.
 const site = new URL(
   process.env.FEARVILLE_URL ?? 'https://staging.fearville.app',
 );
@@ -12,12 +15,10 @@ const config: CapacitorConfig = {
   appName: 'Fearville',
   webDir: 'www',
   server: {
-    allowNavigation: [site.hostname, 'fearville.app', 'staging.fearville.app'],
-    // Option (a) fallback if check 1 fails: uncomment to load the site as the
-    // app origin instead of navigating to it.
-    // url: site.origin,
+    url: site.origin,
+    errorPath: 'error.html',
   },
-  ios: { contentInset: 'never', scheme: 'Fearville' },
+  ios: { contentInset: 'never' },
   android: { allowMixedContent: false },
 };
 

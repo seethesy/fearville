@@ -1,32 +1,66 @@
-# Mobile shell spike (FEAR-93)
+# Mobile shell prototype (FEAR-93)
 
-Throwaway prototype for the checks in `docs/mobile-shell-decision.md`. Not built or run yet. The real shells come in FEAR-94 (iOS) and FEAR-95 (Android).
+Prototype for the checks in `docs/mobile-shell-decision.md`: Capacitor 8 loading the hosted site (`server.url`) with a bundled error page (`server.errorPath`). The real shells are built in FEAR-94 (iOS) and FEAR-95 (Android), starting from this folder.
 
-## Run it
-Needs Node 22. iOS needs a Mac with Xcode. Android needs Android Studio, which works on Windows.
+The staging site must include the adapter from this branch (`lib/native/capacitor.ts`, mounted by `components/native-shell.tsx`) and the exchange cookie change.
+
+## Android (Windows is fine)
+
+Needs Node 22 and Android Studio. Plug in a phone with USB debugging on, or use an emulator.
 
 ```sh
 cd mobile
-npm install            # then pin the installed versions in package.json
-npx cap add ios        # Mac only
+npm install
 npx cap add android
-npx cap sync
-npx cap open ios       # or: npx cap open android, then Run on a phone
+npm run sync            # writes www/site.js, copies config; FEARVILLE_URL=... to change site
+npx cap open android    # then Run ▶ on your phone
 ```
 
-Register the `fearville` URL scheme so sign-in can return to the app:
-- **iOS:** in Xcode → Info → URL Types, add `fearville`.
-- **Android:** add an intent filter for `fearville://signin` to `MainActivity` in `AndroidManifest.xml`.
+Before running, add the sign-in return intent to the `<activity>` in `android/app/src/main/AndroidManifest.xml`:
 
-The staging site must include the adapter from this branch (`lib/native/capacitor.ts`, mounted by `components/native-shell.tsx`).
+```xml
+<intent-filter>
+  <action android:name="android.intent.action.VIEW" />
+  <category android:name="android.intent.category.DEFAULT" />
+  <category android:name="android.intent.category.BROWSABLE" />
+  <data android:scheme="fearville" android:host="signin" />
+</intent-filter>
+```
+
+## iOS (Mac with Xcode; FEAR-94)
+
+```sh
+cd mobile
+npm install
+npx cap add ios
+npm run sync
+npx cap open ios
+```
+
+Then in Xcode:
+1. Add `native/ios/FearvilleAuthPlugin.swift` and `native/ios/FearvilleBridgeViewController.swift` to the **App** target.
+2. In `Main.storyboard`, set the Bridge View Controller's custom class to `FearvilleBridgeViewController`.
+3. You don't need a URL Type for `fearville`: `ASWebAuthenticationSession` catches the callback itself.
 
 ## Checks
-1. **Plugins after navigation:** the app opens staging. In Safari Web Inspector or `chrome://inspect`, `window.FearvilleNative.capabilities` lists `haptics`, `share`, `keepAwake`, `lifecycle`, `auth`, and `FearvilleNative.call('haptics.play', {kind: 'tap'})` buzzes. If it doesn't, switch to `server.url` in `capacitor.config.ts` and repeat.
-2. **Google sign-in:**
-   1. In the console, POST `/api/accounts/start` with a `nativeChallenge` (PKCE S256 of a verifier you keep).
-   2. Call `FearvilleNative.call('auth.open', {url})` with the returned URL and complete Google sign-in.
-   3. The app receives a `fearville:native` event `{type: 'signin', code}`.
-   4. POST `/api/accounts/exchange` with `{code, verifier}` and check that an `accountToken` comes back.
-3. **Offline:** enable airplane mode and launch. "Can't reach Fearville" and Retry appear. Turn the network back on, tap Retry, and staging loads.
 
-Record the results on FEAR-93.
+Open the WebView console: `chrome://inspect` on the PC for Android, Safari → Develop for iOS.
+
+1. **Plugins.** `FearvilleNative.capabilities` lists `haptics`, `share`, `keepAwake`, `lifecycle` and `auth`. `FearvilleNative.call('haptics.play', {kind: 'tap'})` buzzes.
+2. **Google sign-in.** Paste into the console:
+   ```js
+   const v = crypto.randomUUID() + crypto.randomUUID();
+   const d = new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(v)));
+   const c = btoa(String.fromCharCode(...d)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+   addEventListener('fearville:native', async (e) => {
+     if (e.detail.type !== 'signin') return;
+     const r = await fetch('/api/accounts/exchange', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code: e.detail.code, verifier: v }) });
+     console.log('exchange', r.status, (await (await fetch('/api/accounts')).json()).account);
+   });
+   const s = await (await fetch('/api/accounts/start', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ provider: 'google', nativeChallenge: c }) })).json();
+   FearvilleNative.call('auth.open', { url: s.url });
+   ```
+   Complete Google sign-in. The console should print `exchange 200` and your account. That shows the cookie signed the WebView in.
+3. **Offline.** Turn on airplane mode and launch the app. "Can't reach Fearville" and Retry appear. Turn the network back on and tap Retry: staging loads.
+
+Record results on FEAR-93 (Android) or FEAR-94 (iOS).

@@ -1,24 +1,25 @@
 {
   "name": "fearville-shell-spike",
   "private": true,
-  "description": "FEAR-93 throwaway prototype: Capacitor shell that loads the hosted Fearville site. Pin versions after the first install.",
+  "description": "FEAR-93 prototype: Capacitor shell that loads the hosted Fearville site (server.url + errorPath).",
   "scripts": {
-    "sync": "cap sync",
+    "site": "node scripts/write-site.mjs",
+    "sync": "node scripts/write-site.mjs && cap sync",
     "ios": "cap open ios",
     "android": "cap open android"
   },
   "dependencies": {
-    "@capacitor/android": "latest",
-    "@capacitor/app": "latest",
-    "@capacitor/browser": "latest",
-    "@capacitor/core": "latest",
-    "@capacitor/haptics": "latest",
-    "@capacitor/ios": "latest",
-    "@capacitor/network": "latest",
-    "@capacitor/share": "latest",
-    "@capacitor-community/keep-awake": "latest"
+    "@capacitor/android": "8.5.3",
+    "@capacitor/app": "8.1.2",
+    "@capacitor/browser": "8.0.5",
+    "@capacitor/core": "8.5.3",
+    "@capacitor/haptics": "8.0.2",
+    "@capacitor/ios": "8.5.3",
+    "@capacitor/network": "8.0.1",
+    "@capacitor/share": "8.0.3",
+    "@capacitor-community/keep-awake": "8.0.1"
   },
   "devDependencies": {
-    "@capacitor/cli": "latest"
+    "@capacitor/cli": "8.5.3"
   }
 }
