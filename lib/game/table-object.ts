@@ -120,39 +120,42 @@ export class GameTable extends DurableObject {
     // The D1 transaction may have committed immediately before an eviction.
     // Its durable operation id makes replay (including revocation) idempotent.
     try {
-    if (
-      indexed?.write_id !== projection.id &&
-      !(await saveD1(
-        this.game!,
-        projection.version,
-        projection.syncRanked,
-        projection.credentialHash,
-        projection.communication,
-        (guard, bindings) =>
-          projection.removed
-            ? ['members', 'account_seats'].map((name) =>
-                database()
-                  .prepare(
-                    `DELETE FROM ${name} WHERE code=? AND player=? AND ${guard}`,
-                  )
-                  .bind(this.meta!.code, projection.removed!, ...bindings),
-              )
-            : [],
-        projection.id,
-      ))
-    ) {
-      // A concurrent admin revocation wins. Never publish a rejected write.
-      await this.importD1(this.meta!.code, true);
-      throw Error(
-        'The table was updated by administration. Refresh before continuing.',
-      );
-    }
+      if (
+        indexed?.write_id !== projection.id &&
+        !(await saveD1(
+          this.game!,
+          projection.version,
+          projection.syncRanked,
+          projection.credentialHash,
+          projection.communication,
+          (guard, bindings) =>
+            projection.removed
+              ? ['members', 'account_seats'].map((name) =>
+                  database()
+                    .prepare(
+                      `DELETE FROM ${name} WHERE code=? AND player=? AND ${guard}`,
+                    )
+                    .bind(this.meta!.code, projection.removed!, ...bindings),
+                )
+              : [],
+          projection.id,
+        ))
+      ) {
+        // A concurrent admin revocation wins. Never publish a rejected write.
+        await this.importD1(this.meta!.code, true);
+        throw Error(
+          'The table was updated by administration. Refresh before continuing.',
+        );
+      }
     } catch (error) {
       // A competing table may acquire a ranked account after eligibility was
       // checked. This is a rejected start, not a transient projection outage:
       // discard its durable intent so it cannot start later on a retry.
-      if (error instanceof Error && error.message.includes('already playing another ranked game'))
-        await this.importD1(this.meta!.code,true);
+      if (
+        error instanceof Error &&
+        error.message.includes('already playing another ranked game')
+      )
+        await this.importD1(this.meta!.code, true);
       throw error;
     }
     delete this.meta!.projection;
