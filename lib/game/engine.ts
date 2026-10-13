@@ -47,7 +47,15 @@ import {
 } from './hms.ts';
 import { isHof, hofFinish, hofAnnounceCharges } from './hof.ts';
 import { savedGame } from './saved-state.ts';
-import { beginRiteNight, tickRite, riteReady, resolveRite, riteAction, riteSetupCheck } from '../rite/engine.ts';
+import {
+  beginRiteNight,
+  tickRite,
+  riteReady,
+  resolveRite,
+  riteAction,
+  riteSetupCheck,
+  riteDeadlines,
+} from '../rite/engine.ts';
 export function requireThat(ok: unknown, message: string): asserts ok {
   if (!ok) throw new Error(message);
 }
@@ -138,11 +146,24 @@ export function beginNight(g: Game, at: number) {
   hmsBeginNight(g);
   g.nightChoiceTasks = choiceTasks(g);
   beginRiteNight(g, at);
-  if(g.rite?.infoNight===g.night) {
-    for(const p of g.players.filter(p=>p.alive && !p.departed)) {
-      const target=g.players.find(q=>q.id===p.charge);
-      const text=target && (p.role==='executioner'||p.role==='guardian') ? `Your ${p.role==='guardian'?'ward':'execution target'} remains ${target.name}.` : g.hms?.constellation?.owner===p.id ? `Your Constellation remains ${g.hms.constellation.members.map(id=>nameOf(g,id)).join(', ')}. Its link ${g.hms.constellation.linked?'is active':'remains broken'}.` : '';
-      if(text) g.messages.push({id:uuid(),from:'host',to:p.id,text,at,kind:'info'});
+  if (g.rite?.infoNight === g.night) {
+    for (const p of g.players.filter((p) => p.alive && !p.departed)) {
+      const target = g.players.find((q) => q.id === p.charge);
+      const text =
+        target && (p.role === 'executioner' || p.role === 'guardian')
+          ? `Your ${p.role === 'guardian' ? 'ward' : 'execution target'} remains ${target.name}.`
+          : g.hms?.constellation?.owner === p.id
+            ? `Your Constellation remains ${g.hms.constellation.members.map((id) => nameOf(g, id)).join(', ')}. Its link ${g.hms.constellation.linked ? 'is active' : 'remains broken'}.`
+            : '';
+      if (text)
+        g.messages.push({
+          id: uuid(),
+          from: 'host',
+          to: p.id,
+          text,
+          at,
+          kind: 'info',
+        });
     }
   }
 }
@@ -319,6 +340,21 @@ export function tick(g: Game, now: number) {
   }
   return changed || riteChanged;
 }
+export function nextDeadline(g: Game, after = 0): number | null {
+  if (g.sandbox || g.phase === 'lobby' || g.phase === 'ended') return null;
+  const times = [g.deadline ?? 0, ...riteDeadlines(g)];
+  if (g.phase === 'night') {
+    times.push(g.nightChoiceDeadline ?? 0);
+    for (const task of g.nightChoiceTasks ?? [])
+      if (!task.done && !g.nightChoices?.[task.key])
+        times.push(nightChoiceDeadlineFor(g, task));
+  }
+  const future = times.filter(
+    (time) =>
+      Number.isFinite(time) && time > after && time < Number.MAX_SAFE_INTEGER,
+  );
+  return future.length ? Math.min(...future) : null;
+}
 function clean(x: unknown, max = 500) {
   return (
     typeof x === 'string' || typeof x === 'number' || typeof x === 'boolean'
@@ -347,10 +383,23 @@ function executeCommand(
     actor.host || g.players.some((p) => p.id === actor.id && !p.departed),
     'This seat is no longer available.',
   );
-  if (actor.host && typeof c.phaseToken === 'string' && !['edit', 'undo', 'rewind', 'chat'].includes(c.action))
-    requireThat(c.phaseToken === `${g.day}:${g.night}:${g.phase}`, 'The phase changed. Choose an action for the current phase.');
-  if(c.action === 'configureRite' || c.action.startsWith('rite')) {
-    if (['configureRite', 'riteForce', 'riteRedeal', 'ritePassTurn'].includes(c.action) && actor.host) snapshot(g, 'Night Rite: ' + c.action, now);
+  if (
+    actor.host &&
+    typeof c.phaseToken === 'string' &&
+    !['edit', 'undo', 'rewind', 'chat'].includes(c.action)
+  )
+    requireThat(
+      c.phaseToken === `${g.day}:${g.night}:${g.phase}`,
+      'The phase changed. Choose an action for the current phase.',
+    );
+  if (c.action === 'configureRite' || c.action.startsWith('rite')) {
+    if (
+      ['configureRite', 'riteForce', 'riteRedeal', 'ritePassTurn'].includes(
+        c.action,
+      ) &&
+      actor.host
+    )
+      snapshot(g, 'Night Rite: ' + c.action, now);
     return riteAction(g, actor, c, now)!;
   }
   const hostActions = [
@@ -529,11 +578,17 @@ function executeCommand(
   if (c.action === 'nightDefer') {
     requireThat(g.phase === 'night', 'It is not night.');
     if (c.night !== undefined)
-      requireThat(c.night === g.night, 'The night changed. Review this task again.');
+      requireThat(
+        c.night === g.night,
+        'The night changed. Review this task again.',
+      );
     const task = tasks(g).find((t) => !t.done);
     requireThat(task, 'No night task remains.');
     if (c.task !== undefined)
-      requireThat(c.task === task.key, 'The active night task changed. Review it again.');
+      requireThat(
+        c.task === task.key,
+        'The active night task changed. Review it again.',
+      );
     g.deferredNightTasks ??= [];
     requireThat(
       !g.deferredNightTasks.includes(task.key),
@@ -617,7 +672,10 @@ function executeCommand(
   }
   if (c.action === 'undo' || c.action === 'rewind') {
     if (c.action === 'undo' && c.history !== undefined)
-      requireThat(c.history === g.history.at(-1)?.id, 'A newer decision was made. Choose the decision to restore.');
+      requireThat(
+        c.history === g.history.at(-1)?.id,
+        'A newer decision was made. Choose the decision to restore.',
+      );
     const index =
       c.action === 'undo'
         ? g.history.length - 1
@@ -736,23 +794,47 @@ function executeCommand(
       return 'Role script updated.';
     }
     case 'setRoleDistribution': {
-      requireThat(g.phase === 'lobby', 'Change the distribution before starting the game.');
-      requireThat(!!standardCounts(g.script, g.players.length), `Join 5–${MAX_PLAYERS} players before setting the distribution.`);
+      requireThat(
+        g.phase === 'lobby',
+        'Change the distribution before starting the game.',
+      );
+      requireThat(
+        !!standardCounts(g.script, g.players.length),
+        `Join 5–${MAX_PLAYERS} players before setting the distribution.`,
+      );
       const distribution = {} as Record<Team, number>;
       for (const team of TEAM_ORDER) {
-        const count = team === 'traveler' && g.script === 'holyMoonStars' ? 0 : Number(c[team]);
-        requireThat(Number.isInteger(count) && count >= 0 && count <= g.players.length, `Choose a valid ${TEAM_NAMES[team]} count.`);
-        const available = scriptRoles(g.script).filter((r) => r.team === team).length;
-        requireThat(count <= available, `This script has only ${available} ${TEAM_NAMES[team]}.`);
+        const count =
+          team === 'traveler' && g.script === 'holyMoonStars'
+            ? 0
+            : Number(c[team]);
+        requireThat(
+          Number.isInteger(count) && count >= 0 && count <= g.players.length,
+          `Choose a valid ${TEAM_NAMES[team]} count.`,
+        );
+        const available = scriptRoles(g.script).filter(
+          (r) => r.team === team,
+        ).length;
+        requireThat(
+          count <= available,
+          `This script has only ${available} ${TEAM_NAMES[team]}.`,
+        );
         distribution[team] = count;
       }
-      requireThat(TEAM_ORDER.reduce((total, team) => total + distribution[team], 0) === g.players.length, 'Role counts must add up to the number of players.');
+      requireThat(
+        TEAM_ORDER.reduce((total, team) => total + distribution[team], 0) ===
+          g.players.length,
+        'Role counts must add up to the number of players.',
+      );
       g.roleDistribution = distribution;
       log(g, 'Updated the public role distribution.', now, true);
       return 'Role distribution updated for everyone.';
     }
     case 'resetRoleDistribution': {
-      requireThat(g.phase === 'lobby', 'Change the distribution before starting the game.');
+      requireThat(
+        g.phase === 'lobby',
+        'Change the distribution before starting the game.',
+      );
       delete g.roleDistribution;
       log(g, 'Restored the standard role distribution.', now, true);
       return 'Standard role distribution restored for everyone.';
@@ -778,7 +860,8 @@ function executeCommand(
         'Choose a character from this script.',
       );
       const previousRole = p.role;
-      if (previousRole === nextRole) return `${p.name} already has that character.`;
+      if (previousRole === nextRole)
+        return `${p.name} already has that character.`;
       const previousOwner = g.players.find(
         (q) => q.id !== p.id && q.role === nextRole,
       );
@@ -824,10 +907,16 @@ function executeCommand(
     case 'setPlayerStatus': {
       requireThat(g.phase === 'night', 'Change these states during the night.');
       if (c.night !== undefined)
-        requireThat(c.night === g.night, 'The night changed. Review this player state again.');
+        requireThat(
+          c.night === g.night,
+          'The night changed. Review this player state again.',
+        );
       const p = person(g, c.player);
       const status = clean(c.status);
-      requireThat(typeof c.active === 'boolean', 'Choose whether the state is active.');
+      requireThat(
+        typeof c.active === 'boolean',
+        'Choose whether the state is active.',
+      );
       const active = c.active;
       switch (status) {
         case 'feared':
@@ -836,7 +925,10 @@ function executeCommand(
           p.poisoned = false;
           break;
         case 'drunk':
-          requireThat(p.role !== 'drunk', 'Change the Drunk’s character to remove their drunkenness.');
+          requireThat(
+            p.role !== 'drunk',
+            'Change the Drunk’s character to remove their drunkenness.',
+          );
           p.drunk = active;
           break;
         case 'protected':
@@ -848,7 +940,10 @@ function executeCommand(
           break;
         case 'haunted': {
           const nightmare = g.hms?.nightmare;
-          requireThat(isMoon(g) && nightmare, 'There is no active Nightmare to bind.');
+          requireThat(
+            isMoon(g) && nightmare,
+            'There is no active Nightmare to bind.',
+          );
           if (active) {
             nightmare.bound = p.id;
             nightmare.used = false;
@@ -862,10 +957,16 @@ function executeCommand(
         }
         case 'redirected': {
           const nightmare = g.hms?.nightmare;
-          requireThat(isMoon(g) && nightmare?.bound === p.id, 'This player is not haunted.');
+          requireThat(
+            isMoon(g) && nightmare?.bound === p.id,
+            'This player is not haunted.',
+          );
           if (active) {
             const target = person(g, c.target);
-            requireThat(target.id !== p.id, 'Choose another player as the redirect target.');
+            requireThat(
+              target.id !== p.id,
+              'Choose another player as the redirect target.',
+            );
             g.hms!.nightmareRedirectTarget = target.id;
             nightmare.used = true;
           } else {
@@ -1047,20 +1148,29 @@ function executeCommand(
     }
     case 'pause':
       if (c.phaseToken !== undefined)
-        requireThat(c.phaseToken === `${g.day}:${g.night}:${g.phase}`, 'The phase changed. Review this timer again.');
+        requireThat(
+          c.phaseToken === `${g.day}:${g.night}:${g.phase}`,
+          'The phase changed. Review this timer again.',
+        );
       requireThat(g.deadline !== null, 'No running timer.');
       g.remaining = Math.max(0, Math.ceil((g.deadline - now) / 1000));
       g.deadline = null;
       return 'Pause the shared timer for everyone.';
     case 'resume':
       if (c.phaseToken !== undefined)
-        requireThat(c.phaseToken === `${g.day}:${g.night}:${g.phase}`, 'The phase changed. Review this timer again.');
+        requireThat(
+          c.phaseToken === `${g.day}:${g.night}:${g.phase}`,
+          'The phase changed. Review this timer again.',
+        );
       requireThat(g.deadline === null && g.remaining > 0, 'No paused timer.');
       g.deadline = now + g.remaining * 1000;
       return 'Resume the shared timer.';
     case 'extend':
       if (c.phaseToken !== undefined)
-        requireThat(c.phaseToken === `${g.day}:${g.night}:${g.phase}`, 'The phase changed. Review this timer again.');
+        requireThat(
+          c.phaseToken === `${g.day}:${g.night}:${g.phase}`,
+          'The phase changed. Review this timer again.',
+        );
       requireThat(g.timers[g.phase], 'This phase has no timer.');
       {
         const seconds = Number(c.seconds);
@@ -1131,11 +1241,17 @@ function executeCommand(
     case 'nightSkip': {
       requireThat(g.phase === 'night', 'It is not night.');
       if (c.night !== undefined)
-        requireThat(c.night === g.night, 'The night changed. Review this task again.');
+        requireThat(
+          c.night === g.night,
+          'The night changed. Review this task again.',
+        );
       const task = tasks(g).find((t) => !t.done);
       requireThat(task, 'All night tasks are complete.');
       if (c.task !== undefined)
-        requireThat(c.task === task.key, 'The active night task changed. Review it again.');
+        requireThat(
+          c.task === task.key,
+          'The active night task changed. Review it again.',
+        );
 
       requireNoPendingDeath(g);
       if (task.key === 'deaths')
@@ -1155,7 +1271,10 @@ function executeCommand(
     case 'night': {
       requireThat(g.phase === 'night', 'It is not night.');
       if (c.night !== undefined)
-        requireThat(c.night === g.night, 'The night changed. Review this task again.');
+        requireThat(
+          c.night === g.night,
+          'The night changed. Review this task again.',
+        );
       const t = tasks(g).find((t) => !t.done);
       requireThat(t && t.key === c.task, 'The active night task changed.');
       const choice = g.nightChoices?.[t.key];
@@ -1384,7 +1503,8 @@ export function execute(
   const day = g.day,
     night = g.night;
   const summary = executeCommand(g, actor, c, now);
-  if((c.action==='undo'||c.action==='rewind') && g.rite) g.rite.epoch=uuid();
+  if ((c.action === 'undo' || c.action === 'rewind') && g.rite)
+    g.rite.epoch = uuid();
   if (
     [
       'chat',

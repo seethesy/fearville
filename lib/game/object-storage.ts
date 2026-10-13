@@ -12,6 +12,7 @@ export type TableMeta = {
   version: number;
   created: number;
   retainAt: number;
+  timerThrough?: number;
   projection?: {
     id: string;
     version: number;

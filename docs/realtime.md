@@ -33,3 +33,21 @@ Finished account records survive table deletion.
 serialization. CI's HTTP suites use Miniflare with a SQLite Durable Object
 binding and exercise all existing game flows, 18-player load bursts,
 simultaneous votes and 19 accepted Rite/chat commands.
+
+Phase timers, night-choice expiry and optional Rite deadlines now use one
+alarm scheduled to the earliest pending deadline. GET does not tick or save.
+Alarm processing catches up expired phases and turns, commits and schedules
+the next deadline; a persisted clock watermark prevents repeatedly waking
+for a view-only expiry. Failed D1 synchronization also schedules a retry.
+
+Night Rite remains open through the night with manual turns by default, as
+requested for FEAR-86. Storytellers can enable timed mode in setup: the puzzle
+window defaults to 90 seconds after the character-task window, board/lab turns
+last five seconds and laboratory ballots expire after fifteen seconds.
+Sandbox tables remain untimed. Countdown displays use server deadlines and
+the measured server clock offset.
+
+The idle HTTP suite verifies advancement with no polling or sockets. Fake
+clock tests cover exact deadline boundaries and catch-up. Cloudflare alarm
+delivery is at least once; the 250 ms accuracy target needs measurement in
+staging and on phones and is not a guaranteed platform delivery SLA.

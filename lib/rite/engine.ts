@@ -103,6 +103,7 @@ export function validatePlans(
 }
 function configOf(value: unknown): RiteConfig {
   const c = { ...DEFAULT_CONFIG, ...(value as Partial<RiteConfig>) };
+  check(typeof c.timed === 'boolean', 'Choose valid Rite timing.');
   check(
     typeof c.enabled === 'boolean' && typeof c.notifyCompletion === 'boolean',
     'Choose valid Rite settings.',
@@ -131,6 +132,7 @@ function configOf(value: unknown): RiteConfig {
   );
   // Return an allowlist, so arbitrary input cannot persist secret/client fields.
   return {
+    timed: c.timed,
     enabled: c.enabled,
     patterns: c.patterns,
     opensNight: c.opensNight,
@@ -165,7 +167,7 @@ export function configureRite(g: Game, c: Command) {
     plans,
     squads: [],
     status: 'dormant',
-    timerless: true,
+    timerless: !config.timed || !!g.sandbox,
     resolvedNight: 0,
   };
   return 'Night Rite setup saved.';
@@ -221,9 +223,14 @@ export function beginRiteNight(g: Game, at: number) {
     r.squads = r.plans.map((p) => deal(g, p));
     r.status = 'open';
   }
-  r.timerless = true;
-  delete r.lockUntil;
-  delete r.windowEnd;
+  r.timerless = !r.config.timed || !!g.sandbox;
+  if (r.timerless) {
+    delete r.lockUntil;
+    delete r.windowEnd;
+  } else {
+    r.lockUntil = at + r.config.lockSeconds * 1000;
+    r.windowEnd = r.lockUntil + r.config.windowSeconds * 1000;
+  }
   for (const s of r.squads) {
     if (s.completeNight || (s.state.type !== 'board' && s.state.type !== 'lab'))
       continue;
@@ -234,8 +241,8 @@ export function beginRiteNight(g: Game, at: number) {
     s.state.turn = {
       order,
       cursor: 0,
-      start: at,
-      deadline: 0,
+      start: r.lockUntil ?? at,
+      deadline: r.timerless ? 0 : (r.lockUntil ?? at) + 5000,
       snapshots: {},
       log: [],
       token: uuid(),
@@ -258,7 +265,7 @@ function nextTurn(s: Squad, at: number, kind: string, detail?: string) {
   t.cursor = (t.cursor + 1) % t.order.length;
   t.token = uuid();
   t.start = at;
-  t.deadline = 0;
+  t.deadline = t.deadline > 0 ? at + 5000 : 0;
 }
 function recordMove(s: Squad, at: number, kind: string, detail: string) {
   const t = (s.state as BoardState | LabState).turn!;
@@ -281,7 +288,8 @@ function finishVote(s: Squad, at: number) {
       const last = state.history.pop();
       if (last) state.vials = last.before;
     }
-    state.distance = solveLab(state.vials, 1500, performance.now() + 4)?.length ?? null;
+    state.distance =
+      solveLab(state.vials, 1500, performance.now() + 4)?.length ?? null;
   }
   t.voteResult = { id: vote.id, passed };
   delete t.vote;
@@ -292,7 +300,12 @@ export function tickRite(g: Game, now: number) {
   let changed = false;
   // Existing sessions may still carry turn and window deadlines from the
   // former timed Rite. Migrate them once so a live puzzle reopens immediately.
-  if (r?.status === 'open' && g.phase === 'night' && !r.timerless) {
+  if (
+    r?.status === 'open' &&
+    g.phase === 'night' &&
+    !r.timerless &&
+    !r.config.timed
+  ) {
     r.timerless = true;
     delete r.lockUntil;
     delete r.windowEnd;
@@ -304,6 +317,46 @@ export function tickRite(g: Game, now: number) {
         }
       }
     changed = true;
+  }
+  if (
+    r?.status === 'open' &&
+    g.phase === 'night' &&
+    r.config.timed &&
+    !g.sandbox
+  ) {
+    const through = Math.min(now, r.windowEnd ?? now);
+    for (const squad of r.squads) {
+      if (
+        squad.completeNight ||
+        (squad.state.type !== 'board' && squad.state.type !== 'lab') ||
+        squad.state.solved
+      )
+        continue;
+      const turn = squad.state.turn;
+      if (!turn) continue;
+      if (
+        turn.vote &&
+        turn.vote.deadline > 0 &&
+        turn.vote.deadline <= through
+      ) {
+        finishVote(squad, turn.vote.deadline);
+        changed = true;
+      }
+      // A timed window is at most 300 seconds, so bounded catch-up covers all
+      // missed turns without a poll or an unbounded loop after an outage.
+      for (
+        let n = 0;
+        n < 100 && !turn.vote && turn.deadline > 0 && turn.deadline <= through;
+        n++
+      ) {
+        nextTurn(squad, turn.deadline, 'timeout');
+        changed = true;
+      }
+      if (turn.vote && r.windowEnd !== undefined && now >= r.windowEnd) {
+        finishVote(squad, r.windowEnd);
+        changed = true;
+      }
+    }
   }
   if (
     r?.config.enabled &&
@@ -320,7 +373,10 @@ export function tickRite(g: Game, now: number) {
     )) {
       const key = `${plan.id}:${plan.kind}:${plan.members.length}`;
       if (r.prepared[key]) continue;
-      const candidate = preparedPuzzle(plan.kind as 'board' | 'lab', `${r.seed}:${plan.id}`);
+      const candidate = preparedPuzzle(
+        plan.kind as 'board' | 'lab',
+        `${r.seed}:${plan.id}`,
+      );
       changed = true;
       r.prepared[key] = candidate;
       delete r.preparing[key];
@@ -333,7 +389,10 @@ export function tickRite(g: Game, now: number) {
             order: shuffle(s.members, rng(`${r.seed}:${s.id}:${g.night}`)),
             cursor: 0,
             start: now,
-            deadline: 0,
+            deadline:
+              r.timerless || g.sandbox
+                ? 0
+                : Math.max(now, r.lockUntil ?? now) + 5000,
             snapshots: {},
             log: [],
             token: uuid(),
@@ -345,10 +404,13 @@ export function tickRite(g: Game, now: number) {
   }
   return changed;
 }
-export function riteReady(g: Game, _now: number) {
+export function riteReady(g: Game, now: number) {
   const r = g.rite;
   if (!r?.config.enabled || r.status !== 'open') return true;
-  return !r.pendingRedeal?.length;
+  return (
+    !r.pendingRedeal?.length &&
+    (r.timerless || r.windowEnd === undefined || now >= r.windowEnd)
+  );
 }
 export function resolveRite(g: Game, now: number, force = false) {
   const r = g.rite;
@@ -428,15 +490,30 @@ export function riteAction(
   }
   const r = g.rite;
   check(r?.config.enabled, 'The Night Rite is disabled.');
-  if (c.action === 'riteRedeal' || c.action === 'riteForce' || c.action === 'ritePassTurn') {
+  if (
+    c.action === 'riteRedeal' ||
+    c.action === 'riteForce' ||
+    c.action === 'ritePassTurn'
+  ) {
     check(actor.host, 'Only the Storyteller can do that.');
     if (c.action === 'ritePassTurn') {
-      check(g.phase === 'night' && r.status === 'open' && r.windowEnd === undefined,
-        'No active Rite turn to pass.');
+      check(
+        g.phase === 'night' &&
+          r.status === 'open' &&
+          (r.windowEnd === undefined || now < r.windowEnd) &&
+          (r.lockUntil === undefined || now >= r.lockUntil),
+        'No active Rite turn to pass.',
+      );
       const squad = r.squads.find((item) => item.id === c.squad);
-      check(squad && !squad.completeNight && !r.pendingRedeal?.includes(squad.id) &&
-        (squad.state.type === 'board' || squad.state.type === 'lab') &&
-        squad.state.turn && !squad.state.solved, 'Choose an active vigil.');
+      check(
+        squad &&
+          !squad.completeNight &&
+          !r.pendingRedeal?.includes(squad.id) &&
+          (squad.state.type === 'board' || squad.state.type === 'lab') &&
+          squad.state.turn &&
+          !squad.state.solved,
+        'Choose an active vigil.',
+      );
       if (squad.state.turn.vote) finishVote(squad, now);
       else nextTurn(squad, now, 'hostPass');
       return 'The Storyteller passed this vigil’s turn.';
@@ -500,6 +577,7 @@ export function riteAction(
       r.status === 'open' &&
       !s.completeNight &&
       !r.pendingRedeal?.includes(s.id) &&
+      (r.lockUntil === undefined || now >= r.lockUntil) &&
       (r.windowEnd === undefined || now < r.windowEnd),
     failure,
   );
@@ -570,7 +648,8 @@ export function riteAction(
     check(next, failure);
     state.blocks = next;
     state.solved = boardSolved(next);
-    state.distance = solveBoard(next, 1500, performance.now() + 4)?.length ?? null;
+    state.distance =
+      solveBoard(next, 1500, performance.now() + 4)?.length ?? null;
     recordMove(
       s,
       now,
@@ -614,10 +693,36 @@ export function riteAction(
       id: uuid(),
       kind: c.kind as 'undo' | 'reset',
       caller: actor.id,
-      deadline: 0,
+      deadline: r.timerless || g.sandbox ? 0 : now + 15000,
       ballots: {},
     };
     return 'A vote has been called.';
   }
   throw Error(failure);
+}
+
+export function riteDeadlines(g: Game) {
+  const r = g.rite;
+  if (
+    g.sandbox ||
+    g.phase !== 'night' ||
+    !r?.config.enabled ||
+    r.status !== 'open' ||
+    r.timerless
+  )
+    return [];
+  const times: number[] = [r.lockUntil ?? 0, r.windowEnd ?? 0];
+  for (const squad of r.squads) {
+    if (
+      squad.completeNight ||
+      (squad.state.type !== 'board' && squad.state.type !== 'lab') ||
+      squad.state.solved
+    )
+      continue;
+    const t = squad.state.turn;
+    const deadline = t?.vote?.deadline ?? t?.deadline ?? 0;
+    if (r.windowEnd === undefined || deadline <= r.windowEnd)
+      times.push(deadline);
+  }
+  return times;
 }

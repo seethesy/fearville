@@ -6,6 +6,7 @@ export const PATTERNS = {
 } as const;
 export type Pattern = keyof typeof PATTERNS;
 export type RiteConfig = {
+  timed?: boolean;
   enabled: boolean;
   patterns: Pattern[];
   opensNight: number;
@@ -17,6 +18,7 @@ export type RiteConfig = {
   notifyCompletion: boolean;
 };
 export const DEFAULT_CONFIG: RiteConfig = {
+  timed: false,
   enabled: true,
   patterns: ['board', 'grid', 'ritual', 'lab'],
   opensNight: 2,

@@ -239,8 +239,13 @@ export default function Table() {
     inFlight.current?.controller.abort();
     inFlight.current = null;
   }, []);
+  const latestGame = useRef<GameView | null>(null);
   const applyGame = useCallback((incoming: GameView) => {
-    setGame((current) => newestView(current, incoming));
+    const accepted = newestView(latestGame.current, incoming);
+    if (accepted === latestGame.current) return;
+    latestGame.current = accepted;
+    setGame(accepted);
+    setOffset(accepted.serverNow - Date.now());
   }, []);
   useEffect(() => {
     const media = window.matchMedia('(max-width: 800px)');
@@ -273,7 +278,6 @@ export default function Table() {
             throw Error(d.error || 'Cannot connect to the table.');
           }
           applyGame(d);
-          setOffset(d.serverNow - Date.now());
           setOnline(true);
           setAuthError(false);
           setConnectionError('');

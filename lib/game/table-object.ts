@@ -3,7 +3,7 @@ import { database } from '@/db';
 import { checkSeatAccount } from '@/lib/admin/access';
 import { readD1, saveD1, loadDecision } from './store';
 import { inheritStored } from './part-store';
-import { execute, tick, snapshot, requireThat } from './engine';
+import { execute, tick, snapshot, requireThat, nextDeadline } from './engine';
 import { riteAction, tickRite } from '../rite/engine';
 import { tableView } from './visible-view';
 import { riteView } from '../rite/view';
@@ -101,7 +101,17 @@ export class GameTable extends DurableObject {
     return this.game!;
   }
   private async schedule() {
-    if (this.meta) await this.ctx.storage.setAlarm(this.meta.retainAt);
+    if (this.meta)
+      await this.ctx.storage.setAlarm(
+        Math.min(
+          this.meta.retainAt,
+          nextDeadline(this.game!, this.meta.timerThrough ?? 0) ??
+            this.meta.retainAt,
+          this.meta.projection || this.meta.effects
+            ? Date.now() + 2000
+            : this.meta.retainAt,
+        ),
+      );
   }
   private async destroy() {
     await this.ctx.storage.deleteAlarm();
@@ -237,6 +247,7 @@ export class GameTable extends DurableObject {
     this.parts.save(next, meta);
     this.game = next;
     this.meta = meta;
+    await this.schedule();
     await this.flushProjection();
     await this.flushEffects();
     await this.schedule();
@@ -244,11 +255,8 @@ export class GameTable extends DurableObject {
   read(code: string, actor?: Actor) {
     return this.queue.run(async () => {
       const current = await this.current(code, actor);
-      const next = structuredClone(current);
-      if (tick(next, Date.now()))
-        await this.commit(next, actor, 'tick', Date.now());
       return {
-        game: structuredClone(this.game!),
+        game: structuredClone(current),
         version: this.meta!.version,
         created: this.meta!.created,
       };
@@ -431,7 +439,19 @@ export class GameTable extends DurableObject {
           .bind(restored.code)
           .run();
         await this.destroy();
-      } else await this.schedule();
+      } else {
+        const now = Date.now(),
+          due = nextDeadline(this.game!, this.meta!.timerThrough ?? 0);
+        const next = structuredClone(this.game!);
+        const changed = tick(next, now);
+        this.meta!.timerThrough = now;
+        if (changed || (due !== null && due <= now))
+          await this.commit(next, undefined, 'alarm', now);
+        else {
+          this.parts.save(this.game!, this.meta!);
+          await this.schedule();
+        }
+      }
     });
   }
 }

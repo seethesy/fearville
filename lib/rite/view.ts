@@ -85,7 +85,7 @@ export function riteView(g: Game, a: Actor, now: number) {
     redealing: !!r.pendingRedeal?.includes(plan.id),
     status: r.status,
     epoch: r.epoch,
-    lockUntil: undefined,
+    lockUntil: g.phase === 'night' ? r.lockUntil : undefined,
     windowEnd: g.phase === 'night' ? r.windowEnd : undefined,
     squad: {
       id: plan.id,
@@ -105,18 +105,19 @@ export function riteView(g: Game, a: Actor, now: number) {
       ? 'locked'
       : g.phase !== 'night'
         ? 'day'
-        : r.windowEnd !== undefined && now >= r.windowEnd
+        : r.lockUntil !== undefined && now < r.lockUntil
+          ? 'lock'
+          : r.windowEnd !== undefined && now >= r.windowEnd
             ? 'locked'
             : 'wait';
   const puzzle: RitePuzzleView = { type: s.kind, phase };
+  puzzle.deadline = phase === 'lock' ? r.lockUntil : r.windowEnd;
   if (state.type === 'board' || state.type === 'lab') {
     const t = state.turn,
       current = t?.order[t.cursor % t.order.length] === a.id;
     const snapshot = t?.snapshots[a.id];
-    if (phase === 'wait' && state.solved)
-      phase = 'done';
-    else if (phase === 'wait')
-      phase = current && !t?.vote ? 'turn' : 'wait';
+    if (phase === 'wait' && state.solved) phase = 'done';
+    else if (phase === 'wait') phase = current && !t?.vote ? 'turn' : 'wait';
     puzzle.phase = phase;
     const board =
       g.phase !== 'night' || s.completeNight
@@ -136,12 +137,13 @@ export function riteView(g: Game, a: Actor, now: number) {
     }
     if (phase === 'turn' && t) {
       puzzle.turn = t.token;
+      if (t.deadline > 0) puzzle.deadline = t.deadline;
     }
     if (t?.vote)
       puzzle.vote = {
         id: t.vote.id,
         kind: t.vote.kind,
-        deadline: 0,
+        deadline: t.vote.deadline,
         canVote: a.id !== t.vote.caller,
         answered: Object.hasOwn(t.vote.ballots, a.id),
       };
