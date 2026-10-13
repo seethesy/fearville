@@ -1,0 +1,47 @@
+name: Cloudflare configuration validation
+on:
+  pull_request:
+    paths: ['wrangler.jsonc', 'vite.config.ts', 'scripts/*d1*', 'scripts/configure-cloudflare.mjs', '.github/workflows/cloudflare-validate.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  dry-run:
+    strategy:
+      fail-fast: false
+      matrix:
+        # Production secrets retain their required reviewer/protected-branch
+        # policy. PRs validate staging; dispatch from main validates both.
+        environment: ${{ fromJSON(github.event_name == 'pull_request' && '["staging"]' || '["staging","production"]') }}
+    environment: ${{ matrix.environment }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22.x
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Resolve target bindings (read only)
+        if: github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          D1_STAGING_DATABASE_NAME: ${{ vars.D1_STAGING_DATABASE_NAME }}
+          D1_PRODUCTION_DATABASE_NAME: ${{ vars.D1_PRODUCTION_DATABASE_NAME }}
+        run: node scripts/configure-cloudflare.mjs ${{ matrix.environment }}
+      - name: Save non-secret database bindings
+        if: github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository
+        uses: actions/upload-artifact@v4
+        with:
+          name: d1-bindings-${{ matrix.environment }}
+          path: work/d1-bindings.json
+          retention-days: 7
+      - run: npm run build
+        env:
+          CLOUDFLARE_ENV: ${{ matrix.environment }}
+      - name: Package Worker without deployment
+        run: npx wrangler deploy --env ${{ matrix.environment }} --dry-run
+      - name: Verify local D1 transfer
+        run: node tests/d1-transfer-integration.mjs

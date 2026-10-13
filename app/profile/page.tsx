@@ -5,6 +5,7 @@ import { useSectionTutorial } from '@/components/tutorials/provider';
 import { useEffect, useState } from 'react';
 import { HubShell } from '@/components/hub/shell';
 import { load, social, type PublicAccount } from '@/components/social/api';
+import { ReportDialog } from '@/components/social/report-dialog';
 import {
   Record,
   RecentGames,
@@ -65,6 +66,7 @@ export default function ProfilePage() {
       setBusy(false);
     }
   }
+  const [reporting, setReporting] = useState(false);
   const a = profile?.account;
   return (
     <HubShell active="Social" title="A face in the town.">
@@ -153,7 +155,24 @@ export default function ProfilePage() {
                   Block player
                 </button>
               )}
+              {profile.relation !== 'self' && a.handle && (
+                <button
+                  className="secondary"
+                  disabled={busy}
+                  onClick={() => setReporting(true)}
+                >
+                  Report player
+                </button>
+              )}
             </div>
+            {reporting && a.handle && (
+              <ReportDialog
+                open
+                onOpenChange={setReporting}
+                title={`Report @${a.handle}`}
+                target={{ kind: 'player', handle: a.handle }}
+              />
+            )}
             <AppLink className="quiet-link" href="/friends">
               ← Back to friends
             </AppLink>

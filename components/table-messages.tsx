@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from 'react';
 import { useMessagePreferences } from './message-preferences';
 import { role } from '@/lib/game/types';
 import type { GameView } from '@/lib/game/view';
+import { ReportDialog } from '@/components/social/report-dialog';
+import { useAccount } from '@/components/hub/account-context';
 
 export function TableMessages({
   game,
@@ -28,6 +30,11 @@ export function TableMessages({
   const feed = useRef<HTMLDivElement>(null);
   const nearBottom = useRef(true);
   const [thread, setThread] = useState<'host' | 'channel'>('host');
+  const [reporting, setReporting] = useState<{
+    id: string;
+    from: string;
+  } | null>(null);
+  const { state: account } = useAccount();
   const inChannel = !game.host && thread === 'channel' && !!game.channel;
   const to = game.host ? recipient : inChannel ? 'channel' : 'host';
   const player = game.players.find((p) => p.id === to);
@@ -275,13 +282,24 @@ export function TableMessages({
                             ? player?.name
                             : 'Storyteller'}
               </small>
-              <p>{m.kind === 'info' ? <GlossaryText text={m.text} /> : m.text}</p>
+              <p>
+                {m.kind === 'info' ? <GlossaryText text={m.text} /> : m.text}
+              </p>
               <time dateTime={new Date(m.at).toISOString()}>
                 {new Date(m.at).toLocaleTimeString([], {
                   hour: '2-digit',
                   minute: '2-digit',
                 })}
               </time>
+              {m.kind === 'chat' && m.from !== game.me && (
+                <button
+                  type="button"
+                  className="quiet-link message-report"
+                  onClick={() => setReporting({ id: m.id, from: m.from })}
+                >
+                  Report
+                </button>
+              )}
             </article>
           ))}
         </div>
@@ -350,6 +368,32 @@ export function TableMessages({
           )}
         </form>
       </section>
+      {reporting && (
+        <ReportDialog
+          open
+          onOpenChange={(open) => !open && setReporting(null)}
+          title="Report this message"
+          target={{ kind: 'chat', messageId: reporting.id }}
+          onBlock={
+            account?.account
+              ? async () => {
+                  const r = await fetch('/api/social', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      action: 'blockSeat',
+                      code: game.code,
+                      player: reporting.from,
+                    }),
+                  });
+                  const data = (await r.json()) as { error?: string };
+                  if (!r.ok) throw Error(data.error || 'Unable to block.');
+                  await refresh();
+                }
+              : undefined
+          }
+        />
+      )}
     </div>
   );
 }

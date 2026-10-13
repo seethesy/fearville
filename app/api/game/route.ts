@@ -10,6 +10,7 @@ import {
 } from '@/lib/game/store';
 import { tick, execute, requireThat } from '@/lib/game/engine';
 import { view } from '@/lib/game/view';
+import { withoutBlockedChat } from '@/lib/social/reports';
 import { canApplyLatest, canApplyUnchangedEdit } from '@/lib/game/concurrency';
 import { syncResult, syncMvp, voidResult } from '@/lib/social/results';
 import { prepareProgression } from '@/lib/social/start';
@@ -44,12 +45,16 @@ export async function GET(r: Request) {
           : null;
       const viewer = pov ? { id: pov.id, host: false } : actor;
       return json(
-        view(
-          game,
-          viewer,
-          version + Number(changed),
-          now,
-          !!game.sandbox && actor.host,
+        await withoutBlockedChat(
+          view(
+            game,
+            viewer,
+            version + Number(changed),
+            now,
+            !!game.sandbox && actor.host,
+          ),
+          code,
+          actor.id,
         ),
       );
     }
@@ -146,12 +151,16 @@ export async function POST(r: Request) {
         if (!saved) continue;
         return json({
           summary,
-          game: view(
-            saved.game,
-            actionActor,
-            saved.version,
-            now,
-            !!game.sandbox && actor.host,
+          game: await withoutBlockedChat(
+            view(
+              saved.game,
+              actionActor,
+              saved.version,
+              now,
+              !!game.sandbox && actor.host,
+            ),
+            code,
+            actor.id,
           ),
         });
       }
@@ -193,12 +202,16 @@ export async function POST(r: Request) {
         await syncMvp(game, version + 1);
       return json({
         summary,
-        game: view(
-          game,
-          actionActor,
-          version + 1,
-          now,
-          !!game.sandbox && actor.host,
+        game: await withoutBlockedChat(
+          view(
+            game,
+            actionActor,
+            version + 1,
+            now,
+            !!game.sandbox && actor.host,
+          ),
+          code,
+          actor.id,
         ),
       });
     }

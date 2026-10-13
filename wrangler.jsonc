@@ -1,0 +1,43 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "fearville-local",
+  "main": "vinext/server/fetch-handler",
+  "compatibility_date": "2026-05-15",
+  "compatibility_flags": ["nodejs_compat"],
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "site-creator-d1",
+      "database_id": "00000000-0000-4000-8000-000000000000",
+      "migrations_dir": "drizzle",
+    },
+  ],
+  "env": {
+    "staging": {
+      "name": "fearville-staging",
+      "workers_dev": false,
+      "routes": [{ "pattern": "staging.fearville.app", "custom_domain": true }],
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "fearville-staging",
+          "database_id": "bc2ceaef-1022-4e01-abfa-44a022ed52aa",
+          "migrations_dir": "drizzle",
+        },
+      ],
+    },
+    "production": {
+      "name": "fearville-production",
+      "workers_dev": false,
+      "routes": [{ "pattern": "fearville.app", "custom_domain": true }],
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "fearville-production",
+          "database_id": "ee5bb171-1470-433f-8610-4ed13f1a5a56",
+          "migrations_dir": "drizzle",
+        },
+      ],
+    },
+  },
+}

@@ -1,4 +1,5 @@
 import { database } from '@/db';
+import { deleteAccountData } from '@/lib/accounts/deletion';
 import {
   json,
   errorResponse,
@@ -17,7 +18,11 @@ import {
   revokeApple,
 } from '@/lib/accounts/service';
 import { random } from '@/lib/accounts/oidc';
-import { savePreferences, saveProfile, saveRoleTipsPreference } from '@/lib/accounts/profile';
+import {
+  savePreferences,
+  saveProfile,
+  saveRoleTipsPreference,
+} from '@/lib/accounts/profile';
 import { setHandle } from '@/lib/social/friends';
 export async function GET(r: Request) {
   try {
@@ -105,20 +110,7 @@ export async function POST(r: Request) {
       if (body.confirm !== 'DELETE')
         throw Error('Type DELETE to confirm account deletion.');
       await revokeApple(a.id);
-      await db.batch([
-        db
-          .prepare(
-            'DELETE FROM members WHERE EXISTS (SELECT 1 FROM account_seats a WHERE a.account=? AND a.code=members.code AND a.player=members.player)',
-          )
-          .bind(a.id),
-        db
-          .prepare(
-            'DELETE FROM sessions WHERE code IN (SELECT code FROM account_seats WHERE account=? AND host=1)',
-          )
-          .bind(a.id),
-        db.prepare('DELETE FROM oauth_flows WHERE account=?').bind(a.id),
-        db.prepare('DELETE FROM accounts WHERE id=?').bind(a.id),
-      ]);
+      await deleteAccountData(db, a.id);
     } else throw Error('Unknown account action.');
     const headers = new Headers({
       'Content-Type': 'application/json',
