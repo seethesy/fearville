@@ -47,7 +47,7 @@ import {
 } from './hms.ts';
 import { isHof, hofFinish, hofAnnounceCharges } from './hof.ts';
 import { savedGame } from './saved-state.ts';
-import { beginRiteNight, tickRite, riteReady, resolveRite, riteAction, riteSetupCheck } from '../rite/engine.ts';
+import { beginRiteNight, tickRite, riteReady, resolveRite, riteAction, riteSetupCheck, riteDeadlines } from '../rite/engine.ts';
 export function requireThat(ok: unknown, message: string): asserts ok {
   if (!ok) throw new Error(message);
 }
@@ -318,6 +318,17 @@ export function tick(g: Game, now: number) {
     }
   }
   return changed || riteChanged;
+}
+export function nextDeadline(g: Game, after = 0): number | null {
+  if (g.sandbox || g.phase === 'lobby' || g.phase === 'ended') return null;
+  const times = [g.deadline ?? 0, ...riteDeadlines(g)];
+  if (g.phase === 'night') {
+    times.push(g.nightChoiceDeadline ?? 0);
+    for (const task of g.nightChoiceTasks ?? [])
+      if (!task.done && !g.nightChoices?.[task.key]) times.push(nightChoiceDeadlineFor(g,task));
+  }
+  const future = times.filter((time) => Number.isFinite(time) && time > after && time < Number.MAX_SAFE_INTEGER);
+  return future.length ? Math.min(...future) : null;
 }
 function clean(x: unknown, max = 500) {
   return (
