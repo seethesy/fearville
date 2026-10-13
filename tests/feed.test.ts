@@ -51,17 +51,28 @@ void test('live feeds are bounded and older pages preserve privacy and order', (
     200,
   );
 });
-void test('compact live recaps defer transcripts while full HTTP details remain available',()=> {
-  const g=newGame('123456','Host');g.gameStartedAt=1;
-  g.players=[newPlayer('Sam',1)];
-  for(let i=0;i<500;i++) g.messages.push({id:`m${i}`,to:'all',from:'host',kind:'chat',at:i,text:'Chat'});
-  setPhase(g,'ended',1000);g.winner='Good';
-  const actor={id:'host',host:true};
-  const full=view(g,actor,1,1000),compact=view(g,actor,1,1000,false,true);
-  assert.equal(full.recaps[0].messages?.length,500);
-  assert.equal(compact.messages.length,200);
-  assert.deepEqual(compact.recaps[0].messages,[]);
-  assert.deepEqual(compact.recaps[0].decisions,[]);
-  assert.equal(compact.recaps[0].detailsDeferred,true);
-  assert.deepEqual(compact.recaps[0].players,full.recaps[0].players);
+void test('compact live recaps defer transcripts while full HTTP details remain available', () => {
+  const g = newGame('123456', 'Host');
+  g.gameStartedAt = 1;
+  g.players = [newPlayer('Sam', 1)];
+  for (let i = 0; i < 500; i++)
+    g.messages.push({
+      id: `m${i}`,
+      to: 'all',
+      from: 'host',
+      kind: 'chat',
+      at: i,
+      text: 'Chat',
+    });
+  setPhase(g, 'ended', 1000);
+  g.winner = 'Good';
+  const actor = { id: 'host', host: true };
+  const full = view(g, actor, 1, 1000),
+    compact = view(g, actor, 1, 1000, false, true);
+  assert.equal(full.recaps[0].messages?.length, 500);
+  assert.equal(compact.messages.length, 200);
+  assert.deepEqual(compact.recaps[0].messages, []);
+  assert.deepEqual(compact.recaps[0].decisions, []);
+  assert.equal(compact.recaps[0].detailsDeferred, true);
+  assert.deepEqual(compact.recaps[0].players, full.recaps[0].players);
 });

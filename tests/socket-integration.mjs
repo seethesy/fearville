@@ -228,18 +228,37 @@ try {
     { headers: { Upgrade: 'websocket', Authorization: 'Bearer ' + tokens[0] } },
   );
   assert.equal(denied.status, 401);
-  const endedRow=await db.prepare('SELECT state,(SELECT json_group_array(json_array(part,state)) FROM session_parts WHERE code=s.code) AS parts FROM sessions s WHERE code=?').bind(game.code).first();
-  const ended=assembleGame(endedRow.state,JSON.parse(endedRow.parts)).game;
-  ended.phase='ended';ended.winner='Good';ended.gameEndedAt=Date.now();
-  await db.prepare('UPDATE sessions SET state=?,version=version+1 WHERE code=?').bind(JSON.stringify(ended),game.code).run();
-  const compactResponse=await worker.dispatchFetch('http://localhost/api/game?compactRecaps=1',{headers:{Authorization:'Bearer '+tokens[0]}});
-  const compact=await compactResponse.json();assert.equal(compactResponse.status,200);
-  assert.equal(compact.recaps[0].detailsDeferred,true);
-  assert.deepEqual(compact.recaps[0].messages,[]);
-  const detailResponse=await worker.dispatchFetch('http://localhost/api/table/recap?id='+encodeURIComponent(compact.recaps[0].id),{headers:{Authorization:'Bearer '+tokens[0]}});
-  const details=await detailResponse.json();assert.equal(detailResponse.status,200);
-  assert.equal(details.recap.messages.length,ended.messages.length);
-  assert.equal(details.recap.detailsDeferred,undefined);
+  const endedRow = await db
+    .prepare(
+      'SELECT state,(SELECT json_group_array(json_array(part,state)) FROM session_parts WHERE code=s.code) AS parts FROM sessions s WHERE code=?',
+    )
+    .bind(game.code)
+    .first();
+  const ended = assembleGame(endedRow.state, JSON.parse(endedRow.parts)).game;
+  ended.phase = 'ended';
+  ended.winner = 'Good';
+  ended.gameEndedAt = Date.now();
+  await db
+    .prepare('UPDATE sessions SET state=?,version=version+1 WHERE code=?')
+    .bind(JSON.stringify(ended), game.code)
+    .run();
+  const compactResponse = await worker.dispatchFetch(
+    'http://localhost/api/game?compactRecaps=1',
+    { headers: { Authorization: 'Bearer ' + tokens[0] } },
+  );
+  const compact = await compactResponse.json();
+  assert.equal(compactResponse.status, 200);
+  assert.equal(compact.recaps[0].detailsDeferred, true);
+  assert.deepEqual(compact.recaps[0].messages, []);
+  const detailResponse = await worker.dispatchFetch(
+    'http://localhost/api/table/recap?id=' +
+      encodeURIComponent(compact.recaps[0].id),
+    { headers: { Authorization: 'Bearer ' + tokens[0] } },
+  );
+  const details = await detailResponse.json();
+  assert.equal(detailResponse.status, 200);
+  assert.equal(details.recap.messages.length, ended.messages.length);
+  assert.equal(details.recap.detailsDeferred, undefined);
   console.log(
     'PASS: 19 real hibernating sockets, per-viewer equality/privacy, hash suppression, action timing and revoked credentials.',
   );
