@@ -125,7 +125,8 @@ class Bot {
         this.connected = open;
       },
       view: (frame) => {
-        this.view = frame.data;
+        if (!this.view || frame.version >= this.view.version)
+          this.view = frame.data;
         this.arrivals.push({ version: frame.version, at: Date.now() });
         if (this.arrivals.length > 10000) this.arrivals.shift();
       },
@@ -442,6 +443,7 @@ export async function runLoad(
       'Set FEAR_LOAD_ACCOUNT_TOKEN to a staging player-account session credential.',
     );
   let lastEntry = 0;
+  let setupStage = 'health';
   async function session(body, token) {
     await sleep(lastEntry + entryDelay - Date.now());
     lastEntry = Date.now();
@@ -480,6 +482,7 @@ export async function runLoad(
       throw Error('Target did not confirm a healthy staging environment.');
     report.build = identity.build;
     for (let index = 0; index < options.tables; index++) {
+      setupStage = 'create';
       const created = await session({
         action: 'create',
         name: `Load storyteller ${index + 1}`,
@@ -491,6 +494,7 @@ export async function runLoad(
         host: null,
       };
       tables.push(table);
+      setupStage = 'join';
       const seats = [];
       for (let seat = 0; seat < options.players; seat++)
         seats.push(
@@ -500,10 +504,12 @@ export async function runLoad(
             name: `Load player ${seat + 1}`,
           }),
         );
+      setupStage = 'claim-seats';
       await claimSeats(
         base,
         seats.map((seat) => seat.token),
       );
+      setupStage = 'construct-bots';
       table.host = new Bot(
         base,
         created.token,
@@ -516,7 +522,9 @@ export async function runLoad(
         (seat, i) =>
           new Bot(base, seat.token, created.code, i + 1, index + 1, report),
       );
+      setupStage = 'connect';
       await Promise.all([table.host, ...table.bots].map((bot) => bot.start()));
+      setupStage = 'configure-timers';
       const config = controlCommand(table.host.view, 'configure');
       for (const key of [
         'discovery',
@@ -546,6 +554,7 @@ export async function runLoad(
           members: ids.slice(offset, offset + size),
         };
       });
+      setupStage = 'configure-vigils';
       await table.host.act(
         {
           action: 'configureRite',
@@ -557,14 +566,29 @@ export async function runLoad(
       );
       await waitFor(() => !table.host.view.rite.preparing);
     }
+    setupStage = 'play';
     const outcomes = await Promise.allSettled(
       tables.map((table) => play(table, options)),
     );
     for (let i = 0; i < outcomes.length; i++)
       if (outcomes[i].status === 'rejected')
         report.errors.push({ table: i + 1, kind: 'scenario-failed' });
-  } catch {
-    report.errors.push({ kind: 'setup-failed' });
+  } catch (error) {
+    report.errors.push({
+      kind: 'setup-failed',
+      stage: setupStage,
+      errorType: error.name,
+      ...(typeof error.actual === 'number'
+        ? { actualStatus: error.actual }
+        : {}),
+      ...(error.message?.startsWith('Load session ')
+        ? { message: error.message }
+        : {}),
+      ...(error.message?.startsWith('Cannot read ') ||
+      error.message?.startsWith('this.')
+        ? { message: error.message }
+        : {}),
+    });
   } finally {
     // These are disposable casual tables. Close the game, return it to its
     // lobby and delete only the exact tables created by this run.
