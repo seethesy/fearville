@@ -25,6 +25,8 @@ const options = {
   compatibilityFlags: ['nodejs_compat'],
   d1Databases: { DB: 'admin-tests' },
   d1Persist: directory,
+  durableObjects: { GAME_TABLE: { className: 'GameTable', useSQLite: true } },
+  durableObjectsPersist: directory,
   bindings: { ADMIN_EMAIL_ALLOWLIST: email },
 };
 const worker = new Miniflare(options);
@@ -369,12 +371,26 @@ try {
     seed: 'old',
     epoch: 'old',
     status: 'open',
-    squads: [{ players: [victim] }],
+    timerless: true,
+    squads: [
+      {
+        id: 'test',
+        kind: 'grid',
+        members: [victim],
+        state: {
+          type: 'grid',
+          solution: [],
+          clues: [],
+          placements: {},
+          submissions: {},
+        },
+      },
+    ],
     plans: [],
     resolvedNight: 0,
   };
   await db
-    .prepare('UPDATE sessions SET state=? WHERE code=?')
+    .prepare('UPDATE sessions SET state=?,version=version+1 WHERE code=?')
     .bind(JSON.stringify(activeGame), active.code)
     .run();
   await ok('kick charlie ' + active.code);
