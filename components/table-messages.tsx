@@ -6,6 +6,7 @@ import { role } from '@/lib/game/types';
 import type { GameView } from '@/lib/game/view';
 import { ReportDialog } from '@/components/social/report-dialog';
 import { useAccount } from '@/components/hub/account-context';
+import { useOlderFeed } from '@/hooks/use-older-feed';
 
 export function TableMessages({
   game,
@@ -35,6 +36,8 @@ export function TableMessages({
     from: string;
   } | null>(null);
   const { state: account } = useAccount();
+  const older = useOlderFeed<GameView['messages'][number]>('messages', game.feeds?.messages ?? null,
+    game.sandboxHost && !game.host ? game.me : undefined);
   const inChannel = !game.host && thread === 'channel' && !!game.channel;
   const to = game.host ? recipient : inChannel ? 'channel' : 'host';
   const player = game.players.find((p) => p.id === to);
@@ -46,7 +49,8 @@ export function TableMessages({
         : inChannel
           ? `Channel with ${game.channel!.with}`
           : 'Storyteller';
-  const messages = game.messages.filter((m) =>
+  const combined = [...older.items, ...game.messages].filter((m, i, all) => all.findIndex((x) => x.id === m.id) === i);
+  const messages = combined.filter((m) =>
     game.host
       ? to === 'all'
         ? m.to === 'all'
@@ -255,6 +259,10 @@ export function TableMessages({
                 el.scrollHeight - el.scrollTop - el.clientHeight < 80;
           }}
         >
+          {older.before && <button className="secondary" disabled={older.busy} onClick={() => void older.load()}>
+            {older.busy ? 'Loading…' : 'Load older messages'}
+          </button>}
+          {older.error && <p className="error" role="alert">{older.error}</p>}
           {!messages.length && (
             <p className="muted">
               No messages yet. Say hello or send instructions below.

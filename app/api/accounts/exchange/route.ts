@@ -33,13 +33,11 @@ export async function POST(r: Request) {
       .first<{ account: string; provider: string; verified_email: string }>();
     if (!row)
       throw Error('This device sign-in code expired or was already used.');
-    const
-      accountToken = await createAccountSession(
+    const accountToken = await createAccountSession(
         row.account,
         row.provider,
         row.verified_email,
-      ),
-   ;
+      );
     // FEAR-93: the app shells (web inside a WebView) sign in through the
     // system browser, then call this same-origin; the HttpOnly cookie signs
     // the WebView in without exposing the token to page scripts.
