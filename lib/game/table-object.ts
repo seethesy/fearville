@@ -129,6 +129,7 @@ export class GameTable extends DurableObject {
       .first<{ write_id: string | null }>();
     // The D1 transaction may have committed immediately before an eviction.
     // Its durable operation id makes replay (including revocation) idempotent.
+    try {
     if (
       indexed?.write_id !== projection.id &&
       !(await saveD1(
@@ -155,6 +156,14 @@ export class GameTable extends DurableObject {
       throw Error(
         'The table was updated by administration. Refresh before continuing.',
       );
+    }
+    } catch (error) {
+      // A competing table may acquire a ranked account after eligibility was
+      // checked. This is a rejected start, not a transient projection outage:
+      // discard its durable intent so it cannot start later on a retry.
+      if (error instanceof Error && error.message.includes('already playing another ranked game'))
+        await this.importD1(this.meta!.code,true);
+      throw error;
     }
     delete this.meta!.projection;
     this.parts.save(this.game!, this.meta!);
