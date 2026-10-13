@@ -576,8 +576,9 @@ const RITE_GUIDES: Tutorial[] = [
 // FEAR-19: the Storyteller tour. Two chapters: lobby setup, then running the
 // game once it starts. Shown only to the Storyteller (never requested for a
 // seated player): guests every time they host a table, accounts the first
-// time. Skipping either chapter ends the whole tour. Web only: the iPhone
-// client does not host tables.
+// time. Skipping either chapter ends the whole tour. Web only for now: the
+// iPhone client can host, but its triggers and spotlight targets would need
+// native work (and FEAR-79 plans to move native clients onto the web UI).
 // ---------------------------------------------------------------------------
 const HOST_TOUR: Tutorial[] = [
   {
