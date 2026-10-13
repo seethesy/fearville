@@ -37,7 +37,7 @@ import type { Actor, Command, Game } from './types';
 
 export const TABLE_RETENTION = 30 * 24 * 60 * 60 * 1000;
 type SocketSeat = {
-  code: string;
+  code?: string;
   actor: Actor;
   viewer: Actor;
   sandboxHost: boolean;
@@ -796,6 +796,39 @@ export class GameTable extends DurableObject {
         'Request is too large.',
       );
       const frame = JSON.parse(message as string);
+      if (frame.type === 'hello') {
+        requireThat(
+          Number.isSafeInteger(frame.lastVersion) && frame.lastVersion >= 0,
+          'Invalid table version.',
+        );
+        await this.queue.run(async () => {
+          const seat = socket.deserializeAttachment() as SocketSeat;
+          const code =
+            seat.code ?? this.meta?.code ?? this.parts.load()?.meta.code;
+          requireThat(code, 'AUTH');
+          const game = await this.current(code!, seat.actor),
+            now = Date.now(),
+            version = this.meta!.version;
+          const data = await tableView(
+            game,
+            seat.viewer,
+            version,
+            now,
+            seat.sandboxHost,
+            seat.actor.id,
+            true,
+          );
+          socket.send(
+            JSON.stringify({ type: 'view', version, serverNow: now, data }),
+          );
+          socket.serializeAttachment({
+            ...seat,
+            code,
+            hash: await hash(viewContent(data)),
+          });
+        });
+        return;
+      }
       requireThat(
         frame.type === 'action' && actionID(frame.id),
         'Choose an action.',
@@ -816,30 +849,28 @@ export class GameTable extends DurableObject {
         pov: seat.sandboxHost ? seat.viewer.id : undefined,
       };
       const result = await this.action(
-        seat.code,
+        seat.code ?? this.meta?.code ?? this.parts.load()!.meta.code,
         seat.actor,
         command,
         command.action === 'configureRite' || command.action.startsWith('rite'),
       );
       const failed = 'error' in result && !!result.error;
-      socket.send(
-        JSON.stringify({
-          type: 'ack',
-          id,
-          ok: !failed,
-          error: 'error' in result ? result.error : undefined,
-          status: 'status' in result ? result.status : undefined,
-          summary: 'summary' in result ? result.summary : undefined,
-          data: result,
-          serverNow: Date.now(),
-          version:
-            'game' in result
-              ? result.game?.version
-              : 'version' in result
-                ? result.version
-                : this.meta!.version,
-        }),
-      );
+      this.acknowledge(socket, {
+        type: 'ack',
+        id,
+        ok: !failed,
+        error: 'error' in result ? result.error : undefined,
+        status: 'status' in result ? result.status : undefined,
+        summary: 'summary' in result ? result.summary : undefined,
+        data: result,
+        serverNow: Date.now(),
+        version:
+          'game' in result
+            ? result.game?.version
+            : 'version' in result
+              ? result.version
+              : this.meta!.version,
+      });
     } catch (error) {
       if (!id) {
         socket.close(1008, 'Invalid table message.');
@@ -847,15 +878,20 @@ export class GameTable extends DurableObject {
       }
       const response = errorResponse(error);
       const body = (await response.json()) as { error: string };
-      socket.send(
-        JSON.stringify({
-          type: 'ack',
-          id,
-          ok: false,
-          ...body,
-          status: response.status,
-        }),
-      );
+      this.acknowledge(socket, {
+        type: 'ack',
+        id,
+        ok: false,
+        ...body,
+        status: response.status,
+      });
+    }
+  }
+  private acknowledge(socket: WebSocket, ack: unknown) {
+    try {
+      socket.send(JSON.stringify(ack));
+    } catch {
+      /* Dropped after commit: the receipt is replayed on reconnect. */
     }
   }
   webSocketClose(socket: WebSocket) {

@@ -1,5 +1,5 @@
 'use client';
-import { useTableActions } from '@/hooks/use-table-actions';
+import { useTableActions, useTableOnline } from '@/hooks/use-table-actions';
 import { useState } from 'react';
 import { VoteChoices } from './vote-choices';
 export function StorytellerVote({
@@ -20,7 +20,9 @@ export function StorytellerVote({
   refresh: () => Promise<void>;
 }) {
   const actionFetch = useTableActions();
-  const [busy, setBusy] = useState(false);
+  const online = useTableOnline();
+  const [pendingAction, setBusy] = useState(false);
+  const busy = pendingAction || !online;
   const [error, setError] = useState('');
   return (
     <span>

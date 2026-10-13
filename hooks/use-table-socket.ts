@@ -1,6 +1,10 @@
 'use client';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { TableConnection } from '@/lib/game/socket-client';
+import {
+  TableConnection,
+  type ConnectionPhase,
+} from '@/lib/game/socket-client';
+import { onLifecycle } from '@/lib/native/bridge';
 import type { ViewEnvelope } from '@/lib/game/socket-protocol';
 import type { GameView } from '@/lib/game/view';
 import type { ActionTiming } from '@/lib/game/action-timing';
@@ -10,16 +14,21 @@ export function useTableSocket({
   code,
   me,
   pov,
+  version,
   onView,
   poll,
 }: {
   code?: string;
   me?: string;
   pov?: string;
+  version?: number;
   onView: (view: GameView) => void;
   poll: () => Promise<void>;
 }) {
   const [connected, setConnected] = useState(false);
+  const [phase, setPhase] = useState<ConnectionPhase>('connecting');
+  const lastVersion = useRef(version ?? 0);
+  lastVersion.current = version ?? 0;
   const [timing, setTiming] = useState<{ rtt?: number; push?: number }>({});
   const pending = useRef(new Map<string, number>());
   const active = useRef<TableConnection | null>(null);
@@ -37,6 +46,8 @@ export function useTableSocket({
       compactRecaps: true,
     } as Command;
     pending.current.set(id, started);
+    if (pending.current.size > 100)
+      pending.current.delete(pending.current.keys().next().value!);
     try {
       const sent = active.current?.send(command, id);
       if (!sent)
@@ -44,16 +55,8 @@ export function useTableSocket({
           ...init,
           body: JSON.stringify(command),
         });
-      let ack;
-      try {
-        ack = await sent;
-      } catch {
-        // The ack may have been lost after commit. HTTP uses the SAME id.
-        return await timedActionFetch(input, {
-          ...init,
-          body: JSON.stringify(command),
-        });
-      }
+      const ack = await sent;
+      if (!ack.ok) pending.current.delete(id);
       const result = ack.data ?? {
         error: ack.error,
         summary: ack.summary,
@@ -97,6 +100,8 @@ export function useTableSocket({
       poll,
       view: apply,
       status: setConnected,
+      phase: setPhase,
+      version: () => lastVersion.current,
       connect: () => {
         const url = new URL('/api/table/socket', location.href);
         url.protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -107,22 +112,36 @@ export function useTableSocket({
     });
     active.current = connection;
     connection.start();
-    const resume = () => {
-      if (!document.hidden) connection.resume();
+    let resumeTimer: ReturnType<typeof setTimeout> | undefined;
+    const reconnect = () => {
+      clearTimeout(resumeTimer);
+      resumeTimer = setTimeout(() => connection.resume(), 0);
     };
-    window.addEventListener('online', resume);
+    const resume = () => {
+      if (!document.hidden) reconnect();
+    };
+    const unsubscribe = onLifecycle((event) => {
+      if (event === 'resume' || event === 'online') reconnect();
+    });
     window.addEventListener('focus', resume);
     window.addEventListener('pageshow', resume);
     document.addEventListener('visibilitychange', resume);
     return () => {
       connection.stop();
+      clearTimeout(resumeTimer);
       if (active.current === connection) active.current = null;
       setConnected(false);
-      window.removeEventListener('online', resume);
+      unsubscribe();
       window.removeEventListener('focus', resume);
       window.removeEventListener('pageshow', resume);
       document.removeEventListener('visibilitychange', resume);
     };
   }, [code, me, pov, poll, apply]);
-  return { connected, fetch: actionFetch, ...timing };
+  return {
+    connected,
+    phase,
+    retry: () => active.current?.resume(),
+    fetch: actionFetch,
+    ...timing,
+  };
 }

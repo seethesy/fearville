@@ -111,7 +111,7 @@ try {
     assert.equal(response.status, 200, JSON.stringify(data));
     return data;
   }
-  for (let i = 0; i < 19; i++) {
+  async function connectSeat(i) {
     const response = await worker.dispatchFetch(
       'http://localhost/api/table/socket?code=' + game.code,
       {
@@ -147,7 +147,9 @@ try {
     assert.equal(hello.apiVersion, 1);
     assert.ok(hello.buildId.length > 0);
     await client.next((f) => f.type === 'view');
+    return client;
   }
+  for (let i = 0; i < 19; i++) await connectSeat(i);
   const result = await request(tokens[0], {
     action: 'chat',
     to: 'all',
@@ -222,25 +224,82 @@ try {
   });
   assert.equal(duplicate.game.version, voteAck.version);
   assert.equal(duplicate.game.active.votes[actors[1].id], true);
-  const rejectedID = randomUUID();
+  // Lose the connection mid-vote. Returning with the original seat cookie
+  // catches up by version, then replays both the unacked vote and a queued
+  // chat in order. The durable id bridges the old and new socket.
+  const interruptedID = randomUUID();
   voter.socket.send(
+    JSON.stringify({
+      type: 'action',
+      id: interruptedID,
+      command: { ...command, yes: false },
+    }),
+  );
+  voter.socket.close(1001, 'Phone locked');
+  const returning = await connectSeat(1);
+  const initialReturn = await returning.next((f) => f.type === 'view');
+  returning.socket.send(
+    JSON.stringify({ type: 'hello', lastVersion: voteAck.version }),
+  );
+  const catchUp = await returning.next(
+    (f) => f.type === 'view' && f !== initialReturn,
+  );
+  assert.equal(catchUp.data.me, actors[1].id);
+  assert.ok(catchUp.serverNow >= initialReturn.serverNow);
+  returning.socket.send(
+    JSON.stringify({
+      type: 'action',
+      id: interruptedID,
+      command: { ...command, yes: false },
+    }),
+  );
+  const recoveredAck = await returning.next(
+    (f) => f.type === 'ack' && f.id === interruptedID,
+  );
+  assert.equal(recoveredAck.ok, true);
+  assert.equal(recoveredAck.data.game.active.myVote, false);
+  const afterRecovery = await request(tokens[1], {
+    ...command,
+    yes: true,
+    requestId: interruptedID,
+  });
+  assert.equal(afterRecovery.game.version, recoveredAck.version);
+  assert.equal(afterRecovery.game.active.myVote, false);
+  const queuedChat = randomUUID();
+  returning.socket.send(
+    JSON.stringify({
+      type: 'action',
+      id: queuedChat,
+      command: {
+        action: 'chat',
+        text: 'Queued during reconnect',
+        messageId: randomUUID(),
+      },
+    }),
+  );
+  assert.equal(
+    (await returning.next((f) => f.type === 'ack' && f.id === queuedChat)).ok,
+    true,
+  );
+  const rejectedID = randomUUID();
+  returning.socket.send(
     JSON.stringify({
       type: 'action',
       id: rejectedID,
       command: { action: 'vote', ballot: 'closed', yes: true },
     }),
   );
-  const rejection = await voter.next(
+  const rejection = await returning.next(
     (f) => f.type === 'ack' && f.id === rejectedID,
   );
   assert.equal(rejection.ok, false);
   assert.ok(rejection.error);
-  voter.socket.send(
+  returning.socket.send(
     JSON.stringify({ type: 'action', id: rejectedID, command }),
   );
   assert.equal(
     (
-      await voter.next(
+      await returning.next(
         (f) => f.type === 'ack' && f.id === rejectedID && f !== rejection,
       )
     ).ok,
@@ -254,11 +313,11 @@ try {
   await clients[0].next(
     (f) => f.type === 'view' && f.version === privateResult.game.version,
   );
-  await clients[1].next(
+  await returning.next(
     (f) => f.type === 'view' && f.version === privateResult.game.version,
   );
   await new Promise((resolve) => setTimeout(resolve, 100));
-  for (const client of clients.slice(2))
+  for (const client of clients.slice(2, 19))
     assert.ok(
       !client.frames.some(
         (f) => f.type === 'view' && f.version === privateResult.game.version,
@@ -266,6 +325,11 @@ try {
       'unchanged viewer gets no push',
     );
   const revoked = clients[18];
+  assert.equal(
+    revoked.socket.readyState,
+    1,
+    'unrelated seat stays connected through reconnect',
+  );
   const closed = new Promise((resolve) =>
     revoked.socket.addEventListener('close', resolve, { once: true }),
   );
