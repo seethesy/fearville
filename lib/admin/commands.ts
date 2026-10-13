@@ -15,8 +15,21 @@ const account: Argument = { name: 'account', type: 'string' };
 const amount: Argument = { name: 'amount', type: 'integer', max: 1_000_000 };
 const lobby: Argument = { name: 'lobby', type: 'string' };
 export const COMMANDS: CommandSpec[] = [
-  { name: 'reports', description: 'List the moderation queue, oldest first.', args: [{ name: 'status', type: 'string', optional: true }] },
-  { name: 'report', description: 'Resolve a report: dismiss, warn, remove or suspend.', args: [{ name: 'report', type: 'string' }, { name: 'decision', type: 'string' }, { name: 'note', type: 'string', optional: true, rest: true }], confirm: true },
+  {
+    name: 'reports',
+    description: 'List the moderation queue, oldest first.',
+    args: [{ name: 'status', type: 'string', optional: true }],
+  },
+  {
+    name: 'report',
+    description: 'Resolve a report: dismiss, warn, remove or suspend.',
+    args: [
+      { name: 'report', type: 'string' },
+      { name: 'decision', type: 'string' },
+      { name: 'note', type: 'string', optional: true, rest: true },
+    ],
+    confirm: true,
+  },
   { name: 'help', description: 'List commands and usage.', args: [] },
   {
     name: 'inspect',

@@ -10,8 +10,18 @@ import { COMMANDS, parseCommand } from '../lib/admin/commands.ts';
 import { UI_TEXT, validateText, formatText } from '../lib/ui-text/registry.ts';
 import { auditValue } from '../lib/admin/audit-value.ts';
 void test('admin audit omits hidden game information and credentials recursively', () => {
-  const result = auditValue({ code: 'ABCDEF', players: [{ id: 'p', role: 'horror', shown: 'watchman', name: 'Player' }], notebooks: { p: 'secret' }, token: 'secret', nested: { nightChoices: { p: 'victim' }, status: 'ended' } });
-  assert.deepEqual(result, { code: 'ABCDEF', players: [{ id: 'p', name: 'Player' }], nested: { status: 'ended' } });
+  const result = auditValue({
+    code: 'ABCDEF',
+    players: [{ id: 'p', role: 'horror', shown: 'watchman', name: 'Player' }],
+    notebooks: { p: 'secret' },
+    token: 'secret',
+    nested: { nightChoices: { p: 'victim' }, status: 'ended' },
+  });
+  assert.deepEqual(result, {
+    code: 'ABCDEF',
+    players: [{ id: 'p', name: 'Player' }],
+    nested: { status: 'ended' },
+  });
 });
 const email = 'sybertechlabs@gmail.com';
 void test('admin requires exact allowlist, Google provenance, current session and verified matching email', () => {

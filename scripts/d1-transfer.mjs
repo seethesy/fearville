@@ -22,7 +22,13 @@ export const tables = [
 ];
 // Older Sites snapshots predate reporting. Missing optional tables are empty;
 // every core account/history table is still required.
-export const optionalTables = ['player_reports', 'admin_progression', 'account_items', 'admin_audit', 'ui_text_versions'];
+export const optionalTables = [
+  'player_reports',
+  'admin_progression',
+  'account_items',
+  'admin_audit',
+  'ui_text_versions',
+];
 export function argumentsFor(argv, allowSqlSource = false) {
   const options = {};
   for (let i = 0; i < argv.length; i += 2) {

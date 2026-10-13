@@ -72,7 +72,9 @@ export function AccountPanel({ compact = false }: { compact?: boolean }) {
       </p>
       {state?.account ? (
         <>
-          {state.warning && <p role="alert">Account warning: {state.warning}</p>}
+          {state.warning && (
+            <p role="alert">Account warning: {state.warning}</p>
+          )}
           <p>
             Signed in as <strong>{state.account.name}</strong>
             {state.account.handle && (

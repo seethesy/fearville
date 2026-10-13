@@ -47,7 +47,8 @@ export async function validateIdentity(
   )
     throw Error('Your provider has not verified this email.');
   return {
-    verified: payload.email_verified === true || payload.email_verified === 'true',
+    verified:
+      payload.email_verified === true || payload.email_verified === 'true',
     subject: payload.sub,
     email: typeof payload.email === 'string' ? payload.email : '',
     name: typeof payload.name === 'string' ? payload.name : '',

@@ -169,7 +169,13 @@ export function TutorialOverlay({
         aria-describedby={bodyId}
       >
         <div className="tutorial-meta">
-          <span className="eyebrow" style={{textTransform:'uppercase'}}>{tutorial.kind==='walkthrough'?<UiText id={'tutorial.'+tutorial.id+'.title'}/>:tutorial.title.toUpperCase()}</span>
+          <span className="eyebrow" style={{ textTransform: 'uppercase' }}>
+            {tutorial.kind === 'walkthrough' ? (
+              <UiText id={'tutorial.' + tutorial.id + '.title'} />
+            ) : (
+              tutorial.title.toUpperCase()
+            )}
+          </span>
           <span className="tutorial-count">
             Step {index + 1} of {steps.length}
           </span>
@@ -180,8 +186,24 @@ export function TutorialOverlay({
           step.illustration && <TutorialIllustration name={step.illustration} />
         )}
         <div aria-live="polite">
-          <h2 id={titleId}>{tutorial.kind==='walkthrough'?<UiText id={`tutorial.${tutorial.id}.${tutorial.steps.indexOf(step)}.title`}/>:step.title}</h2>
-          <p id={bodyId}>{tutorial.kind==='walkthrough'?<UiText id={`tutorial.${tutorial.id}.${tutorial.steps.indexOf(step)}.body`}/>:step.body}</p>
+          <h2 id={titleId}>
+            {tutorial.kind === 'walkthrough' ? (
+              <UiText
+                id={`tutorial.${tutorial.id}.${tutorial.steps.indexOf(step)}.title`}
+              />
+            ) : (
+              step.title
+            )}
+          </h2>
+          <p id={bodyId}>
+            {tutorial.kind === 'walkthrough' ? (
+              <UiText
+                id={`tutorial.${tutorial.id}.${tutorial.steps.indexOf(step)}.body`}
+              />
+            ) : (
+              step.body
+            )}
+          </p>
         </div>
         <div
           className="tutorial-progress"

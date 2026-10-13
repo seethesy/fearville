@@ -458,7 +458,10 @@ async function lobbyPlan(name: string, args: Args): Promise<Plan> {
 }
 type Handler = (args: Args, admin: Admin) => Promise<Plan>;
 const handlers: Record<string, Handler> = {
-  reports: async (args) => ({ statements: [], output: await reportQueue(String(args.status ?? 'open')) }),
+  reports: async (args) => ({
+    statements: [],
+    output: await reportQueue(String(args.status ?? 'open')),
+  }),
   report: (args, admin) => reportPlan(args, admin.id),
   help: async () => ({
     statements: [],

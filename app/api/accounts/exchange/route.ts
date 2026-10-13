@@ -29,7 +29,13 @@ export async function POST(r: Request) {
       .first<{ account: string; provider: string; verified_email: string }>();
     if (!row)
       throw Error('This device sign-in code expired or was already used.');
-    return json({ accountToken: await createAccountSession(row.account, row.provider, row.verified_email) });
+    return json({
+      accountToken: await createAccountSession(
+        row.account,
+        row.provider,
+        row.verified_email,
+      ),
+    });
   } catch (e) {
     return errorResponse(e);
   }

@@ -53,7 +53,11 @@ export async function authMember(
   await requirePlayerRequest(r);
   await checkSeatAccount(member.code, member.player);
   return {
-    actor: { id: member.player, host: !!member.host, credentialHash: await hash(token) },
+    actor: {
+      id: member.player,
+      host: !!member.host,
+      credentialHash: await hash(token),
+    },
     code: member.code,
   };
 }
@@ -82,7 +86,11 @@ export async function authenticatedRead(r: Request) {
   await requirePlayerRequest(r);
   await checkSeatAccount(row.code, row.player);
   const { game, version, created } = await converted(row);
-  const actor = { id: row.player, host: !!row.host, credentialHash: await hash(token) };
+  const actor = {
+    id: row.player,
+    host: !!row.host,
+    credentialHash: await hash(token),
+  };
   if (
     !actor.host &&
     !game.players.some((p) => p.id === actor.id && !p.departed)
@@ -106,11 +114,31 @@ async function converted(row: SessionRow) {
     return { game, version: version + 1, created };
   return { game, version, created };
 }
-export async function save(g: Game, version: number, syncRanked = true, credentialHash?: string, communication = false) {
+export async function save(
+  g: Game,
+  version: number,
+  syncRanked = true,
+  credentialHash?: string,
+  communication = false,
+) {
   const db = database();
-  const write = prepareWrite(db, g, version,
-    credentialHash ? ' AND ' + credentialGuard + (communication ? ' AND ' + communicationGuard : '') : '',
-    credentialHash ? [credentialHash, Date.now(), ...(communication ? [credentialHash, Date.now()] : [])] : []);
+  const write = prepareWrite(
+    db,
+    g,
+    version,
+    credentialHash
+      ? ' AND ' +
+          credentialGuard +
+          (communication ? ' AND ' + communicationGuard : '')
+      : '',
+    credentialHash
+      ? [
+          credentialHash,
+          Date.now(),
+          ...(communication ? [credentialHash, Date.now()] : []),
+        ]
+      : [],
+  );
   // Puzzle moves cannot change ranked membership. Keep their CAS write small
   // instead of rebuilding locks for every seat on every move.
   const guard = write.guard;
@@ -181,10 +209,28 @@ export async function loadDecision(g: Game, command: Command) {
   entry.before = row.state;
 }
 /** Save a chat message, notebook or vigil move as its own stored part. */
-export async function saveIndependent(g: Game, update: ScopedUpdate, credentialHash?: string) {
-  return saveIndependentParts(database(), g, update,
-    credentialHash ? ' AND ' + credentialGuard + (update.append ? ' AND ' + communicationGuard : '') : '',
-    credentialHash ? [credentialHash, Date.now(), ...(update.append ? [credentialHash, Date.now()] : [])] : []);
+export async function saveIndependent(
+  g: Game,
+  update: ScopedUpdate,
+  credentialHash?: string,
+) {
+  return saveIndependentParts(
+    database(),
+    g,
+    update,
+    credentialHash
+      ? ' AND ' +
+          credentialGuard +
+          (update.append ? ' AND ' + communicationGuard : '')
+      : '',
+    credentialHash
+      ? [
+          credentialHash,
+          Date.now(),
+          ...(update.append ? [credentialHash, Date.now()] : []),
+        ]
+      : [],
+  );
 }
 export function json(
   data: unknown,
@@ -202,7 +248,22 @@ export function json(
 }
 export function errorResponse(e: unknown) {
   const message = e instanceof Error ? e.message : 'Request failed.';
-  if (message === 'FORBIDDEN' || message === 'ADMIN_GAMEPLAY' || message === 'BANNED') return json({error: message === 'BANNED' ? 'This account is banned.' : message === 'ADMIN_GAMEPLAY' ? 'Admin accounts cannot participate in games.' : 'Admin access required.'},403);
+  if (
+    message === 'FORBIDDEN' ||
+    message === 'ADMIN_GAMEPLAY' ||
+    message === 'BANNED'
+  )
+    return json(
+      {
+        error:
+          message === 'BANNED'
+            ? 'This account is banned.'
+            : message === 'ADMIN_GAMEPLAY'
+              ? 'Admin accounts cannot participate in games.'
+              : 'Admin access required.',
+      },
+      403,
+    );
   if (message === 'AUTH')
     return json(
       {

@@ -15,7 +15,8 @@ async function handle(r: Request, c?: Command) {
   const initial = await authenticatedRead(r);
   const { actor, code } = initial;
   for (let attempt = 0; attempt < 20; attempt++) {
-    const { game, version } = attempt === 0 ? initial : await authenticatedRead(r),
+    const { game, version } =
+        attempt === 0 ? initial : await authenticatedRead(r),
       now = Date.now();
     const requested = c?.pov ?? new URL(r.url).searchParams.get('pov');
     const pov =
@@ -67,7 +68,10 @@ async function handle(r: Request, c?: Command) {
         summary,
       });
     }
-    if ((changed || c) && !(await save(game, version, false, actor.credentialHash))) {
+    if (
+      (changed || c) &&
+      !(await save(game, version, false, actor.credentialHash))
+    ) {
       await new Promise((resolve) =>
         setTimeout(resolve, 8 + Math.floor(Math.random() * 24)),
       );

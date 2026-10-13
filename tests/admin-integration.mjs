@@ -379,10 +379,24 @@ try {
     .run();
   await ok('kick charlie ' + active.code);
   const changedGame = (await ok('lobby ' + active.code)).output;
-  const departed = JSON.parse((await db.prepare('SELECT state FROM sessions WHERE code=?').bind(active.code).first()).state);
+  const departed = JSON.parse(
+    (
+      await db
+        .prepare('SELECT state FROM sessions WHERE code=?')
+        .bind(active.code)
+        .first()
+    ).state,
+  );
   assert.equal(changedGame.players.length, 0);
   assert.equal(departed.players[0].departed, true);
-  const ritePart = JSON.parse((await db.prepare("SELECT state FROM session_parts WHERE code=? AND part='rite'").bind(active.code).first()).state);
+  const ritePart = JSON.parse(
+    (
+      await db
+        .prepare("SELECT state FROM session_parts WHERE code=? AND part='rite'")
+        .bind(active.code)
+        .first()
+    ).state,
+  );
   assert.equal(ritePart.status, 'complete');
   assert.equal(departed.nightChoices[victim], undefined);
   assert.equal(
@@ -472,20 +486,56 @@ try {
   await fixture('reporter');
   await fixture('reported');
   for (const id of ['dismiss', 'warn', 'remove', 'suspend'])
-    await db.prepare("INSERT INTO player_reports(id,kind,reason,reporter_account,target_account,target_name,content,created) VALUES (?,'player','harassment','reporter','reported','reported','reported',?)").bind(id, Date.now()).run();
+    await db
+      .prepare(
+        "INSERT INTO player_reports(id,kind,reason,reporter_account,target_account,target_name,content,created) VALUES (?,'player','harassment','reporter','reported','reported','reported',?)",
+      )
+      .bind(id, Date.now())
+      .run();
   assert.equal((await req('/api/admin?view=reports')).status, 403);
   assert.equal((await req('/api/admin?view=reports', 'reporter')).status, 403);
-  assert.equal((await req('/api/admin?view=reports', 'admin')).reports.length, 4);
+  assert.equal(
+    (await req('/api/admin?view=reports', 'admin')).reports.length,
+    4,
+  );
   await ok('report dismiss dismiss', true);
   await ok('report warn warn Respect other players', true);
-  assert.equal((await req('/api/accounts', 'reported')).warning, 'Respect other players');
+  assert.equal(
+    (await req('/api/accounts', 'reported')).warning,
+    'Respect other players',
+  );
   await ok('report remove remove', true);
-  assert.equal((await db.prepare("SELECT handle FROM accounts WHERE id='reported'").first()).handle, null);
+  assert.equal(
+    (
+      await db
+        .prepare("SELECT handle FROM accounts WHERE id='reported'")
+        .first()
+    ).handle,
+    null,
+  );
   assert.equal((await command('report dismiss dismiss', true)).status, 400);
-  await db.prepare("CREATE TRIGGER report_audit_failure BEFORE INSERT ON admin_audit WHEN NEW.result='success' AND NEW.action='report' BEGIN SELECT RAISE(ABORT,'Test audit failure'); END").run();
+  await db
+    .prepare(
+      "CREATE TRIGGER report_audit_failure BEFORE INSERT ON admin_audit WHEN NEW.result='success' AND NEW.action='report' BEGIN SELECT RAISE(ABORT,'Test audit failure'); END",
+    )
+    .run();
   assert.notEqual((await command('report suspend suspend', true)).status, 200);
-  assert.equal((await db.prepare("SELECT banned FROM accounts WHERE id='reported'").first()).banned, null);
-  assert.equal((await db.prepare("SELECT status FROM player_reports WHERE id='suspend'").first()).status, 'open');
+  assert.equal(
+    (
+      await db
+        .prepare("SELECT banned FROM accounts WHERE id='reported'")
+        .first()
+    ).banned,
+    null,
+  );
+  assert.equal(
+    (
+      await db
+        .prepare("SELECT status FROM player_reports WHERE id='suspend'")
+        .first()
+    ).status,
+    'open',
+  );
   await db.prepare('DROP TRIGGER report_audit_failure').run();
   await ok('report suspend suspend', true);
   assert.equal((await req('/api/accounts', 'reported')).status, 403);

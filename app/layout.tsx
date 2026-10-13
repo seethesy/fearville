@@ -26,7 +26,11 @@ export default function RootLayout({
     <html lang="en" className="dark">
       <body>
         <AccountProvider>
-          <TextProvider><AccountBoundary><TutorialProvider>{children}</TutorialProvider></AccountBoundary></TextProvider>
+          <TextProvider>
+            <AccountBoundary>
+              <TutorialProvider>{children}</TutorialProvider>
+            </AccountBoundary>
+          </TextProvider>
         </AccountProvider>
       </body>
     </html>

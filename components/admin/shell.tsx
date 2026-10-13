@@ -113,9 +113,11 @@ export default function AdminShell() {
           >
             {t === 'console'
               ? 'Developer console'
-              : t === 'reports' ? 'Moderation queue' : t === 'text'
-                ? 'Edit official text'
-                : 'Audit log'}
+              : t === 'reports'
+                ? 'Moderation queue'
+                : t === 'text'
+                  ? 'Edit official text'
+                  : 'Audit log'}
           </button>
         ))}
       </nav>

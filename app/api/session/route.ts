@@ -1,6 +1,10 @@
 import { requirePlayerAccount } from '@/lib/admin/access';
 import { database } from '@/db';
-import { accountAuth, attachMember, requirePlayerRequest } from '@/lib/accounts/service';
+import {
+  accountAuth,
+  attachMember,
+  requirePlayerRequest,
+} from '@/lib/accounts/service';
 import { profileDefaults } from '@/lib/accounts/profile';
 import { newGame, uuid } from '@/lib/game/types';
 import { newSandboxGame } from '@/lib/game/sandbox';
