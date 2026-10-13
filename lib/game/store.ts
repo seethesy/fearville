@@ -84,9 +84,7 @@ export async function read(code: string) {
 }
 export async function readD1(code: string) {
   const row = await database()
-    .prepare(
-      `SELECT ${SESSION_COLUMNS} FROM sessions s WHERE s.code = ?`,
-    )
+    .prepare(`SELECT ${SESSION_COLUMNS} FROM sessions s WHERE s.code = ?`)
     .bind(code)
     .first<SessionRow>();
   if (!row) throw Error('Session not found.');
@@ -173,7 +171,12 @@ export async function saveD1(
     }
   }
   try {
-    const results = await runWrite(db, write, [], [...lockStatements, ...(extra?.(write.guard, write.guardBindings) ?? [])]);
+    const results = await runWrite(
+      db,
+      write,
+      [],
+      [...lockStatements, ...(extra?.(write.guard, write.guardBindings) ?? [])],
+    );
     return !!results && results[0].meta.changes === 1;
   } catch (error) {
     if (String(error).includes('ranked_seats.account'))

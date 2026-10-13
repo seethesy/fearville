@@ -253,25 +253,46 @@ assert.equal(restored.notebooks[game.players[0].id].text, 'notes-2-0');
 // own Rite solution while the Storyteller sends an announcement.
 const gridGame = raw(host.code);
 gridGame.phase = 'lobby';
-configureRite(gridGame, { action: 'configureRite', config: { enabled: true },
-  plans: Array.from({ length: 6 }, (_, i) => ({ id: `grid-${i}`, kind: 'grid',
-    members: gridGame.players.slice(i*3,i*3+3).map((p) => p.id) })) });
-gridGame.phase = 'night'; gridGame.night = 3;
-beginRiteNight(gridGame,Date.now());
+configureRite(gridGame, {
+  action: 'configureRite',
+  config: { enabled: true },
+  plans: Array.from({ length: 6 }, (_, i) => ({
+    id: `grid-${i}`,
+    kind: 'grid',
+    members: gridGame.players.slice(i * 3, i * 3 + 3).map((p) => p.id),
+  })),
+});
+gridGame.phase = 'night';
+gridGame.night = 3;
+beginRiteNight(gridGame, Date.now());
 put(gridGame);
 await Promise.all([
   ...gridGame.players.map((player) => {
-    const squad = gridGame.rite.squads.find((s) => s.members.includes(player.id));
-    return call('/api/rite',tokenFor(player.id), { action:'riteGridSubmit',
-      epoch:gridGame.rite.epoch, night:gridGame.night, solution:squad.state.solution });
+    const squad = gridGame.rite.squads.find((s) =>
+      s.members.includes(player.id),
+    );
+    return call('/api/rite', tokenFor(player.id), {
+      action: 'riteGridSubmit',
+      epoch: gridGame.rite.epoch,
+      night: gridGame.night,
+      solution: squad.state.solution,
+    });
   }),
-  call('/api/game',host.token,{ action:'chat',to:'all',text:'nineteenth command',messageId:randomUUID() }),
+  call('/api/game', host.token, {
+    action: 'chat',
+    to: 'all',
+    text: 'nineteenth command',
+    messageId: randomUUID(),
+  }),
 ]);
 const submitted = raw(host.code);
-assert.ok(submitted.rite.squads.every((s) => Object.keys(s.state.submissions).length === 3));
+assert.ok(
+  submitted.rite.squads.every(
+    (s) => Object.keys(s.state.submissions).length === 3,
+  ),
+);
 assert.ok(submitted.messages.some((m) => m.text === 'nineteenth command'));
 timings.sort((a, b) => a - b);
 console.log(
   `PASS: 18 players, 6 vigils, 3 simultaneous bursts, 17 simultaneous votes, independent table reads, snapshot migration and undo. ${timings.length} requests; p95 ${Math.round(timings[Math.floor(timings.length * 0.95)])} ms, max ${Math.round(timings.at(-1))} ms. Live record ${JSON.stringify(compact).length} bytes (was ${legacyBytes}).`,
 );
-

@@ -27,8 +27,11 @@ export async function joinSession(
   return table(code).join(code, name, tokenHash, invitation, defaults);
 }
 export async function joinSessionD1(
-  code: string, name: string, tokenHash: string,
-  invitation?: { id: string; account: string; sender: string; now: number }, defaults?: ProfileDefaults,
+  code: string,
+  name: string,
+  tokenHash: string,
+  invitation?: { id: string; account: string; sender: string; now: number },
+  defaults?: ProfileDefaults,
 ) {
   requireThat(
     /^(?:[0-9]{6}|[A-Z]{6})$/.test(code),
