@@ -23,6 +23,7 @@ assert.ok(report.actions.some((action) => action.action === 'riteRitualPick'));
 assert.ok(report.fanout.some((push) => push.viewerCount === 19));
 assert.equal(report.reconnects, 0);
 // Local CI validates behavior; the staging workflow owns the 150 ms SLA.
+assert.equal(report.passed, true);
 console.log(
   'PASS: load runner, 19 sockets, two cycles, all vigil patterns, votes, chat, commit fan-out and cleanup.',
 );

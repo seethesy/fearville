@@ -30,7 +30,10 @@ server and runner clocks. Clock estimates have roughly half a ping RTT of
 uncertainty. Setup and cleanup actions are excluded from latency percentiles.
 
 The runner exits unsuccessfully for rejected actions, incomplete scenarios,
-cleanup errors or p95 RTT >=150 ms. A run needs fan-out metadata from the
+cleanup errors or staging p95 RTT >=150 ms. Loopback runs report latency
+without applying the staging threshold. Reconnects count only the measured
+scenario; intentionally closing sockets during cleanup is excluded.
+A run needs fan-out metadata from the
 FEAR-90 server build. The staging workflow runs only by manual dispatch and
 uploads its JSON for fourteen days. Record the staging run URL, source build,
 runner location, RTT percentiles, error/reconnect counts and JSON artifact in
