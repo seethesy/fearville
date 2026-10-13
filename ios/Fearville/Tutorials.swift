@@ -5,7 +5,7 @@ import SwiftUI
 // clients show the same words. Accounts keep progress on the server; guests
 // keep it per seat on this device and see everything again on a new join.
 
-struct TutorialStepDef: Decodable, Hashable { let title: String; let body: String; let symbol: String?; let tab: String?; let diagram: String? }
+struct TutorialStepDef: Decodable, Hashable { let titleKey: String?; let bodyKey: String?; let title: String; let body: String; let symbol: String?; let tab: String?; let diagram: String? }
 struct TutorialDef: Decodable, Identifiable {
     let id: String; let kind: String; let title: String; let summary: String; let audience: String
     let section: String?; let group: String?; let covers: [String]; let steps: [TutorialStepDef]
@@ -183,6 +183,7 @@ struct TutorialEntry: Equatable { let id: String; var step: Int; let replay: Boo
 }
 
 struct TutorialOverlay: View {
+    @EnvironmentObject var store: TableStore
     @EnvironmentObject var tutorials: TutorialCenter
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     var body: some View {
@@ -194,7 +195,7 @@ struct TutorialOverlay: View {
                 Color.black.opacity(0.62).ignoresSafeArea().contentShape(Rectangle()).onTapGesture {}.accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 14) {
                     HStack(alignment: .firstTextBaseline) {
-                        Text(def.title.uppercased()).font(.caption.bold()).tracking(2).foregroundStyle(Color.tableHighlight)
+                        Text(store.uiText("tutorial." + def.id + ".title", fallback: def.title).uppercased()).font(.caption.bold()).tracking(2).foregroundStyle(Color.tableHighlight)
                         Spacer()
                         Text("Step \(index + 1) of \(def.steps.count)").font(.caption).foregroundStyle(.secondary).monospacedDigit()
                     }
@@ -207,8 +208,8 @@ struct TutorialOverlay: View {
                             .background(LinearGradient(colors: [Color(red: 0.12, green: 0.11, blue: 0.1), Color(red: 0.2, green: 0.15, blue: 0.11)], startPoint: .top, endPoint: .bottom), in: RoundedRectangle(cornerRadius: 10))
                             .accessibilityHidden(true)
                     }
-                    Text(step.title).font(.system(.title2, design: .serif)).accessibilityAddTraits(.isHeader)
-                    Text(step.body).fixedSize(horizontal: false, vertical: true)
+                    Text(store.uiText(step.titleKey ?? "", fallback: step.title)).font(.system(.title2, design: .serif)).accessibilityAddTraits(.isHeader)
+                    Text(store.uiText(step.bodyKey ?? "", fallback: step.body)).fixedSize(horizontal: false, vertical: true)
                     ProgressView(value: Double(index + 1), total: Double(def.steps.count)).tint(.tableAccent).accessibilityHidden(true)
                     HStack(spacing: 12) {
                         Button("Skip") { tutorials.skip() }.foregroundStyle(Color.tableHighlight)

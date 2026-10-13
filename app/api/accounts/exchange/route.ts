@@ -23,13 +23,13 @@ export async function POST(r: Request) {
     const expected = await challenge(body.verifier);
     const row = await database()
       .prepare(
-        'DELETE FROM native_codes WHERE hash=? AND challenge=? AND expires>? RETURNING account',
+        'DELETE FROM native_codes WHERE hash=? AND challenge=? AND expires>? RETURNING account,provider,verified_email',
       )
       .bind(await hash(body.code), expected, Date.now())
-      .first<{ account: string }>();
+      .first<{ account: string; provider: string; verified_email: string }>();
     if (!row)
       throw Error('This device sign-in code expired or was already used.');
-    return json({ accountToken: await createAccountSession(row.account) });
+    return json({ accountToken: await createAccountSession(row.account, row.provider, row.verified_email) });
   } catch (e) {
     return errorResponse(e);
   }

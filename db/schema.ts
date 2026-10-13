@@ -1,5 +1,7 @@
+import { sql } from 'drizzle-orm';
 import {
   sqliteTable,
+  check,
   text,
   integer,
   real,
@@ -74,6 +76,11 @@ export const accounts = sqliteTable(
     // Public, unique, lowercase handle chosen by the player. Null until set.
     handle: text('handle'),
     handleChangedAt: integer('handle_changed_at'),
+    role: text('role').notNull().default('player'),
+    googleEmail: text('google_email'),
+    banned: text('banned'),
+    mutedUntil: integer('muted_until'),
+    adminRevision: integer('admin_revision').notNull().default(0),
   },
   (t) => [uniqueIndex('idx_accounts_handle').on(t.handle)],
 );
@@ -97,6 +104,9 @@ export const accountSessions = sqliteTable(
       .notNull()
       .references(() => accounts.id, { onDelete: 'cascade' }),
     expires: integer('expires').notNull(),
+    provider: text('provider'),
+    verifiedEmail: text('verified_email'),
+    issued: integer('issued').notNull().default(0),
   },
   (t) => [index('idx_account_sessions_account').on(t.account)],
 );
@@ -134,6 +144,8 @@ export const nativeCodes = sqliteTable('native_codes', {
     .references(() => accounts.id, { onDelete: 'cascade' }),
   challenge: text('challenge').notNull(),
   expires: integer('expires').notNull(),
+  provider: text('provider'),
+  verifiedEmail: text('verified_email'),
 });
 
 // ---------------------------------------------------------------------------
@@ -356,3 +368,26 @@ export const playerReports = sqliteTable(
     index('idx_player_reports_target').on(t.targetAccount),
   ],
 );
+// FEAR-31: immutable audit/text history. Triggers are in the SQL migration.
+export const adminProgression = sqliteTable('admin_progression', {
+  account: text('account').primaryKey().references(()=>accounts.id,{onDelete:'cascade'}),
+  xpOffset: real('xp_offset').notNull().default(0),
+});
+export const accountItems = sqliteTable('account_items', {
+  account: text('account').notNull().references(()=>accounts.id,{onDelete:'cascade'}),
+  item: text('item').notNull(),
+},t=>[primaryKey({columns:[t.account,t.item]})]);
+export const adminAudit = sqliteTable('admin_audit', {
+  id:text('id').primaryKey(), at:integer('at').notNull(), admin:text('admin').notNull(),
+  action:text('action').notNull(), target:text('target').notNull(), parameters:text('parameters').notNull(),
+  result:text('result').notNull(), beforeValue:text('before_value'),afterValue:text('after_value'),
+},t=>[index('idx_admin_audit_at').on(t.at)]);
+export const uiTextVersions = sqliteTable('ui_text_versions', {
+  id:integer('id').primaryKey({autoIncrement:true}),key:text('key').notNull(),value:text('value').notNull(),at:integer('at').notNull(),admin:text('admin').notNull(),
+},t=>[index('idx_ui_text_versions_key').on(t.key,t.id)]);
+export const adminAssertions = sqliteTable('admin_assertions',{ok:integer('ok').notNull()}, t=>[check('admin_assertion_ok',sql`${t.ok}=1`)]);
+
+export const adminConfirmations = sqliteTable('admin_confirmations', {
+  hash:text('hash').primaryKey(),admin:text('admin').notNull(),session:text('session').notNull(),
+  command:text('command').notNull(),digest:text('digest').notNull(),expires:integer('expires').notNull(),
+});

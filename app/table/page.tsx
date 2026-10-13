@@ -1,4 +1,5 @@
 'use client';
+import { UiText } from '@/components/ui-text';
 import AppLink from '@/components/app-link';
 import { NightRite } from '@/components/rite/night-rite';
 import { playCue } from '@/components/hub/audio';
@@ -543,7 +544,7 @@ export default function Table() {
           <span className="table-script">{game.scriptName}</span>
           {game.roleDistribution && (
             <span className="table-setup">
-              <strong>{game.customRoleDistribution ? 'Custom' : 'Standard'} setup · {game.players.length} players</strong>
+              <strong>{game.customRoleDistribution ? 'Custom' : 'Standard'} setup · <UiText id="lobby.players" values={{count:game.players.length}}/></strong>
               <small>
                 {TEAM_ORDER.filter(
                   (t) => t !== 'traveler' || game.script === 'horrors',
@@ -561,7 +562,7 @@ export default function Table() {
             {online ? 'Live updates' : 'Reconnecting…'}
           </span>
           <span className="table-population">
-            {game.players.length} players ·{' '}
+            <UiText id="lobby.players" values={{count:game.players.length}}/> ·{' '}
             {game.players.filter((p) => p.alive).length} alive
           </span>
           <button
@@ -718,7 +719,7 @@ export default function Table() {
           <TabsList className="table-tabs" aria-label="Game navigation">
             <TabsTrigger value="flow">
               <Play aria-hidden="true" />
-              <span>{game.phase === 'lobby' ? 'Lobby' : 'Game flow'}</span>
+              <span><UiText id={game.phase === 'lobby' ? 'lobby.tab' : 'flow.tab'}/></span>
             </TabsTrigger>
             {game.phase === 'lobby' && !game.host ? (
               <>

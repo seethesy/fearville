@@ -20,7 +20,9 @@ struct RootView: View {
     @Environment(\.scenePhase) private var scene
     var body: some View {
         Group {
-            if store.showingTable && store.authenticated, let game = store.game { GameView(game: game) }
+            if !store.accountLoaded { ProgressView("Loading account…") }
+            else if store.accountState?.account?.role == "admin" { NativeAdmin() }
+            else if store.showingTable && store.authenticated, let game = store.game { GameView(game: game) }
             else if store.showingTable && store.authenticated { VStack(spacing: 24) { ProgressView("Connecting to your table…"); Text(store.error).foregroundStyle(.secondary); Button("Retry") { Task { await store.refresh() } }; Button("Return to welcome") { store.leave() } }.padding() }
             else if store.accountState?.account != nil { NativeHub() }
             else { NativeWelcome() }
@@ -28,11 +30,16 @@ struct RootView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color.tableBackground)
         .task { await store.refreshAccount() }
+        .task(id: "text-\(scene)") {
+            guard scene == .active else { return }
+            var polls = 0
+            while !Task.isCancelled { await store.refreshOfficialText(); polls += 1; if polls % 10 == 0 { await store.refreshAccount() }; do { try await Task.sleep(for: .seconds(3)) } catch { return } }
+        }
         .task(id: "\(scene)-\(store.authenticated)-\(store.showingTable)") {
             guard scene == .active, store.authenticated, store.showingTable else { return }
             while !Task.isCancelled { await store.refresh(); do { try await Task.sleep(for: .seconds(2)) } catch { return } }
         }
-        .overlay { TutorialOverlay() }
+        .overlay { if store.accountState?.account?.role != "admin" { TutorialOverlay() } }
         .task(id: store.accountState?.account?.id ?? "guest") { tutorials.attach(store); await tutorials.load() }
         .dynamicTypeSize(store.preferences.largerText ? .xLarge ... .accessibility5 : .xSmall ... .accessibility5)
         .task(id: scene) {
@@ -86,7 +93,7 @@ struct GameView: View {
     @State private var confirmExit = false
     var body: some View {
         TabView(selection: $tab) {
-            NavigationStack { FlowView(game: game, selected: $selected).navigationTitle(game.phaseLabel).navigationBarTitleDisplayMode(.inline) }.tabItem { Text("Game") }.tag("game")
+            NavigationStack { FlowView(game: game, selected: $selected).navigationTitle(game.phaseLabel).navigationBarTitleDisplayMode(.inline) }.tabItem { Text(store.uiText("flow.nativeTab", fallback: "Game")) }.tag("game")
             NavigationStack { SeatsView(game: game, selected: $selected).navigationTitle("Seats") }.tabItem { Text("Seats") }.tag("seats")
             NavigationStack { MessagesView(game: game, selected: $selected).navigationTitle("Messages") }.tabItem { Text("Messages") }.tag("messages")
             NavigationStack { ScriptView(script: game.script ?? "horrors", riteGuides: riteGuides).navigationTitle(game.scriptName ?? "Horrors of Fearville") }.tabItem { Text("Script") }.tag("script")

@@ -27,6 +27,7 @@ export async function POST(r: Request) {
         503,
       );
     const account = body.link ? await accountAuth(r) : null;
+    if (account?.role === 'admin') throw Error('Admin accounts cannot link another provider.');
     if (body.link && !account)
       throw Error('Sign in before connecting another provider.');
     if (

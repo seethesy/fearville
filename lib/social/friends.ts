@@ -15,7 +15,7 @@ type Relation = { requester: string; addressee: string; status: string };
 export async function accountByHandle(handle: string) {
   return database()
     .prepare(
-      'SELECT a.id,a.name,a.handle,p.avatar FROM accounts a LEFT JOIN account_profiles p ON p.account=a.id WHERE a.handle=?',
+      'SELECT a.id,a.name,a.handle,p.avatar FROM accounts a LEFT JOIN account_profiles p ON p.account=a.id WHERE a.role="player" AND a.handle=?',
     )
     .bind(handle)
     .first<PublicAccount>();
@@ -23,7 +23,7 @@ export async function accountByHandle(handle: string) {
 export async function accountByID(id: string) {
   return database()
     .prepare(
-      'SELECT a.id,a.name,a.handle,p.avatar FROM accounts a LEFT JOIN account_profiles p ON p.account=a.id WHERE a.id=?',
+      'SELECT a.id,a.name,a.handle,p.avatar FROM accounts a LEFT JOIN account_profiles p ON p.account=a.id WHERE a.role="player" AND a.id=?',
     )
     .bind(id)
     .first<PublicAccount>();

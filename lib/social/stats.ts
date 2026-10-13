@@ -190,7 +190,7 @@ export async function statsFor(account: string): Promise<Stats> {
       roleTypes: typesFor(entries),
       roles: rolesFor(entries),
     })),
-    progression: levelProgress(sum(rows, 'xp') + (hosted?.xp ?? 0)),
+    progression: levelProgress(sum(rows, 'xp') + (hosted?.xp ?? 0) + ((await db.prepare('SELECT xp_offset FROM admin_progression WHERE account=?').bind(account).first<{xp_offset:number}>())?.xp_offset ?? 0)),
     elo: STARTING_ELO + sum(rows, 'delta'),
     ranked: breakdown(rows.filter((r) => r.ranked)),
     peakElo: Math.max(STARTING_ELO, peak?.peak ?? STARTING_ELO),

@@ -6,6 +6,7 @@ export async function POST(r: Request) {
     checkOrigin(r);
     const account = await accountAuth(r);
     if (!account) return json({ error: 'Sign in first.' }, 401);
+    if (account.role === 'admin') return json({ok:true});
     await limited(r, 'presence', 120);
     const body = (await r.json()) as { online?: boolean };
     await database()

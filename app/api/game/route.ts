@@ -1,6 +1,6 @@
+import { checkSeatAccount } from '@/lib/admin/access';
 import {
   authenticatedRead,
-  read,
   save,
   json,
   errorResponse,
@@ -20,7 +20,7 @@ export async function GET(r: Request) {
     const initial = await authenticatedRead(r);
     const { actor, code } = initial;
     for (let i = 0; i < 8; i++) {
-      const { game, version, created } = i === 0 ? initial : await read(code);
+      const { game, version, created } = i === 0 ? initial : await authenticatedRead(r);
       if (
         !actor.host &&
         !game.players.some((p) => p.id === actor.id && !p.departed)
@@ -28,7 +28,7 @@ export async function GET(r: Request) {
         throw Error('AUTH');
       const now = Date.now();
       const changed = tick(game, now);
-      if (changed && !(await save(game, version, false))) continue;
+      if (changed && !(await save(game, version, false, actor.credentialHash))) continue;
       // A timer may end a game during a poll. Ordinary polls must stay read-only;
       // action handlers synchronize results and MVP changes when they save.
       if (changed && game.phase === 'ended')
@@ -72,6 +72,7 @@ export async function POST(r: Request) {
     requireThat(raw.length < 20000, 'Request is too large.');
     const c = JSON.parse(raw);
     requireThat(typeof c.action === 'string', 'Choose an action.');
+    if (c.action === 'chat') await checkSeatAccount(code, actor.id, true);
     if (
       ['vote', 'correctVote'].includes(c.action) &&
       typeof c.yes === 'string'
@@ -83,7 +84,8 @@ export async function POST(r: Request) {
       c.yes = c.yes === 'null' ? null : c.yes === 'true';
     }
     for (let i = 0; i < 20; i++) {
-      const { game, version, created } = i === 0 ? initial : await read(code);
+      const { game, version, created } = i === 0 ? initial : await authenticatedRead(r);
+      if (i > 0 && c.action === 'chat') await checkSeatAccount(code, actor.id, true);
       const now = Date.now();
       const before = game.phase;
       const resultStarted = game.gameStartedAt ?? created;
@@ -94,7 +96,7 @@ export async function POST(r: Request) {
       const actionActor = pov ? { id: pov.id, host: false } : actor;
       const canRebase = canApplyLatest(actionActor, c);
       if (tick(game, now)) {
-        if (!(await save(game, version, false))) {
+        if (!(await save(game, version, false, actor.credentialHash))) {
           await new Promise((resolve) =>
             setTimeout(resolve, 8 + Math.floor(Math.random() * 24)),
           );
@@ -147,7 +149,7 @@ export async function POST(r: Request) {
           ? independentCommand(independentBefore, game, actionActor, c)
           : null;
       if (scoped) {
-        const saved = await saveIndependent(game, scoped);
+        const saved = await saveIndependent(game, scoped, actor.credentialHash);
         if (!saved) continue;
         return json({
           summary,
@@ -173,7 +175,7 @@ export async function POST(r: Request) {
           game.phase === 'lobby',
           game.phase === 'ended',
         ]);
-      if (!(await save(game, version, rankedChanged))) {
+      if (!(await save(game, version, rankedChanged, actor.credentialHash, c.action === 'chat'))) {
         await new Promise((resolve) =>
           setTimeout(resolve, 8 + Math.floor(Math.random() * 24)),
         );

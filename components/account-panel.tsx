@@ -4,16 +4,20 @@ import { useEffect, useState } from 'react';
 import type { ProfileDefaults } from '@/lib/accounts/preferences';
 export type AccountView = {
   account: {
+    role?: 'admin' | 'player';
     id: string;
     name: string;
     email: string;
     handle: string | null;
     handleChangedAt: number | null;
   } | null;
+  items?: string[];
+  warning?: string;
   profile?: ProfileDefaults;
   providers: { google: boolean; apple: boolean };
   connections: string[];
   seats: {
+    role?: 'admin' | 'player';
     id: string;
     code: string;
     player: string;
@@ -68,6 +72,7 @@ export function AccountPanel({ compact = false }: { compact?: boolean }) {
       </p>
       {state?.account ? (
         <>
+          {state.warning && <p role="alert">Account warning: {state.warning}</p>}
           <p>
             Signed in as <strong>{state.account.name}</strong>
             {state.account.handle && (

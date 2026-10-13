@@ -12,7 +12,7 @@ export async function prepareProgression(g: Game) {
   }
   const rows = await database()
     .prepare(
-      'SELECT s.player,s.host,s.account,1000+COALESCE((SELECT SUM(p.elo_delta) FROM game_players p WHERE p.account=s.account),0) AS rating,(SELECT COUNT(*) FROM game_players p JOIN games g ON g.id=p.game WHERE p.account=s.account AND g.ranked=1) AS rankedGames,(SELECT code FROM ranked_seats r WHERE r.account=s.account) AS lockedCode FROM account_seats s WHERE s.code=?',
+      `SELECT s.player,s.host,s.account,1000+COALESCE((SELECT SUM(p.elo_delta) FROM game_players p WHERE p.account=s.account),0) AS rating,(SELECT COUNT(*) FROM game_players p JOIN games g ON g.id=p.game WHERE p.account=s.account AND g.ranked=1) AS rankedGames,(SELECT code FROM ranked_seats r WHERE r.account=s.account) AS lockedCode FROM account_seats s JOIN accounts a ON a.id=s.account WHERE s.code=? AND a.role='player' AND a.banned IS NULL`,
     )
     .bind(g.code)
     .all<{

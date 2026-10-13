@@ -27,7 +27,7 @@ export async function recordResult(
   const statements = [
     db
       .prepare(`INSERT INTO games (id,code,host_account,host_name,winner,reason,players,days,nights,started,ended,script,ranked,host_xp)
-    SELECT ?,?,(SELECT id FROM accounts WHERE id=COALESCE(?,(SELECT account FROM account_seats WHERE code=? AND host=1 LIMIT 1))),?,?,?,?,?,?,?,?,?,?,? WHERE ${guard}
+    SELECT ?,?,(SELECT id FROM accounts WHERE role='player' AND id=COALESCE(?,(SELECT account FROM account_seats WHERE code=? AND host=1 LIMIT 1))),?,?,?,?,?,?,?,?,?,?,? WHERE ${guard}
     ON CONFLICT(id) DO UPDATE SET host_account=COALESCE(excluded.host_account,games.host_account),host_name=excluded.host_name,winner=excluded.winner,reason=excluded.reason,players=excluded.players,days=excluded.days,nights=excluded.nights,ended=excluded.ended,script=excluded.script,ranked=excluded.ranked,host_xp=excluded.host_xp`)
       .bind(
         record.id,
@@ -53,7 +53,7 @@ export async function recordResult(
     statements.push(
       db
         .prepare(`INSERT INTO game_players (game,player,account,name,role,team,won,alive,role_type,base_xp,mvp_xp,mvp_votes,rating_before,opponent_rating,team_rating,elo_delta)
-      SELECT ?,?,(SELECT id FROM accounts WHERE id=COALESCE(?,(SELECT account FROM account_seats WHERE code=? AND player=? AND host=0 LIMIT 1))),?,?,?,?,?,?,?,?,?,?,?,?,? WHERE ${guard}
+      SELECT ?,?,(SELECT id FROM accounts WHERE role='player' AND id=COALESCE(?,(SELECT account FROM account_seats WHERE code=? AND player=? AND host=0 LIMIT 1))),?,?,?,?,?,?,?,?,?,?,?,?,? WHERE ${guard}
       ON CONFLICT(game,player) DO UPDATE SET account=COALESCE(excluded.account,game_players.account),name=excluded.name,role=excluded.role,team=excluded.team,won=excluded.won,alive=excluded.alive,role_type=excluded.role_type,base_xp=excluded.base_xp,mvp_xp=excluded.mvp_xp,mvp_votes=excluded.mvp_votes,rating_before=excluded.rating_before,opponent_rating=excluded.opponent_rating,team_rating=excluded.team_rating,elo_delta=excluded.elo_delta`)
         .bind(
           record.id,

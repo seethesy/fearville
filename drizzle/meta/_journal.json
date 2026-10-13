@@ -64,6 +64,20 @@
       "when": 1791838096082,
       "tag": "0008_nappy_cardiac",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1791850984036,
+      "tag": "0009_colossal_wind_dancer",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1791851140641,
+      "tag": "0010_immutable_admin_history",
+      "breakpoints": true
     }
   ]
 }

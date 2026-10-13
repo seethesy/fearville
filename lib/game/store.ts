@@ -1,3 +1,5 @@
+import { checkSeatAccount } from '@/lib/admin/access';
+import { requirePlayerRequest } from '@/lib/accounts/service';
 import { database } from '@/db';
 import type { Actor, Command, Game } from './types';
 import type { ScopedUpdate } from './scoped-update';
@@ -10,6 +12,11 @@ import {
   type SessionRow,
 } from './part-store';
 export const cookieName = 'ct_session';
+// Checked in the same SQLite write as the game change. Revocation cannot race
+// a previously authenticated request into committing after a ban/host transfer.
+const communicationGuard = `NOT EXISTS (SELECT 1 FROM members m JOIN account_seats seat ON seat.code=m.code AND seat.player=m.player JOIN accounts a ON a.id=seat.account WHERE m.token_hash=? AND a.muted_until>?)`;
+const credentialGuard = `EXISTS (SELECT 1 FROM members m WHERE m.token_hash=? AND m.code=sessions.code AND m.expires>? AND NOT EXISTS (SELECT 1 FROM account_seats seat JOIN accounts a ON a.id=seat.account WHERE seat.code=m.code AND seat.player=m.player AND (a.role<>'player' OR a.banned IS NOT NULL)))`;
+
 export async function hash(token: string) {
   const data = await crypto.subtle.digest(
     'SHA-256',
@@ -43,8 +50,10 @@ export async function authMember(
     .bind(await hash(token), Date.now())
     .first<{ code: string; player: string; host: number }>();
   if (!member) throw Error('AUTH');
+  await requirePlayerRequest(r);
+  await checkSeatAccount(member.code, member.player);
   return {
-    actor: { id: member.player, host: !!member.host },
+    actor: { id: member.player, host: !!member.host, credentialHash: await hash(token) },
     code: member.code,
   };
 }
@@ -70,8 +79,10 @@ export async function authenticatedRead(r: Request) {
     .bind(await hash(token), Date.now())
     .first<SessionRow & { code: string; player: string; host: number }>();
   if (!row) throw Error('AUTH');
+  await requirePlayerRequest(r);
+  await checkSeatAccount(row.code, row.player);
   const { game, version, created } = await converted(row);
-  const actor = { id: row.player, host: !!row.host };
+  const actor = { id: row.player, host: !!row.host, credentialHash: await hash(token) };
   if (
     !actor.host &&
     !game.players.some((p) => p.id === actor.id && !p.departed)
@@ -95,9 +106,11 @@ async function converted(row: SessionRow) {
     return { game, version: version + 1, created };
   return { game, version, created };
 }
-export async function save(g: Game, version: number, syncRanked = true) {
+export async function save(g: Game, version: number, syncRanked = true, credentialHash?: string, communication = false) {
   const db = database();
-  const write = prepareWrite(db, g, version);
+  const write = prepareWrite(db, g, version,
+    credentialHash ? ' AND ' + credentialGuard + (communication ? ' AND ' + communicationGuard : '') : '',
+    credentialHash ? [credentialHash, Date.now(), ...(communication ? [credentialHash, Date.now()] : [])] : []);
   // Puzzle moves cannot change ranked membership. Keep their CAS write small
   // instead of rebuilding locks for every seat on every move.
   const guard = write.guard;
@@ -168,8 +181,10 @@ export async function loadDecision(g: Game, command: Command) {
   entry.before = row.state;
 }
 /** Save a chat message, notebook or vigil move as its own stored part. */
-export async function saveIndependent(g: Game, update: ScopedUpdate) {
-  return saveIndependentParts(database(), g, update);
+export async function saveIndependent(g: Game, update: ScopedUpdate, credentialHash?: string) {
+  return saveIndependentParts(database(), g, update,
+    credentialHash ? ' AND ' + credentialGuard + (update.append ? ' AND ' + communicationGuard : '') : '',
+    credentialHash ? [credentialHash, Date.now(), ...(update.append ? [credentialHash, Date.now()] : [])] : []);
 }
 export function json(
   data: unknown,
@@ -187,6 +202,7 @@ export function json(
 }
 export function errorResponse(e: unknown) {
   const message = e instanceof Error ? e.message : 'Request failed.';
+  if (message === 'FORBIDDEN' || message === 'ADMIN_GAMEPLAY' || message === 'BANNED') return json({error: message === 'BANNED' ? 'This account is banned.' : message === 'ADMIN_GAMEPLAY' ? 'Admin accounts cannot participate in games.' : 'Admin access required.'},403);
   if (message === 'AUTH')
     return json(
       {

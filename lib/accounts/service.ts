@@ -1,3 +1,5 @@
+import { adminAllowlist, requirePlayerAccount } from '@/lib/admin/access';
+import { adminSessionValid, ADMIN_SESSION_MS, allowlisted } from '@/lib/admin/policy';
 import { env } from 'cloudflare:workers';
 import { database } from '@/db';
 import { hash, tokenOf } from '@/lib/game/store';
@@ -49,26 +51,43 @@ export function accountToken(r: Request) {
 export async function accountAuth(r: Request) {
   const token = accountToken(r);
   if (!token || token.length > 200) return null;
-  return database()
+  const a = await database()
     .prepare(
-      'SELECT a.id,a.name,a.email,a.handle,a.handle_changed_at AS handleChangedAt FROM accounts a JOIN account_sessions s ON a.id=s.account WHERE s.hash=? AND s.expires>?',
+      'SELECT a.id,a.name,a.email,a.handle,a.handle_changed_at AS handleChangedAt,a.role,a.google_email AS googleEmail,a.banned,s.provider,s.verified_email AS verifiedEmail,s.issued,s.expires FROM accounts a JOIN account_sessions s ON a.id=s.account WHERE s.hash=?',
     )
-    .bind(await hash(token), Date.now())
+    .bind(await hash(token))
     .first<{
       id: string;
       name: string;
       email: string;
       handle: string | null;
       handleChangedAt: number | null;
+      role: string; googleEmail: string | null; banned: string | null; provider: string | null; verifiedEmail: string | null; issued: number; expires: number;
     }>();
+  if (!a) return null;
+  if (a.banned !== null) throw Error('BANNED');
+  if (a.expires <= Date.now()) return null;
+  const elevated = adminSessionValid(a, adminAllowlist(), Date.now());
+  if (a.role === 'admin' && !elevated) return null;
+  return { id:a.id, name:a.name, email:a.email, handle:a.handle, handleChangedAt:a.handleChangedAt, role:elevated ? 'admin' as const : 'player' as const };
 }
-export async function createAccountSession(account: string) {
+export async function requirePlayerRequest(r: Request) {
+  const token = accountToken(r);
+  if (!token || token.length > 200) return;
+  const seat = await database().prepare('SELECT account FROM account_sessions WHERE hash=?').bind(await hash(token)).first<{account:string}>();
+  if (seat) await requirePlayerAccount(seat.account);
+}
+export async function createAccountSession(account: string, provider = "", verifiedEmail = "") {
+  const a = await database().prepare('SELECT role,google_email,banned FROM accounts WHERE id=?').bind(account).first<{role:string;google_email:string|null;banned:string|null}>();
+  if (!a || a.banned !== null) throw Error('BANNED');
+  if (a.role === 'admin' && (provider !== 'google' || a.google_email !== verifiedEmail || !allowlisted(verifiedEmail, adminAllowlist()))) throw Error('Admin access requires verified Google sign-in.');
+  const lifetime = a.role === 'admin' ? ADMIN_SESSION_MS : 30 * 86400000;
   const token = random();
   await database()
     .prepare(
-      'INSERT INTO account_sessions (hash,account,expires) VALUES (?,?,?)',
+      'INSERT INTO account_sessions (hash,account,expires,provider,verified_email,issued) VALUES (?,?,?,?,?,?)',
     )
-    .bind(await hash(token), account, Date.now() + 30 * 86400000)
+    .bind(await hash(token), account, Date.now() + lifetime, provider, verifiedEmail, Date.now())
     .run();
   return token;
 }
@@ -78,6 +97,7 @@ export async function attachSeat(r: Request, account: string) {
   await attachMember(await hash(member), account);
 }
 export async function attachMember(memberHash: string, account: string) {
+  await requirePlayerAccount(account);
   await database()
     .prepare(
       'INSERT INTO account_seats (id,account,code,player,host) SELECT code || char(58) || player,?,code,player,host FROM members WHERE token_hash=? AND expires>? ON CONFLICT(id) DO NOTHING',
@@ -98,6 +118,7 @@ export async function accountView(r: Request) {
       seats: [],
       pending: { requests: 0, invites: 0 },
     };
+  if (account.role === 'admin') return { account, providers: {google:providers.google,apple:false}, connections:['google'], seats:[], pending:{requests:0,invites:0} };
   const connections = await database()
     .prepare('SELECT provider FROM identities WHERE account=?')
     .bind(account.id)
@@ -117,6 +138,8 @@ export async function accountView(r: Request) {
     }>();
   return {
     account,
+    warning: (await database().prepare("SELECT resolution FROM player_reports WHERE target_account=? AND status='actioned' AND resolution LIKE 'warn:%' ORDER BY resolved_at DESC LIMIT 1").bind(account.id).first<{resolution:string}>())?.resolution.slice(6),
+    items: (await database().prepare('SELECT item FROM account_items WHERE account=? ORDER BY item').bind(account.id).all<{item:string}>()).results.map(x=>x.item),
     profile: await profileDefaults(account.id, account.name),
     providers,
     connections: connections.results.map((c) => c.provider),
