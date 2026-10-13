@@ -370,24 +370,58 @@ export const playerReports = sqliteTable(
 );
 // FEAR-31: immutable audit/text history. Triggers are in the SQL migration.
 export const adminProgression = sqliteTable('admin_progression', {
-  account: text('account').primaryKey().references(()=>accounts.id,{onDelete:'cascade'}),
+  account: text('account')
+    .primaryKey()
+    .references(() => accounts.id, { onDelete: 'cascade' }),
   xpOffset: real('xp_offset').notNull().default(0),
 });
-export const accountItems = sqliteTable('account_items', {
-  account: text('account').notNull().references(()=>accounts.id,{onDelete:'cascade'}),
-  item: text('item').notNull(),
-},t=>[primaryKey({columns:[t.account,t.item]})]);
-export const adminAudit = sqliteTable('admin_audit', {
-  id:text('id').primaryKey(), at:integer('at').notNull(), admin:text('admin').notNull(),
-  action:text('action').notNull(), target:text('target').notNull(), parameters:text('parameters').notNull(),
-  result:text('result').notNull(), beforeValue:text('before_value'),afterValue:text('after_value'),
-},t=>[index('idx_admin_audit_at').on(t.at)]);
-export const uiTextVersions = sqliteTable('ui_text_versions', {
-  id:integer('id').primaryKey({autoIncrement:true}),key:text('key').notNull(),value:text('value').notNull(),at:integer('at').notNull(),admin:text('admin').notNull(),
-},t=>[index('idx_ui_text_versions_key').on(t.key,t.id)]);
-export const adminAssertions = sqliteTable('admin_assertions',{ok:integer('ok').notNull()}, t=>[check('admin_assertion_ok',sql`${t.ok}=1`)]);
+export const accountItems = sqliteTable(
+  'account_items',
+  {
+    account: text('account')
+      .notNull()
+      .references(() => accounts.id, { onDelete: 'cascade' }),
+    item: text('item').notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.account, t.item] })],
+);
+export const adminAudit = sqliteTable(
+  'admin_audit',
+  {
+    id: text('id').primaryKey(),
+    at: integer('at').notNull(),
+    admin: text('admin').notNull(),
+    action: text('action').notNull(),
+    target: text('target').notNull(),
+    parameters: text('parameters').notNull(),
+    result: text('result').notNull(),
+    beforeValue: text('before_value'),
+    afterValue: text('after_value'),
+  },
+  (t) => [index('idx_admin_audit_at').on(t.at)],
+);
+export const uiTextVersions = sqliteTable(
+  'ui_text_versions',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    key: text('key').notNull(),
+    value: text('value').notNull(),
+    at: integer('at').notNull(),
+    admin: text('admin').notNull(),
+  },
+  (t) => [index('idx_ui_text_versions_key').on(t.key, t.id)],
+);
+export const adminAssertions = sqliteTable(
+  'admin_assertions',
+  { ok: integer('ok').notNull() },
+  (t) => [check('admin_assertion_ok', sql`${t.ok}=1`)],
+);
 
 export const adminConfirmations = sqliteTable('admin_confirmations', {
-  hash:text('hash').primaryKey(),admin:text('admin').notNull(),session:text('session').notNull(),
-  command:text('command').notNull(),digest:text('digest').notNull(),expires:integer('expires').notNull(),
+  hash: text('hash').primaryKey(),
+  admin: text('admin').notNull(),
+  session: text('session').notNull(),
+  command: text('command').notNull(),
+  digest: text('digest').notNull(),
+  expires: integer('expires').notNull(),
 });

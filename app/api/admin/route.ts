@@ -12,7 +12,12 @@ export async function GET(r: Request) {
     await requireAdmin(r);
     const params = new URL(r.url).searchParams;
     if (params.get('view') === 'reports')
-      return json({ reports: await reportQueue(params.get('status') ?? 'open', Number(params.get('offset') ?? 0)) });
+      return json({
+        reports: await reportQueue(
+          params.get('status') ?? 'open',
+          Number(params.get('offset') ?? 0),
+        ),
+      });
     if (params.get('view') === 'history')
       return json({ history: await textHistory(params.get('key') ?? '') });
     return json({ audit: await auditLog(params) });

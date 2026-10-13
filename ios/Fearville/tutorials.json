@@ -56,9 +56,7 @@
       "audience": "player",
       "section": null,
       "group": "walkthrough",
-      "covers": [
-        "section.flow"
-      ],
+      "covers": ["section.flow"],
       "steps": [
         {
           "titleKey": "tutorial.walkthrough.start.0.title",

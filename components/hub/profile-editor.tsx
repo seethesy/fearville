@@ -61,7 +61,18 @@ export function ProfileEditor() {
           <p className="muted">Your look, at every table.</p>
         </div>
       </div>
-      {!!state?.items?.length && <section><h3>Awarded items</h3><ul>{state.items.map(id=><li key={id}>{ITEM_CATALOG.find(item=>item.id===id)?.name ?? id}</li>)}</ul></section>}
+      {!!state?.items?.length && (
+        <section>
+          <h3>Awarded items</h3>
+          <ul>
+            {state.items.map((id) => (
+              <li key={id}>
+                {ITEM_CATALOG.find((item) => item.id === id)?.name ?? id}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
       <details className="profile-options">
         <summary className="secondary">Edit profile & cosmetics</summary>
         <form

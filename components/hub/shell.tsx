@@ -58,7 +58,9 @@ export function HubShell({
               aria-current={active === label ? 'page' : undefined}
             >
               <Icon size={22} aria-hidden="true" />
-              <span><UiText id={"nav."+label.toLowerCase()}/></span>
+              <span>
+                <UiText id={'nav.' + label.toLowerCase()} />
+              </span>
               {label === 'Social' &&
                 !!state?.pending &&
                 state.pending.invites + state.pending.requests > 0 && (
@@ -102,7 +104,9 @@ export function HubShell({
         </DialogContent>
       </Dialog>
       <footer className="hub-footer">
-        <span><UiText id="footer.tagline"/></span>
+        <span>
+          <UiText id="footer.tagline" />
+        </span>
         <AppLink href="/privacy">Privacy</AppLink>
         <AppLink href="/rules">Rulebook</AppLink>
       </footer>
