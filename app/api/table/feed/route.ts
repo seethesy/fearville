@@ -16,7 +16,7 @@ export async function GET(r: Request) {
         : null;
     return json({
       ...feedPage(
-        await visibleGame(game,actor.id),
+        await visibleGame(game, actor.id),
         pov ? { id: pov.id, host: false } : actor,
         kind,
         params.get('before') || undefined,

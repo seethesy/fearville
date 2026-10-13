@@ -116,10 +116,8 @@ export function riteView(g: Game, a: Actor, now: number) {
     const t = state.turn,
       current = t?.order[t.cursor % t.order.length] === a.id;
     const snapshot = t?.snapshots[a.id];
-    if (phase === 'wait' && state.solved)
-      phase = 'done';
-    else if (phase === 'wait')
-      phase = current && !t?.vote ? 'turn' : 'wait';
+    if (phase === 'wait' && state.solved) phase = 'done';
+    else if (phase === 'wait') phase = current && !t?.vote ? 'turn' : 'wait';
     puzzle.phase = phase;
     const board =
       g.phase !== 'night' || s.completeNight
@@ -139,7 +137,7 @@ export function riteView(g: Game, a: Actor, now: number) {
     }
     if (phase === 'turn' && t) {
       puzzle.turn = t.token;
-      if (t.deadline>0) puzzle.deadline = t.deadline;
+      if (t.deadline > 0) puzzle.deadline = t.deadline;
     }
     if (t?.vote)
       puzzle.vote = {

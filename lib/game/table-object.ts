@@ -101,9 +101,17 @@ export class GameTable extends DurableObject {
     return this.game!;
   }
   private async schedule() {
-    if (this.meta) await this.ctx.storage.setAlarm(Math.min(this.meta.retainAt,
-      nextDeadline(this.game!,this.meta.timerThrough ?? 0) ?? this.meta.retainAt,
-      this.meta.projection || this.meta.effects ? Date.now()+2000 : this.meta.retainAt));
+    if (this.meta)
+      await this.ctx.storage.setAlarm(
+        Math.min(
+          this.meta.retainAt,
+          nextDeadline(this.game!, this.meta.timerThrough ?? 0) ??
+            this.meta.retainAt,
+          this.meta.projection || this.meta.effects
+            ? Date.now() + 2000
+            : this.meta.retainAt,
+        ),
+      );
   }
   private async destroy() {
     await this.ctx.storage.deleteAlarm();
@@ -420,12 +428,17 @@ export class GameTable extends DurableObject {
           .run();
         await this.destroy();
       } else {
-        const now = Date.now(), due = nextDeadline(this.game!,this.meta!.timerThrough ?? 0);
+        const now = Date.now(),
+          due = nextDeadline(this.game!, this.meta!.timerThrough ?? 0);
         const next = structuredClone(this.game!);
-        const changed = tick(next,now);
+        const changed = tick(next, now);
         this.meta!.timerThrough = now;
-        if (changed || (due !== null && due <= now)) await this.commit(next,undefined,'alarm',now);
-        else { this.parts.save(this.game!,this.meta!); await this.schedule(); }
+        if (changed || (due !== null && due <= now))
+          await this.commit(next, undefined, 'alarm', now);
+        else {
+          this.parts.save(this.game!, this.meta!);
+          await this.schedule();
+        }
       }
     });
   }
