@@ -16,6 +16,7 @@ import type { ScopedUpdate } from './scoped-update.ts';
 // environment so the D1 store and tests can pass any D1-compatible database.
 
 type Loaded = {
+  core: string;
   version: number;
   created: number;
   parts: Map<string, PartRow>;
@@ -24,6 +25,10 @@ type Loaded = {
 // What each loaded Game looked like in storage, so a save writes only the
 // parts that changed and checks each one's revision.
 const loadedStates = new WeakMap<Game, Loaded>();
+export function inheritStored(before: Game, after: Game) {
+  const loaded = loadedStates.get(before);
+  if (loaded) loadedStates.set(after, loaded);
+}
 
 export const SESSION_COLUMNS =
   's.state, s.version, s.created, (SELECT json_group_array(json_array(p.part, p.rev, p.state)) FROM session_parts p WHERE p.code = s.code) AS parts';
@@ -48,6 +53,7 @@ export function loadStored(row: SessionRow, includeHistory = false) {
   );
   const game = savedGameValue(assembled.game, includeHistory);
   loadedStates.set(game, {
+    core: row.state,
     version: row.version,
     created: row.created,
     parts,
@@ -85,6 +91,7 @@ export function prepareWrite(
   version: number,
   coreCondition = '',
   coreBindings: unknown[] = [],
+  writeId = crypto.randomUUID(),
 ): PreparedWrite {
   const loaded = loadedStates.get(g);
   const snapshots = g.history.filter((entry) => entry.before);
@@ -92,14 +99,13 @@ export function prepareWrite(
     ...g,
     history: g.history.map((entry) => ({ ...entry, before: '' })),
   });
-  const writeId = crypto.randomUUID();
   const guardBindings: [string, string] = [g.code, writeId];
   const update = db
     .prepare(
-      'UPDATE sessions SET state=?, version=version+1, write_id=? WHERE code=? AND version=?' +
+      `UPDATE sessions SET ${loaded?.core === stored.core ? '' : 'state=?, '}version=version+1, write_id=? WHERE code=? AND version=?` +
         coreCondition,
     )
-    .bind(stored.core, writeId, g.code, version, ...coreBindings);
+    .bind(...(loaded?.core === stored.core ? [] : [stored.core]), writeId, g.code, version, ...coreBindings);
   const after = snapshots.map((entry) =>
     db
       .prepare(
@@ -154,6 +160,7 @@ export function prepareWrite(
     for (const [key, part] of loaded?.parts ?? [])
       if (stored.parts.get(key) === part.state) parts.set(key, part);
     loadedStates.set(g, {
+      core: stored.core,
       version: version + 1,
       created: loaded?.created ?? 0,
       parts,
