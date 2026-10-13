@@ -125,16 +125,21 @@ void test('a failed or awaited operation never overlaps the next one', async () 
   );
   assert.equal(results.filter((r) => r.status === 'fulfilled').length, 18);
 });
-void test('empty objects stay empty after cleanup and read-only wakeups',()=> {
-  const {db,storage,parts}=fixture();
-  assert.equal(parts.load(),null);
-  assert.equal(parts.snapshot('missing'),'');
-  const tables=()=>db.prepare("SELECT name FROM sqlite_master WHERE name IN ('parts','metadata')").all();
-  assert.deepEqual(tables(),[]);
-  const g=newGame('123456','Host');
-  parts.save(g,{code:g.code,version:0,created:1,retainAt:1000});
+void test('empty objects stay empty after cleanup and read-only wakeups', () => {
+  const { db, storage, parts } = fixture();
+  assert.equal(parts.load(), null);
+  assert.equal(parts.snapshot('missing'), '');
+  const tables = () =>
+    db
+      .prepare(
+        "SELECT name FROM sqlite_master WHERE name IN ('parts','metadata')",
+      )
+      .all();
+  assert.deepEqual(tables(), []);
+  const g = newGame('123456', 'Host');
+  parts.save(g, { code: g.code, version: 0, created: 1, retainAt: 1000 });
   db.exec('DROP TABLE parts; DROP TABLE metadata'); // deleteAll()
-  assert.equal(new ObjectParts(storage).load(),null);
-  assert.deepEqual(tables(),[]);
+  assert.equal(new ObjectParts(storage).load(), null);
+  assert.deepEqual(tables(), []);
   db.close();
 });
