@@ -25,4 +25,5 @@ npm run check      # typecheck + lint + unit tests
 - [docs/features.md](docs/features.md): sessions, scripts, tutorials, social, hub
 - [docs/night-rite.md](docs/night-rite.md): Night Rite puzzles
 - [docs/admin-runbook.md](docs/admin-runbook.md): admin access, console, audit and live text
+- [docs/staging.md](docs/staging.md): staging.fearville.app, isolated test data and sign-in setup
 - [AGENTS.md](AGENTS.md): repo map and rules for coding agents

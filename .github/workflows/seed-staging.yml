@@ -1,0 +1,33 @@
+name: Seed staging
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: staging-data
+  cancel-in-progress: false
+jobs:
+  seed:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    environment: staging
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22.x
+          cache: npm
+      - run: npm ci --no-audit --no-fund --loglevel=error
+      - name: Resolve staging binding
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: node scripts/configure-cloudflare.mjs staging
+      - name: Seed isolated staging database
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: node scripts/seed-staging.mjs
+      - name: Summary
+        run: echo "Staging test data seeded idempotently; no sign-in credentials created." >> "$GITHUB_STEP_SUMMARY"

@@ -1,7 +1,7 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "fearville-local",
-  "main": "vinext/server/fetch-handler",
+  "main": "worker.ts",
   "compatibility_date": "2026-05-15",
   "compatibility_flags": ["nodejs_compat"],
   "d1_databases": [
@@ -15,6 +15,9 @@
   "env": {
     "staging": {
       "name": "fearville-staging",
+      "vars": { "ENVIRONMENT": "staging", "APP_ORIGIN": "https://staging.fearville.app", "ADMIN_EMAIL_ALLOWLIST": "sybertechlabs@gmail.com", "SENTRY_ENVIRONMENT": "staging", "APNS_ENVIRONMENT": "sandbox" },
+      "durable_objects": { "bindings": [{ "name": "ENVIRONMENT_PROBE", "class_name": "EnvironmentProbe" }] },
+      "migrations": [{ "tag": "environment-probe-v1", "new_sqlite_classes": ["EnvironmentProbe"] }],
       "workers_dev": false,
       "routes": [{ "pattern": "staging.fearville.app", "custom_domain": true }],
       "d1_databases": [
@@ -28,6 +31,9 @@
     },
     "production": {
       "name": "fearville-production",
+      "vars": { "ENVIRONMENT": "production", "APP_ORIGIN": "https://fearville.app", "ADMIN_EMAIL_ALLOWLIST": "sybertechlabs@gmail.com", "SENTRY_ENVIRONMENT": "production", "APNS_ENVIRONMENT": "production" },
+      "durable_objects": { "bindings": [{ "name": "ENVIRONMENT_PROBE", "class_name": "EnvironmentProbe" }] },
+      "migrations": [{ "tag": "environment-probe-v1", "new_sqlite_classes": ["EnvironmentProbe"] }],
       "workers_dev": false,
       "routes": [{ "pattern": "fearville.app", "custom_domain": true }],
       "d1_databases": [

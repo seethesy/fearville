@@ -11,8 +11,9 @@ import { random, appleSecret, decryptToken, type Provider } from './oidc';
 import { linkSeatRecords } from '@/lib/social/results';
 import { pendingCounts } from '@/lib/social/pending';
 import { profileDefaults } from './profile';
+import { runtimeOrigin } from '@/lib/runtime/config';
 export const accountCookie = 'ct_account';
-export const origin = 'https://fearville.app';
+export const origin = runtimeOrigin(env as unknown as Record<string, unknown>);
 export function config(key: string) {
   const value = (env as unknown as Record<string, unknown>)[key];
   return typeof value === 'string' ? value.trim() : '';

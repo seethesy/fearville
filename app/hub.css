@@ -959,3 +959,4 @@ h2,
 .hub .profile-options[open] > summary {
   margin-bottom: 22px;
 }
+.staging-banner { position: sticky; top: 0; z-index: 100; padding: 4px 12px; text-align: center; color: #1c1705; background: #f4cb62; font-size: 12px; font-weight: 800; letter-spacing: .08em; }
