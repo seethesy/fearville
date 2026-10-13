@@ -231,6 +231,17 @@ class Bot {
         action: command.action,
         kind: 'rejected',
         status: ack?.status ?? 400,
+        reason: [
+          'The table changed. Review this action again.',
+          'Wait for the night choice timer to finish.',
+          'The Night Rite window is still open.',
+          'Night tasks remain.',
+          'Voting is not open.',
+          'The ballot changed. Reopen voting.',
+          'Each timer must be 5–3600 seconds.',
+        ].includes(ack?.error)
+          ? ack.error
+          : 'action-rejected',
       });
       throw Error(`Load action ${command.action} was rejected.`);
     }
@@ -572,7 +583,13 @@ export async function runLoad(
     );
     for (let i = 0; i < outcomes.length; i++)
       if (outcomes[i].status === 'rejected')
-        report.errors.push({ table: i + 1, kind: 'scenario-failed' });
+        report.errors.push({
+          table: i + 1,
+          kind: 'scenario-failed',
+          lastAction: report.actions
+            .filter((action) => action.table === i + 1)
+            .at(-1)?.action,
+        });
   } catch (error) {
     report.errors.push({
       kind: 'setup-failed',

@@ -40,3 +40,6 @@ validates the scenario but does not assert staging latency.
 The CI integration smoke uses a loopback URL and the existing local account
 fixture; it runs one table through two cycles, all four Rite patterns, and
 cleanup. It cannot mutate staging or production.
+
+The runner also exposed and fixes a legacy seat-claim cap of fifteen: the
+public API now accepts seats through the existing `MAX_PLAYERS` value (18).
