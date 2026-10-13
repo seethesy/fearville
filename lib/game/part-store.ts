@@ -105,7 +105,13 @@ export function prepareWrite(
       `UPDATE sessions SET ${loaded?.core === stored.core ? '' : 'state=?, '}version=version+1, write_id=? WHERE code=? AND version=?` +
         coreCondition,
     )
-    .bind(...(loaded?.core === stored.core ? [] : [stored.core]), writeId, g.code, version, ...coreBindings);
+    .bind(
+      ...(loaded?.core === stored.core ? [] : [stored.core]),
+      writeId,
+      g.code,
+      version,
+      ...coreBindings,
+    );
   const after = snapshots.map((entry) =>
     db
       .prepare(

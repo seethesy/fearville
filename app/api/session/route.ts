@@ -15,9 +15,7 @@ import {
   memberExpiry,
   memberCookie as cookie,
 } from '@/lib/game/join';
-import {
-  createStatements,
-} from '@/lib/game/part-store';
+import { createStatements } from '@/lib/game/part-store';
 import {
   auth,
   hash,
@@ -73,8 +71,15 @@ export async function POST(r: Request) {
     ) {
       const { actor, code } = await auth(r);
       await table(code).session(code, actor, body);
-      return json({ ok: true }, 200, ['leaveLobby','deleteLobby'].includes(body.action)
-        ? { 'Set-Cookie': `${cookieName}=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0` } : {});
+      return json(
+        { ok: true },
+        200,
+        ['leaveLobby', 'deleteLobby'].includes(body.action)
+          ? {
+              'Set-Cookie': `${cookieName}=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0`,
+            }
+          : {},
+      );
     }
     const account = await accountAuth(r);
     if (account) await requirePlayerAccount(account.id);
@@ -204,4 +209,3 @@ export async function DELETE(r: Request) {
     return errorResponse(e);
   }
 }
-

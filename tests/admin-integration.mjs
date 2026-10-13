@@ -25,6 +25,8 @@ const options = {
   compatibilityFlags: ['nodejs_compat'],
   d1Databases: { DB: 'admin-tests' },
   d1Persist: directory,
+  durableObjects: { GAME_TABLE: { className: 'GameTable', useSQLite: true } },
+  durableObjectsPersist: directory,
   bindings: { ADMIN_EMAIL_ALLOWLIST: email },
 };
 const worker = new Miniflare(options);
