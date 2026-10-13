@@ -48,7 +48,11 @@ async function call(path, account = '', body, member = '') {
     },
     ...(body ? { body: JSON.stringify(body) } : {}),
   });
-  return { status: response.status, data: await json(response, path) };
+  return {
+    status: response.status,
+    cookie: response.headers.get('set-cookie') || '',
+    data: await json(response, path),
+  };
 }
 const guest = await call('/api/accounts');
 assert.equal(guest.status, 200);
@@ -104,6 +108,7 @@ const exchanged = await call('/api/accounts/exchange', '', {
 });
 assert.equal(exchanged.status, 200);
 const tokenA2 = exchanged.data.accountToken;
+assert.match(exchanged.cookie, /ct_account=[^;]+; HttpOnly; Secure/);
 assert.equal(
   (await call('/api/accounts/exchange', '', { code: nativeCode, verifier }))
     .status,

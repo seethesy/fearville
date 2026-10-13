@@ -11,7 +11,7 @@ import {
   clientID,
   clientSecret,
   callbackURL,
-  origin,
+  siteOrigin,
   config,
   createAccountSession,
   attachMember,
@@ -61,7 +61,7 @@ export async function callback(r: Request, provider: Provider) {
           code,
           client_id: clientID(provider),
           client_secret: await clientSecret(provider),
-          redirect_uri: callbackURL(provider),
+          redirect_uri: callbackURL(provider, r),
           ...(provider === 'google' ? { code_verifier: flow.verifier } : {}),
         }),
         signal: AbortSignal.timeout(10000),
@@ -246,7 +246,7 @@ export async function callback(r: Request, provider: Provider) {
       identity.verified ? identity.email.toLowerCase() : '',
     );
     const headers = new Headers({
-      Location: origin + '/',
+      Location: siteOrigin(r) + '/',
       'Cache-Control': 'no-store',
       'Referrer-Policy': 'no-referrer',
     });
@@ -265,8 +265,9 @@ export async function callback(r: Request, provider: Provider) {
       status: 303,
       headers: {
         Location:
-          (native ? 'fearville://signin?error=' : origin + '/account?error=') +
-          encodeURIComponent(safe),
+          (native
+            ? 'fearville://signin?error='
+            : siteOrigin(r) + '/account?error=') + encodeURIComponent(safe),
         'Cache-Control': 'no-store',
         'Set-Cookie': cookie('ct_oauth', '', 0, true),
       },

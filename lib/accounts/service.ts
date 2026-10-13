@@ -14,6 +14,12 @@ import { profileDefaults } from './profile';
 import { runtimeOrigin } from '@/lib/runtime/config';
 export const accountCookie = 'ct_account';
 export const origin = runtimeOrigin(env as unknown as Record<string, unknown>);
+const siteOrigins = [origin, 'https://staging.fearville.app'];
+/** Public origin for this request: staging when served from staging, else production. */
+export function siteOrigin(r: Request) {
+  const own = new URL(r.url).origin;
+  return siteOrigins.includes(own) ? own : origin;
+}
 export function config(key: string) {
   const value = (env as unknown as Record<string, unknown>)[key];
   return typeof value === 'string' ? value.trim() : '';
@@ -226,8 +232,8 @@ export function clientID(provider: Provider) {
     provider === 'google' ? 'GOOGLE_CLIENT_ID' : 'APPLE_SERVICES_ID',
   );
 }
-export function callbackURL(provider: Provider) {
-  return origin + '/api/accounts/callback/' + provider;
+export function callbackURL(provider: Provider, r: Request) {
+  return siteOrigin(r) + '/api/accounts/callback/' + provider;
 }
 export async function revokeApple(account: string) {
   const row = await database()

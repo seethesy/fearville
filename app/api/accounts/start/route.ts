@@ -8,7 +8,7 @@ import {
   tokenOf,
 } from '@/lib/game/store';
 import { random, providerName } from '@/lib/accounts/oidc';
-import { enabled, origin, accountAuth } from '@/lib/accounts/service';
+import { enabled, siteOrigin, accountAuth } from '@/lib/accounts/service';
 export async function POST(r: Request) {
   try {
     checkOrigin(r);
@@ -52,7 +52,9 @@ export async function POST(r: Request) {
         Date.now() + 600000,
       )
       .run();
-    return json({ url: origin + '/api/accounts/authorize?ticket=' + ticket });
+    return json({
+      url: siteOrigin(r) + '/api/accounts/authorize?ticket=' + ticket,
+    });
   } catch (e) {
     return errorResponse(e);
   }
