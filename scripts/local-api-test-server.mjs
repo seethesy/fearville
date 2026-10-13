@@ -23,6 +23,8 @@ const worker = new Miniflare({
   compatibilityFlags: ['nodejs_compat'],
   d1Databases: { DB: '00000000-0000-4000-8000-000000000000' },
   d1Persist: path.join(process.env.CT_D1_PERSIST || '.wrangler/state', 'v3/d1'),
+  durableObjects: { GAME_TABLE: { className: 'GameTable', useSQLite: true } },
+  durableObjectsPersist: path.join(process.env.CT_D1_PERSIST || '.wrangler/state', 'v3/do'),
   port: Number(process.env.PORT) || 3001,
 });
 console.log('Local production API worker:', String(await worker.ready));
