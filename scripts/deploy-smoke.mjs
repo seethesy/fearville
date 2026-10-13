@@ -58,7 +58,9 @@ async function call(account, body) {
     signal: AbortSignal.timeout(20000),
   });
   if (!response.ok)
-    throw Error(`Table smoke ${body.action} step failed with HTTP ${response.status}.`);
+    throw Error(
+      `Table smoke ${body.action} step failed with HTTP ${response.status}.`,
+    );
   return response.json();
 }
 try {
