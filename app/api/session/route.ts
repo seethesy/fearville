@@ -9,17 +9,13 @@ import { profileDefaults } from '@/lib/accounts/profile';
 import { newGame, uuid } from '@/lib/game/types';
 import { newSandboxGame } from '@/lib/game/sandbox';
 import { requireThat } from '@/lib/game/engine';
-import { renameMember, removeMember } from '@/lib/game/membership';
+import { table } from '@/lib/game/table-client';
 import {
   joinSession,
   memberExpiry,
   memberCookie as cookie,
 } from '@/lib/game/join';
-import {
-  createStatements,
-  prepareWrite,
-  runWrite,
-} from '@/lib/game/part-store';
+import { createStatements } from '@/lib/game/part-store';
 import {
   auth,
   hash,
@@ -73,73 +69,17 @@ export async function POST(r: Request) {
     if (
       ['rename', 'remove', 'leaveLobby', 'deleteLobby'].includes(body.action)
     ) {
-      for (let attempt = 0; attempt < 8; attempt++) {
-        const { actor, code } = await auth(r);
-        const { game, version } = await read(code);
-        if (body.action === 'deleteLobby') {
-          requireThat(actor.host, 'Only the Storyteller can delete the lobby.');
-          requireThat(game.phase === 'lobby', 'Only a lobby can be deleted.');
-          const deleted = await db
-            .prepare('DELETE FROM sessions WHERE code = ? AND version = ?')
-            .bind(code, version)
-            .run();
-          if (!deleted.meta.changes) continue;
-          return json({ ok: true }, 200, {
-            'Set-Cookie': `${cookieName}=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0`,
-          });
-        }
-        let removed = '';
-        if (body.action === 'rename')
-          renameMember(game, actor, body.name, Date.now());
-        else {
-          requireThat(
-            body.action !== 'remove' || actor.host,
-            'Only the Storyteller can remove players.',
-          );
-          if (body.action === 'leaveLobby') {
-            requireThat(
-              !actor.host,
-              'The Storyteller can delete the lobby instead.',
-            );
-            requireThat(
-              game.phase === 'lobby' || game.phase === 'ended',
-              'Finish the game or return to the lobby before leaving it.',
-            );
-          }
-          removed = removeMember(
-            game,
-            actor,
-            body.action === 'leaveLobby' ? actor.id : body.player,
-            Date.now(),
-          );
-        }
-        // The write's unique marker makes credential revocation conditional on
-        // this exact successful update, inside one atomic D1 transaction.
-        const write = prepareWrite(db, game, version);
-        const statements: D1PreparedStatement[] = [];
-        if (removed) {
-          for (const table of ['members', 'account_seats'])
-            statements.push(
-              db
-                .prepare(
-                  `DELETE FROM ${table} WHERE code = ? AND player = ? AND ${write.guard}`,
-                )
-                .bind(code, removed, ...write.guardBindings),
-            );
-        }
-        const result = await runWrite(db, write, [], statements);
-        if (!result?.[0].meta.changes) continue;
-        return json(
-          { ok: true },
-          200,
-          body.action === 'leaveLobby'
-            ? {
-                'Set-Cookie': `${cookieName}=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0`,
-              }
-            : {},
-        );
-      }
-      return json({ error: 'The table changed. Please try again.' }, 409);
+      const { actor, code } = await auth(r);
+      await table(code).session(code, actor, body);
+      return json(
+        { ok: true },
+        200,
+        ['leaveLobby', 'deleteLobby'].includes(body.action)
+          ? {
+              'Set-Cookie': `${cookieName}=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0`,
+            }
+          : {},
+      );
     }
     const account = await accountAuth(r);
     if (account) await requirePlayerAccount(account.id);
@@ -216,6 +156,7 @@ export async function POST(r: Request) {
             .bind(tokenHash, code, 'host', memberExpiry()),
         ]);
         if (account) await attachMember(tokenHash, account.id);
+        await table(code).read(code);
         return json({ code, token }, 200, { 'Set-Cookie': cookie(r, token) });
       }
       throw Error('Unable to create a session. Try again.');

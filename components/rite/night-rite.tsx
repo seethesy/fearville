@@ -57,6 +57,11 @@ export function NightRite({
     [busy, setBusy] = useState(false),
     [flash, setFlash] = useState(false);
   const latest = useRef(reply);
+  const [clock, setClock] = useState(() => ({ now: Date.now(), offset: game.serverNow-Date.now() }));
+  useEffect(() => {
+    const timer = setInterval(() => setClock((old) => ({...old,now:Date.now()})),250);
+    return () => clearInterval(timer);
+  }, []);
   const apply = useCallback((next: Reply) => {
     if (
       next.version > latest.current.version ||
@@ -64,6 +69,8 @@ export function NightRite({
         next.serverNow >= latest.current.serverNow)
     ) {
       latest.current = next;
+      const now = Date.now();
+      setClock({now,offset:next.serverNow-now});
       setReply(next);
     }
   }, []);
@@ -117,6 +124,8 @@ export function NightRite({
   };
   const r = reply.rite;
   const own = r && !r.host ? r.puzzle : null;
+  const deadline = own?.vote?.deadline || own?.deadline || r?.windowEnd;
+  const seconds = deadline ? Math.max(0,Math.ceil((deadline-clock.now-clock.offset)/1000)) : null;
   const previous = useRef<{ ruined?: string }>({});
   useEffect(() => {
     if (own?.ruined && own.ruined !== previous.current.ruined)
@@ -151,6 +160,7 @@ export function NightRite({
                 : 'Keep the candles burning.'}
         </h2>
       </header>
+      {seconds !== null && <p className="rite-state" role="timer">{seconds}s remaining</p>}
       {r?.host ? (
         <>
           {mode === 'setup' &&
@@ -220,6 +230,7 @@ export function NightRite({
               </p>
             ) : (
               <>
+                {own.phase === 'lock' && <p className="rite-state">Finish your character task. Your puzzle opens shortly.</p>}
                 {own.phase === 'wait' && (
                   <p className="rite-state">
                     Waiting for your turn. Keep this screen open.
@@ -313,6 +324,18 @@ function RiteSetup({
         />{' '}
         Enable Night Rite
       </label>
+      <label className="rite-check">
+        <input type="checkbox" checked={!!draft.timed} onChange={(e) => update('timed',e.target.checked)} />{' '}
+        Use timed windows and 5-second turns
+      </label>
+      {draft.timed && <div className="rite-settings">
+        <label className="field">Character task window (seconds)
+          <input type="number" min={0} max={120} value={draft.lockSeconds} onChange={(e) => update('lockSeconds',Number(e.target.value))} />
+        </label>
+        <label className="field">Puzzle window (seconds)
+          <input type="number" min={60} max={300} value={draft.windowSeconds} onChange={(e) => update('windowSeconds',Number(e.target.value))} />
+        </label>
+      </div>}
       <fieldset>
         <legend>Puzzle patterns</legend>
         {Object.entries(PATTERNS).map(([kind, title]) => (

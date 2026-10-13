@@ -4,6 +4,8 @@
   "main": "worker.ts",
   "compatibility_date": "2026-05-15",
   "compatibility_flags": ["nodejs_compat"],
+  "durable_objects": { "bindings": [{ "name": "GAME_TABLE", "class_name": "GameTable" }] },
+  "migrations": [{ "tag": "gametable-v1", "new_sqlite_classes": ["GameTable"] }],
   "d1_databases": [
     {
       "binding": "DB",
@@ -16,8 +18,8 @@
     "staging": {
       "name": "fearville-staging",
       "vars": { "ENVIRONMENT": "staging", "APP_ORIGIN": "https://staging.fearville.app", "ADMIN_EMAIL_ALLOWLIST": "sybertechlabs@gmail.com", "SENTRY_ENVIRONMENT": "staging", "APNS_ENVIRONMENT": "sandbox" },
-      "durable_objects": { "bindings": [{ "name": "ENVIRONMENT_PROBE", "class_name": "EnvironmentProbe" }] },
-      "migrations": [{ "tag": "environment-probe-v1", "new_sqlite_classes": ["EnvironmentProbe"] }],
+      "durable_objects": { "bindings": [{ "name": "ENVIRONMENT_PROBE", "class_name": "EnvironmentProbe" }, { "name": "GAME_TABLE", "class_name": "GameTable" }] },
+      "migrations": [{ "tag": "environment-probe-v1", "new_sqlite_classes": ["EnvironmentProbe"] }, { "tag": "gametable-v1", "new_sqlite_classes": ["GameTable"] }],
       "workers_dev": false,
       "routes": [{ "pattern": "staging.fearville.app", "custom_domain": true }],
       "d1_databases": [
@@ -32,8 +34,8 @@
     "production": {
       "name": "fearville-production",
       "vars": { "ENVIRONMENT": "production", "APP_ORIGIN": "https://fearville.app", "ADMIN_EMAIL_ALLOWLIST": "sybertechlabs@gmail.com", "SENTRY_ENVIRONMENT": "production", "APNS_ENVIRONMENT": "production" },
-      "durable_objects": { "bindings": [{ "name": "ENVIRONMENT_PROBE", "class_name": "EnvironmentProbe" }] },
-      "migrations": [{ "tag": "environment-probe-v1", "new_sqlite_classes": ["EnvironmentProbe"] }],
+      "durable_objects": { "bindings": [{ "name": "ENVIRONMENT_PROBE", "class_name": "EnvironmentProbe" }, { "name": "GAME_TABLE", "class_name": "GameTable" }] },
+      "migrations": [{ "tag": "environment-probe-v1", "new_sqlite_classes": ["EnvironmentProbe"] }, { "tag": "gametable-v1", "new_sqlite_classes": ["GameTable"] }],
       "workers_dev": false,
       "routes": [{ "pattern": "fearville.app", "custom_domain": true }],
       "d1_databases": [

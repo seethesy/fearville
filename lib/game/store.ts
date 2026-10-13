@@ -3,6 +3,7 @@ import { requirePlayerRequest } from '@/lib/accounts/service';
 import { database } from '@/db';
 import type { Actor, Command, Game } from './types';
 import type { ScopedUpdate } from './scoped-update';
+import { table } from './table-client';
 import {
   SESSION_COLUMNS,
   loadStored,
@@ -74,31 +75,14 @@ export async function auth(
   return { actor, code };
 }
 export async function authenticatedRead(r: Request) {
-  const token = tokenOf(r);
-  if (!token || token.length > 200) throw Error('AUTH');
-  const row = await database()
-    .prepare(
-      `SELECT m.code, m.player, m.host, ${SESSION_COLUMNS} FROM members m JOIN sessions s ON s.code = m.code WHERE m.token_hash = ? AND m.expires > ?`,
-    )
-    .bind(await hash(token), Date.now())
-    .first<SessionRow & { code: string; player: string; host: number }>();
-  if (!row) throw Error('AUTH');
-  await requirePlayerRequest(r);
-  await checkSeatAccount(row.code, row.player);
-  const { game, version, created } = await converted(row);
-  const actor = {
-    id: row.player,
-    host: !!row.host,
-    credentialHash: await hash(token),
-  };
-  if (
-    !actor.host &&
-    !game.players.some((p) => p.id === actor.id && !p.departed)
-  )
-    throw Error('AUTH');
-  return { actor, code: row.code, game, version, created };
+  const { actor, code } = await authMember(r);
+  const { game, version, created } = await table(code).read(code, actor);
+  return { actor, code, game, version, created };
 }
 export async function read(code: string) {
+  return table(code).read(code);
+}
+export async function readD1(code: string) {
   const row = await database()
     .prepare(`SELECT ${SESSION_COLUMNS} FROM sessions s WHERE s.code = ?`)
     .bind(code)
@@ -110,16 +94,18 @@ export async function read(code: string) {
 // If another request wins the race, that request converts it instead.
 async function converted(row: SessionRow) {
   const { game, version, created, legacy } = loadStored(row);
-  if (legacy && (await save(game, version, false)))
+  if (legacy && (await saveD1(game, version, false)))
     return { game, version: version + 1, created };
   return { game, version, created };
 }
-export async function save(
+export async function saveD1(
   g: Game,
   version: number,
   syncRanked = true,
   credentialHash?: string,
   communication = false,
+  extra?: (guard: string, bindings: [string, string]) => D1PreparedStatement[],
+  writeId?: string,
 ) {
   const db = database();
   const write = prepareWrite(
@@ -138,6 +124,7 @@ export async function save(
           ...(communication ? [credentialHash, Date.now()] : []),
         ]
       : [],
+    writeId,
   );
   // Puzzle moves cannot change ranked membership. Keep their CAS write small
   // instead of rebuilding locks for every seat on every move.
@@ -184,7 +171,12 @@ export async function save(
     }
   }
   try {
-    const results = await runWrite(db, write, [], lockStatements);
+    const results = await runWrite(
+      db,
+      write,
+      [],
+      [...lockStatements, ...(extra?.(write.guard, write.guardBindings) ?? [])],
+    );
     return !!results && results[0].meta.changes === 1;
   } catch (error) {
     if (String(error).includes('ranked_seats.account'))
