@@ -38,10 +38,18 @@ export class ObjectParts {
     this.storage = storage;
   }
   private exists() {
-    return this.storage.sql.exec('SELECT name FROM sqlite_master WHERE type=? AND name=?','table','metadata').toArray().length>0;
+    return (
+      this.storage.sql
+        .exec(
+          'SELECT name FROM sqlite_master WHERE type=? AND name=?',
+          'table',
+          'metadata',
+        )
+        .toArray().length > 0
+    );
   }
   load() {
-    if(!this.exists()) return null;
+    if (!this.exists()) return null;
     const metadata = this.storage.sql
       .exec<{ state: string }>('SELECT state FROM metadata WHERE id=1')
       .toArray()[0];
@@ -73,8 +81,12 @@ export class ObjectParts {
     this.storage.transactionSync(() => {
       // Initialize on the first write. Constructing or reading an empty
       // object must not recreate billable storage after deleteAll().
-      this.storage.sql.exec('CREATE TABLE IF NOT EXISTS parts (key TEXT PRIMARY KEY, state TEXT NOT NULL)');
-      this.storage.sql.exec('CREATE TABLE IF NOT EXISTS metadata (id INTEGER PRIMARY KEY CHECK(id=1), state TEXT NOT NULL)');
+      this.storage.sql.exec(
+        'CREATE TABLE IF NOT EXISTS parts (key TEXT PRIMARY KEY, state TEXT NOT NULL)',
+      );
+      this.storage.sql.exec(
+        'CREATE TABLE IF NOT EXISTS metadata (id INTEGER PRIMARY KEY CHECK(id=1), state TEXT NOT NULL)',
+      );
       const put = (key: string, state: string) =>
         this.storage.sql.exec(
           'INSERT INTO parts(key,state) VALUES (?,?) ON CONFLICT(key) DO UPDATE SET state=excluded.state',
@@ -128,7 +140,7 @@ export class ObjectParts {
     this.stored = next;
   }
   snapshot(id: string) {
-    if(!this.exists()) return '';
+    if (!this.exists()) return '';
     return this.storage.sql
       .exec<{ state: string }>(
         'SELECT state FROM parts WHERE key LIKE ? ORDER BY key',
@@ -139,7 +151,10 @@ export class ObjectParts {
       .join('');
   }
   reset() {
-    if(!this.exists()) {this.stored=null;return;}
+    if (!this.exists()) {
+      this.stored = null;
+      return;
+    }
     this.storage.transactionSync(() => {
       this.storage.sql.exec('DELETE FROM parts');
       this.storage.sql.exec('DELETE FROM metadata');
