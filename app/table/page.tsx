@@ -61,6 +61,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { InviteFriends } from '@/components/social/invite-friends';
 import { RateStoryteller } from '@/components/social/rate-storyteller';
 import { TableMessages } from '@/components/table-messages';
+import { TableHistory } from '@/components/table-history';
 import { TableMembership } from '@/components/table-membership';
 import { RulesReference } from '@/components/rules-reference';
 import { HelpMenu } from '@/components/tutorials/help-menu';
@@ -1342,6 +1343,7 @@ export default function Table() {
             data-tutorial="messages-panel"
           >
             <TableMessages
+              key={`${game.code}:${game.me}:${game.gameStartedAt}:${game.phase}:${game.channel?.id ?? ''}`}
               game={game}
               recipient={chatPlayer}
               onRecipient={setChatPlayer}
@@ -1391,18 +1393,7 @@ export default function Table() {
                       ))}
                   </div>
                 </section>
-                <section className="panel">
-                  <p className="eyebrow">DECISION HISTORY</p>
-                  {game.log
-                    .slice()
-                    .reverse()
-                    .map((l) => (
-                      <article className="log-entry" key={l.id}>
-                        <small>{new Date(l.at).toLocaleTimeString()}</small>
-                        <p>{l.text}</p>
-                      </article>
-                    ))}
-                </section>
+                <TableHistory key={`${game.code}:${game.me}:${game.gameStartedAt}`} game={game} open={open} />
               </div>
             </TabsContent>
           )}

@@ -41,6 +41,7 @@ import { alignmentOf, winnerOf } from '../social/derive.ts';
 import { BASE_XP, mvpShares } from '../social/progression.ts';
 import { isHof, sphinxGlimpse, defaultCharge } from './hof.ts';
 import { roleTips } from './role-tips.ts';
+import { feedPage, LIVE_FEED_LIMIT, visibleMessages } from './feed.ts';
 const select = (
   key: string,
   label: string,
@@ -690,7 +691,7 @@ export function controls(g: Game, a: Actor): Control[] {
             'history',
             'Restore state before',
             g.history
-              .slice()
+              .slice(-LIVE_FEED_LIMIT)
               .reverse()
               .map((h) => ({
                 value: h.id,
@@ -1022,16 +1023,13 @@ export function view(
       ...(a.host ? { invalid: b.invalid } : {}),
     })),
     leader: { ...leader, name: leader.target ? nameOf(g, leader.target) : '' },
-    messages: g.messages.filter((m) =>
-      a.host
-        ? true
-        : m.to.startsWith('channel:')
-          ? g.phase === 'night' &&
-            m.to === 'channel:' + g.hms?.channel?.id &&
-            [g.hms?.channel?.a, g.hms?.channel?.b].includes(a.id)
-          : m.to === 'all' || m.to === a.id || m.from === a.id,
-    ),
-    log: g.log.filter((l) => a.host || l.public).slice(-200),
+    messages: visibleMessages(g, a).slice(-LIVE_FEED_LIMIT),
+    log: g.log.filter((l) => a.host || l.public).slice(-LIVE_FEED_LIMIT),
+    feeds: {
+      messages: feedPage(g, a, 'messages').before,
+      log: feedPage(g, a, 'log').before,
+      history: a.host ? feedPage(g, a, 'history').before : null,
+    },
     controls: controls(g, a),
   };
 }
