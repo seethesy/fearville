@@ -29,5 +29,10 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: node scripts/seed-staging.mjs
+      - name: Verify seed counts and production isolation
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: node scripts/verify-staging-isolation.mjs
       - name: Summary
-        run: echo "Staging test data seeded idempotently; no sign-in credentials created." >> "$GITHUB_STEP_SUMMARY"
+        run: echo "Staging fixtures verified (6 accounts, 5 friendships, 3 games); production has no fixture accounts. No sign-in credentials created." >> "$GITHUB_STEP_SUMMARY"
