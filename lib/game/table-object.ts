@@ -23,7 +23,12 @@ import { ObjectParts, type TableMeta } from './object-storage';
 import type { Actor, Command, Game } from './types';
 
 export const TABLE_RETENTION = 30 * 24 * 60 * 60 * 1000;
-type SocketSeat = { actor: Actor; viewer: Actor; sandboxHost: boolean; hash?: string };
+type SocketSeat = {
+  actor: Actor;
+  viewer: Actor;
+  sandboxHost: boolean;
+  hash?: string;
+};
 export class GameTable extends DurableObject {
   private queue = new SerialQueue();
   private pushes = new SerialQueue();
@@ -122,7 +127,8 @@ export class GameTable extends DurableObject {
       );
   }
   private async destroy() {
-    for (const socket of this.ctx.getWebSockets()) socket.close(1001,'Table closed.');
+    for (const socket of this.ctx.getWebSockets())
+      socket.close(1001, 'Table closed.');
     await this.ctx.storage.deleteAlarm();
     await this.ctx.storage.deleteAll();
     this.parts = new ObjectParts(this.ctx.storage);
@@ -338,8 +344,16 @@ export class GameTable extends DurableObject {
       if (c.preview) return { summary, version };
       // Preparing bank puzzles here avoids generators and writes on GET.
       tickRite(g, now);
-      await this.commit(g, actor, c.action, now, undefined,
-        typeof c.requestId === 'string' && c.requestId.length<100 ? c.requestId : undefined);
+      await this.commit(
+        g,
+        actor,
+        c.action,
+        now,
+        undefined,
+        typeof c.requestId === 'string' && c.requestId.length < 100
+          ? c.requestId
+          : undefined,
+      );
       return rite
         ? {
             code,
@@ -456,73 +470,192 @@ export class GameTable extends DurableObject {
   }
   private publish(cause?: string) {
     if (!this.game || !this.meta || !this.ctx.getWebSockets().length) return;
-    const game=structuredClone(this.game),version=this.meta.version;
-    this.ctx.waitUntil(this.pushes.run(() => this.broadcast(game,version,cause)).catch(() => {
-      for(const socket of this.ctx.getWebSockets()) try {socket.close(1011,'Reconnect to the table.');} catch { /* already closed */ }
-    }));
+    const game = structuredClone(this.game),
+      version = this.meta.version;
+    this.ctx.waitUntil(
+      this.pushes
+        .run(() => this.broadcast(game, version, cause))
+        .catch(() => {
+          for (const socket of this.ctx.getWebSockets())
+            try {
+              socket.close(1011, 'Reconnect to the table.');
+            } catch {
+              /* already closed */
+            }
+        }),
+    );
   }
   private async broadcast(game: Game, version: number, cause?: string) {
-    const db=database();
-    const [index,members,blocks]=await Promise.all([
-      db.prepare('SELECT version FROM sessions WHERE code=?').bind(game.code).first<{version:number}>(),
-      db.prepare('SELECT m.token_hash,m.player,m.host,m.expires,a.role,a.banned,a.google_email,a.email FROM members m LEFT JOIN account_seats s ON s.code=m.code AND s.player=m.player LEFT JOIN accounts a ON a.id=s.account WHERE m.code=?')
-        .bind(game.code).all<{token_hash:string;player:string;host:number;expires:number;role:string|null;banned:string|null;google_email:string|null;email:string|null}>(),
-      db.prepare("SELECT me.player AS viewer,b.player FROM account_seats me JOIN friendships f ON f.requester=me.account AND f.status='blocked' JOIN account_seats b ON b.account=f.addressee AND b.code=me.code WHERE me.code=?")
-        .bind(game.code).all<{viewer:string;player:string}>(),
+    const db = database();
+    const [index, members, blocks] = await Promise.all([
+      db
+        .prepare('SELECT version FROM sessions WHERE code=?')
+        .bind(game.code)
+        .first<{ version: number }>(),
+      db
+        .prepare(
+          'SELECT m.token_hash,m.player,m.host,m.expires,a.role,a.banned,a.google_email,a.email FROM members m LEFT JOIN account_seats s ON s.code=m.code AND s.player=m.player LEFT JOIN accounts a ON a.id=s.account WHERE m.code=?',
+        )
+        .bind(game.code)
+        .all<{
+          token_hash: string;
+          player: string;
+          host: number;
+          expires: number;
+          role: string | null;
+          banned: string | null;
+          google_email: string | null;
+          email: string | null;
+        }>(),
+      db
+        .prepare(
+          "SELECT me.player AS viewer,b.player FROM account_seats me JOIN friendships f ON f.requester=me.account AND f.status='blocked' JOIN account_seats b ON b.account=f.addressee AND b.code=me.code WHERE me.code=?",
+        )
+        .bind(game.code)
+        .all<{ viewer: string; player: string }>(),
     ]);
-    if (!index) { for(const socket of this.ctx.getWebSockets()) socket.close(1001,'Table closed.'); return; }
+    if (!index) {
+      for (const socket of this.ctx.getWebSockets())
+        socket.close(1001, 'Table closed.');
+      return;
+    }
     if (index.version !== version) return; // a newer queued push contains these changes
-    const now=Date.now();
+    const now = Date.now();
     for (const socket of this.ctx.getWebSockets()) {
       try {
-        const seat=socket.deserializeAttachment() as SocketSeat;
-        const credentials=members.results.filter((m)=>m.token_hash===seat.actor.credentialHash);
-        if (!credentials.length || credentials.some((m)=>m.player!==seat.actor.id || !!m.host!==seat.actor.host || m.expires<=now ||
-          m.banned!==null || (m.role!==null && m.role!=='player') || allowlisted(m.google_email || m.email || '',adminAllowlist())) ||
-          (!seat.actor.host && !game.players.some((p)=>p.id===seat.actor.id && !p.departed))) {
-          socket.close(1008,'Session expired.'); continue;
+        const seat = socket.deserializeAttachment() as SocketSeat;
+        const credentials = members.results.filter(
+          (m) => m.token_hash === seat.actor.credentialHash,
+        );
+        if (
+          !credentials.length ||
+          credentials.some(
+            (m) =>
+              m.player !== seat.actor.id ||
+              !!m.host !== seat.actor.host ||
+              m.expires <= now ||
+              m.banned !== null ||
+              (m.role !== null && m.role !== 'player') ||
+              allowlisted(m.google_email || m.email || '', adminAllowlist()),
+          ) ||
+          (!seat.actor.host &&
+            !game.players.some((p) => p.id === seat.actor.id && !p.departed))
+        ) {
+          socket.close(1008, 'Session expired.');
+          continue;
         }
-        const hidden=blocks.results.filter((b)=>b.viewer===seat.actor.id).map((b)=>b.player);
-        const filtered={...game,messages:game.messages.filter((m)=>!(m.kind==='chat' && hidden.includes(m.from)))};
-        const data={...view(filtered,seat.viewer,version,now,seat.sandboxHost),blockedChatSenders:hidden};
-        const fingerprint=await hash(viewContent(data));
-        if (fingerprint===seat.hash) continue;
-        socket.send(JSON.stringify({type:'view',version,serverNow:now,data,...(cause?{cause}:{})}));
-        socket.serializeAttachment({...seat,hash:fingerprint});
-      } catch { try { socket.close(1011,'Reconnect to the table.'); } catch { /* socket already closed */ } }
+        const hidden = blocks.results
+          .filter((b) => b.viewer === seat.actor.id)
+          .map((b) => b.player);
+        const filtered = {
+          ...game,
+          messages: game.messages.filter(
+            (m) => !(m.kind === 'chat' && hidden.includes(m.from)),
+          ),
+        };
+        const data = {
+          ...view(filtered, seat.viewer, version, now, seat.sandboxHost),
+          blockedChatSenders: hidden,
+        };
+        const fingerprint = await hash(viewContent(data));
+        if (fingerprint === seat.hash) continue;
+        socket.send(
+          JSON.stringify({
+            type: 'view',
+            version,
+            serverNow: now,
+            data,
+            ...(cause ? { cause } : {}),
+          }),
+        );
+        socket.serializeAttachment({ ...seat, hash: fingerprint });
+      } catch {
+        try {
+          socket.close(1011, 'Reconnect to the table.');
+        } catch {
+          /* socket already closed */
+        }
+      }
     }
   }
   fetch(r: Request) {
-    return this.queue.run(async()=> {
+    return this.queue.run(async () => {
       try {
-        requireThat(r.headers.get('upgrade')?.toLowerCase()==='websocket','WebSocket upgrade required.');
-        const code=r.headers.get('X-Table-Code') || '';
-        const actor=JSON.parse(r.headers.get('X-Table-Actor') || '{}') as Actor;
-        const game=await this.current(code,actor);
-        const viewer=this.viewer(game,actor,new URL(r.url).searchParams.get('pov'));
-        const pair=new WebSocketPair(),client=pair[0],server=pair[1];
-        const sandboxHost=!!game.sandbox && actor.host;
-        this.ctx.acceptWebSocket(server,[actor.id]);
-        server.serializeAttachment({actor,viewer,sandboxHost} satisfies SocketSeat);
-        server.send(JSON.stringify({type:'hello',buildId:BUILD_ID,apiVersion:TABLE_API_VERSION}));
-        const now=Date.now(),version=this.meta!.version;
-        const data=await tableView(game,viewer,version,now,sandboxHost,actor.id);
-        server.send(JSON.stringify({type:'view',version,serverNow:now,data}));
-        server.serializeAttachment({actor,viewer,sandboxHost,hash:await hash(viewContent(data))} satisfies SocketSeat);
-        return new Response(null,{status:101,webSocket:client});
-      } catch(e) { return errorResponse(e); }
+        requireThat(
+          r.headers.get('upgrade')?.toLowerCase() === 'websocket',
+          'WebSocket upgrade required.',
+        );
+        const code = r.headers.get('X-Table-Code') || '';
+        const actor = JSON.parse(
+          r.headers.get('X-Table-Actor') || '{}',
+        ) as Actor;
+        const game = await this.current(code, actor);
+        const viewer = this.viewer(
+          game,
+          actor,
+          new URL(r.url).searchParams.get('pov'),
+        );
+        const pair = new WebSocketPair(),
+          client = pair[0],
+          server = pair[1];
+        const sandboxHost = !!game.sandbox && actor.host;
+        this.ctx.acceptWebSocket(server, [actor.id]);
+        server.serializeAttachment({
+          actor,
+          viewer,
+          sandboxHost,
+        } satisfies SocketSeat);
+        server.send(
+          JSON.stringify({
+            type: 'hello',
+            buildId: BUILD_ID,
+            apiVersion: TABLE_API_VERSION,
+          }),
+        );
+        const now = Date.now(),
+          version = this.meta!.version;
+        const data = await tableView(
+          game,
+          viewer,
+          version,
+          now,
+          sandboxHost,
+          actor.id,
+        );
+        server.send(
+          JSON.stringify({ type: 'view', version, serverNow: now, data }),
+        );
+        server.serializeAttachment({
+          actor,
+          viewer,
+          sandboxHost,
+          hash: await hash(viewContent(data)),
+        } satisfies SocketSeat);
+        return new Response(null, { status: 101, webSocket: client });
+      } catch (e) {
+        return errorResponse(e);
+      }
     });
   }
   webSocketMessage(socket: WebSocket, message: string | ArrayBuffer) {
-    if(message==='ping') socket.send('pong');
-    else socket.close(1008,'Use HTTP for table actions.');
+    if (message === 'ping') socket.send('pong');
+    else socket.close(1008, 'Use HTTP for table actions.');
   }
-  webSocketClose(socket: WebSocket) { socket.close(1000,'Connection closed.'); }
-  webSocketError(socket: WebSocket) { socket.close(1011,'Reconnect to the table.'); }
+  webSocketClose(socket: WebSocket) {
+    socket.close(1000, 'Connection closed.');
+  }
+  webSocketError(socket: WebSocket) {
+    socket.close(1011, 'Reconnect to the table.');
+  }
   notify(code: string) {
-    return this.queue.run(async()=> {
-      try { await this.current(code); this.publish(); }
-      catch(e) { if(e instanceof Error && e.message==='Session not found.') return; throw e; }
+    return this.queue.run(async () => {
+      try {
+        await this.current(code);
+        this.publish();
+      } catch (e) {
+        if (e instanceof Error && e.message === 'Session not found.') return;
+        throw e;
+      }
     });
   }
 }

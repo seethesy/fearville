@@ -1324,4 +1324,3 @@ function HostVigil({
     </details>
   );
 }
-

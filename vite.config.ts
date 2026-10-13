@@ -17,7 +17,14 @@ export default defineConfig(async () => {
   const { cloudflare } = await import('@cloudflare/vite-plugin');
 
   return {
-    define: { __FEARVILLE_BUILD_ID__: JSON.stringify(process.env.GITHUB_SHA || execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim()) },
+    define: {
+      __FEARVILLE_BUILD_ID__: JSON.stringify(
+        process.env.GITHUB_SHA ||
+          execFileSync('git', ['rev-parse', 'HEAD'], {
+            encoding: 'utf8',
+          }).trim(),
+      ),
+    },
     build: { sourcemap: 'hidden' as const },
     css: { postcss: { plugins: [tailwindcss()] } },
     server: isCodexSeatbeltSandbox

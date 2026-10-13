@@ -303,13 +303,27 @@ export default function Table() {
     },
     [applyGame, sandboxPov],
   );
-  useEffect(() => { cancelRefresh(); return cancelRefresh; }, [sandboxPov, cancelRefresh]);
+  useEffect(() => {
+    cancelRefresh();
+    return cancelRefresh;
+  }, [sandboxPov, cancelRefresh]);
   const socketPoll = useCallback(() => refresh(false), [refresh]);
-  const receiveView = useCallback((incoming: GameView) => {
-    applyGame(incoming); setOnline(true); setAuthError(false); setConnectionError('');
-  }, [applyGame]);
-  const socket = useTableSocket({ code: game?.code, me: game?.sandboxHost ? sandboxPov : game?.me,
-    pov: sandboxPov, onView: receiveView, poll: socketPoll });
+  const receiveView = useCallback(
+    (incoming: GameView) => {
+      applyGame(incoming);
+      setOnline(true);
+      setAuthError(false);
+      setConnectionError('');
+    },
+    [applyGame],
+  );
+  const socket = useTableSocket({
+    code: game?.code,
+    me: game?.sandboxHost ? sandboxPov : game?.me,
+    pov: sandboxPov,
+    onView: receiveView,
+    poll: socketPoll,
+  });
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(id);
@@ -603,9 +617,17 @@ export default function Table() {
                   ? 'Storyteller view'
                   : `Viewing as ${name(sandboxPov)}`}
               </strong>
-              <p className="hint">{socket.connected ? 'Live socket' : 'HTTP fallback'}
-                {' · '}Action RTT: {socket.rtt === undefined ? '—' : `${Math.round(socket.rtt)} ms`}
-                {' · '}Push since send: {socket.push === undefined ? '—' : `${Math.round(socket.push)} ms`}</p>
+              <p className="hint">
+                {socket.connected ? 'Live socket' : 'HTTP fallback'}
+                {' · '}Action RTT:{' '}
+                {socket.rtt === undefined
+                  ? '—'
+                  : `${Math.round(socket.rtt)} ms`}
+                {' · '}Push since send:{' '}
+                {socket.push === undefined
+                  ? '—'
+                  : `${Math.round(socket.push)} ms`}
+              </p>
             </div>
             <label className="field">
               Point of view
@@ -1660,4 +1682,3 @@ export default function Table() {
     </TableAtmosphere>
   );
 }
-

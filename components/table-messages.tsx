@@ -54,11 +54,17 @@ export function TableMessages({
         : inChannel
           ? `Channel with ${game.channel!.with}`
           : 'Storyteller';
-  const combined = [...older.items, ...game.messages].filter((m) => !(m.kind==='chat' && game.blockedChatSenders?.includes(m.from)))
-    .filter((m) => !m.to.startsWith('channel:') ||
-    (game.phase==='night' && (game.host || m.to==='channel:'+game.channel?.id))).filter(
-    (m, i, all) => all.findIndex((x) => x.id === m.id) === i,
-  );
+  const combined = [...older.items, ...game.messages]
+    .filter(
+      (m) => !(m.kind === 'chat' && game.blockedChatSenders?.includes(m.from)),
+    )
+    .filter(
+      (m) =>
+        !m.to.startsWith('channel:') ||
+        (game.phase === 'night' &&
+          (game.host || m.to === 'channel:' + game.channel?.id)),
+    )
+    .filter((m, i, all) => all.findIndex((x) => x.id === m.id) === i);
   const messages = combined.filter((m) =>
     game.host
       ? to === 'all'
@@ -424,4 +430,3 @@ export function TableMessages({
     </div>
   );
 }
-

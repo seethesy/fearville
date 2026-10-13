@@ -9,7 +9,8 @@ export default {
     bindings: Cloudflare.Env,
     context: ExecutionContext,
   ) {
-    if (new URL(request.url).pathname === '/api/table/socket') return tableSocket(request);
+    if (new URL(request.url).pathname === '/api/table/socket')
+      return tableSocket(request);
     const response = await handler.fetch(request, bindings, context);
     if (
       response.status === 101 ||

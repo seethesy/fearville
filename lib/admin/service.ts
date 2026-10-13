@@ -82,7 +82,9 @@ async function commit(
     ),
     db().prepare('DELETE FROM admin_assertions'),
   ]);
-  await Promise.allSettled((plan.tables ?? []).map((code)=>table(code).notify(code)));
+  await Promise.allSettled(
+    (plan.tables ?? []).map((code) => table(code).notify(code)),
+  );
   return { output: plan.output };
 }
 export async function textHistory(key: string) {
@@ -220,7 +222,13 @@ export async function accountPlan(name: string, args: Args): Promise<Plan> {
     mutedUntil: a.muted_until,
   };
   const plan: Plan = { target: a.id, before, statements: [], output: before };
-  if(['ban','signout','reset'].includes(name)) plan.tables=(await db().prepare('SELECT DISTINCT code FROM account_seats WHERE account=?').bind(a.id).all<{code:string}>()).results.map((r)=>r.code);
+  if (['ban', 'signout', 'reset'].includes(name))
+    plan.tables = (
+      await db()
+        .prepare('SELECT DISTINCT code FROM account_seats WHERE account=?')
+        .bind(a.id)
+        .all<{ code: string }>()
+    ).results.map((r) => r.code);
   if (name === 'inspect') {
     plan.output = { id: a.id, name: a.name, ...before };
     return plan;

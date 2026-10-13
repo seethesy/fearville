@@ -1114,4 +1114,6 @@ export function view(
     controls: controls(g, a),
   };
 }
-export type GameView = ReturnType<typeof view> & { blockedChatSenders?: string[] };
+export type GameView = ReturnType<typeof view> & {
+  blockedChatSenders?: string[];
+};
