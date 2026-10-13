@@ -1,0 +1,60 @@
+name: Rollback
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        type: choice
+        options: [staging, production]
+        default: staging
+        required: true
+      version:
+        description: 'Cloudflare version UUID; empty rolls back to previous version'
+        type: string
+        required: false
+permissions:
+  contents: read
+jobs:
+  rollback:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: ${{ inputs.environment }}
+    concurrency:
+      group: deploy-${{ inputs.environment }}
+      cancel-in-progress: false
+    env:
+      DEPLOY_ENVIRONMENT: ${{ inputs.environment }}
+      ROLLBACK_VERSION: ${{ inputs.version }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      PRODUCTION_CUTOVER_READY: ${{ vars.PRODUCTION_CUTOVER_READY }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22.x
+          cache: npm
+      - run: npm ci --no-audit --no-fund --loglevel=error
+      - name: Resolve selected binding
+        if: inputs.environment == 'staging' || vars.PRODUCTION_CUTOVER_READY == 'true'
+        run: node scripts/configure-cloudflare.mjs "$DEPLOY_ENVIRONMENT"
+      - name: Validate version and roll back code
+        run: |
+          if [ "$DEPLOY_ENVIRONMENT" = "production" ] && [ "$PRODUCTION_CUTOVER_READY" != "true" ]; then
+            echo "Production cutover is not ready (FEAR-92)"; exit 1
+          fi
+          if [ -n "$ROLLBACK_VERSION" ] && ! [[ "$ROLLBACK_VERSION" =~ ^[a-f0-9-]{36}$ ]]; then
+            echo "Invalid Cloudflare version UUID"; exit 1
+          fi
+          args=()
+          [ -z "$ROLLBACK_VERSION" ] || args+=("$ROLLBACK_VERSION")
+          npx wrangler rollback "${args[@]}" --env "$DEPLOY_ENVIRONMENT" --config wrangler.jsonc --message "GitHub Actions rollback"
+      - name: Verify health
+        run: |
+          if [ "$DEPLOY_ENVIRONMENT" = "staging" ]; then base=https://staging.fearville.app; else base=https://fearville.app; fi
+          curl --fail --retry 10 --retry-all-errors --retry-delay 3 "$base/api/health"
+      - name: Rollback summary
+        if: always()
+        env:
+          RESULT: ${{ job.status }}
+        run: echo "$DEPLOY_ENVIRONMENT code rollback result $RESULT; additive database migrations retained." >> "$GITHUB_STEP_SUMMARY"
