@@ -5,7 +5,7 @@ import { readD1, saveD1, loadDecision } from './store';
 import { inheritStored } from './part-store';
 import { execute, tick, snapshot, requireThat } from './engine';
 import { riteAction, tickRite } from '../rite/engine';
-import { view } from './view';
+import { tableView } from './visible-view';
 import { riteView } from '../rite/view';
 import { canApplyLatest, canApplyUnchangedEdit } from './concurrency';
 import { renameMember, removeMember } from './membership';
@@ -331,12 +331,13 @@ export class GameTable extends DurableObject {
           }
         : {
             summary,
-            game: view(
+            game: await tableView(
               g,
               viewer,
               this.meta!.version,
               now,
               !!g.sandbox && actor.host,
+              actor.id,
             ),
           };
     });

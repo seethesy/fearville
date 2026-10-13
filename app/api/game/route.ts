@@ -1,6 +1,6 @@
 import { authMember, json, errorResponse, checkOrigin } from '@/lib/game/store';
 import { requireThat } from '@/lib/game/engine';
-import { view } from '@/lib/game/view';
+import { tableView } from '@/lib/game/visible-view';
 import { table } from '@/lib/game/table-client';
 export async function GET(r: Request) {
   try {
@@ -12,12 +12,13 @@ export async function GET(r: Request) {
         ? game.players.find((p) => p.id === requested && p.dummy && !p.departed)
         : null;
     return json(
-      view(
+      await tableView(
         game,
         pov ? { id: pov.id, host: false } : actor,
         version,
         Date.now(),
         !!game.sandbox && actor.host,
+        actor.id,
       ),
     );
   } catch (e) {
