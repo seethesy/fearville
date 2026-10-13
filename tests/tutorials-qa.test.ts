@@ -406,7 +406,9 @@ void test('real views: a Rite turn holds popups until the turn passes, then the 
     5002,
   );
   reasons = suppressionReasons(playerView(g, current, 5003)).filter(
-    (r) => r !== 'night-choice',
+    // Vigils are randomly assigned: the current member may also hold a
+    // Sphinx glimpse. This test isolates the Rite blocker, not those tasks.
+    (r) => !['night-choice', 'night-glimpse'].includes(r),
   );
   assert.ok(!reasons.includes('rite-turn'));
   s = reduce(s, { type: 'pump', blocked: reasons.length > 0 });

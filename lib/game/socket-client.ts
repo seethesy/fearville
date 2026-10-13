@@ -1,8 +1,16 @@
 import { parseViewEnvelope, type ViewEnvelope } from './socket-protocol.ts';
+import type { ActionAck } from './socket-protocol.ts';
+import type { Command } from './types.ts';
 export const FALLBACK_POLL_MS = 30_000;
 type Transport = Pick<
   WebSocket,
-  'readyState' | 'close' | 'onopen' | 'onclose' | 'onerror' | 'onmessage'
+  | 'readyState'
+  | 'send'
+  | 'close'
+  | 'onopen'
+  | 'onclose'
+  | 'onerror'
+  | 'onmessage'
 >;
 export type ConnectionOptions = {
   code: string;
@@ -26,6 +34,14 @@ export class TableConnection {
   private pollTimer?: ReturnType<typeof setTimeout>;
   private retryTimer?: ReturnType<typeof setTimeout>;
   private handshakeTimer?: ReturnType<typeof setTimeout>;
+  private pending = new Map<
+    string,
+    {
+      resolve: (ack: ActionAck) => void;
+      reject: (error: Error) => void;
+      timer: ReturnType<typeof setTimeout>;
+    }
+  >();
   constructor(options: ConnectionOptions) {
     this.options = options;
   }
@@ -91,6 +107,21 @@ export class TableConnection {
         typeof event.data !== 'string'
       )
         return;
+      try {
+        const ack = JSON.parse(event.data) as ActionAck;
+        const pending =
+          ack.type === 'ack' && typeof ack.ok === 'boolean'
+            ? this.pending.get(ack.id)
+            : undefined;
+        if (pending) {
+          this.clearTimer(pending.timer);
+          this.pending.delete(ack.id);
+          pending.resolve(ack);
+          return;
+        }
+      } catch {
+        /* malformed frames never settle an action */
+      }
       const frame = parseViewEnvelope(
         event.data,
         this.options.code,
@@ -118,6 +149,7 @@ export class TableConnection {
     const wasOpen = this.open;
     this.open = false;
     this.options.status(false);
+    this.rejectPending('Connection interrupted.');
     if (wasOpen || (!this.polling && this.pollTimer === undefined))
       void this.poll();
     const delay = Math.min(15_000, 1000 * 2 ** Math.min(this.failures++, 4));
@@ -136,5 +168,30 @@ export class TableConnection {
     this.clearTimer(this.pollTimer);
     this.clearTimer(this.retryTimer);
     this.detach();
+    this.rejectPending('Table connection closed.');
+  }
+  send(command: Command, id: string): Promise<ActionAck> | null {
+    if (!this.open || !this.socket || this.socket.readyState !== 1) return null;
+    return new Promise((resolve, reject) => {
+      const timer = this.setTimer(() => {
+        this.pending.delete(id);
+        reject(Error('Action acknowledgement timed out.'));
+      }, 10000);
+      this.pending.set(id, { resolve, reject, timer });
+      try {
+        this.socket!.send(JSON.stringify({ type: 'action', id, command }));
+      } catch {
+        this.clearTimer(timer);
+        this.pending.delete(id);
+        reject(Error('Connection interrupted.'));
+      }
+    });
+  }
+  private rejectPending(message: string) {
+    for (const pending of this.pending.values()) {
+      this.clearTimer(pending.timer);
+      pending.reject(Error(message));
+    }
+    this.pending.clear();
   }
 }

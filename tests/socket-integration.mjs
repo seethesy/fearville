@@ -6,6 +6,7 @@ import { Miniflare } from 'miniflare';
 import { newGame, newPlayer } from '../lib/game/types.ts';
 import { view } from '../lib/game/view.ts';
 import { assembleGame } from '../lib/game/parts.ts';
+import { execute, setPhase } from '../lib/game/engine.ts';
 const root = path.resolve('dist/server');
 const files = fs
   .readdirSync(root, { recursive: true })
@@ -183,6 +184,68 @@ try {
         assert.ok(!content.includes('secret information ' + other.id));
       }
   }
+  // Socket and HTTP retries share durable receipts, even when a retry changes
+  // its command. The first vote is the only committed one for this action id.
+  const voting = structuredClone(stored);
+  voting.phase = 'nomination';
+  voting.day = 2;
+  execute(
+    voting,
+    actors[1],
+    { action: 'nominate', target: actors[18].id },
+    Date.now(),
+  );
+  setPhase(voting, 'voting', Date.now(), 300);
+  await db
+    .prepare('UPDATE sessions SET state=?,version=version+1 WHERE code=?')
+    .bind(JSON.stringify(voting), game.code)
+    .run();
+  const voteID = randomUUID(),
+    voter = clients[1];
+  const command = { action: 'vote', ballot: voting.active.id, yes: 'true' };
+  voter.socket.send(JSON.stringify({ type: 'action', id: voteID, command }));
+  const voteAck = await voter.next((f) => f.type === 'ack' && f.id === voteID);
+  assert.equal(voteAck.ok, true);
+  assert.equal(voteAck.data.game.active.votes[actors[1].id], true);
+  voter.socket.send(
+    JSON.stringify({
+      type: 'action',
+      id: voteID,
+      command: { ...command, yes: false },
+    }),
+  );
+  await voter.next((f) => f.type === 'ack' && f.id === voteID && f !== voteAck);
+  const duplicate = await request(tokens[1], {
+    ...command,
+    yes: false,
+    requestId: voteID,
+  });
+  assert.equal(duplicate.game.version, voteAck.version);
+  assert.equal(duplicate.game.active.votes[actors[1].id], true);
+  const rejectedID = randomUUID();
+  voter.socket.send(
+    JSON.stringify({
+      type: 'action',
+      id: rejectedID,
+      command: { action: 'vote', ballot: 'closed', yes: true },
+    }),
+  );
+  const rejection = await voter.next(
+    (f) => f.type === 'ack' && f.id === rejectedID,
+  );
+  assert.equal(rejection.ok, false);
+  assert.ok(rejection.error);
+  voter.socket.send(
+    JSON.stringify({ type: 'action', id: rejectedID, command }),
+  );
+  assert.equal(
+    (
+      await voter.next(
+        (f) => f.type === 'ack' && f.id === rejectedID && f !== rejection,
+      )
+    ).ok,
+    false,
+  );
   const privateResult = await request(tokens[1], {
     action: 'chat',
     text: 'Private to host',

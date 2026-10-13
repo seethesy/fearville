@@ -1,4 +1,5 @@
 'use client';
+import { useTableActions } from '@/hooks/use-table-actions';
 import { useState } from 'react';
 import { PlayerAvatar } from './player-avatar';
 import { SeatChartZoom } from './seat-chart-zoom';
@@ -11,6 +12,7 @@ export function TableSeating({
   game: GameView;
   refresh: () => Promise<void>;
 }) {
+  const actionFetch = useTableActions();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const me = game.players.find((p) => p.id === game.me);
@@ -24,7 +26,7 @@ export function TableSeating({
     setBusy(true);
     setError('');
     try {
-      const response = await fetch('/api/game', {
+      const response = await actionFetch('/api/game', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

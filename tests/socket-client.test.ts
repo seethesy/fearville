@@ -10,6 +10,10 @@ import { newGame, newPlayer } from '../lib/game/types.ts';
 import { view } from '../lib/game/view.ts';
 
 class Socket {
+  sent: string[] = [];
+  send(data: string) {
+    this.sent.push(data);
+  }
   readyState = 0;
   onopen: WebSocket['onopen'] = null;
   onclose: WebSocket['onclose'] = null;
@@ -36,6 +40,43 @@ class Socket {
     );
   }
 }
+void test('actions settle only on matching ack; errors and lost acks do not report success', async () => {
+  const time = clock(),
+    socket = new Socket();
+  const connection = new TableConnection({
+    code: '123456',
+    me: 'host',
+    ...time,
+    connect: () => socket as unknown as WebSocket,
+    poll: async () => {},
+    status: () => {},
+    view: () => {},
+  });
+  connection.start();
+  socket.open();
+  const result = connection.send({ action: 'vote', yes: true }, 'vote-1')!;
+  assert.deepEqual(JSON.parse(socket.sent[0]), {
+    type: 'action',
+    id: 'vote-1',
+    command: { action: 'vote', yes: true },
+  });
+  socket.message(JSON.stringify({ type: 'ack', id: 'other', ok: true }));
+  socket.message(
+    JSON.stringify({
+      type: 'ack',
+      id: 'vote-1',
+      ok: false,
+      error: 'This ballot closed.',
+    }),
+  );
+  assert.equal((await result).error, 'This ballot closed.');
+  const lost = connection.send({ action: 'vote' }, 'vote-2')!;
+  const rejected = assert.rejects(lost, /interrupted/);
+  socket.drop();
+  await rejected;
+  assert.equal(connection.send({ action: 'vote' }, 'vote-3'), null);
+  connection.stop();
+});
 function clock() {
   let now = 0,
     id = 0;

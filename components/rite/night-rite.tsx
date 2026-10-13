@@ -7,7 +7,6 @@ import {
   type Plan,
   type RiteConfig,
   type Triple,
-  type Altar,
   type ControlName,
   type Squad,
 } from '@/lib/rite/types';
@@ -27,9 +26,10 @@ import {
   CharacterArt,
   ActivityArt,
 } from './art';
-import { errorCue } from '@/components/hub/audio';
+import { errorCue, playCue } from '@/components/hub/audio';
 import { haptic } from '@/lib/native/bridge';
-import { timedActionFetch } from '@/lib/game/action-timing';
+import { useTableActions } from '@/hooks/use-table-actions';
+import { optimisticPuzzle } from '@/lib/rite/optimistic';
 type Reply = {
   rite: RiteView;
   serverNow: number;
@@ -48,6 +48,9 @@ export function NightRite({
   game: GameView;
   mode?: 'play' | 'setup';
 }) {
+  const actionFetch = useTableActions();
+  const [prediction, setPrediction] = useState<RitePuzzleView | null>(null);
+  const sending = useRef(false);
   const [reply, setReply] = useState<Reply>({
       rite: game.rite,
       serverNow: game.serverNow,
@@ -96,12 +99,17 @@ export function NightRite({
     setTimeout(() => setFlash(false), 400);
   }, []);
   const send: Send = async (action, payload = {}) => {
-    if (busy) return;
+    if (sending.current) return;
+    sending.current = true;
     setBusy(true);
     setError('');
     try {
       const current = latest.current;
-      const response = await timedActionFetch('/api/rite', {
+      if (current.rite && !current.rite.host && current.rite.puzzle)
+        setPrediction(
+          optimisticPuzzle(current.rite.puzzle, { action, ...payload }),
+        );
+      const response = await actionFetch('/api/rite', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -126,20 +134,23 @@ export function NightRite({
         e instanceof Error ? e.message : 'That action could not be completed.',
       );
     } finally {
+      sending.current = false;
+      setPrediction(null);
       setBusy(false);
     }
   };
   const r = reply.rite;
-  const own = r && !r.host ? r.puzzle : null;
+  const own = r && !r.host ? (prediction ?? r.puzzle) : null;
   const deadline = own?.vote?.deadline || own?.deadline || r?.windowEnd;
   const seconds = deadline
     ? Math.max(0, Math.ceil((deadline - clock.now - clock.offset) / 1000))
     : null;
-  const previous = useRef<{ ruined?: string }>({});
+  const previous = useRef<{ ruined?: string; phase?: string }>({});
   useEffect(() => {
+    if (own?.phase === 'turn' && previous.current.phase === 'wait') playCue();
     if (own?.ruined && own.ruined !== previous.current.ruined)
       fail('That action could not be completed.');
-    previous.current = { ruined: own?.ruined };
+    previous.current = { ruined: own?.ruined, phase: own?.phase };
   }, [own, fail]);
   if (!game.host && !r) return null;
   if (
@@ -766,54 +777,33 @@ function Sphinx({
   send: Send;
   busy: boolean;
 }) {
-  const [placements, setPlacements] = useState<Triple[]>(() =>
-    puzzle.placements?.length
-      ? puzzle.placements
-      : Array.from({ length: 5 }, (_, location) => ({
-          location,
-          character: -1,
-          activity: -1,
-        })),
-  );
+  const placements: Triple[] = puzzle.placements?.length
+    ? puzzle.placements
+    : Array.from({ length: 5 }, (_, location) => ({
+        location,
+        character: -1,
+        activity: -1,
+      }));
   const [token, setToken] = useState<{
     kind: 'character' | 'activity';
     id: number;
   } | null>(null);
-  const first = useRef(true);
-  const lastSent = useRef('');
-  const sendLatest = useRef(send);
-  useEffect(() => {
-    sendLatest.current = send;
-  }, [send]);
-  const editable = ['day', 'turn'].includes(puzzle.phase);
-  useEffect(() => {
-    if (first.current) {
-      first.current = false;
-      return;
-    }
-    if (!editable || busy) return;
-    const serialized = JSON.stringify(placements);
-    if (serialized === lastSent.current) return;
-    const timer = setTimeout(() => {
-      lastSent.current = serialized;
-      void sendLatest.current('riteNotes', { placements });
-    }, 500);
-    return () => clearTimeout(timer);
-  }, [placements, editable, busy]);
+  const editable = ['day', 'turn'].includes(puzzle.phase) && !busy;
   const place = (
     location: number,
     kind: 'character' | 'activity',
     id: number,
   ) => {
-    setPlacements((ps) =>
-      ps.map((p) =>
+    if (!editable) return;
+    void send('riteNotes', {
+      placements: placements.map((p) =>
         p.location === location
           ? { ...p, [kind]: p[kind] === id ? -1 : id }
           : p[kind] === id
             ? { ...p, [kind]: -1 }
             : p,
       ),
-    );
+    });
     setToken(null);
   };
   const colors = ['#d9c5f1', '#f9d6d6', '#d4e4fb', '#fbf0c2', '#dde0e3'];
@@ -1095,8 +1085,8 @@ function Divination({
   name: (id: string) => string;
 }) {
   const [tab, setTab] = useState('altar'),
-    [page, setPage] = useState(0),
-    [altar, setAltar] = useState<Altar>(puzzle.altar ?? []);
+    [page, setPage] = useState(0);
+  const altar = puzzle.altar ?? [];
   return (
     <div
       className={
@@ -1133,11 +1123,11 @@ function Divination({
                 value={a.value}
                 disabled={busy || puzzle.phase !== 'turn' || puzzle.performed}
                 onChange={(value) =>
-                  setAltar((as) =>
-                    as.map((x) =>
+                  void send('riteRitualPick', {
+                    altar: altar.map((x) =>
                       x.control === a.control ? { ...x, value } : x,
                     ),
-                  )
+                  })
                 }
               />
             </div>
