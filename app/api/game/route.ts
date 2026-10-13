@@ -19,6 +19,7 @@ export async function GET(r: Request) {
         Date.now(),
         !!game.sandbox && actor.host,
         actor.id,
+        new URL(r.url).searchParams.get('compactRecaps') === '1',
       ),
     );
   } catch (e) {

@@ -793,6 +793,7 @@ export function view(
   version: number,
   now: number,
   sandboxHost = false,
+  compactRecaps = false,
 ) {
   const avatars = resolvedAvatars(g.players);
   const me = g.players.find((p) => p.id === a.id);
@@ -988,6 +989,14 @@ export function view(
       : (g.recaps ?? [])
     ).map(({ votes, progression: _privateProgression, ...recap }) => ({
       ...recap,
+      ...(compactRecaps
+        ? {
+            messages: [],
+            decisions: [],
+            detailsDeferred: true,
+            detailsRevision: `${recap.messages?.length ?? 0}:${recap.decisions.length}:${recap.players.map((p) => p.name).join('|')}`,
+          }
+        : {}),
       myReward:
         !g.sandbox &&
         _privateProgression &&
@@ -1114,4 +1123,6 @@ export function view(
     controls: controls(g, a),
   };
 }
-export type GameView = ReturnType<typeof view>;
+export type GameView = ReturnType<typeof view> & {
+  blockedChatSenders?: string[];
+};
