@@ -83,7 +83,11 @@ export async function reportPlan(
     }
   }
   if (decision === 'remove') {
-    if (report.target_account) await targetAccount(report.target_account);
+    if (report.target_account) {
+      const target = await targetAccount(report.target_account);
+      before.targetRevision = target.admin_revision;
+      statements.push(assertSQL("EXISTS (SELECT 1 FROM accounts WHERE id=? AND admin_revision=? AND role='player')", target.id, target.admin_revision));
+    }
     if (report.kind === 'player') {
       if (report.target_account)
         statements.push(

@@ -17,7 +17,7 @@ import {
 } from './lobbies';
 import type { requireAdmin } from './auth';
 import { reportPlan, reportQueue } from './reports';
-import { auditValue } from './audit-value';
+import { auditValue, auditTarget, auditParameters } from './audit-value';
 type Admin = Awaited<ReturnType<typeof requireAdmin>>;
 export type Plan = {
   statements: D1PreparedStatement[];
@@ -46,8 +46,8 @@ export function auditStatement(
       Date.now(),
       admin,
       action,
-      target,
-      JSON.stringify(auditValue(parameters)),
+      auditTarget(action, target),
+      JSON.stringify(auditParameters(parameters)),
       result,
       JSON.stringify(auditValue(before ?? null)),
       JSON.stringify(auditValue(after ?? null)),
@@ -559,7 +559,7 @@ export async function runCommand(
           auditStatement(
             admin.id,
             spec.name,
-            target,
+            plan.target ?? target,
             { input },
             'confirmation required',
             plan.before,
@@ -625,7 +625,10 @@ export async function auditLog(params: URLSearchParams) {
     const value = params.get(key);
     if (value) {
       filters.push(key + '=?');
-      values.push(value);
+      if (key === 'target') {
+        const account = await db().prepare('SELECT id FROM accounts WHERE id=? OR handle=?').bind(value, value.replace(/^@/, '')).first<{ id: string }>();
+        values.push(account ? auditTarget('inspect', account.id) : value);
+      } else values.push(value);
     }
   }
   for (const [key, operator] of [
