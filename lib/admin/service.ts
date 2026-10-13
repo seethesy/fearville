@@ -1,5 +1,6 @@
 import { database } from '@/db';
 import { hash, read } from '@/lib/game/store';
+import { table } from '@/lib/game/table-client';
 import { log } from '@/lib/game/engine';
 import { statsFor } from '@/lib/social/stats';
 import { levelProgress } from '@/lib/social/progression';
@@ -20,6 +21,7 @@ import { reportPlan, reportQueue } from './reports';
 import { auditValue, auditTarget, auditParameters } from './audit-value';
 type Admin = Awaited<ReturnType<typeof requireAdmin>>;
 export type Plan = {
+  tables?: string[];
   statements: D1PreparedStatement[];
   target?: string;
   before?: unknown;
@@ -80,6 +82,7 @@ async function commit(
     ),
     db().prepare('DELETE FROM admin_assertions'),
   ]);
+  await Promise.allSettled((plan.tables ?? []).map((code)=>table(code).notify(code)));
   return { output: plan.output };
 }
 export async function textHistory(key: string) {
@@ -217,6 +220,7 @@ export async function accountPlan(name: string, args: Args): Promise<Plan> {
     mutedUntil: a.muted_until,
   };
   const plan: Plan = { target: a.id, before, statements: [], output: before };
+  if(['ban','signout','reset'].includes(name)) plan.tables=(await db().prepare('SELECT DISTINCT code FROM account_seats WHERE account=?').bind(a.id).all<{code:string}>()).results.map((r)=>r.code);
   if (name === 'inspect') {
     plan.output = { id: a.id, name: a.name, ...before };
     return plan;
@@ -374,6 +378,7 @@ async function lobbyPlan(name: string, args: Args): Promise<Plan> {
       throw Error('Account is not a member of that lobby.');
     return {
       statements: [...accountGuard(a), ...removal.statements],
+      tables: removal.changed,
       target: a.id,
       before: { lobbies: removal.changed },
       after: { removed: true },
@@ -450,6 +455,7 @@ async function lobbyPlan(name: string, args: Args): Promise<Plan> {
   }
   return {
     statements: [...gameStatements(game, version), ...extra],
+    tables: [code],
     target: code,
     before,
     after: describe(),

@@ -51,3 +51,26 @@ The idle HTTP suite verifies advancement with no polling or sockets. Fake
 clock tests cover exact deadline boundaries and catch-up. Cloudflare alarm
 delivery is at least once; the 250 ms accuracy target needs measurement in
 staging and on phones and is not a guaranteed platform delivery SLA.
+
+`GET /api/table/socket?code=…` authenticates the existing seat cookie or bearer
+header, checks the origin and code, and upgrades to the table object. It uses
+`acceptWebSocket` and serialized viewer attachments, which survive hibernation.
+The hello frame contains the source build ID and API version. Every committed
+change queues a per-viewer push; hashes exclude version/clock metadata and
+suppress unchanged content. Membership, ban and admin restrictions are checked
+again before sending. Blocking filters chat before paging and hashing.
+
+Web table state uses `useTableSocket`. Action responses and push frames follow
+the same version ordering; fallback polls run at 30 seconds when the socket is
+down, with bounded reconnect backoff and a foreground refresh. HTTP actions
+remain the command transport. Night Rite consumes the same pushed game view.
+Sandbox shows request round-trip time and the arrival time of the matching
+push after send, using a request ID without including credentials in URLs.
+Friends, invites and presence polling is unchanged.
+
+CI opens nineteen actual Miniflare sockets, checks each payload against its
+authorized `view()`, verifies private information and notes stay private, tests
+hash suppression for unrelated viewers, and closes a revoked seat's socket.
+Fake transports test disconnection, 30-second fallback, backoff, recovery and
+stale-frame rejection. Physical phone latency and background-app checks remain
+part of the separate playtest tickets.

@@ -29,6 +29,7 @@ import {
 } from './art';
 import { errorCue } from '@/components/hub/audio';
 import { haptic } from '@/lib/native/bridge';
+import { timedActionFetch } from '@/lib/game/action-timing';
 type Reply = {
   rite: RiteView;
   serverNow: number;
@@ -100,7 +101,7 @@ export function NightRite({
     setError('');
     try {
       const current = latest.current;
-      const response = await fetch('/api/rite', {
+      const response = await timedActionFetch('/api/rite', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -1323,3 +1324,4 @@ function HostVigil({
     </details>
   );
 }
+

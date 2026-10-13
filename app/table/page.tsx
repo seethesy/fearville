@@ -62,6 +62,8 @@ import { InviteFriends } from '@/components/social/invite-friends';
 import { RateStoryteller } from '@/components/social/rate-storyteller';
 import { TableMessages } from '@/components/table-messages';
 import { TableHistory } from '@/components/table-history';
+import { useTableSocket } from '@/hooks/use-table-socket';
+import { timedActionFetch } from '@/lib/game/action-timing';
 import { TableMembership } from '@/components/table-membership';
 import { RulesReference } from '@/components/rules-reference';
 import { HelpMenu } from '@/components/tutorials/help-menu';
@@ -301,32 +303,13 @@ export default function Table() {
     },
     [applyGame, sandboxPov],
   );
-  useEffect(() => {
-    let stopped = false;
-    let timer: ReturnType<typeof setTimeout>;
-    const poll = async () => {
-      await refresh(false);
-      if (!stopped)
-        timer = setTimeout(() => void poll(), document.hidden ? 15000 : 3000);
-    };
-    timer = setTimeout(() => void poll(), 0);
-    const resume = () => {
-      if (!document.hidden) void refresh(false);
-    };
-    window.addEventListener('online', resume);
-    window.addEventListener('focus', resume);
-    window.addEventListener('pageshow', resume);
-    document.addEventListener('visibilitychange', resume);
-    return () => {
-      stopped = true;
-      clearTimeout(timer);
-      cancelRefresh();
-      window.removeEventListener('online', resume);
-      window.removeEventListener('focus', resume);
-      window.removeEventListener('pageshow', resume);
-      document.removeEventListener('visibilitychange', resume);
-    };
-  }, [refresh, cancelRefresh]);
+  useEffect(() => { cancelRefresh(); return cancelRefresh; }, [sandboxPov, cancelRefresh]);
+  const socketPoll = useCallback(() => refresh(false), [refresh]);
+  const receiveView = useCallback((incoming: GameView) => {
+    applyGame(incoming); setOnline(true); setAuthError(false); setConnectionError('');
+  }, [applyGame]);
+  const socket = useTableSocket({ code: game?.code, me: game?.sandboxHost ? sandboxPov : game?.me,
+    pov: sandboxPov, onView: receiveView, poll: socketPoll });
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(id);
@@ -366,7 +349,7 @@ export default function Table() {
     setBusy(true);
     setError('');
     try {
-      const r = await fetch('/api/game', {
+      const r = await timedActionFetch('/api/game', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -413,7 +396,7 @@ export default function Table() {
     setBusy(true);
     setRoleError('');
     try {
-      const response = await fetch('/api/game', {
+      const response = await timedActionFetch('/api/game', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -620,6 +603,9 @@ export default function Table() {
                   ? 'Storyteller view'
                   : `Viewing as ${name(sandboxPov)}`}
               </strong>
+              <p className="hint">{socket.connected ? 'Live socket' : 'HTTP fallback'}
+                {' · '}Action RTT: {socket.rtt === undefined ? '—' : `${Math.round(socket.rtt)} ms`}
+                {' · '}Push since send: {socket.push === undefined ? '—' : `${Math.round(socket.push)} ms`}</p>
             </div>
             <label className="field">
               Point of view
@@ -1347,7 +1333,7 @@ export default function Table() {
             data-tutorial="messages-panel"
           >
             <TableMessages
-              key={`${game.code}:${game.me}:${game.gameStartedAt}:${game.phase}:${game.channel?.id ?? ''}`}
+              key={`${game.code}:${game.me}:${game.gameStartedAt}`}
               game={game}
               recipient={chatPlayer}
               onRecipient={setChatPlayer}
@@ -1674,3 +1660,4 @@ export default function Table() {
     </TableAtmosphere>
   );
 }
+
