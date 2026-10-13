@@ -1,6 +1,7 @@
 import handler from 'vinext/server/fetch-handler';
 import { runtimeEnvironment, environmentHeaders } from './lib/runtime/config';
 export { EnvironmentProbe } from './lib/runtime/probe';
+export { GameTable } from './lib/game/table-object';
 export default {
   async fetch(
     request: Request,

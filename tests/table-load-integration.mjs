@@ -88,7 +88,7 @@ const other = await call('/api/session', '', {
   name: 'Independent table',
 });
 const seats = [];
-for (let i = 0; i < 15; i++)
+for (let i = 0; i < 18; i++)
   seats.push(
     await call('/api/session', '', {
       action: 'join',
@@ -99,13 +99,13 @@ for (let i = 0; i < 15; i++)
 const game = raw(host.code);
 game.players.forEach((p, i) => {
   p.seat = i + 1;
-  p.role = p.shown = i === 14 ? 'monster' : 'watchman';
+  p.role = p.shown = i === 17 ? 'monster' : 'watchman';
   p.notes = 'Historical reminder. '.repeat(5);
 });
 configureRite(game, {
   action: 'configureRite',
   config: { enabled: true },
-  plans: ['board', 'lab', 'board', 'lab', 'board'].map((kind, i) => ({
+  plans: ['board', 'lab', 'board', 'lab', 'board', 'lab'].map((kind, i) => ({
     id: `vigil-${i}`,
     kind,
     members: game.players.slice(i * 3, i * 3 + 3).map((p) => p.id),
@@ -182,7 +182,7 @@ for (let round = 0; round < 3; round++) {
   actions.push(call('/api/game', other.token));
   await Promise.all(actions);
   const saved = raw(host.code);
-  for (let i = 0; i < 15; i++) {
+  for (let i = 0; i < 18; i++) {
     assert.ok(saved.messages.some((m) => m.text === `burst-${round}-${i}`));
     assert.equal(
       saved.notebooks[game.players[i].id].text,
@@ -201,13 +201,13 @@ voting.day = 2;
 execute(
   voting,
   { id: voting.players[0].id, host: false },
-  { action: 'nominate', target: voting.players[14].id },
+  { action: 'nominate', target: voting.players[17].id },
   Date.now(),
 );
 setPhase(voting, 'voting', Date.now(), 300);
 put(voting);
 await Promise.all(
-  seats.slice(0, 14).flatMap((seat, i) => [
+  seats.slice(0, 17).flatMap((seat, i) => [
     call('/api/game', seat.token, {
       action: 'vote',
       ballot: voting.active.id,
@@ -223,10 +223,10 @@ await Promise.all(
   ]),
 );
 const afterVote = raw(host.code);
-assert.equal(Object.keys(afterVote.ballots.at(-1).votes).length, 14);
+assert.equal(Object.keys(afterVote.ballots.at(-1).votes).length, 17);
 assert.equal(
   afterVote.messages.filter((m) => m.text.startsWith('voting-')).length,
-  14,
+  17,
 );
 // Restoring a separately stored snapshot preserves renamed membership and
 // independently saved notes/messages, including after an unrelated update.
@@ -245,10 +245,54 @@ const restored = raw(host.code);
 assert.equal(restored.hostName, 'Renamed host');
 assert.equal(
   restored.messages.filter((m) => m.text.startsWith('burst-')).length,
-  45,
+  54,
 );
 assert.equal(restored.notebooks[game.players[0].id].text, 'notes-2-0');
+
+// Nineteen simultaneous accepted commands: all eighteen players submit their
+// own Rite solution while the Storyteller sends an announcement.
+const gridGame = raw(host.code);
+gridGame.phase = 'lobby';
+configureRite(gridGame, {
+  action: 'configureRite',
+  config: { enabled: true },
+  plans: Array.from({ length: 6 }, (_, i) => ({
+    id: `grid-${i}`,
+    kind: 'grid',
+    members: gridGame.players.slice(i * 3, i * 3 + 3).map((p) => p.id),
+  })),
+});
+gridGame.phase = 'night';
+gridGame.night = 3;
+beginRiteNight(gridGame, Date.now());
+put(gridGame);
+await Promise.all([
+  ...gridGame.players.map((player) => {
+    const squad = gridGame.rite.squads.find((s) =>
+      s.members.includes(player.id),
+    );
+    return call('/api/rite', tokenFor(player.id), {
+      action: 'riteGridSubmit',
+      epoch: gridGame.rite.epoch,
+      night: gridGame.night,
+      solution: squad.state.solution,
+    });
+  }),
+  call('/api/game', host.token, {
+    action: 'chat',
+    to: 'all',
+    text: 'nineteenth command',
+    messageId: randomUUID(),
+  }),
+]);
+const submitted = raw(host.code);
+assert.ok(
+  submitted.rite.squads.every(
+    (s) => Object.keys(s.state.submissions).length === 3,
+  ),
+);
+assert.ok(submitted.messages.some((m) => m.text === 'nineteenth command'));
 timings.sort((a, b) => a - b);
 console.log(
-  `PASS: 15 players, 5 vigils, 3 simultaneous bursts, 14 simultaneous votes, independent table reads, snapshot migration and undo. ${timings.length} requests; p95 ${Math.round(timings[Math.floor(timings.length * 0.95)])} ms, max ${Math.round(timings.at(-1))} ms. Live record ${JSON.stringify(compact).length} bytes (was ${legacyBytes}).`,
+  `PASS: 18 players, 6 vigils, 3 simultaneous bursts, 17 simultaneous votes, independent table reads, snapshot migration and undo. ${timings.length} requests; p95 ${Math.round(timings[Math.floor(timings.length * 0.95)])} ms, max ${Math.round(timings.at(-1))} ms. Live record ${JSON.stringify(compact).length} bytes (was ${legacyBytes}).`,
 );

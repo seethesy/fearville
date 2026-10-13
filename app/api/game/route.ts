@@ -1,66 +1,26 @@
-import { checkSeatAccount } from '@/lib/admin/access';
-import {
-  authenticatedRead,
-  save,
-  json,
-  errorResponse,
-  checkOrigin,
-  loadDecision,
-  saveIndependent,
-} from '@/lib/game/store';
-import { tick, execute, requireThat } from '@/lib/game/engine';
-import { view } from '@/lib/game/view';
-import { withoutBlockedChat } from '@/lib/social/reports';
-import { canApplyLatest, canApplyUnchangedEdit } from '@/lib/game/concurrency';
-import { syncResult, syncMvp, voidResult } from '@/lib/social/results';
-import { prepareProgression } from '@/lib/social/start';
-import { independentCommand } from '@/lib/game/scoped-update';
+import { authMember, json, errorResponse, checkOrigin } from '@/lib/game/store';
+import { requireThat } from '@/lib/game/engine';
+import { tableView } from '@/lib/game/visible-view';
+import { table } from '@/lib/game/table-client';
 export async function GET(r: Request) {
   try {
-    const initial = await authenticatedRead(r);
-    const { actor, code } = initial;
-    for (let i = 0; i < 8; i++) {
-      const { game, version, created } =
-        i === 0 ? initial : await authenticatedRead(r);
-      if (
-        !actor.host &&
-        !game.players.some((p) => p.id === actor.id && !p.departed)
-      )
-        throw Error('AUTH');
-      const now = Date.now();
-      const changed = tick(game, now);
-      if (changed && !(await save(game, version, false, actor.credentialHash)))
-        continue;
-      // A timer may end a game during a poll. Ordinary polls must stay read-only;
-      // action handlers synchronize results and MVP changes when they save.
-      if (changed && game.phase === 'ended')
-        await syncResult(
-          game,
-          game.gameStartedAt ?? created,
-          now,
-          version + Number(changed),
-        );
-      const requested = new URL(r.url).searchParams.get('pov');
-      const pov =
-        actor.host && game.sandbox
-          ? game.players.find((p) => p.id === requested && p.dummy)
-          : null;
-      const viewer = pov ? { id: pov.id, host: false } : actor;
-      return json(
-        await withoutBlockedChat(
-          view(
-            game,
-            viewer,
-            version + Number(changed),
-            now,
-            !!game.sandbox && actor.host,
-          ),
-          code,
-          actor.id,
-        ),
-      );
-    }
-    return json({ error: 'The table is busy. Reconnect in a moment.' }, 409);
+    const { actor, code } = await authMember(r);
+    const { game, version } = await table(code).read(code, actor);
+    const requested = new URL(r.url).searchParams.get('pov');
+    const pov =
+      actor.host && game.sandbox
+        ? game.players.find((p) => p.id === requested && p.dummy && !p.departed)
+        : null;
+    return json(
+      await tableView(
+        game,
+        pov ? { id: pov.id, host: false } : actor,
+        version,
+        Date.now(),
+        !!game.sandbox && actor.host,
+        actor.id,
+      ),
+    );
   } catch (e) {
     return errorResponse(e);
   }
@@ -68,13 +28,11 @@ export async function GET(r: Request) {
 export async function POST(r: Request) {
   try {
     checkOrigin(r);
-    const initial = await authenticatedRead(r);
-    const { actor, code } = initial;
+    const { actor, code } = await authMember(r);
     const raw = await r.text();
     requireThat(raw.length < 20000, 'Request is too large.');
     const c = JSON.parse(raw);
     requireThat(typeof c.action === 'string', 'Choose an action.');
-    if (c.action === 'chat') await checkSeatAccount(code, actor.id, true);
     if (
       ['vote', 'correctVote'].includes(c.action) &&
       typeof c.yes === 'string'
@@ -85,153 +43,12 @@ export async function POST(r: Request) {
       );
       c.yes = c.yes === 'null' ? null : c.yes === 'true';
     }
-    for (let i = 0; i < 20; i++) {
-      const { game, version, created } =
-        i === 0 ? initial : await authenticatedRead(r);
-      if (i > 0 && c.action === 'chat')
-        await checkSeatAccount(code, actor.id, true);
-      const now = Date.now();
-      const before = game.phase;
-      const resultStarted = game.gameStartedAt ?? created;
-      const pov =
-        actor.host && game.sandbox
-          ? game.players.find((p) => p.id === c.pov && p.dummy)
-          : null;
-      const actionActor = pov ? { id: pov.id, host: false } : actor;
-      const canRebase = canApplyLatest(actionActor, c);
-      if (tick(game, now)) {
-        if (!(await save(game, version, false, actor.credentialHash))) {
-          await new Promise((resolve) =>
-            setTimeout(resolve, 8 + Math.floor(Math.random() * 24)),
-          );
-          continue;
-        }
-        if (canRebase || (actionActor.host && c.action === 'edit' && c.base))
-          continue;
-        return json(
-          { error: 'The timer advanced the game. Review the current phase.' },
-          409,
-        );
-      }
-      if (
-        ![
-          'vote',
-          'chat',
-          'nightChoice',
-          'mvpVote',
-          'claimSeat',
-          'leaveSeat',
-          'saveNotebook',
-          'returnLobby',
-        ].includes(c.action) &&
-        c.version !== version &&
-        !canRebase &&
-        !canApplyUnchangedEdit(game, actionActor, c)
-      )
-        return json(
-          { error: 'The table changed. Review this action again.' },
-          409,
-        );
-      if (c.action === 'returnLobby' && before === 'ended')
-        await syncResult(game, game.gameStartedAt ?? created, now, version);
-      await loadDecision(game, c);
-      const independentBefore = ['chat', 'saveNotebook'].includes(c.action)
-        ? structuredClone(game)
-        : null;
-      const rankedBefore = JSON.stringify([
-        game.ranked,
-        game.progression,
-        game.gameStartedAt,
-        game.phase === 'lobby',
-        game.phase === 'ended',
-      ]);
-      const summary = execute(game, actionActor, c, now);
-      if (c.action === 'start') await prepareProgression(game);
-      if (c.preview) return json({ summary, version });
-      const scoped =
-        i === 0 && independentBefore
-          ? independentCommand(independentBefore, game, actionActor, c)
-          : null;
-      if (scoped) {
-        const saved = await saveIndependent(game, scoped, actor.credentialHash);
-        if (!saved) continue;
-        return json({
-          summary,
-          game: await withoutBlockedChat(
-            view(
-              saved.game,
-              actionActor,
-              saved.version,
-              now,
-              !!game.sandbox && actor.host,
-            ),
-            code,
-            actor.id,
-          ),
-        });
-      }
-      const rankedChanged =
-        rankedBefore !==
-        JSON.stringify([
-          game.ranked,
-          game.progression,
-          game.gameStartedAt,
-          game.phase === 'lobby',
-          game.phase === 'ended',
-        ]);
-      if (
-        !(await save(
-          game,
-          version,
-          rankedChanged,
-          actor.credentialHash,
-          c.action === 'chat',
-        ))
-      ) {
-        await new Promise((resolve) =>
-          setTimeout(resolve, 8 + Math.floor(Math.random() * 24)),
-        );
-        continue;
-      }
-      // Record the result when the game ends; withdraw it if the Storyteller
-      // rewinds out of the ended phase. Both are idempotent.
-      if (
-        before === 'ended' &&
-        game.phase !== 'ended' &&
-        c.action !== 'returnLobby'
-      )
-        await voidResult(code, resultStarted, version + 1);
-      else if (
-        c.action !== 'returnLobby' &&
-        (game.phase === 'ended' || before === 'ended')
-      )
-        await syncResult(
-          game,
-          game.gameStartedAt ?? created,
-          now,
-          version + 1,
-          true,
-        );
-      if (c.action === 'mvpVote' || c.action === 'returnLobby')
-        await syncMvp(game, version + 1);
-      return json({
-        summary,
-        game: await withoutBlockedChat(
-          view(
-            game,
-            actionActor,
-            version + 1,
-            now,
-            !!game.sandbox && actor.host,
-          ),
-          code,
-          actor.id,
-        ),
-      });
-    }
+    const result = await table(code).action(code, actor, c);
     return json(
-      { error: 'Another action arrived at the same time. Please try again.' },
-      409,
+      result,
+      'status' in result && typeof result.status === 'number'
+        ? result.status
+        : 200,
     );
   } catch (e) {
     return errorResponse(e);
