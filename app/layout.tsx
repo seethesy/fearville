@@ -21,7 +21,12 @@ const baseMetadata: Metadata = {
     'An in-person Horrors of Fearville companion for Storytellers and players.',
 };
 export function generateMetadata(): Metadata {
-  return { ...baseMetadata, ...(currentEnvironment() === 'staging' ? { robots: { index: false, follow: false } } : {}) };
+  return {
+    ...baseMetadata,
+    ...(currentEnvironment() === 'staging'
+      ? { robots: { index: false, follow: false } }
+      : {}),
+  };
 }
 export default function RootLayout({
   children,
@@ -29,7 +34,11 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <body>
-        {currentEnvironment() === 'staging' && <div className="staging-banner" role="note">STAGING · TEST DATA</div>}
+        {currentEnvironment() === 'staging' && (
+          <div className="staging-banner" role="note">
+            STAGING · TEST DATA
+          </div>
+        )}
         <AccountProvider>
           <TextProvider>
             <AccountBoundary>
