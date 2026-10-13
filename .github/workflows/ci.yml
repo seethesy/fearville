@@ -4,10 +4,8 @@ name: CI
 # Required status checks for branch protection: `check` and `integration`.
 on:
   pull_request:
-    paths-ignore: ['docs/**', '*.md', 'Claude outputs/**']
   push:
     branches: [main]
-    paths-ignore: ['docs/**', '*.md', 'Claude outputs/**']
   # Re-run after the formatter pushes a commit: pushes made with GITHUB_TOKEN
   # don't trigger workflows, but a dispatch does, so the new head gets checks.
   workflow_dispatch:

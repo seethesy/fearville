@@ -58,7 +58,9 @@ async function call(account, body) {
     signal: AbortSignal.timeout(20000),
   });
   if (!response.ok)
-    throw Error(`Sandbox smoke step failed with HTTP ${response.status}.`);
+    throw Error(
+      `Table smoke ${body.action} step failed with HTTP ${response.status}.`,
+    );
   return response.json();
 }
 try {
@@ -79,19 +81,25 @@ try {
       [hashes[i], accounts[i], expires],
     );
   }
-  const room = await call(0, {
+  const sandbox = await call(0, {
     action: 'createSandbox',
     name: 'Release smoke host',
   });
-  if (!/^[A-Z0-9]{6}$/.test(room.code ?? ''))
+  if (!/^[0-9]{6}$/.test(sandbox.code ?? ''))
     throw Error('Sandbox smoke did not return a table code.');
+  const resumed = await call(0, { action: 'join', code: sandbox.code });
+  if (!resumed.resumed || resumed.code !== sandbox.code)
+    throw Error('Sandbox host resume failed.');
+  const room = await call(0, { action: 'create', name: 'Release smoke host' });
+  if (!/^[0-9]{6}$/.test(room.code ?? ''))
+    throw Error('Multiplayer smoke did not return a table code.');
   await call(1, {
     action: 'join',
     code: room.code,
     name: 'Release smoke player',
   });
   console.log(
-    `PASS: ${environment} health and sandbox create/join for ${sha}.`,
+    `PASS: ${environment} health, sandbox create/resume and multiplayer create/join for ${sha}.`,
   );
 } finally {
   await remoteQuery(
