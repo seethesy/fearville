@@ -445,7 +445,7 @@ function executeCommand(
     else {
       const seat = Number(c.seat);
       requireThat(
-        Number.isInteger(seat) && seat >= 1 && seat <= 15,
+        Number.isInteger(seat) && seat >= 1 && seat <= MAX_PLAYERS,
         'Choose a valid seat.',
       );
       requireThat(

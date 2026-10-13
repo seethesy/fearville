@@ -5,6 +5,7 @@ export async function claimSeats(base, tokens) {
   for (const [index, token] of tokens.entries()) {
     const r = await fetch(base + '/api/game', {
       method: 'POST',
+      redirect: 'error',
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${token}`,

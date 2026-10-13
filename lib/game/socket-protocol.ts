@@ -10,6 +10,7 @@ export type ActionAck = {
   summary?: string;
   version?: number;
   serverNow?: number;
+  committedAt?: number;
   data?: Record<string, unknown>;
 };
 export function actionID(value: unknown): value is string {
@@ -37,6 +38,7 @@ export type ViewEnvelope = {
   serverNow: number;
   data: GameView;
   cause?: string;
+  committedAt?: number;
 };
 export function viewContent(data: GameView) {
   const { version: _version, serverNow: _serverNow, ...content } = data;

@@ -297,13 +297,15 @@ export class GameTable extends DurableObject {
         ].slice(-100),
       };
     this.parts.save(next, meta);
+    const committedAt = Date.now();
+    if (receipt) receipt.ack.committedAt = committedAt;
     this.game = next;
     this.meta = meta;
     await this.schedule();
     await this.flushProjection();
     await this.flushEffects();
     await this.schedule();
-    this.publish(cause);
+    this.publish(cause, committedAt);
   }
   read(code: string, actor?: Actor) {
     return this.queue.run(async () => {
@@ -612,13 +614,13 @@ export class GameTable extends DurableObject {
       }
     });
   }
-  private publish(cause?: string) {
+  private publish(cause?: string, committedAt?: number) {
     if (!this.game || !this.meta || !this.ctx.getWebSockets().length) return;
     const game = structuredClone(this.game),
       version = this.meta.version;
     this.ctx.waitUntil(
       this.pushes
-        .run(() => this.broadcast(game, version, cause))
+        .run(() => this.broadcast(game, version, cause, committedAt))
         .catch(() => {
           for (const socket of this.ctx.getWebSockets())
             try {
@@ -629,7 +631,12 @@ export class GameTable extends DurableObject {
         }),
     );
   }
-  private async broadcast(game: Game, version: number, cause?: string) {
+  private async broadcast(
+    game: Game,
+    version: number,
+    cause?: string,
+    committedAt?: number,
+  ) {
     const db = database();
     const [index, members, blocks] = await Promise.all([
       db
@@ -710,6 +717,7 @@ export class GameTable extends DurableObject {
             serverNow: now,
             data,
             ...(cause ? { cause } : {}),
+            ...(committedAt !== undefined ? { committedAt } : {}),
           }),
         );
         socket.serializeAttachment({ ...seat, hash: fingerprint });
@@ -796,6 +804,12 @@ export class GameTable extends DurableObject {
         'Request is too large.',
       );
       const frame = JSON.parse(message as string);
+      if (frame.type === 'ping' && actionID(frame.id)) {
+        socket.send(
+          JSON.stringify({ type: 'pong', id: frame.id, serverNow: Date.now() }),
+        );
+        return;
+      }
       if (frame.type === 'hello') {
         requireThat(
           Number.isSafeInteger(frame.lastVersion) && frame.lastVersion >= 0,
@@ -864,6 +878,9 @@ export class GameTable extends DurableObject {
         summary: 'summary' in result ? result.summary : undefined,
         data: result,
         serverNow: Date.now(),
+        committedAt: this.meta!.receipts?.[seat.actor.id]?.find(
+          (ack) => ack.id === id,
+        )?.committedAt,
         version:
           'game' in result
             ? result.game?.version
