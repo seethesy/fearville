@@ -194,8 +194,9 @@ export async function callback(r: Request, provider: Provider) {
       status: 303,
       headers: {
         Location:
-          (native ? 'fearville://signin?error=' : siteOrigin(r) + '/account?error=') +
-          encodeURIComponent(safe),
+          (native
+            ? 'fearville://signin?error='
+            : siteOrigin(r) + '/account?error=') + encodeURIComponent(safe),
         'Cache-Control': 'no-store',
         'Set-Cookie': cookie('ct_oauth', '', 0, true),
       },

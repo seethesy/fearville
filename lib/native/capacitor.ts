@@ -48,7 +48,11 @@ export function installCapacitorBridge() {
   const emitSignin = (url: string) => {
     const params = new URL(url.replace('fearville://', 'https://x/'))
       .searchParams;
-    emit({ type: 'signin', code: params.get('code'), error: params.get('error') });
+    emit({
+      type: 'signin',
+      code: params.get('code'),
+      error: params.get('error'),
+    });
   };
   if (haptics) {
     capabilities.push('haptics');
