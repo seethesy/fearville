@@ -241,11 +241,11 @@ export default function Table() {
   }, []);
   const latestGame = useRef<GameView | null>(null);
   const applyGame = useCallback((incoming: GameView) => {
-    const accepted = newestView(latestGame.current,incoming);
+    const accepted = newestView(latestGame.current, incoming);
     if (accepted === latestGame.current) return;
-    latestGame.current=accepted;
+    latestGame.current = accepted;
     setGame(accepted);
-    setOffset(accepted.serverNow-Date.now());
+    setOffset(accepted.serverNow - Date.now());
   }, []);
   useEffect(() => {
     const media = window.matchMedia('(max-width: 800px)');
