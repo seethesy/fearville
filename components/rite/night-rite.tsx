@@ -169,7 +169,7 @@ export function NightRite({
             <p className="rite-state">Preparing the vigils’ puzzles…</p>
           )}
           {mode === 'play' && r.squads.length > 0 && (
-            <div className="rite-host">
+            <div className="rite-host" data-tutorial="rite-host">
               <p>
                 {r.squads.filter((s) => s.completeNight).length} of{' '}
                 {r.squads.length} vigils complete · {r.needed} needed
@@ -297,6 +297,7 @@ function RiteSetup({
   return (
     <form
       className="rite-setup"
+      data-tutorial="rite-setup"
       onSubmit={(e) => {
         e.preventDefault();
         void send('configureRite', {
@@ -650,7 +651,8 @@ function Laboratory({
               : 'Reset to the original puzzle?'}
           </p>
           <p>
-            Everyone else must agree. Votes are anonymous and stay open until everyone answers or the Rite closes.
+            Everyone else must agree. Votes are anonymous and stay open until
+            everyone answers or the Rite closes.
           </p>
           {puzzle.vote.canVote && !puzzle.vote.answered && (
             <div className="rite-buttons">
@@ -1182,7 +1184,9 @@ function HostVigil({
             Par: {state.par} · Distance: {state.distance ?? 'Not yet certified'}{' '}
             · Current turn:{' '}
             {turn?.order.length && !state.solved
-              ? game.players.find((p) => p.id === turn.order[turn.cursor % turn.order.length])?.name
+              ? game.players.find(
+                  (p) => p.id === turn.order[turn.cursor % turn.order.length],
+                )?.name
               : 'Finished'}
           </p>
           {state.type === 'board' ? (
@@ -1237,15 +1241,20 @@ function HostVigil({
             · {r.doneNight ? 'Performed' : 'Pending'}
           </p>
         ))}
-      {turn && (state.type === 'board' || state.type === 'lab') && !state.solved && game.phase === 'night' && game.rite?.status === 'open' && !game.rite.windowEnd && (
-        <button
-          className="secondary"
-          disabled={busy}
-          onClick={() => void send('ritePassTurn', { squad: s.id })}
-        >
-          Pass current turn
-        </button>
-      )}
+      {turn &&
+        (state.type === 'board' || state.type === 'lab') &&
+        !state.solved &&
+        game.phase === 'night' &&
+        game.rite?.status === 'open' &&
+        !game.rite.windowEnd && (
+          <button
+            className="secondary"
+            disabled={busy}
+            onClick={() => void send('ritePassTurn', { squad: s.id })}
+          >
+            Pass current turn
+          </button>
+        )}
       <button
         className="secondary"
         disabled={busy || game.rite?.status === 'complete'}

@@ -228,6 +228,27 @@ export function walkthroughTriggers(view: TriggerView): string[] {
   return ids;
 }
 
+// FEAR-19: Storyteller tour chapters that apply right now. Only ever for the
+// Storyteller's own view (a sandbox host viewing as a player is not the
+// Storyteller for this purpose). The lobby chapter in the lobby; the play
+// chapter once the game has started.
+export function hostTourTriggers(view: TriggerView): string[] {
+  if (!view.host) return [];
+  if (view.phase === 'lobby') return ['tour.lobby'];
+  if (view.phase === 'ended') return [];
+  return ['tour.play'];
+}
+
+// Storyteller-only panels with a first-open tutorial, by table tab.
+export function hostSectionFor(host: boolean, tab: string): string {
+  if (!host) return '';
+  return tab === 'seats'
+    ? 'host-seats'
+    : tab === 'control'
+      ? 'host-controls'
+      : '';
+}
+
 // Night Rite guide: a seated player's own pattern guide pops up during the
 // nights before the Rite opens (night 1 for everyone who is seated then).
 export interface GuideView {
@@ -343,7 +364,11 @@ export function helpSections(options: {
       title: 'Getting started',
       items: of('walkthrough').filter(firstOfGroup).map(item),
     },
-    { title: 'Storyteller tour', items: of('tour').map(item) },
+    {
+      title: 'Storyteller tour',
+      // One entry; replaying it plays every chapter (FEAR-19).
+      items: of('tour').filter(firstOfGroup).map(item),
+    },
     {
       title: 'Your Night Rite guide',
       // Never list other patterns' guides: that would reveal vigil setups.

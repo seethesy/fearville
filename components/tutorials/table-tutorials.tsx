@@ -2,6 +2,8 @@
 import { useEffect } from 'react';
 import type { GameView } from '@/lib/game/view';
 import {
+  hostSectionFor,
+  hostTourTriggers,
   riteGuideTrigger,
   suppressionReasons,
   walkthroughTriggers,
@@ -10,7 +12,8 @@ import { useTutorials, useTutorialBlocker } from './provider';
 
 // Connects the table to the tutorial engine: the guest seat scope, the
 // walkthrough chapters (FEAR-17), first-open section tutorials (FEAR-18),
-// tab switching for replays, and the game states that hold popups.
+// the Storyteller tour and Storyteller-only sections (FEAR-19), tab
+// switching for replays, and the game states that hold popups.
 export function TableTutorials({
   game,
   tab,
@@ -45,6 +48,21 @@ export function TableTutorials({
   useEffect(() => {
     for (const id of chapters.split(',').filter(Boolean)) request(id);
   }, [chapters, request]);
+
+  // Storyteller tour (FEAR-19): only the Storyteller's own view requests it.
+  const tour = hostTourTriggers({
+    phase: game.phase,
+    host: game.host,
+    day: game.day,
+    sandboxHost: game.sandboxHost,
+  }).join(',');
+  useEffect(() => {
+    for (const id of tour.split(',').filter(Boolean)) request(id);
+  }, [tour, request]);
+  const hostSection = hostSectionFor(game.host, tab);
+  useEffect(() => {
+    if (hostSection) sectionOpened(hostSection);
+  }, [hostSection, sectionOpened]);
 
   const section = !seated
     ? ''
