@@ -39,6 +39,10 @@ hosting provider (Cloudflare Workers + D1) on Fearville's behalf.
 Guests: a random seat credential (hashed) plus whatever they type at the table
 (name, notes, chat). Nothing is linked to an identity, and it expires with the seat.
 
+### Feedback forms (FEAR-159)
+
+Answers to feedback and bug report forms (star ratings, choices, free text, optional contact email in bug reports), with the account id or an anonymous random guest id, app version and platform. Bug reports also keep public table details (code, phase, day/night, script, player count) and client diagnostics (build, OS, connection, request ids). Never roles, alignments, notes or chat. Kept with no time limit; deleted with the account. Store forms: User content (Customer support, Other user content), Contact info (Email, optional).
+
 ## Planned (update this file when each ships)
 
 | Data | Ticket | Notes for the store forms |
