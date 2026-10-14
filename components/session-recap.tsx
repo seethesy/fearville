@@ -14,6 +14,7 @@ import {
   DialogDescription,
 } from './ui/dialog';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from './ui/tabs';
+import { RecapRating } from './social/rate-storyteller';
 
 type Recap = GameView['recaps'][number];
 type RecapPlayer = Recap['players'][number];
@@ -130,6 +131,7 @@ export function GameEndPopup({
             <DialogTitle>{recap.winner} wins</DialogTitle>
             <span aria-label="Game duration">{gameDuration(recap)}</span>
           </div>
+          <RecapRating game={recap.id} explain />
           <DialogDescription>
             Choose your MVP{game.host ? 's' : ''}.{' '}
             {limit - recap.myVotes.length} of {limit} votes remaining.{' '}
@@ -405,6 +407,7 @@ export function SessionRecaps({
                   : (mine?.role ?? 'Not in this session')}
               </span>
             </summary>
+            {!game.host && <RecapRating game={r.id} />}
             <div className="recap-heading">
               <h3>{r.winner} wins</h3>
               <span>{gameDuration(r)}</span>

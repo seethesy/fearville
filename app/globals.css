@@ -4363,3 +4363,8 @@ button.glossary-trigger:focus-visible {
 .role-tips-group {
   margin-block: 1.5rem;
 }
+
+/* FEAR-160: Storyteller rating as the first block of each recap. */
+.recap-rating {
+  margin: 0.5rem 0 0.75rem;
+}

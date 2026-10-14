@@ -59,7 +59,6 @@ import {
 } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { InviteFriends } from '@/components/social/invite-friends';
-import { RateStoryteller } from '@/components/social/rate-storyteller';
 import { TableMessages } from '@/components/table-messages';
 import { TableHistory } from '@/components/table-history';
 import { useTableSocket } from '@/hooks/use-table-socket';
@@ -1116,9 +1115,6 @@ export default function Table() {
                             </div>
                           )}
                         </>
-                      )}
-                      {game.phase === 'ended' && (
-                        <RateStoryteller code={game.code} host={game.host} />
                       )}
                       {game.hints.map((h) => (
                         <p className="error" key={h}>
