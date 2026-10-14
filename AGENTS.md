@@ -45,7 +45,7 @@ currently remains supported; keep its workflow until its replacement lands.
 - `lib/admin/service.ts`: admin service entry; `service/` contains audit/transactions, text, accounts, lobby plans and commands.
 - `lib/social/`: friends, invites, ratings, results, stats, progression, privacy.
 - `lib/accounts/`: Google/Apple OIDC, account service, profile, preferences.
-- `lib/tutorials/`: tutorial content, engine, progress.
+- `lib/tutorials/`: tutorial content, engine, progress. `content.ts` preserves catalog exports; `content/` contains walkthroughs, help sections, Rite guides, host tour/sections and lookup.
 - `db/`: Drizzle schema and D1 accessor.
 - `tests/`: `*.test.ts` unit tests (node:test) and `*-integration.mjs` HTTP suites (local D1 only).
 - `scripts/`: test runners (`check.mjs`, `run-unit.mjs`, `run-integration.mjs`) and offline generators.
