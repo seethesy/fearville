@@ -1,0 +1,226 @@
+/* Shared cosmetic layers: transform/opacity only, with no pointer interception. */
+.cosmetic-table {
+  position: relative;
+  isolation: isolate;
+  min-height: 100vh;
+}
+.table-atmosphere {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+  background: transparent;
+  transition: background-color 1.8s ease;
+}
+.atmosphere-night {
+  background-color: #10182790;
+}
+.atmosphere-day {
+  background-color: #533e1812;
+}
+.fog-bank {
+  position: absolute;
+  width: 150%;
+  height: 45vh;
+  left: -25%;
+  bottom: -12vh;
+  border-radius: 50%;
+  background: radial-gradient(
+    ellipse,
+    #b8d3df18,
+    #a3bdce08 40%,
+    transparent 70%
+  );
+  animation: fog-drift 28s ease-in-out infinite alternate;
+}
+.fog-bank-two {
+  bottom: 12vh;
+  opacity: 0.5;
+  animation-delay: -14s;
+  animation-duration: 36s;
+}
+.atmosphere-day .fog-bank {
+  opacity: 0.45;
+}
+.ambient-mote {
+  position: absolute;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: #dbd1b5;
+  box-shadow: 0 0 7px #dfcaa580;
+  opacity: 0;
+  animation: mote-drift var(--duration) linear var(--delay) infinite;
+}
+.atmosphere-night .ambient-mote {
+  background: #bed6ed;
+}
+.atmosphere-control {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0.6rem 1rem 0;
+  text-align: right;
+}
+.atmosphere-control button {
+  font-size: 0.75rem;
+  padding: 0.4rem 0.7rem;
+}
+.portrait-stage {
+  display: inline-grid;
+  position: relative;
+  vertical-align: middle;
+  line-height: 1;
+  width: 64px;
+  height: 64px;
+  flex: 0 0 auto;
+}
+.portrait-stage > .player-avatar {
+  width: 100%;
+  height: 100%;
+}
+.avatar-options .portrait-stage,
+.preset-grid .portrait-stage {
+  width: 48px;
+  height: 48px;
+}
+.preset-grid .portrait-stage {
+  width: 48px;
+  height: 48px;
+}
+.avatar-preview .portrait-stage {
+  width: 96px;
+  height: 96px;
+}
+.circle-seat .portrait-stage {
+  width: 46px;
+  height: 46px;
+}
+.lobby-seat .portrait-stage,
+.recap-seat .portrait-stage {
+  width: 58px;
+  height: 58px;
+}
+.death-preview-dialog {
+  max-width: min(560px, calc(100vw - 24px));
+  text-align: center;
+  overflow: hidden;
+}
+.death-preview-stage {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-height: 310px;
+  isolation: isolate;
+  background: radial-gradient(circle, #34445b, #151b26 72%);
+  border-radius: 14px;
+}
+.death-preview-stage .portrait-stage {
+  width: 110px;
+  height: 110px;
+}
+.effect-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 12px;
+}
+.effect-option {
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  min-height: 120px;
+  padding: 18px 10px;
+  border: 1px solid #625865;
+  border-radius: 12px;
+  background: #24242b;
+  color: #eee8ed;
+  cursor: pointer;
+}
+.effect-option svg {
+  width: 46px;
+  height: 46px;
+}
+.effect-option-spirit svg {
+  color: #98fff0;
+}
+.effect-option-embers svg {
+  color: #ffa15c;
+}
+.effect-option-petals svg {
+  color: #f49cbe;
+}
+.effect-option-mist svg {
+  color: #b8a9ff;
+}
+.effect-option-none svg {
+  color: #b9b7c2;
+}
+.effect-option.selected {
+  border-color: #ef9a59;
+  background: #382a23;
+  box-shadow: inset 0 0 0 1px #ef9a59;
+}
+.player-avatar {
+  transition:
+    filter 1s ease,
+    opacity 1s ease,
+    box-shadow 0.35s ease,
+    border-color 0.35s ease;
+}
+.circle-seat .portrait-stage {
+  display: inline-grid;
+  overflow: visible;
+}
+.cosmetic-preview-stage {
+  display: inline-grid;
+  place-items: center;
+  position: relative;
+  padding: 1rem;
+}
+.avatar-picker > button {
+  margin-right: 0.6rem;
+  margin-bottom: 0.6rem;
+}
+.death-announcement {
+  animation: none;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 1.5rem;
+}
+.farewell-player {
+  min-width: 100px;
+  max-width: 100%;
+}
+.farewell-player h2 {
+  overflow-wrap: anywhere;
+}
+.farewell-player .player-avatar {
+  width: 80px;
+  height: 80px;
+}
+.cosmetic-motion-off .table-atmosphere {
+  display: none;
+}
+.cosmetic-motion-off .player-avatar {
+  transition: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .table-atmosphere,
+  .death-fx {
+    display: none;
+  }
+  .player-avatar {
+    transition: none;
+  }
+}
+.farewell-preview {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 0;
+  min-height: 130px;
+}
+.farewell-preview .cosmetic-preview-stage {
+  flex-shrink: 0;
+}

@@ -1,0 +1,25 @@
+.saved-game {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #555;
+  padding: 18px 0;
+}
+.saved-game strong {
+  letter-spacing: 0.12em;
+  color: #f6a265;
+}
+.saved-game p {
+  margin: 5px 0;
+  color: #bbb;
+  font-size: 0.875rem;
+}
+@media (max-width: 800px) {
+  .account-layout {
+    grid-template-columns: 1fr;
+  }
+  .provider-buttons {
+    flex-direction: column;
+  }
+}

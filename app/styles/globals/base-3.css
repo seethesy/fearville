@@ -1,0 +1,366 @@
+.role-assignment-team {
+  display: grid;
+  gap: 5px;
+  margin-top: 15px;
+}
+.role-assignment-team h4 {
+  margin: 0 0 3px;
+}
+.role-assignment-chip {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  width: 100%;
+  min-height: 42px;
+  padding: 6px 8px;
+  border: 1px solid #64727b;
+  border-radius: 8px;
+  background: #1c242b;
+  color: #fff;
+  text-align: left;
+  cursor: grab;
+}
+.role-assignment-chip[aria-pressed='true'] {
+  border-color: #f0c886;
+  box-shadow: inset 0 0 0 1px #f0c886;
+}
+.role-assignment-chip small {
+  margin-left: auto;
+  color: #c8c1bd;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 70px;
+}
+.role-drop-target {
+  outline: 3px solid #f0c886;
+  outline-offset: 2px;
+}
+.seat-role-assignment {
+  display: grid;
+  gap: 7px;
+  margin: 10px 0;
+}
+.seat-role-assignment select {
+  width: 100%;
+  min-height: 44px;
+  background: #1c242b;
+  color: #fff;
+  border: 1px solid #64727b;
+  border-radius: 7px;
+  padding: 7px;
+}
+.seat-card h2 {
+  margin-bottom: 10px;
+}
+@media (max-width: 900px) {
+  .role-assignment-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .role-assignment-palette {
+    position: static;
+    max-height: 320px;
+  }
+}
+@media (max-width: 600px) {
+  .role-assignment-layout .seat-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.role-name {
+  color: #f6a265;
+  font-size: 1.15rem;
+}
+.role-name small {
+  display: block;
+  color: #bdb8b0;
+  font-size: 0.85rem;
+}
+.tags {
+  font-size: 0.75rem;
+  letter-spacing: 0.1em;
+  color: #ffd1c7;
+}
+.select-field {
+  width: 100%;
+  height: auto !important;
+  min-height: 46px !important;
+  padding: 12px !important;
+  background: #363636 !important;
+  font-size: 1rem !important;
+}
+.check-field {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 20px 0;
+  font-size: 0.95rem;
+}
+.check-field button {
+  width: 20px;
+  height: 20px;
+}
+.action-dialog {
+  max-height: 85dvh;
+  overflow-y: auto;
+  width: min(620px, calc(100vw - 32px)) !important;
+  max-width: 620px !important;
+}
+.action-dialog h2 {
+  font-size: 1.5rem;
+}
+.action-dialog form {
+  margin-top: 12px;
+}
+.action-dialog .hint {
+  margin: 0;
+}
+.preview-text {
+  white-space: pre-wrap;
+  font-size: 1rem;
+  line-height: 1.6;
+  color: #e1ddd6;
+}
+.notice {
+  background: #3d453b;
+  border: 1px solid #6b8066;
+  display: flex;
+  gap: 20px;
+  padding: 14px 20px;
+  border-radius: 6px;
+  margin-bottom: 20px;
+  white-space: pre-wrap;
+  font-size: 0.875rem;
+}
+.notice > span {
+  flex: 1;
+}
+.notice button {
+  align-self: start;
+}
+.section-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  gap: 20px;
+}
+.message-panel {
+  max-width: 900px;
+  margin: 0 auto 32px;
+}
+.message-feed {
+  max-height: 65vh;
+  overflow: auto;
+}
+.message {
+  padding: 18px 0;
+  border-bottom: 1px solid #505050;
+}
+.message > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+}
+.message small {
+  color: #b7b4ae;
+  font-size: 0.75rem;
+}
+.message p {
+  white-space: pre-wrap;
+  margin: 10px 0 0;
+  overflow-wrap: anywhere;
+}
+.correction {
+  color: #f6be96;
+}
+.script-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 24px;
+  margin-top: 30px;
+}
+.script-grid article {
+  border-top: 1px solid #555;
+  padding-top: 14px;
+}
+.script-grid small {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #f6a265;
+}
+.script-grid h3 {
+  margin: 8px 0;
+}
+.script-grid p {
+  font-size: 0.95rem;
+  color: #d0cbc4;
+}
+.control-list > div {
+  border-bottom: 1px solid #515151;
+  padding: 20px 0;
+}
+.control-list p {
+  color: #c4c0ba;
+  font-size: 0.95rem;
+}
+.log-entry {
+  padding: 10px 0;
+  border-bottom: 1px solid #474747;
+}
+.log-entry small {
+  color: #aaa;
+  font-size: 0.75rem;
+}
+.log-entry p {
+  font-size: 0.875rem;
+  margin: 5px 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.ballots {
+  margin: 20px 0;
+  border-top: 1px solid #555;
+}
+.ballots > div {
+  display: flex;
+  justify-content: space-between;
+  padding: 14px 0;
+  border-bottom: 1px solid #555;
+}
+.ballots p {
+  margin: 16px 0;
+  color: #f6a265;
+}
+.ballot-callout {
+  padding: 20px;
+  border: 1px solid #96663e;
+  color: #ffc79e;
+  background: #be510319;
+}
+.alignment {
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-size: 0.8rem;
+  color: #f6a265;
+}
+.entry-panel {
+  max-width: 520px;
+  margin: 50px auto;
+}
+.entry-panel .field {
+  margin-top: 25px;
+}
+.table-shell footer {
+  margin-top: 32px;
+}
+@media (max-width: 950px) {
+  .workspace-grid {
+    grid-template-columns: 1fr;
+  }
+  .seat-grid,
+  .script-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 600px) {
+  .table-shell {
+    padding: 18px;
+  }
+  .table-header {
+    gap: 8px;
+  }
+  .table-header > span:nth-child(2) {
+    font-size: 0.7rem;
+  }
+  .connection {
+    display: none;
+  }
+  .session-code {
+    margin-left: auto;
+    font-size: 0.8rem;
+  }
+  .clock-box {
+    min-width: 95px;
+  }
+  .clock-box strong {
+    font-size: 2.5rem;
+  }
+  .clock-box > span {
+    font-size: 0.65rem;
+  }
+  .table-tabs {
+    width: 100%;
+  }
+  .table-tabs button {
+    padding: 12px;
+    font-size: 0.85rem;
+  }
+  .seat-grid,
+  .script-grid {
+    grid-template-columns: 1fr;
+  }
+  .section-heading {
+    flex-direction: column;
+  }
+  .message > div {
+    flex-direction: column;
+    gap: 2px;
+  }
+  .panel {
+    padding: 22px;
+  }
+  .code-display {
+    font-size: 2.2rem;
+  }
+  .actions {
+    flex-direction: column;
+  }
+  .actions button {
+    width: 100%;
+  }
+}
+.account-panel {
+  padding-bottom: 24px;
+  margin-bottom: 24px;
+  border-bottom: 1px solid #555;
+}
+.account-panel .eyebrow {
+  margin-bottom: 10px;
+}
+.account-panel p {
+  font-size: 0.9rem;
+}
+.account-panel .quiet-link {
+  margin-top: 0;
+}
+.provider-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 14px;
+}
+.provider-buttons button {
+  flex: 1;
+  min-width: 160px;
+  background: #ededed;
+  color: #222;
+  border-color: #ddd;
+  font-size: 0.875rem;
+}
+.provider-buttons button:disabled {
+  background: #454545;
+  color: #ddd;
+  border-color: #666;
+  opacity: 0.65;
+}
+.account-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  padding: 50px 0;
+}
+.account-layout h1 {
+  font:
+    2.5rem Georgia,
+    serif;
+}
