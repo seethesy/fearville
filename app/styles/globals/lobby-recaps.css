@@ -1,0 +1,259 @@
+/* Lobby seating and completed-session recaps. */
+.lobby-circle .circle-center {
+  color: #f6ead5;
+}
+.lobby-seat,
+.recap-seat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: 112px;
+  border: 0;
+  background: transparent;
+  touch-action: auto;
+  cursor: default;
+  text-align: center;
+}
+.lobby-seat strong {
+  font-size: 0.8rem;
+  max-width: 112px;
+  overflow-wrap: anywhere;
+}
+.lobby-seat .player-avatar,
+.recap-seat .player-avatar {
+  width: 58px;
+  height: 58px;
+}
+.open-seat {
+  display: grid;
+  place-items: center;
+  width: 76px;
+  height: 76px;
+  border: 2px solid #278348;
+  border-radius: 50%;
+  background: #d8f3de;
+}
+.open-seat button {
+  border: 1px solid #278348;
+  border-radius: 9px;
+  background: #f0fff3;
+  color: #155e2c;
+  font-size: 0.8rem;
+  padding: 7px 10px;
+  min-height: 36px;
+}
+.open-seat button:disabled {
+  opacity: 0.7;
+}
+.leave-seat {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 3;
+  border-radius: 10px;
+}
+.session-recaps {
+  display: grid;
+  gap: 16px;
+}
+.session-recap {
+  min-width: 0;
+}
+.session-recap > summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  list-style: none;
+  min-height: 48px;
+}
+.session-recap > summary::-webkit-details-marker {
+  display: none;
+}
+.session-recap > summary > span {
+  margin-left: auto;
+  padding: 5px 9px;
+  border-radius: 7px;
+  background: #fff6e8;
+  font-weight: 700;
+  text-align: right;
+}
+.session-recap[open] > summary .recap-arrow {
+  transform: rotate(90deg);
+}
+.recap-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+}
+.recap-heading > span {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+.recap-seat {
+  cursor: pointer;
+  width: 138px;
+  border-radius: 12px;
+}
+.recap-seat:hover {
+  background: #ffffff12;
+}
+.recap-seat .recap-role {
+  border-radius: 7px;
+  background: #fff6e8;
+  padding: 3px 7px;
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+.recap-seat .recap-player-name {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+}
+.recap-seat .mvp-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: #f5bb53;
+}
+.mvp-dialog {
+  width: min(600px, calc(100vw - 24px));
+  max-width: 600px;
+  display: flex;
+  flex-direction: column;
+  max-height: 90dvh;
+}
+.mvp-list {
+  overflow-y: auto;
+  min-height: 0;
+  display: grid;
+  gap: 9px;
+  padding: 2px;
+}
+.mvp-candidate {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #d8cbbb;
+  border-radius: 14px;
+  text-align: left;
+  background: #fff7ec;
+  color: #26211e;
+}
+.mvp-candidate:disabled {
+  opacity: 1;
+  cursor: default;
+}
+.mvp-candidate:enabled:hover,
+.mvp-candidate[aria-pressed='true'] {
+  border-color: #f79d36;
+  box-shadow: inset 0 0 0 1px #f79d36;
+}
+.mvp-identity {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+  overflow-wrap: anywhere;
+}
+.mvp-identity small {
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+.mvp-status {
+  margin-left: auto;
+  display: flex;
+  gap: 5px;
+  align-items: center;
+  font-size: 0.8rem;
+}
+.mvp-status svg {
+  color: #aa690a;
+}
+.mvp-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.mvp-actions button {
+  border-radius: 10px;
+  min-height: 46px;
+}
+.mvp-actions .secondary {
+  background: #65707b;
+  color: white;
+  border-color: #65707b;
+}
+.mvp-actions .primary {
+  background: #f79d36;
+  color: #27180b;
+  border-color: #f79d36;
+}
+.recap-player-dialog {
+  width: min(720px, calc(100vw - 24px));
+  max-width: 720px;
+  max-height: 90dvh;
+  overflow-y: auto;
+}
+.recap-history {
+  padding-left: 1.2rem;
+  display: grid;
+  gap: 14px;
+}
+.recap-history p,
+.preserve-lines {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.recap-detail-tabs {
+  min-width: 0;
+}
+@media (max-width: 480px) {
+  .mvp-dialog .recap-heading {
+    align-items: flex-start;
+  }
+  .mvp-dialog .recap-heading h2 {
+    font-size: 1.25rem;
+  }
+  .mvp-candidate {
+    gap: 8px;
+    padding: 9px;
+  }
+  .mvp-candidate .player-avatar {
+    width: 42px;
+    height: 42px;
+  }
+  .mvp-actions {
+    gap: 7px;
+  }
+  .mvp-actions button {
+    padding: 10px 5px;
+    font-size: 0.85rem;
+  }
+}
+.sphinx-glimpse {
+  display: grid;
+  gap: 6px;
+  margin: 8px 0 16px;
+  padding: 0;
+  list-style: none;
+  max-height: 50vh;
+  overflow-y: auto;
+}
+.sphinx-glimpse li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid var(--border);
+  padding: 6px 0;
+}
+.sphinx-glimpse li.dead {
+  opacity: 0.6;
+}

@@ -646,7 +646,7 @@ void test('accounts see each tutorial once on any device; guests see them again 
 
 void test('role tips: the list is on the Game Flow screen and the toggle is in Help and Settings', () => {
   const page = readFileSync(
-    new URL('../app/table/page.tsx', import.meta.url),
+    new URL('../app/table/page/flow.tsx', import.meta.url),
     'utf8',
   );
   assert.match(page, /<RoleTipsPanel[\s\S]*?tips=\{game\.character\.tips\}/);
@@ -705,7 +705,7 @@ void test('the tutorial overlay is an accessible modal', () => {
 
 void test('the tutorial card fits a 400px phone and honours reduced motion', () => {
   const css = readFileSync(
-    new URL('../app/globals.css', import.meta.url),
+    new URL('../app/styles/globals/tutorials.css', import.meta.url),
     'utf8',
   );
   const card = css.match(/\.tutorial-card \{[^}]*\}/)?.[0] ?? '';

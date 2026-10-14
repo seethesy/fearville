@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import {
   helpSections,
   initialState,
@@ -525,9 +525,15 @@ void test('tutorial definitions are well formed', () => {
 
 void test('every web target exists in the table or a component', () => {
   const sources = [
-    'app/table/page.tsx',
     'components/tutorials/help-menu.tsx',
-    'components/rite/night-rite.tsx',
+    ...['app/table', 'components/rite'].flatMap((directory) =>
+      readdirSync(new URL('../' + directory, import.meta.url), {
+        recursive: true,
+        encoding: 'utf8',
+      })
+        .filter((file) => file.endsWith('.tsx'))
+        .map((file) => directory + '/' + file.replaceAll('\\', '/')),
+    ),
   ]
     .map((f) => readFileSync(new URL('../' + f, import.meta.url), 'utf8'))
     .join('\n');
