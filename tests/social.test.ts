@@ -9,6 +9,8 @@ import {
   normalizeHandle,
   validStars,
   text,
+  ratingBlock,
+  RATING_WINDOW,
 } from '../lib/social/derive.ts';
 
 const host = { id: 'host', host: true };
@@ -77,4 +79,17 @@ void test('ratings accept whole stars from one to five', () => {
   assert.throws(() => validStars(0));
   assert.throws(() => validStars(2.5));
   assert.throws(() => validStars(6));
+});
+
+void test('Storyteller rating eligibility and its two-week window', () => {
+  const base = { me: 'b', storyteller: 'a', played: true, ended: 0, now: 1 };
+  assert.equal(ratingBlock(base), '');
+  assert.match(ratingBlock({ ...base, storyteller: null }), /not linked/);
+  assert.match(
+    ratingBlock({ ...base, storyteller: 'b' }),
+    /were the Storyteller/,
+  );
+  assert.match(ratingBlock({ ...base, played: false }), /Only players seated/);
+  assert.equal(ratingBlock({ ...base, now: RATING_WINDOW - 1 }), '');
+  assert.match(ratingBlock({ ...base, now: RATING_WINDOW }), /window/);
 });

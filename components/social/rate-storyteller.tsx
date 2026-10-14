@@ -1,17 +1,35 @@
 'use client';
 import AppLink from '@/components/app-link';
 import { useCallback, useEffect, useState } from 'react';
-import { social, load, type TableSocial } from './api';
+import { social, load } from './api';
 
-// End-of-game panel for players: rate the Storyteller from 1 to 5 stars.
-export function RateStoryteller({
-  code,
-  host,
-}: {
-  code: string;
+const RATED = 'fearville:storyteller-rated';
+type Rating = {
+  game: string;
+  storyteller: { name: string; handle: string | null } | null;
+  hostName: string;
   host: boolean;
+  played: boolean;
+  canRate: boolean;
+  reason: string;
+  mine: { stars: number; comment: string; created: number } | null;
+};
+
+// FEAR-160: rate the Storyteller (1–5 stars, optional comment) as the first
+// block of every recap: the end-of-game popup, the Session Recap tab and the
+// account history. Every screen reads and writes the same rating row, so a
+// revision anywhere shows everywhere and nothing is counted twice.
+// `explain` shows short explanations to ineligible viewers (the popup);
+// recap lists stay quiet instead.
+export function RecapRating({
+  game,
+  explain = false,
+}: {
+  game: string;
+  explain?: boolean;
 }) {
-  const [state, setState] = useState<TableSocial | null>(null),
+  const [rating, setRating] = useState<Rating | null>(null),
+    [account, setAccount] = useState<string | null | undefined>(undefined),
     [stars, setStars] = useState(0),
     [comment, setComment] = useState(''),
     [error, setError] = useState(''),
@@ -19,95 +37,123 @@ export function RateStoryteller({
     [busy, setBusy] = useState(false);
   const refresh = useCallback(async () => {
     try {
-      const data = await load<TableSocial>('/api/social/table?code=' + code);
-      setState(data);
+      const data = await load<{
+        account: string | null;
+        rating: Rating | null;
+      }>('/api/social/rating?game=' + encodeURIComponent(game));
+      setAccount(data.account);
+      setRating(data.rating);
       if (data.rating?.mine) {
         setStars(data.rating.mine.stars);
         setComment(data.rating.mine.comment);
         setSaved(true);
       }
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not load.');
+      return !!data.rating || !data.account;
+    } catch {
+      return false;
     }
-  }, [code]);
+  }, [game]);
   useEffect(() => {
-    const id = setTimeout(() => void refresh(), 0);
-    return () => clearTimeout(id);
-  }, [refresh]);
+    let retry: ReturnType<typeof setTimeout> | undefined;
+    // The game record is written as the game ends; look once more shortly after.
+    const id = setTimeout(
+      () =>
+        void refresh().then((found) => {
+          if (!found) retry = setTimeout(() => void refresh(), 3000);
+        }),
+      0,
+    );
+    // Another recap on the page saved a rating for this game: reload it.
+    const changed = (e: Event) => {
+      if ((e as CustomEvent<string>).detail === game) void refresh();
+    };
+    window.addEventListener(RATED, changed);
+    return () => {
+      clearTimeout(id);
+      clearTimeout(retry);
+      window.removeEventListener(RATED, changed);
+    };
+  }, [refresh, game]);
   async function submit() {
-    if (!state?.rating.game) return;
+    if (!rating) return;
     setBusy(true);
     setError('');
     try {
-      await social({
-        action: 'rate',
-        game: state.rating.game,
-        stars,
-        comment,
-      });
+      await social({ action: 'rate', game: rating.game, stars, comment });
       setSaved(true);
+      window.dispatchEvent(new CustomEvent(RATED, { detail: game }));
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Rating failed.');
     } finally {
       setBusy(false);
     }
   }
-  if (host)
-    return (
-      <div className="social-inline">
-        <p className="eyebrow">YOUR RATING</p>
-        <p className="muted">
-          Players can now rate your storytelling. Ratings and comments appear on
-          your <AppLink href="/stats">record</AppLink>.
-        </p>
-      </div>
-    );
-  if (!state) return null;
-  if (!state.account)
-    return (
-      <div className="social-inline">
+  if (account === null)
+    return explain ? (
+      <div className="social-inline recap-rating">
         <p className="eyebrow">RATE YOUR STORYTELLER</p>
         <p className="muted">
-          <AppLink href="/account">Sign in</AppLink> and save this seat to rate the
-          Storyteller and keep this game in your record.
+          <AppLink href="/account">Sign in</AppLink> and save this seat to rate
+          the Storyteller and keep this game in your record.
         </p>
       </div>
-    );
-  const r = state.rating;
-  if (!r.game) return null;
-  return (
-    <div className="social-inline">
-      <p className="eyebrow">RATE YOUR STORYTELLER</p>
-      {r.canRate ? (
-        <>
+    ) : null;
+  if (!rating) return null;
+  if (rating.host)
+    return explain ? (
+      <div className="social-inline recap-rating">
+        <p className="eyebrow">YOUR RATING</p>
+        <p className="muted">
+          Players can rate your storytelling for two weeks. Ratings and comments
+          appear on your <AppLink href="/stats">record</AppLink>.
+        </p>
+      </div>
+    ) : null;
+  if (!rating.canRate)
+    return explain || rating.mine ? (
+      <div className="social-inline recap-rating">
+        <p className="eyebrow">RATE YOUR STORYTELLER</p>
+        {rating.mine && (
           <p className="muted">
-            How was {r.storyteller?.name || r.hostName}&rsquo;s storytelling?
-            Only the Storyteller sees your comment; the average is public to
-            their friends.
+            You rated this game {rating.mine.stars} of 5 stars.
           </p>
-          <fieldset className="star-row">
-            <legend className="sr-only">Storyteller rating</legend>
-            {[5, 4, 3, 2, 1].map((n) => (
-              <label
-                key={n}
-                className={'star' + (stars >= n ? ' lit' : '')}
-                title={n + (n === 1 ? ' star' : ' stars')}
-              >
-                <input
-                  type="radio"
-                  name="stars"
-                  value={n}
-                  className="sr-only"
-                  checked={stars === n}
-                  onChange={() => {
-                    setStars(n);
-                    setSaved(false);
-                  }}
-                />
-                ★
-              </label>
-            ))}
-          </fieldset>
+        )}
+        <p className="muted">{rating.reason}</p>
+      </div>
+    ) : null;
+  return (
+    <div className="social-inline recap-rating">
+      <p className="eyebrow">RATE YOUR STORYTELLER</p>
+      <p className="muted">
+        How was {rating.storyteller?.name || rating.hostName}&rsquo;s
+        storytelling? Only the Storyteller sees your comment; the average is
+        public to their friends.
+      </p>
+      <fieldset className="star-row">
+        <legend className="sr-only">Storyteller rating</legend>
+        {[5, 4, 3, 2, 1].map((n) => (
+          <label
+            key={n}
+            className={'star' + (stars >= n ? ' lit' : '')}
+            title={n + (n === 1 ? ' star' : ' stars')}
+          >
+            <input
+              type="radio"
+              name={'stars-' + game}
+              value={n}
+              className="sr-only"
+              checked={stars === n}
+              onChange={() => {
+                setStars(n);
+                setSaved(false);
+              }}
+            />
+            ★
+          </label>
+        ))}
+      </fieldset>
+      {stars > 0 && (
+        <>
           <label className="field">
             Comment (optional)
             <textarea
@@ -124,15 +170,19 @@ export function RateStoryteller({
           <div className="actions">
             <button
               className="primary"
-              disabled={busy || stars === 0 || saved}
+              disabled={busy || saved}
               onClick={() => void submit()}
             >
-              {saved ? 'Rating saved' : busy ? 'Saving…' : 'Submit rating'}
+              {saved
+                ? 'Rating saved'
+                : busy
+                  ? 'Saving…'
+                  : rating.mine
+                    ? 'Update rating'
+                    : 'Submit rating'}
             </button>
           </div>
         </>
-      ) : (
-        <p className="muted">{r.reason}</p>
       )}
       {error && (
         <p className="error" role="alert">
