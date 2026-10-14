@@ -40,6 +40,7 @@ currently remains supported; keep its workflow until its replacement lands.
   - `engine.ts`: Rite entry; `engine/` contains setup/configuration, night dealing and **turn order/handoff (`nextTurn`)**, lifecycle/deadlines and actions (`riteAction`)
   - `view.ts`: player view of a puzzle
   - Patterns: `board.ts` (Escape Fearville), `grid.ts` (The Sphinx's Riddles), `ritual.ts` (Ritual of Divination), `lab.ts` (Alchemist's Laboratory)
+  - `grid.ts`: Sphinx entry; `grid/` contains vocabulary, solver, difficulty, prose, clue makers and generation/validation.
   - `bank.ts` with generated `bank-data.ts`
 - `lib/admin/service.ts`: admin service entry; `service/` contains audit/transactions, text, accounts, lobby plans and commands.
 - `lib/social/`: friends, invites, ratings, results, stats, progression, privacy.
