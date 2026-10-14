@@ -30,7 +30,10 @@ import { setHandle } from '@/lib/social/friends';
 export async function GET(r: Request) {
   try {
     const adminView = await adminViewState(r);
-    return json({ ...(await accountView(r)), ...(adminView ? { adminView } : {}) });
+    return json({
+      ...(await accountView(r)),
+      ...(adminView ? { adminView } : {}),
+    });
   } catch (e) {
     return errorResponse(e);
   }

@@ -61,7 +61,7 @@ export function demoStatements(now: number, lobby?: string, hidden = false) {
   // A pending table invitation from a friend, refreshed on every load.
   if (lobby)
     sql.push(
-    `INSERT INTO session_invites(id,code,sender,recipient,status,created,expires) VALUES ('${id('invite-demo')}','${lobby}','${id('host')}','${DEMO_ACCOUNT}','pending',${now},${now + 86400000}) ON CONFLICT(code,recipient) DO UPDATE SET status='pending', created=excluded.created, expires=excluded.expires;`,
-  );
+      `INSERT INTO session_invites(id,code,sender,recipient,status,created,expires) VALUES ('${id('invite-demo')}','${lobby}','${id('host')}','${DEMO_ACCOUNT}','pending',${now},${now + 86400000}) ON CONFLICT(code,recipient) DO UPDATE SET status='pending', created=excluded.created, expires=excluded.expires;`,
+    );
   return sql;
 }

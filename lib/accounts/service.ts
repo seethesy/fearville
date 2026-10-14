@@ -108,7 +108,8 @@ export async function accountAuth(r: Request, real = false) {
     role: elevated ? ('admin' as const) : ('player' as const),
   };
 }
-const readOnlyMethod = (method: string) => method === 'GET' || method === 'HEAD';
+const readOnlyMethod = (method: string) =>
+  method === 'GET' || method === 'HEAD';
 
 /** FEAR-158: the admin session's current view, or undefined when not browsing. */
 export async function adminView(sessionHash: string, admin: string) {

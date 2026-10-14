@@ -117,10 +117,10 @@ export default function AdminShell() {
               : t === 'browse'
                 ? 'Browse as'
                 : t === 'reports'
-                ? 'Moderation queue'
-                : t === 'text'
-                  ? 'Edit official text'
-                  : 'Audit log'}
+                  ? 'Moderation queue'
+                  : t === 'text'
+                    ? 'Edit official text'
+                    : 'Audit log'}
           </button>
         ))}
       </nav>

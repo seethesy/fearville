@@ -5,12 +5,7 @@ import {
   textHistory,
   editText,
 } from '@/lib/admin/service';
-import {
-  checkOrigin,
-  cookieName,
-  errorResponse,
-  json,
-} from '@/lib/game/store';
+import { checkOrigin, cookieName, errorResponse, json } from '@/lib/game/store';
 import { memberCookie } from '@/lib/game/join';
 import { browse, browseCatalog } from '@/lib/admin/browse';
 import { reportQueue } from '@/lib/admin/reports';

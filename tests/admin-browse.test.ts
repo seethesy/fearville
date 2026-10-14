@@ -36,7 +36,12 @@ void test('browse requests are validated', () => {
   );
   for (const seats of [MIN_SEATS - 1, MAX_SEATS + 1, 7.5, 'x'])
     assert.throws(() =>
-      browseRequest({ op: 'sandbox', fixture: 'lobby', script: 'horrors', seats }),
+      browseRequest({
+        op: 'sandbox',
+        fixture: 'lobby',
+        script: 'horrors',
+        seats,
+      }),
     );
   // The Guardian win only exists in Horrors of Fearville.
   assert.throws(() =>
@@ -48,7 +53,12 @@ void test('browse requests are validated', () => {
     }),
   );
   assert.throws(() =>
-    browseRequest({ op: 'sandbox', fixture: 'nope', script: 'horrors', seats: 12 }),
+    browseRequest({
+      op: 'sandbox',
+      fixture: 'nope',
+      script: 'horrors',
+      seats: 12,
+    }),
   );
   assert.deepEqual(browseRequest({ op: 'observe', code: ' 123456 ' }), {
     op: 'observe',
@@ -144,7 +154,9 @@ void test('the production demo account is never discoverable by handle', () => {
     // Without a lobby there is no invitation to point at.
     assert.equal(n('SELECT COUNT(*) AS n FROM session_invites'), 0);
     assert.equal(
-      n(`SELECT COUNT(*) AS n FROM game_players WHERE account='${DEMO_ACCOUNT}'`),
+      n(
+        `SELECT COUNT(*) AS n FROM game_players WHERE account='${DEMO_ACCOUNT}'`,
+      ),
       3,
     );
     for (const table of ['identities', 'account_sessions', 'members'])
