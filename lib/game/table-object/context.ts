@@ -1,0 +1,33 @@
+import type { Actor } from '../types';
+import { GameTable } from './host.ts';
+export const TABLE_RETENTION = 30 * 24 * 60 * 60 * 1000;
+export type SocketSeat = {
+  code?: string;
+  actor: Actor;
+  viewer: Actor;
+  sandboxHost: boolean;
+  hash?: string;
+};
+export type TableContext = {
+  game: GameTable['game'];
+  parts: GameTable['parts'];
+  meta: GameTable['meta'];
+  schedule: GameTable['schedule'];
+  publish: GameTable['publish'];
+  importD1: GameTable['importD1'];
+  flushProjection: GameTable['flushProjection'];
+  destroy: GameTable['destroy'];
+  authenticate: GameTable['authenticate'];
+  flushEffects: GameTable['flushEffects'];
+  ctx: DurableObjectState;
+  queue: GameTable['queue'];
+  current: GameTable['current'];
+  actionReply: GameTable['actionReply'];
+  commit: GameTable['commit'];
+  viewer: GameTable['viewer'];
+  remember: GameTable['remember'];
+  pushes: GameTable['pushes'];
+  broadcast: GameTable['broadcast'];
+  action: GameTable['action'];
+  acknowledge: GameTable['acknowledge'];
+};
