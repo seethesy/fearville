@@ -646,7 +646,7 @@ void test('accounts see each tutorial once on any device; guests see them again 
 
 void test('role tips: the list is on the Game Flow screen and the toggle is in Help and Settings', () => {
   const page = readFileSync(
-    new URL('../app/table/page.tsx', import.meta.url),
+    new URL('../app/table/page/flow.tsx', import.meta.url),
     'utf8',
   );
   assert.match(page, /<RoleTipsPanel[\s\S]*?tips=\{game\.character\.tips\}/);
