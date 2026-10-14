@@ -27,7 +27,7 @@ currently remains supported; keep its workflow until its replacement lands.
   - `engine.ts`: rules/actions entry (`execute`); `engine/` contains shared helpers, lifecycle, voting, execution and focused command modules
   - `view.ts`: per-player view entry; `view/` contains fields, host phase/seat controls, shared controls and player view; never leak hidden info
   - `store.ts`: auth, D1 reads/writes, `limited()` rate limit
-  - `hof.ts` / `hof-view.ts`: Horrors of Fearville (default script)
+  - `hof.ts`: Horrors of Fearville entry (default script); `hof/` contains shared helpers, setup, night resolution, death/dawn/win handling and actions
   - `hof-view.ts`: view entry; `hof-view/` contains field helpers, night/death fields and script controls.
   - `hms.ts`: shared queued night entry; `hms/` contains helpers, tasks, choices, setup, night, suggestions, resolution/abilities, deaths, dawn and actions
   - `hms-view.ts`: view entry; `hms-view/` contains field helpers, night fields, death and script controls.
