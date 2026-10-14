@@ -28,7 +28,7 @@ currently remains supported; keep its workflow until its replacement lands.
   - `view.ts`: per-player view entry; `view/` contains fields, host phase/seat controls, shared controls and player view; never leak hidden info
   - `store.ts`: auth, D1 reads/writes, `limited()` rate limit
   - `hof.ts` / `hof-view.ts`: Horrors of Fearville (default script)
-  - `hms.ts` / `hms-view.ts`: Holy Moon and Stars
+  - `hms.ts`: shared queued night entry; `hms/` contains helpers, tasks, choices, setup, night, suggestions, resolution/abilities, deaths, dawn and actions
   - `hms-view.ts`: view entry; `hms-view/` contains field helpers, night fields, death and script controls.
   - `types.ts`: roles and game types
   - `saved-state.ts`: loading older saved tables
