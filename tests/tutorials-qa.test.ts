@@ -705,7 +705,7 @@ void test('the tutorial overlay is an accessible modal', () => {
 
 void test('the tutorial card fits a 400px phone and honours reduced motion', () => {
   const css = readFileSync(
-    new URL('../app/globals.css', import.meta.url),
+    new URL('../app/styles/globals/tutorials.css', import.meta.url),
     'utf8',
   );
   const card = css.match(/\.tutorial-card \{[^}]*\}/)?.[0] ?? '';

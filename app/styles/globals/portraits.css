@@ -1,0 +1,116 @@
+/* Seat portraits remain decorative: names and life status stay readable. */
+.player-avatar {
+  display: inline-grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  flex-shrink: 0;
+  overflow: hidden;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  background: radial-gradient(circle at 35% 25%, #405064, #141b26 80%);
+  box-shadow:
+    inset 0 0 0 4px #ffffff0a,
+    0 3px 12px #0005;
+}
+.player-avatar svg {
+  width: 58%;
+  height: 58%;
+}
+.player-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.player-avatar.is-dead {
+  filter: grayscale(1);
+  opacity: 0.65;
+}
+.avatar-preview {
+  display: grid;
+  justify-items: center;
+  gap: 0.5rem;
+  margin: 1rem 0;
+}
+.avatar-preview .player-avatar {
+  width: 96px;
+  height: 96px;
+}
+.avatar-options {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.6rem;
+  margin: 1rem 0;
+}
+.avatar-options button {
+  display: grid;
+  justify-items: center;
+  gap: 0.4rem;
+  padding: 0.6rem 0.2rem;
+}
+.avatar-options button[aria-pressed='true'] {
+  border-color: #edcc87;
+  background: #423c30;
+  box-shadow: 0 0 0 2px #edcc87;
+}
+.avatar-options .player-avatar {
+  width: 48px;
+  height: 48px;
+}
+.circle-seat .player-avatar {
+  display: inline-grid;
+  width: 46px;
+  height: 46px;
+}
+.seat-mini-list .seat-identity {
+  display: grid;
+  justify-items: center;
+  text-align: center;
+  gap: 0.3rem;
+  min-width: 0;
+  flex: 1;
+}
+.seat-identity strong {
+  overflow-wrap: anywhere;
+}
+.death-announcement {
+  text-align: center;
+  padding: 1rem;
+  animation: death-reveal 1.5s ease-out both;
+}
+.departing-spirit {
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 1rem;
+  color: #c4d5df;
+  animation: spirit-rise 2s ease-out both;
+}
+@keyframes death-reveal {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes spirit-rise {
+  from {
+    opacity: 0;
+    transform: translateY(24px) scale(0.85);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .death-announcement,
+  .departing-spirit {
+    animation: none;
+  }
+}
+@media (max-width: 420px) {
+  .avatar-options {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
