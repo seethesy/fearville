@@ -17,7 +17,7 @@ currently remains supported; keep its workflow until its replacement lands.
 
 ## Repo map
 
-- `app/`: routes and pages. `app/table/page.tsx` is the live table UI. `app/api/*/route.ts` holds the HTTP APIs: `session` (create/join/leave), `game` (poll and actions), `rite`, `social`, `accounts`, `tutorials`.
+- `app/`: routes and pages. `app/table/page.tsx` is the live table route; `app/table/page/` holds state, display values, fields, header/navigation, flow, seats, dialogs and the entry screen. `app/api/*/route.ts` holds the HTTP APIs: `session` (create/join/leave), `game` (poll and actions), `rite`, `social`, `accounts`, `tutorials`.
 - `components/`: UI. `rite/night-rite.tsx` (Rite UI) and `rite/art.tsx` (puzzle artwork), `table-*.tsx`, `hub/` (site shell, settings), `social/`, `tutorials/`. `components/ui/` is the untouched shadcn starter.
 - `lib/game/`: game domain.
   - `engine.ts`: rules and actions (`execute`)
