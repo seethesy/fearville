@@ -29,6 +29,7 @@ currently remains supported; keep its workflow until its replacement lands.
   - `store.ts`: auth, D1 reads/writes, `limited()` rate limit
   - `hof.ts` / `hof-view.ts`: Horrors of Fearville (default script)
   - `hms.ts` / `hms-view.ts`: Holy Moon and Stars
+  - `hms-view.ts`: view entry; `hms-view/` contains field helpers, night fields, death and script controls.
   - `types.ts`: roles and game types
   - `saved-state.ts`: loading older saved tables
   - `lobby.ts`, `join.ts`, `membership.ts`, `sandbox.ts`, `scoped-update.ts` / `concurrency.ts`: concurrent writes
