@@ -46,6 +46,19 @@ Save/deploy the Worker settings in Cloudflare. The GitHub deployment workflow pr
 
 [Cloudflare Worker secrets](https://developers.cloudflare.com/workers/configuration/secrets/).
 
+## App Review sign-in (TestFlight, staging only)
+
+Apple's Beta App Review needs a username and password, but Fearville signs in with Google or Apple only. A small form on the sign-in panel ("App Review sign-in") signs in one synthetic, non-admin account (`app_reviewer`, email `review-signin@example.invalid`) when the staging Worker has both secrets below. Without them the form is hidden and `POST /api/accounts/review` returns 404. It never works in production or local runs, and it is rate limited to 5 attempts a minute per IP.
+
+Set both as **secrets** on the `fearville-staging` Worker (Cloudflare → Workers & Pages → fearville-staging → Settings → Variables and Secrets, or `npx wrangler secret put NAME --env staging`):
+
+| Name | Value |
+|---|---|
+| `REVIEW_LOGIN_USERNAME` | At least 3 characters, for example `app-review` |
+| `REVIEW_LOGIN_PASSWORD` | At least 16 random characters from your password manager |
+
+Put the same two values in App Store Connect → TestFlight → Test Information → Sign-in required. Remove both secrets to turn the form off. If a reviewer deletes the account, the next sign-in recreates it.
+
 ## Acceptance
 
 1. Confirm the custom domain is attached to `fearville-staging`; use the Worker custom-domain configuration rather than manually replacing the production DNS record.

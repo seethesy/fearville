@@ -11,6 +11,7 @@ import { random, appleSecret, decryptToken, type Provider } from './oidc';
 import { linkSeatRecords } from '@/lib/social/results';
 import { pendingCounts } from '@/lib/social/pending';
 import { profileDefaults } from './profile';
+import { reviewLoginConfig } from './review-login';
 import { runtimeOrigin } from '@/lib/runtime/config';
 export const accountCookie = 'ct_account';
 export const origin = runtimeOrigin(env as unknown as Record<string, unknown>);
@@ -165,6 +166,10 @@ export async function accountView(r: Request) {
     return {
       account: null,
       providers,
+      // Staging-only App Review form; false everywhere else.
+      reviewSignIn: !!reviewLoginConfig(
+        env as unknown as Record<string, unknown>,
+      ),
       connections: [],
       seats: [],
       pending: { requests: 0, invites: 0 },

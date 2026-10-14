@@ -1,6 +1,7 @@
 'use client';
 import AppLink from '@/components/app-link';
 import { useEffect, useState } from 'react';
+import { ReviewSignIn } from '@/components/review-sign-in';
 import type { ProfileDefaults } from '@/lib/accounts/preferences';
 export type AccountView = {
   account: {
@@ -15,6 +16,7 @@ export type AccountView = {
   warning?: string;
   profile?: ProfileDefaults;
   providers: { google: boolean; apple: boolean };
+  reviewSignIn?: boolean;
   connections: string[];
   seats: {
     role?: 'admin' | 'player';
@@ -131,6 +133,7 @@ export function AccountPanel({ compact = false }: { compact?: boolean }) {
             <AppLink href="/terms">terms and community rules</AppLink>.
             Fearville has no tolerance for abusive or objectionable content.
           </p>
+          {state?.reviewSignIn && <ReviewSignIn />}
           {state && !state.providers.google && !state.providers.apple && (
             <p className="hint">
               Account sign-in is not available yet. You can play as a guest
