@@ -31,7 +31,7 @@ currently remains supported; keep its workflow until its replacement lands.
   - `hof-view.ts`: view entry; `hof-view/` contains field helpers, night/death fields and script controls.
   - `hms.ts`: shared queued night entry; `hms/` contains helpers, tasks, choices, setup, night, suggestions, resolution/abilities, deaths, dawn and actions
   - `hms-view.ts`: view entry; `hms-view/` contains field helpers, night fields, death and script controls.
-  - `types.ts`: roles and game types
+  - `types.ts`: types entry; `types/` contains role catalogs, setup/counts, night orders and state/factories
   - `saved-state.ts`: loading older saved tables
   - `table-object.ts`: Durable Object entry; `table-object/` contains the host class, typed context, storage/authentication, persistence, actions and socket handlers.
   - `lobby.ts`, `join.ts`, `membership.ts`, `sandbox.ts`, `scoped-update.ts` / `concurrency.ts`: concurrent writes
