@@ -37,7 +37,7 @@ currently remains supported; keep its workflow until its replacement lands.
   - `lobby.ts`, `join.ts`, `membership.ts`, `sandbox.ts`, `scoped-update.ts` / `concurrency.ts`: concurrent writes
 - `lib/rite/`: the Night Rite (team puzzles).
   - `types.ts`: `DEFAULT_CONFIG` (opening night, `lockSeconds`, `windowSeconds` = puzzle window, threshold) and patterns
-  - `engine.ts`: config validation and ranges, vigils, night lifecycle, **turn order and handoff (`nextTurn`)**, `riteAction`
+  - `engine.ts`: Rite entry; `engine/` contains setup/configuration, night dealing and **turn order/handoff (`nextTurn`)**, lifecycle/deadlines and actions (`riteAction`)
   - `view.ts`: player view of a puzzle
   - Patterns: `board.ts` (Escape Fearville), `grid.ts` (The Sphinx's Riddles), `ritual.ts` (Ritual of Divination), `lab.ts` (Alchemist's Laboratory)
   - `bank.ts` with generated `bank-data.ts`
