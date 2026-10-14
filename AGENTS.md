@@ -21,7 +21,7 @@ currently remains supported; keep its workflow until its replacement lands.
 - `app/globals.css`: ordered imports from `app/styles/globals/` for base UI, control room, social/phone layout, navigation, portraits/cosmetics, finishers, recaps, glossary and tutorials.
 - `app/hub.css`: ordered shell and responsive styles in `app/styles/hub/`.
 - `app/rite.css`: ordered puzzle, animation and responsive styles in `app/styles/rite/`.
-- `components/`: UI. `rite/night-rite.tsx` (Rite UI entry; `rite/night-rite/` contains shell, setup, pattern controls and host vigil) and `rite/art.tsx` (artwork entry; `rite/art/` contains one module per pattern), `table-*.tsx`, `hub/` (site shell, settings), `social/`, `tutorials/`. `components/ui/` is the untouched shadcn starter.
+- `components/`: UI. `rite/night-rite.tsx` (Rite UI entry; `rite/night-rite/` contains shell, setup, pattern controls and host vigil) and `rite/art.tsx` (artwork entry; `rite/art/` contains one module per pattern), `table-*.tsx`, `hub/` (site shell, settings), `social/`, `tutorials/`. `components/ui/` contains shadcn primitives; `ui/sidebar.tsx` preserves its exports with context, shell, sections and menu modules in `ui/sidebar/`.
 - `components/session-recap.tsx`: recap entry; `session-recap/` contains shared formatting, finish popup, player details and history.
 - `lib/game/`: game domain.
   - `engine.ts`: rules and actions (`execute`)
