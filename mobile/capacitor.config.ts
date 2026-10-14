@@ -18,7 +18,13 @@ const config: CapacitorConfig = {
     url: site.origin,
     errorPath: 'error.html',
   },
-  ios: { contentInset: 'never' },
+  ios: {
+    contentInset: 'automatic',
+    backgroundColor: '#120d14',
+    preferredContentMode: 'mobile',
+    webContentsDebuggingEnabled: false,
+  },
+  loggingBehavior: 'none',
   android: { allowMixedContent: false },
 };
 

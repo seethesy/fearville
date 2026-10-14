@@ -1,10 +1,11 @@
 {
-  "name": "fearville-shell-spike",
+  "name": "fearville-mobile-shell",
   "private": true,
-  "description": "FEAR-93 prototype: Capacitor shell that loads the hosted Fearville site (server.url + errorPath).",
+  "description": "Capacitor shells for the hosted Fearville app.",
   "scripts": {
     "site": "node scripts/write-site.mjs",
     "sync": "node scripts/write-site.mjs && cap sync",
+    "sync:ios": "node scripts/write-site.mjs && cap sync ios",
     "ios": "cap open ios",
     "android": "cap open android"
   },

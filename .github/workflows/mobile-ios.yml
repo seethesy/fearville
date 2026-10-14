@@ -1,0 +1,59 @@
+name: iOS shell validation
+on:
+  pull_request:
+    paths: ['mobile/**', '.github/workflows/mobile-ios.yml']
+  push:
+    branches: [main]
+    paths: ['mobile/**', '.github/workflows/mobile-ios.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  simulator:
+    runs-on: macos-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        configuration: [Staging, Release]
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22.x
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: '26'
+      - name: Sync Capacitor dependencies
+        working-directory: mobile
+        run: npm ci --no-audit --no-fund && npm run sync:ios
+      - name: Test URL policy
+        run: |
+          mkdir -p work
+          swiftc mobile/native/ios/FearvilleURLPolicy.swift mobile/tests/ios-url-policy.swift -o work/ios-url-policy
+          work/ios-url-policy
+      - name: Build unsigned simulator shell
+        env:
+          CONFIGURATION: ${{ matrix.configuration }}
+        run: |
+          set -o pipefail
+          xcodebuild -project mobile/ios/App/App.xcodeproj -scheme Fearville \
+            -configuration "$CONFIGURATION" -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath work/ios-derived CODE_SIGNING_ALLOWED=NO \
+            CURRENT_PROJECT_VERSION="$GITHUB_RUN_NUMBER" build > work/ios-build.log 2>&1 || {
+              grep -E 'error:|BUILD FAILED' work/ios-build.log | head -60
+              exit 1
+            }
+      - name: Verify bundled environment
+        env:
+          CONFIGURATION: ${{ matrix.configuration }}
+        run: node mobile/tests/ios-bundle.mjs "work/ios-derived/Build/Products/$CONFIGURATION-iphonesimulator/App.app" "$CONFIGURATION"
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: ios-shell-${{ matrix.configuration }}-logs
+          path: work/ios-build.log
+          retention-days: 7
