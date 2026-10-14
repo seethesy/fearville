@@ -28,6 +28,12 @@ assert.deepEqual(plist.UISupportedInterfaceOrientations, [
 ]);
 assert.equal(plist.MinimumOSVersion, '17.0');
 assert.equal(plist.UIUserInterfaceStyle, 'Dark');
+assert.equal(
+  plist.CFBundleIcons.CFBundlePrimaryIcon.CFBundleIconName,
+  staging ? 'AppIconStaging' : 'AppIcon',
+);
+if (process.env.GITHUB_RUN_NUMBER)
+  assert.equal(plist.CFBundleVersion, process.env.GITHUB_RUN_NUMBER);
 assert.equal(config.server.url, `https://${host}`);
 assert.equal(config.appId, identifier);
 assert.equal(config.server.errorPath, 'error.html');
@@ -40,7 +46,7 @@ assert.match(
 for (const resource of [
   'PrivacyInfo.xcprivacy',
   'MetalMania-Regular.ttf',
-  'LaunchScreen.storyboardc',
+  'Base.lproj/LaunchScreen.storyboardc',
   'public/error.html',
   'public/assets/MetalMania-Regular.ttf',
   'public/assets/fearville-logo.png',
@@ -53,7 +59,7 @@ for (const resource of [
 for (const plugin of [
   'AppPlugin',
   'HapticsPlugin',
-  'NetworkPlugin',
+  'CAPNetworkPlugin',
   'SharePlugin',
   'KeepAwakePlugin',
 ]) {

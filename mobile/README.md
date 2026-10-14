@@ -115,7 +115,7 @@ app version/build, iPhone/iOS version, environment, and pass/fail evidence:
 
 ## Checks
 
-Open the WebView console: `chrome://inspect` on the PC for Android, Safari → Develop for iOS.
+Open the WebView console: `chrome://inspect` on the PC for Android, Safari → Develop for iOS. For iOS console checks, use the Debug configuration, which loads staging and enables the inspector. Staging/TestFlight and Release disable WebView inspection and native bridge logging.
 
 1. **Plugins.** `FearvilleNative.capabilities` lists `haptics`, `share`, `keepAwake`, `lifecycle` and `auth`. `FearvilleNative.call('haptics.play', {kind: 'tap'})` buzzes.
 2. **Google sign-in.** Paste into the console:
