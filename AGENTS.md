@@ -33,6 +33,7 @@ currently remains supported; keep its workflow until its replacement lands.
   - `hms-view.ts`: view entry; `hms-view/` contains field helpers, night fields, death and script controls.
   - `types.ts`: roles and game types
   - `saved-state.ts`: loading older saved tables
+  - `table-object.ts`: Durable Object entry; `table-object/` contains the host class, typed context, storage/authentication, persistence, actions and socket handlers.
   - `lobby.ts`, `join.ts`, `membership.ts`, `sandbox.ts`, `scoped-update.ts` / `concurrency.ts`: concurrent writes
 - `lib/rite/`: the Night Rite (team puzzles).
   - `types.ts`: `DEFAULT_CONFIG` (opening night, `lockSeconds`, `windowSeconds` = puzzle window, threshold) and patterns
