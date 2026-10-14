@@ -59,14 +59,20 @@ export function accountToken(r: Request) {
     readCookie(r, accountCookie)
   );
 }
-export async function accountAuth(r: Request) {
+/**
+ * The signed-in account. While the admin browses the normal UI (FEAR-158)
+ * this is the account being viewed (null for a guest) and only reads are
+ * allowed; pass `real` for admin endpoints that act as the admin itself.
+ */
+export async function accountAuth(r: Request, real = false) {
   const token = accountToken(r);
   if (!token || token.length > 200) return null;
+  const sessionHash = await hash(token);
   const a = await database()
     .prepare(
       'SELECT a.id,a.name,a.email,a.handle,a.handle_changed_at AS handleChangedAt,a.role,a.google_email AS googleEmail,a.banned,s.provider,s.verified_email AS verifiedEmail,s.issued,s.expires FROM accounts a JOIN account_sessions s ON a.id=s.account WHERE s.hash=?',
     )
-    .bind(await hash(token))
+    .bind(sessionHash)
     .first<{
       id: string;
       name: string;
@@ -86,6 +92,13 @@ export async function accountAuth(r: Request) {
   if (a.expires <= Date.now()) return null;
   const elevated = adminSessionValid(a, adminAllowlist(), Date.now());
   if (a.role === 'admin' && !elevated) return null;
+  if (elevated && !real) {
+    const viewed = await adminViewAccount(sessionHash, a.id);
+    if (viewed !== undefined) {
+      if (!readOnlyMethod(r.method)) throw Error('ADMIN_VIEW');
+      return viewed;
+    }
+  }
   return {
     id: a.id,
     name: a.name,
@@ -95,6 +108,57 @@ export async function accountAuth(r: Request) {
     role: elevated ? ('admin' as const) : ('player' as const),
   };
 }
+const readOnlyMethod = (method: string) => method === 'GET' || method === 'HEAD';
+
+/** FEAR-158: the admin session's current view, or undefined when not browsing. */
+export async function adminView(sessionHash: string, admin: string) {
+  return (
+    (await database()
+      .prepare(
+        'SELECT viewer,account FROM admin_views WHERE session=? AND admin=?',
+      )
+      .bind(sessionHash, admin)
+      .first<{ viewer: string; account: string | null }>()) ?? undefined
+  );
+}
+
+/** Undefined: not browsing. Null: browsing as a guest. Otherwise the viewed account. */
+async function adminViewAccount(sessionHash: string, admin: string) {
+  const view = await adminView(sessionHash, admin);
+  if (!view) return undefined;
+  if (!view.account) return null;
+  const v = await database()
+    .prepare(
+      "SELECT id,name,email,handle,handle_changed_at AS handleChangedAt FROM accounts WHERE id=? AND role='player' AND banned IS NULL",
+    )
+    .bind(view.account)
+    .first<{
+      id: string;
+      name: string;
+      email: string;
+      handle: string | null;
+      handleChangedAt: number | null;
+    }>();
+  return v ? { ...v, role: 'player' as const } : null;
+}
+
+/** FEAR-158: what the UI needs to draw the ADMIN VIEW banner. */
+export async function adminViewState(r: Request) {
+  const token = accountToken(r);
+  if (!token || token.length > 200) return undefined;
+  // One primary-key lookup for everyone; only a hit re-checks the admin session.
+  const sessionHash = await hash(token);
+  const row = await database()
+    .prepare('SELECT admin FROM admin_views WHERE session=?')
+    .bind(sessionHash)
+    .first<{ admin: string }>();
+  if (!row) return undefined;
+  const admin = await accountAuth(r, true);
+  if (admin?.role !== 'admin' || admin.id !== row.admin) return undefined;
+  const view = await adminView(sessionHash, admin.id);
+  return view ? { viewer: view.viewer } : undefined;
+}
+
 export async function requirePlayerRequest(r: Request) {
   const token = accountToken(r);
   if (!token || token.length > 200) return;

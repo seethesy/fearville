@@ -8,11 +8,15 @@ export const DEMO_HANDLE = 'stage_qa_demo';
 const id = (s: string) => SEED_ACCOUNT_PREFIX + s;
 const DEMO_GAME = id('demo-game'); // outside the seed's 'game-%' count
 
-/** `lobby` is an existing session code the invitation points at. */
-export function demoStatements(now: number, lobby: string) {
-  const sql = seedStatements(now);
+/**
+ * `lobby` is an existing session code the invitation points at; without one
+ * no invitation is seeded. `hidden` (FEAR-158, production) seeds every
+ * synthetic account without a handle so it can never be discovered.
+ */
+export function demoStatements(now: number, lobby?: string, hidden = false) {
+  const sql = seedStatements(now, hidden);
   sql.push(
-    `INSERT INTO accounts(id,name,email,handle,created) VALUES ('${DEMO_ACCOUNT}','QA Demo','${DEMO_ACCOUNT}@example.invalid','${DEMO_HANDLE}',${now}) ON CONFLICT(id) DO NOTHING;`,
+    `INSERT INTO accounts(id,name,email,handle,created) VALUES ('${DEMO_ACCOUNT}','QA Demo','${DEMO_ACCOUNT}@example.invalid',${hidden ? 'NULL' : `'${DEMO_HANDLE}'`},${now}) ON CONFLICT(id) DO NOTHING;`,
     `INSERT INTO account_profiles(account,lobby_name) VALUES ('${DEMO_ACCOUNT}','QA Demo') ON CONFLICT(account) DO NOTHING;`,
     `INSERT INTO account_settings(account) VALUES ('${DEMO_ACCOUNT}') ON CONFLICT(account) DO NOTHING;`,
   );
@@ -55,7 +59,8 @@ export function demoStatements(now: number, lobby: string) {
     `INSERT INTO storyteller_ratings(game,rater,storyteller,stars,comment,created) VALUES ('${DEMO_GAME}','${id('player-2')}','${DEMO_ACCOUNT}',3,'',${now}) ON CONFLICT(game,rater) DO NOTHING;`,
   );
   // A pending table invitation from a friend, refreshed on every load.
-  sql.push(
+  if (lobby)
+    sql.push(
     `INSERT INTO session_invites(id,code,sender,recipient,status,created,expires) VALUES ('${id('invite-demo')}','${lobby}','${id('host')}','${DEMO_ACCOUNT}','pending',${now},${now + 86400000}) ON CONFLICT(code,recipient) DO UPDATE SET status='pending', created=excluded.created, expires=excluded.expires;`,
   );
   return sql;

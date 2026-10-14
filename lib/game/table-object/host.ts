@@ -8,6 +8,7 @@ import { renameMember, removeMember } from '../membership';
 import { joinSessionD1 } from '../join';
 import type { ProfileDefaults } from '../../accounts/preferences';
 import { SerialQueue } from '../serial';
+import { OBSERVER_READ_ONLY, povViewer } from '../pov';
 import { ObjectParts, type TableMeta } from '../object-storage';
 import type { Actor, Command, Game } from '../types';
 import { type TableContext } from './context.ts';
@@ -96,11 +97,7 @@ export class GameTable extends DurableObject {
     });
   }
   private viewer(g: Game, actor: Actor, pov: unknown) {
-    const player =
-      actor.host && g.sandbox
-        ? g.players.find((p) => p.id === pov && p.dummy && !p.departed)
-        : null;
-    return player ? { id: player.id, host: false } : actor;
+    return povViewer(g, actor, pov);
   }
   action(code: string, actor: Actor, c: Command, rite = false) {
     return actionMethod.call(this.context(), code, actor, c, rite);
@@ -167,6 +164,7 @@ export class GameTable extends DurableObject {
   }
   session(code: string, actor: Actor, c: Command) {
     return this.queue.run(async () => {
+      requireThat(!actor.observer, OBSERVER_READ_ONLY);
       const current = await this.current(code, actor);
       const g = structuredClone(current),
         now = Date.now();

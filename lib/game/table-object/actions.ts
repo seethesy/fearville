@@ -8,6 +8,7 @@ import { canApplyLatest, canApplyUnchangedEdit } from '../concurrency';
 import { prepareProgression } from '../../social/start';
 import { syncResult } from '../../social/results';
 import type { Actor, Command } from '../types';
+import { OBSERVER_READ_ONLY } from '../pov';
 import { type TableContext } from './context.ts';
 export function actionMethod(
   this: TableContext,
@@ -17,6 +18,7 @@ export function actionMethod(
   rite = false,
 ) {
   return this.queue.run(async () => {
+    requireThat(!actor.observer, OBSERVER_READ_ONLY);
     await this.current(code, actor);
     c = normalizeCommand(c);
     const id = actionID(c.requestId) ? c.requestId : undefined;

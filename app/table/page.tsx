@@ -215,7 +215,7 @@ export default function Table() {
   );
   const socket = useTableSocket({
     code: game?.code,
-    me: game?.sandboxHost ? sandboxPov : game?.me,
+    me: game?.sandboxHost || game?.observer ? sandboxPov : game?.me,
     pov: sandboxPov,
     version: game?.version,
     onView: receiveView,
@@ -507,13 +507,21 @@ export default function Table() {
               />
             </header>
             <LobbyExit game={game} />
-            {game.sandboxHost && (
+            {(game.sandboxHost || game.observer) && (
               <section
                 className="panel sandbox-toolbar"
-                aria-label="Sandbox point of view"
+                aria-label={
+                  game.observer
+                    ? 'Observer point of view'
+                    : 'Sandbox point of view'
+                }
               >
                 <div>
-                  <p className="eyebrow">SANDBOX · TIMERS DISABLED</p>
+                  <p className="eyebrow">
+                    {game.observer
+                      ? 'OBSERVING A LIVE TABLE · READ-ONLY'
+                      : 'SANDBOX · TIMERS DISABLED'}
+                  </p>
                   <strong>
                     {sandboxPov === 'host'
                       ? 'Storyteller view'
@@ -542,7 +550,9 @@ export default function Table() {
                   >
                     <option value="host">Storyteller</option>
                     {game.players
-                      .filter((player) => player.dummy)
+                      .filter((player) =>
+                        game.observer ? !player.departed : player.dummy,
+                      )
                       .map((player) => (
                         <option key={player.id} value={player.id}>
                           {player.name}

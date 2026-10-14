@@ -2,19 +2,20 @@ import { authMember, json, errorResponse, checkOrigin } from '@/lib/game/store';
 import { requireThat } from '@/lib/game/engine';
 import { tableView } from '@/lib/game/visible-view';
 import { table } from '@/lib/game/table-client';
+import { povViewer } from '@/lib/game/pov';
 export async function GET(r: Request) {
   try {
     const { actor, code } = await authMember(r);
     const { game, version } = await table(code).read(code, actor);
-    const requested = new URL(r.url).searchParams.get('pov');
-    const pov =
-      actor.host && game.sandbox
-        ? game.players.find((p) => p.id === requested && p.dummy && !p.departed)
-        : null;
+    const viewer = povViewer(
+      game,
+      actor,
+      new URL(r.url).searchParams.get('pov'),
+    );
     return json(
       await tableView(
         game,
-        pov ? { id: pov.id, host: false } : actor,
+        viewer,
         version,
         Date.now(),
         !!game.sandbox && actor.host,

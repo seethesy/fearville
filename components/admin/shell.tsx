@@ -4,6 +4,7 @@ import { accountAction, useAccount } from '@/components/hub/account-context';
 import { UiText, adminRequest, useTextEditor } from '@/components/ui-text';
 import { UI_TEXT, type TextKey } from '@/lib/ui-text/registry';
 import { ReportQueue } from './reports';
+import { BrowsePanel } from './browse-panel';
 type Entry = { command: string; output: unknown };
 export default function AdminShell() {
   const { refresh } = useAccount();
@@ -101,7 +102,7 @@ export default function AdminShell() {
         </button>
       </header>
       <nav aria-label="Administration">
-        {['console', 'reports', 'text', 'audit'].map((t) => (
+        {['console', 'browse', 'reports', 'text', 'audit'].map((t) => (
           <button
             key={t}
             className={tab === t ? 'primary' : 'secondary'}
@@ -113,7 +114,9 @@ export default function AdminShell() {
           >
             {t === 'console'
               ? 'Developer console'
-              : t === 'reports'
+              : t === 'browse'
+                ? 'Browse as'
+                : t === 'reports'
                 ? 'Moderation queue'
                 : t === 'text'
                   ? 'Edit official text'
@@ -127,6 +130,7 @@ export default function AdminShell() {
         </p>
       )}
       {tab === 'reports' && <ReportQueue />}
+      {tab === 'browse' && <BrowsePanel />}
       {tab === 'console' && (
         <section className="panel">
           <h2>Developer console</h2>
