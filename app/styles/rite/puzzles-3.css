@@ -1,0 +1,59 @@
+@media (max-width: 420px) {
+  .night-rite {
+    padding: 12px;
+    border-radius: 15px;
+  }
+  .rite-settings {
+    grid-template-columns: 1fr;
+  }
+  .escape-puzzle {
+    padding: 14px 8px;
+  }
+  .escape-board {
+    border-width: 7px;
+  }
+  .divination-puzzle {
+    padding: 10px;
+  }
+  .omen-card {
+    gap: 7px;
+  }
+  .town-map {
+    gap: 4px;
+    padding: 8px 6px;
+  }
+  .town-place > strong {
+    font-size: 8px;
+    letter-spacing: 0.02em;
+    padding: 3px 1px;
+    border-width: 1px;
+  }
+  .town-spots {
+    height: 58px;
+  }
+  .town-spots .character-token {
+    width: 36px;
+    height: 36px;
+    border-width: 2px;
+  }
+  .activity-spot {
+    width: 24px;
+    height: 24px;
+    margin-left: -14px;
+    margin-bottom: 4px;
+  }
+  .town-street {
+    font-size: 9px;
+    padding: 5px 8px;
+  }
+  .character-token {
+    width: 41px;
+    height: 41px;
+  }
+  .rite-tray small {
+    font-size: 9px;
+  }
+  .rite-roster {
+    gap: 10px;
+  }
+}
