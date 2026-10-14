@@ -1,0 +1,320 @@
+export type Team = 'townsfolk' | 'outsider' | 'traveler' | 'minion' | 'demon';
+export type RoleDef = {
+  id: string;
+  name: string;
+  team: Team;
+  description: string;
+};
+// Holy Moon and Stars characters. Wording follows the Fearville script sheet.
+export const HMS_ROLES: RoleDef[] = [
+  [
+    'astrologist',
+    'Astrologist',
+    'townsfolk',
+    'At the start of the game, choose 3 players. You are told 3 roles: 1 belongs to one of them and 2 do not belong to anyone.',
+  ],
+  [
+    'mystic',
+    'Mystic',
+    'townsfolk',
+    'At the start of the game, choose 1 of your neighbors. You learn up to 3 other players they may be connected to.',
+  ],
+  [
+    'astronaut',
+    'Astronaut',
+    'townsfolk',
+    'At the start of the game, learn how far the nearest evil player is from you.',
+  ],
+  [
+    'stargazer',
+    'Stargazer',
+    'townsfolk',
+    'At the start of the game, choose a player. Alive or dead, you may ask the Storyteller who they spoke with or what they discussed. Answers are at Storyteller discretion.',
+  ],
+  [
+    'prophet',
+    'Prophet',
+    'townsfolk',
+    'At the start of the game, learn which Haunt and Horror characters are in play. If the Storyteller hears you reveal this, you and one of your neighbors may die that night.',
+  ],
+  [
+    'insomniac',
+    'Insomniac',
+    'townsfolk',
+    'Each night, learn which players visited you and how many of your neighbors visited another player.',
+  ],
+  [
+    'diviner',
+    'Diviner',
+    'townsfolk',
+    'Each night, ask the Storyteller a question. They answer with the name of a player you should speak to the next day.',
+  ],
+  [
+    'medium',
+    'Medium',
+    'townsfolk',
+    'Each night after the first, choose a dead player. They may use their night ability tonight (spent once-per-game abilities are not reset), and you share a private channel with them until dawn.',
+  ],
+  [
+    'spirit',
+    'Spirit',
+    'townsfolk',
+    'Each night, choose a player. Learn how many of their visitors are good and evil. If nobody visited, learn “0 people.” If you die, learn only the number of visitors.',
+  ],
+  [
+    'gravedigger',
+    'Gravedigger',
+    'townsfolk',
+    'Once per game, at night, choose a dead player. You may become their character and alignment at dawn. The Storyteller may refuse setup-changing characters.',
+  ],
+  [
+    'fateweaver',
+    'Fateweaver',
+    'townsfolk',
+    'The first time either of your living neighbors dies, you may redirect their death. The Storyteller may or may not follow your choice.',
+  ],
+  [
+    'priest',
+    'Priest',
+    'townsfolk',
+    'Once per game, at night, choose a dead player: they return at dawn (Villagers as themselves, Fools as themselves, Haunts as an out-of-play Villager). If you are killed, you return at the next dawn as an out-of-play Villager.',
+  ],
+  [
+    'atheist',
+    'Atheist',
+    'townsfolk',
+    'If the Atheist is in play, every player is good. Good wins by executing the Storyteller; evil wins when two players remain. The Storyteller may break any rule.',
+  ],
+  [
+    'celestial',
+    'Celestial',
+    'townsfolk',
+    'While you live, other good players cannot die during the day. If you are executed, everyone is poisoned until the next dusk and one Villager becomes drunk for the rest of the game. Evil learns whether a Celestial is in play.',
+  ],
+  [
+    'constellation',
+    'Constellation',
+    'outsider',
+    'At the start of the game, choose 3 players to link. If one dies, the others may die too. Once per game, at night, guess all their characters: if correct, revive one or give one an extra life; if wrong, the link breaks and you and another member may die.',
+  ],
+  [
+    'lostsoul',
+    'Lost Soul',
+    'outsider',
+    'You secretly act as an out-of-play Villager, but you do not know which. Its ability does not work, and information is given only as unlabeled names or values.',
+  ],
+  [
+    'zealot',
+    'Zealot',
+    'outsider',
+    'When you die, the Storyteller gains a character ability from this script of their choice.',
+  ],
+  [
+    'dazed',
+    'Dazed',
+    'outsider',
+    'You are drunk and believe you are a Villager. Whenever another player targets you with an ability, the Storyteller may redirect it to one of your living neighbors or to a player of your choice.',
+  ],
+  [
+    'necromancer',
+    'Necromancer',
+    'minion',
+    'Once per game, at night, choose a dead player: they return at dawn as evil (Haunts as themselves; others as an out-of-play Haunt). The Horror cannot be revived.',
+  ],
+  [
+    'moonshiner',
+    'Moonshiner',
+    'minion',
+    'Adds a Fool to the game. Every Fool is drunk and believes they are a Villager, though their own Fool ability still works. After you die, the Fools may sober up and learn their real characters.',
+  ],
+  [
+    'nightmare',
+    'Nightmare',
+    'minion',
+    'If you are executed, at night choose a player with a nighttime targeting ability. Once per game, when they choose a target, you have 60 seconds to redirect it without them knowing.',
+  ],
+  [
+    'astrophage',
+    'Astrophage',
+    'minion',
+    'Once per game, during the day, you may end the day early. Not available with 4 or fewer living players.',
+  ],
+  [
+    'grimreaper',
+    'Grim Reaper',
+    'demon',
+    'Each night, mark a player for death. At any time you may reap: every marked player dies.',
+  ],
+  [
+    'werewolf',
+    'Werewolf',
+    'demon',
+    'Each night, prepare for the full moon. After two nights of preparation, choose 3 players to die (Nights 3, 6, 9…).',
+  ],
+  [
+    'dreameater',
+    'Dreameater',
+    'demon',
+    'Each night, guess any number of players’ characters. Correct guesses die. At 3 total wrong guesses you die instead, and that night’s correct guesses do not count.',
+  ],
+  [
+    'miasma',
+    'Miasma',
+    'demon',
+    'Each night, infect a player with the plague. The next night they die and both of their living neighbors are poisoned that night.',
+  ],
+].map(([id, name, team, description]) => ({
+  id,
+  name,
+  team: team as Team,
+  description,
+}));
+// Horrors of Fearville characters. Wording follows the script sheet; the
+// Vigilante acts once per game by day. The Drunk retains its hidden Villager ability.
+export const HOF_ROLES: RoleDef[] = [
+  [
+    'doctor',
+    'Doctor',
+    'townsfolk',
+    'Every night after the first, visit a player to save them.',
+  ],
+  [
+    'detective',
+    'Detective',
+    'townsfolk',
+    'Every night, visit two players to investigate them. You are told “Yes” if one of them is a Horror, or “No” if neither are. One random Villager secretly registers as a false positive, so they may produce a “Yes” despite being a Villager.',
+  ],
+  [
+    'watchman',
+    'Watchman',
+    'townsfolk',
+    'Every night after the first, visit a player to stay on lookout for them. You learn the names of all players who visit them.',
+  ],
+  [
+    'bodyguard',
+    'Bodyguard',
+    'townsfolk',
+    'After the Storyteller confirms that someone will die at night, learn their name and choose whether to die in their place.',
+  ],
+  [
+    'psychic',
+    'Psychic',
+    'townsfolk',
+    'Every night, the Storyteller chooses another player for you to visit. After the first night, that player’s role type will be different from the player you visited the previous night. You will not know their roles.',
+  ],
+  [
+    'judge',
+    'Judge',
+    'townsfolk',
+    'Every night, visit two players. You learn if they are the same alignment.',
+  ],
+  [
+    'mortician',
+    'Mortician',
+    'townsfolk',
+    'Once per game, at night, visit a dead player. Learn which roles have visited them in this game. If they were visited by 3 or more different players, learn 1 of their names.',
+  ],
+  [
+    'vigilante',
+    'Vigilante',
+    'townsfolk',
+    'Once per game, during the day, you may declare a player you want to kill. They may die instantly.',
+  ],
+  [
+    'sheriff',
+    'Sheriff',
+    'townsfolk',
+    'At the start of the game, learn that one of two players is a particular Haunt.',
+  ],
+  [
+    'hoflibrarian',
+    'Librarian',
+    'townsfolk',
+    'At the start of the game, learn that one of two players is a particular Villager.',
+  ],
+  [
+    'teacher',
+    'Teacher',
+    'townsfolk',
+    'At the start of the game, learn that one of your neighbors is a particular role.',
+  ],
+  [
+    'hunter',
+    'Hunter',
+    'townsfolk',
+    'If you are killed at night, a Haunt may die the same night.',
+  ],
+  [
+    'drunk',
+    'Drunk',
+    'outsider',
+    'You do not know you are the Drunk. Instead, you are shown a random Villager role that you believe yourself to be. That role’s ability will not work as intended, but you will not know that.',
+  ],
+  [
+    'hag',
+    'Hag',
+    'outsider',
+    'If you are killed, declare another player to die. If they are Good, they may die that night.',
+  ],
+  [
+    'lostwanderer',
+    'Lost Wanderer',
+    'outsider',
+    'Every night, visit a player. Anyone else who visits them may be redirected to one of their neighbors.',
+  ],
+  [
+    'executioner',
+    'Executioner',
+    'traveler',
+    'At the start of the game, a random player becomes your execution target. You win if this player is executed. This player will never be the Horror.',
+  ],
+  [
+    'researcher',
+    'Researcher',
+    'traveler',
+    'Once per game, even while dead, you may declare the role of 3 living players. You win if you are correct about all of them.',
+  ],
+  [
+    'guardian',
+    'Guardian',
+    'traveler',
+    'At the start of the game, a random player becomes your ward. Any time this player is meant to die, you will die in their place. You win if your ward lives to the end of the game.',
+  ],
+  [
+    'banshee',
+    'Banshee',
+    'minion',
+    'If you are executed, every Villager is feared that night.',
+  ],
+  [
+    'basilisk',
+    'Basilisk',
+    'minion',
+    'Every night, visit one player to fear them that night.',
+  ],
+  [
+    'sphinx',
+    'Sphinx',
+    'minion',
+    'Every night, receive a glimpse of every player’s role for the game.',
+  ],
+  [
+    'monster',
+    'Monster',
+    'demon',
+    'Every night after the first, visit one player to kill them and choose one of their living neighbors. If the target dies, your chosen neighbor is feared the following night.',
+  ],
+  [
+    'wraith',
+    'Wraith',
+    'demon',
+    'Every night after the first, visit one player to kill them that night. You may choose whether or not you are detected visiting this player.',
+  ],
+].map(([id, name, team, description]) => ({
+  id,
+  name,
+  team: team as Team,
+  description,
+}));
+export const ALL_ROLES: RoleDef[] = [...HMS_ROLES, ...HOF_ROLES];
+export const role = (id: string) => ALL_ROLES.find((r) => r.id === id);

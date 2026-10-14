@@ -21,26 +21,31 @@ currently remains supported; keep its workflow until its replacement lands.
 - `app/globals.css`: ordered imports from `app/styles/globals/` for base UI, control room, social/phone layout, navigation, portraits/cosmetics, finishers, recaps, glossary and tutorials.
 - `app/hub.css`: ordered shell and responsive styles in `app/styles/hub/`.
 - `app/rite.css`: ordered puzzle, animation and responsive styles in `app/styles/rite/`.
-- `components/`: UI. `rite/night-rite.tsx` (Rite UI entry; `rite/night-rite/` contains shell, setup, pattern controls and host vigil) and `rite/art.tsx` (artwork entry; `rite/art/` contains one module per pattern), `table-*.tsx`, `hub/` (site shell, settings), `social/`, `tutorials/`. `components/ui/` is the untouched shadcn starter.
+- `components/`: UI. `rite/night-rite.tsx` (Rite UI entry; `rite/night-rite/` contains shell, setup, pattern controls and host vigil) and `rite/art.tsx` (artwork entry; `rite/art/` contains one module per pattern), `table-*.tsx`, `hub/` (site shell, settings), `social/`, `tutorials/`. `components/ui/` contains shadcn primitives; `ui/sidebar.tsx` preserves its exports with context, shell, sections and menu modules in `ui/sidebar/`.
 - `components/session-recap.tsx`: recap entry; `session-recap/` contains shared formatting, finish popup, player details and history.
 - `lib/game/`: game domain.
-  - `engine.ts`: rules and actions (`execute`)
+  - `engine.ts`: rules/actions entry (`execute`); `engine/` contains shared helpers, lifecycle, voting, execution and focused command modules
   - `view.ts`: per-player view entry; `view/` contains fields, host phase/seat controls, shared controls and player view; never leak hidden info
   - `store.ts`: auth, D1 reads/writes, `limited()` rate limit
-  - `hof.ts` / `hof-view.ts`: Horrors of Fearville (default script)
-  - `hms.ts` / `hms-view.ts`: Holy Moon and Stars
-  - `types.ts`: roles and game types
+  - `hof.ts`: Horrors of Fearville entry (default script); `hof/` contains shared helpers, setup, night resolution, death/dawn/win handling and actions
+  - `hof-view.ts`: view entry; `hof-view/` contains field helpers, night/death fields and script controls.
+  - `hms.ts`: shared queued night entry; `hms/` contains helpers, tasks, choices, setup, night, suggestions, resolution/abilities, deaths, dawn and actions
+  - `hms-view.ts`: view entry; `hms-view/` contains field helpers, night fields, death and script controls.
+  - `types.ts`: types entry; `types/` contains role catalogs, setup/counts, night orders and state/factories
   - `saved-state.ts`: loading older saved tables
+  - `table-object.ts`: Durable Object entry; `table-object/` contains the host class, typed context, storage/authentication, persistence, actions and socket handlers.
   - `lobby.ts`, `join.ts`, `membership.ts`, `sandbox.ts`, `scoped-update.ts` / `concurrency.ts`: concurrent writes
 - `lib/rite/`: the Night Rite (team puzzles).
   - `types.ts`: `DEFAULT_CONFIG` (opening night, `lockSeconds`, `windowSeconds` = puzzle window, threshold) and patterns
-  - `engine.ts`: config validation and ranges, vigils, night lifecycle, **turn order and handoff (`nextTurn`)**, `riteAction`
+  - `engine.ts`: Rite entry; `engine/` contains setup/configuration, night dealing and **turn order/handoff (`nextTurn`)**, lifecycle/deadlines and actions (`riteAction`)
   - `view.ts`: player view of a puzzle
   - Patterns: `board.ts` (Escape Fearville), `grid.ts` (The Sphinx's Riddles), `ritual.ts` (Ritual of Divination), `lab.ts` (Alchemist's Laboratory)
+  - `grid.ts`: Sphinx entry; `grid/` contains vocabulary, solver, difficulty, prose, clue makers and generation/validation.
   - `bank.ts` with generated `bank-data.ts`
+- `lib/admin/service.ts`: admin service entry; `service/` contains audit/transactions, text, accounts, lobby plans and commands.
 - `lib/social/`: friends, invites, ratings, results, stats, progression, privacy.
 - `lib/accounts/`: Google/Apple OIDC, account service, profile, preferences.
-- `lib/tutorials/`: tutorial content, engine, progress.
+- `lib/tutorials/`: tutorial content, engine, progress. `content.ts` preserves catalog exports; `content/` contains walkthroughs, help sections, Rite guides, host tour/sections and lookup.
 - `db/`: Drizzle schema and D1 accessor.
 - `tests/`: `*.test.ts` unit tests (node:test) and `*-integration.mjs` HTTP suites (local D1 only).
 - `scripts/`: test runners (`check.mjs`, `run-unit.mjs`, `run-integration.mjs`) and offline generators.
