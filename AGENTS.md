@@ -38,6 +38,7 @@ currently remains supported; keep its workflow until its replacement lands.
   - `view.ts`: player view of a puzzle
   - Patterns: `board.ts` (Escape Fearville), `grid.ts` (The Sphinx's Riddles), `ritual.ts` (Ritual of Divination), `lab.ts` (Alchemist's Laboratory)
   - `bank.ts` with generated `bank-data.ts`
+- `lib/admin/service.ts`: admin service entry; `service/` contains audit/transactions, text, accounts, lobby plans and commands.
 - `lib/social/`: friends, invites, ratings, results, stats, progression, privacy.
 - `lib/accounts/`: Google/Apple OIDC, account service, profile, preferences.
 - `lib/tutorials/`: tutorial content, engine, progress.
