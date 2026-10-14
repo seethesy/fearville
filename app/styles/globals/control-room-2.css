@@ -1,0 +1,190 @@
+@media (min-width: 801px) and (max-width: 1150px) {
+  .table-shell {
+    --nav-width: 210px;
+    padding-right: 24px;
+    padding-left: calc(var(--nav-width) + 24px);
+  }
+  .table-header {
+    padding: 28px 18px;
+  }
+  .table-wordmark {
+    font-size: 1.6rem;
+  }
+  .timer-toolbar {
+    gap: 12px;
+  }
+  .timer-actions {
+    flex-direction: column;
+  }
+  .flow-dashboard,
+  .player-table .flow-dashboard {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .player-table .flow-panel,
+  .player-table .character-panel,
+  .player-table .recent-messages {
+    grid-column: auto;
+    grid-row: auto;
+  }
+  .seat-grid,
+  .script-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 800px) {
+  .table-shell {
+    padding: 0 20px calc(100px + env(safe-area-inset-bottom));
+  }
+  .table-header {
+    position: static;
+    width: auto;
+    height: auto;
+    padding: 22px 0;
+    border: 0;
+    border-bottom: 1px solid var(--border);
+    background: transparent;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 16px;
+  }
+  .table-wordmark {
+    font-size: 1.65rem;
+  }
+  .table-header .connection {
+    margin: 0 0 0 auto;
+    order: 0;
+  }
+  .table-identity {
+    width: 100%;
+    order: 1;
+  }
+  .table-script,
+  .table-population {
+    display: none;
+  }
+  .table-header .session-code {
+    order: 2;
+    margin: 0;
+    font-size: 0.75rem;
+  }
+  .table-setup {
+    width: 100%;
+    order: 2;
+    margin-top: 0;
+  }
+  .table-settings {
+    order: 0;
+    margin: 0;
+  }
+  .table-title {
+    min-height: 0;
+    margin: 0 0 22px;
+    padding: 24px 0;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
+  }
+  .table-title > div:first-child {
+    flex: 1;
+    min-width: 160px;
+  }
+  .table-title h1 {
+    font-size: 1.65rem;
+  }
+  .table-title .eyebrow {
+    font-size: 0.75rem;
+    letter-spacing: 0.08em;
+  }
+  .timer-toolbar {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 10px;
+  }
+  .clock-box {
+    min-width: 90px;
+  }
+  .clock-box strong {
+    font-size: 2.6rem;
+  }
+  .clock-box > span {
+    font-size: 0.75rem;
+    letter-spacing: 0;
+  }
+  .timer-actions {
+    max-width: none;
+  }
+  .table-tabs {
+    position: fixed;
+    top: auto;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    max-width: none;
+    max-height: none;
+    padding: 8px 8px calc(8px + env(safe-area-inset-bottom));
+    background: var(--card);
+    border-top: 1px solid var(--border);
+    border-radius: 0;
+    display: flex;
+    flex-direction: row;
+    justify-content: space-around;
+    gap: 0;
+    overflow: visible;
+    height: auto;
+  }
+  .table-tabs button {
+    flex: 1;
+    min-width: 0;
+    width: auto;
+    flex-direction: column;
+    justify-content: center;
+    gap: 5px;
+    padding: 8px 2px;
+    font-size: 0.75rem;
+    min-height: 58px;
+    border-radius: 4px;
+  }
+  .table-tabs button[data-active] {
+    border-left: 0;
+    border-top: 2px solid var(--primary);
+    background: transparent;
+  }
+  .table-tabs .count {
+    display: none;
+  }
+  .flow-dashboard,
+  .player-table .flow-dashboard {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+  }
+  .flow-dashboard > .panel {
+    width: 100%;
+    padding: 22px;
+  }
+  .player-table .character-panel {
+    order: -1;
+  }
+  .flow-panel h2 {
+    font-size: 1.65rem;
+  }
+  .panel .eyebrow {
+    font-size: 0.75rem;
+  }
+  .seat-grid,
+  .script-grid {
+    grid-template-columns: 1fr;
+  }
+  .actions button {
+    min-height: 44px;
+  }
+  .table-shell footer {
+    gap: 14px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .table-tabs button {
+    transition: none;
+  }
+}
