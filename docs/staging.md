@@ -7,3 +7,7 @@ Deploy through GitHub Actions (FEAR-107), then run **Seed staging** on main. The
 Follow the [exact staging sign-in setup steps](staging-sign-in-setup.md) for FEAR-106: Google redirect `https://staging.fearville.app/api/accounts/callback/google`, Apple return URL `https://staging.fearville.app/api/accounts/callback/apple`, and staging-only Worker secrets. The server allowlist is `sybertechlabs@gmail.com`; use that verified Google account for the admin shell. Staging uses a new encryption key, retained across redeploys.
 
 The seed workflow verifies six accounts, five friendships and three finished games in staging, then performs read-only production queries to confirm no `staging-fixture-*` accounts exist there. The staging CI token needs D1 read access to the production database for that verification. It never seeds production. Sentry SDK and push transport integration remain FEAR-110 and FEAR-100/101; environment tags are prepared here for them.
+
+## UI review fixtures (FEAR-161)
+
+`/staging` (staging and local only; production returns Not found) resets named Sandbox tables (lobby, each day phase, Night 1, Night 2 per Rite pattern, Traveler win, recap, Holy Moon and Stars) and can sign a browser in as the `stage_qa_demo` account with friends, requests, a block, an invitation, history and Storyteller feedback. The demo sign-in creates a normal 30-day account session for that synthetic account only; the seed workflow still creates no credentials. See [docs/ui-review/route-map.md](ui-review/route-map.md).

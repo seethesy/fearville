@@ -17,11 +17,12 @@ async function count(query, sql) {
 
 const accounts = await count(
   stagingQuery,
-  "SELECT COUNT(*) AS count FROM accounts WHERE id LIKE 'staging-fixture-%'",
+  // The FEAR-161 demo account (/staging) is excluded from the seed counts.
+  "SELECT COUNT(*) AS count FROM accounts WHERE id LIKE 'staging-fixture-%' AND id<>'staging-fixture-demo'",
 );
 const friends = await count(
   stagingQuery,
-  "SELECT COUNT(*) AS count FROM friendships WHERE requester='staging-fixture-host'",
+  "SELECT COUNT(*) AS count FROM friendships WHERE requester='staging-fixture-host' AND addressee<>'staging-fixture-demo'",
 );
 const games = await count(
   stagingQuery,
