@@ -425,3 +425,51 @@ export const adminConfirmations = sqliteTable('admin_confirmations', {
   digest: text('digest').notNull(),
   expires: integer('expires').notNull(),
 });
+
+// FEAR-159: feedback and bug report forms. A form is immutable once stored;
+// editing publishes a new version and moves `active` to it.
+export const feedbackForms = sqliteTable(
+  'feedback_forms',
+  {
+    id: text('id').primaryKey(), // context:version
+    context: text('context').notNull(),
+    version: integer('version').notNull(),
+    active: integer('active').notNull().default(0),
+    definition: text('definition').notNull(), // JSON FormDefinition
+    created: integer('created').notNull(),
+    createdBy: text('created_by'),
+  },
+  (t) => [
+    uniqueIndex('idx_feedback_forms_version').on(t.context, t.version),
+    uniqueIndex('idx_feedback_forms_active')
+      .on(t.context)
+      .where(sql`${t.active} = 1`),
+  ],
+);
+export const feedbackSubmissions = sqliteTable(
+  'feedback_submissions',
+  {
+    id: text('id').primaryKey(),
+    form: text('form')
+      .notNull()
+      .references(() => feedbackForms.id),
+    context: text('context').notNull(),
+    version: integer('version').notNull(),
+    account: text('account').references(() => accounts.id, {
+      onDelete: 'set null',
+    }),
+    // Anonymous random id a guest's device keeps; never a credential.
+    guest: text('guest'),
+    subject: text('subject'),
+    answers: text('answers').notNull(), // JSON, plain text only
+    client: text('client'), // JSON app details (bug reports)
+    game: text('game'), // JSON public table details (bug reports)
+    flagged: integer('flagged').notNull().default(0), // objectionable text
+    status: text('status').notNull().default('new'),
+    created: integer('created').notNull(),
+  },
+  (t) => [
+    index('idx_feedback_submissions_context').on(t.context, t.created),
+    index('idx_feedback_submissions_account').on(t.account),
+  ],
+);

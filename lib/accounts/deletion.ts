@@ -230,6 +230,10 @@ async function deleteAccountAttempt(db: D1Database, account: string) {
       )
       .bind(account),
     db.prepare('DELETE FROM oauth_flows WHERE account = ?').bind(account),
+    // FEAR-159: feedback text can hold personal details; it goes with the account.
+    db
+      .prepare('DELETE FROM feedback_submissions WHERE account = ?')
+      .bind(account),
     db.prepare('DELETE FROM accounts WHERE id = ?').bind(account),
   );
   await db.batch(statements);
