@@ -10,6 +10,7 @@
     "android": "cap open android"
   },
   "dependencies": {
+    "@capacitor-community/keep-awake": "8.0.1",
     "@capacitor/android": "8.5.3",
     "@capacitor/app": "8.1.2",
     "@capacitor/browser": "8.0.5",
@@ -17,10 +18,10 @@
     "@capacitor/haptics": "8.0.2",
     "@capacitor/ios": "8.5.3",
     "@capacitor/network": "8.0.1",
-    "@capacitor/share": "8.0.3",
-    "@capacitor-community/keep-awake": "8.0.1"
+    "@capacitor/share": "8.0.3"
   },
   "devDependencies": {
-    "@capacitor/cli": "8.5.3"
+    "@capacitor/cli": "8.5.3",
+    "typescript": "5.9.3"
   }
 }
