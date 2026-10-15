@@ -35,8 +35,7 @@ export async function GET(r: Request) {
     // FEAR-175: feedback form editor and response viewer.
     if (params.get('view') === 'feedback-forms')
       return json({ forms: await formsOverview() });
-    if (params.get('view') === 'feedback')
-      return json(await responses(params));
+    if (params.get('view') === 'feedback') return json(await responses(params));
     if (params.get('view') === 'feedback-summary')
       return json(await feedbackSummary());
     if (params.get('view') === 'feedback-csv')

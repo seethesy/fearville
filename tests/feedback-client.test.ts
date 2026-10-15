@@ -17,20 +17,41 @@ const memory = (): KeyValue => {
 
 void test('a prompt decision is sampled once per occasion and remembered', () => {
   const store = memory();
-  assert.equal(decidePrompt('puzzle', 'a', store, 0, () => 0.9), false);
+  assert.equal(
+    decidePrompt('puzzle', 'a', store, 0, () => 0.9),
+    false,
+  );
   // Same occasion: same answer even if the dice would now say yes.
-  assert.equal(decidePrompt('puzzle', 'a', store, 1, () => 0), false);
+  assert.equal(
+    decidePrompt('puzzle', 'a', store, 1, () => 0),
+    false,
+  );
   const t = PROMPT_RULES.puzzle.cooldownMs * 2;
-  assert.equal(decidePrompt('puzzle', 'b', store, t, () => 0), true);
-  assert.equal(decidePrompt('puzzle', 'b', store, t + 5, () => 0.9), true);
+  assert.equal(
+    decidePrompt('puzzle', 'b', store, t, () => 0),
+    true,
+  );
+  assert.equal(
+    decidePrompt('puzzle', 'b', store, t + 5, () => 0.9),
+    true,
+  );
 });
 
 void test('a cooldown stops back-to-back prompts in the same context only', () => {
   const store = memory();
   const t = 10 * PROMPT_RULES.script.cooldownMs;
-  assert.equal(decidePrompt('script', 'g1', store, t, () => 0), true);
-  assert.equal(decidePrompt('script', 'g2', store, t + 1000, () => 0), false);
-  assert.equal(decidePrompt('puzzle', 'p1', store, t + 1000, () => 0), true);
+  assert.equal(
+    decidePrompt('script', 'g1', store, t, () => 0),
+    true,
+  );
+  assert.equal(
+    decidePrompt('script', 'g2', store, t + 1000, () => 0),
+    false,
+  );
+  assert.equal(
+    decidePrompt('puzzle', 'p1', store, t + 1000, () => 0),
+    true,
+  );
   assert.equal(
     decidePrompt(
       'script',
@@ -46,7 +67,10 @@ void test('a cooldown stops back-to-back prompts in the same context only', () =
 void test('corrupt prompt storage starts over instead of throwing', () => {
   const store = memory();
   store.set('fv.feedback.prompts', '{oops');
-  assert.equal(decidePrompt('storyteller', 'x', store, 1e12, () => 0), true);
+  assert.equal(
+    decidePrompt('storyteller', 'x', store, 1e12, () => 0),
+    true,
+  );
 });
 
 void test('the outbox keeps only the newest submissions', () => {

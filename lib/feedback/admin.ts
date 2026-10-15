@@ -190,7 +190,9 @@ export function setFormActive(admin: Admin, body: Record<string, unknown>) {
       let version: number | null = null;
       if (body.enabled === true) {
         const latest = await db
-          .prepare('SELECT MAX(version) AS v FROM feedback_forms WHERE context=?')
+          .prepare(
+            'SELECT MAX(version) AS v FROM feedback_forms WHERE context=?',
+          )
           .bind(context)
           .first<{ v: number | null }>();
         version =
@@ -312,8 +314,10 @@ export async function feedbackSummary(now = Date.now()) {
       .bind(now - WEEK, 'puzzle', 'script', 'storyteller', STATS_CAP)
       .all<Pick<ResponseRow, 'form' | 'context' | 'subject' | 'answers'>>()
   ).results;
-  const groups: Record<string, Record<string, { sum: number; count: number }>> =
-    {};
+  const groups: Record<
+    string,
+    Record<string, { sum: number; count: number }>
+  > = {};
   for (const r of rows) {
     const n = primaryStars(r, defs);
     if (n === null || !r.subject) continue;

@@ -1,6 +1,10 @@
 // FEAR-175: pure helpers for the admin feedback viewer: response filters,
 // star-rating statistics and CSV export. No D1 access here (unit tested).
-import { FORM_CONTEXTS, type FormContext, type FormDefinition } from './forms.ts';
+import {
+  FORM_CONTEXTS,
+  type FormContext,
+  type FormDefinition,
+} from './forms.ts';
 
 export const TRIAGE = ['new', 'triaged'] as const;
 export type Triage = (typeof TRIAGE)[number];
@@ -160,7 +164,10 @@ export function csvCell(value: unknown): string {
 
 /** CSV with one column per question id seen in the rows. */
 export function responsesCsv(rows: ResponseRow[]): string {
-  const parsed = rows.map((r) => ({ row: r, answers: parseAnswers(r.answers) }));
+  const parsed = rows.map((r) => ({
+    row: r,
+    answers: parseAnswers(r.answers),
+  }));
   const questionIds: string[] = [];
   for (const p of parsed)
     for (const key of Object.keys(p.answers))

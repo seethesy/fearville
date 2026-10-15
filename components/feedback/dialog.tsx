@@ -9,12 +9,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { FeedbackForm } from './form';
-import {
-  type LoadedForm,
-  flushOutbox,
-  loadForm,
-  sendFeedback,
-} from './api';
+import { type LoadedForm, flushOutbox, loadForm, sendFeedback } from './api';
 
 export type HelpContext = 'general' | 'bug';
 

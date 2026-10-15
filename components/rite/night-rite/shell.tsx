@@ -260,7 +260,9 @@ export function NightRite({
                 )}
                 {own.phase === 'done' && (
                   <>
-                    <p className="rite-state">Your vigil’s puzzle is complete.</p>
+                    <p className="rite-state">
+                      Your vigil’s puzzle is complete.
+                    </p>
                     {/* FEAR-174: rate this puzzle (sampled, dismissible). */}
                     <InlineFeedback
                       context="puzzle"

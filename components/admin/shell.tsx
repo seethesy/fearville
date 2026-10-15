@@ -112,33 +112,31 @@ export default function AdminShell() {
           'switches',
           'text',
           'audit',
-        ].map(
-          (t) => (
-            <button
-              key={t}
-              className={tab === t ? 'primary' : 'secondary'}
-              aria-current={tab === t ? 'page' : undefined}
-              onClick={() => {
-                setTab(t);
-                if (t === 'audit') void loadAudit();
-              }}
-            >
-              {t === 'console'
-                ? 'Developer console'
-                : t === 'browse'
-                  ? 'Browse as'
-                  : t === 'reports'
-                    ? 'Moderation queue'
-                    : t === 'feedback'
-                      ? 'Feedback'
+        ].map((t) => (
+          <button
+            key={t}
+            className={tab === t ? 'primary' : 'secondary'}
+            aria-current={tab === t ? 'page' : undefined}
+            onClick={() => {
+              setTab(t);
+              if (t === 'audit') void loadAudit();
+            }}
+          >
+            {t === 'console'
+              ? 'Developer console'
+              : t === 'browse'
+                ? 'Browse as'
+                : t === 'reports'
+                  ? 'Moderation queue'
+                  : t === 'feedback'
+                    ? 'Feedback'
                     : t === 'switches'
                       ? 'Remote switches'
                       : t === 'text'
                         ? 'Edit official text'
                         : 'Audit log'}
-            </button>
-          ),
-        )}
+          </button>
+        ))}
       </nav>
       {error && (
         <p role="alert" className="error">

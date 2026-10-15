@@ -36,8 +36,7 @@ const TYPE_NAMES: Record<QuestionType, string> = {
   long: 'Long text',
 };
 const SUBJECT_NAMES: Record<string, string> = { ...PATTERNS, ...SCRIPTS };
-const subjectName = (s: string | null) =>
-  s ? (SUBJECT_NAMES[s] ?? s) : '—';
+const subjectName = (s: string | null) => (s ? (SUBJECT_NAMES[s] ?? s) : '—');
 
 type Version = {
   id: string;
@@ -508,11 +507,7 @@ function FormEditor() {
             <p className="eyebrow">PREVIEW AS A PLAYER</p>
             <h3>{draft.title}</h3>
             {!problem && (
-              <FeedbackForm
-                key={JSON.stringify(draft)}
-                form={draft}
-                preview
-              />
+              <FeedbackForm key={JSON.stringify(draft)} form={draft} preview />
             )}
           </div>
         </div>
@@ -680,9 +675,7 @@ function ResponseViewer() {
           <input
             inputMode="numeric"
             value={filters.version}
-            onChange={(e) =>
-              set('version', e.target.value.replace(/\D/g, ''))
-            }
+            onChange={(e) => set('version', e.target.value.replace(/\D/g, ''))}
           />
         </label>
         <label>
@@ -802,7 +795,9 @@ function ResponseViewer() {
                 </div>
               </dl>
               {(r.client || r.game) && (
-                <pre>{JSON.stringify({ client: r.client, game: r.game }, null, 2)}</pre>
+                <pre>
+                  {JSON.stringify({ client: r.client, game: r.game }, null, 2)}
+                </pre>
               )}
               <button
                 className="secondary"

@@ -45,10 +45,18 @@ void test('filters build parameterised SQL and reject bad values', () => {
     f.where,
     ' WHERE context=? AND version=? AND subject=? AND status=? AND flagged=0 AND created>=?',
   );
-  assert.deepEqual(f.values, ['puzzle', 2, 'board', 'new', Date.parse('2026-10-01T00:00:00Z')]);
+  assert.deepEqual(f.values, [
+    'puzzle',
+    2,
+    'board',
+    'new',
+    Date.parse('2026-10-01T00:00:00Z'),
+  ]);
   assert.equal(responseFilters(new URLSearchParams()).where, '');
   assert.throws(() => responseFilters(new URLSearchParams({ context: 'x' })));
-  assert.throws(() => responseFilters(new URLSearchParams({ status: 'fixed' })));
+  assert.throws(() =>
+    responseFilters(new URLSearchParams({ status: 'fixed' })),
+  );
   assert.throws(() => responseFilters(new URLSearchParams({ version: '0' })));
   assert.throws(() => responseFilters(new URLSearchParams({ from: 'soon' })));
 });
@@ -84,7 +92,11 @@ void test('CSV escapes quotes and neutralises spreadsheet formulas', () => {
   assert.equal(csvCell(['a', 'b']), 'a; b');
   assert.equal(csvCell(null), '');
   const csv = responsesCsv([
-    row({ id: '1', answers: '{"rating":5,"comment":"line\\nbreak"}', created: 0 }),
+    row({
+      id: '1',
+      answers: '{"rating":5,"comment":"line\\nbreak"}',
+      created: 0,
+    }),
     row({ id: '2', answers: '{"difficulty":"easy"}', created: 1000 }),
   ]);
   const lines = csv.split('\r\n');
