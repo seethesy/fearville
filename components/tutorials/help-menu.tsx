@@ -12,6 +12,11 @@ import { helpSections } from '@/lib/tutorials/engine';
 import { useTutorials } from './provider';
 import { RoleTipsToggle } from '@/components/role-tips';
 import { KeepAwakeToggle } from '@/components/keep-awake-toggle';
+import {
+  FeedbackButtons,
+  FeedbackDialog,
+  type HelpContext,
+} from '@/components/feedback/dialog';
 
 // FEAR-20: replay any tutorial or guide on demand. Lists only what applies
 // to this viewer: the player walkthrough for seated players, the Storyteller
@@ -23,6 +28,7 @@ export function HelpMenu({
   className = 'secondary help-button',
   label = 'Help',
   tipSession,
+  code,
 }: {
   host: boolean;
   seated: boolean;
@@ -30,8 +36,11 @@ export function HelpMenu({
   className?: string;
   label?: string;
   tipSession?: string;
+  /** Table code, so bug reports attach the public game phase. */
+  code?: string;
 }) {
   const [open, setOpen] = useState(false);
+  const [feedback, setFeedback] = useState<HelpContext | null>(null);
   const { state, replay, blocked, account } = useTutorials();
   const sections = helpSections({
     platform: 'web',
@@ -108,8 +117,23 @@ export function HelpMenu({
               <KeepAwakeToggle />
             </section>
           )}
+          <section className="help-section">
+            <p className="eyebrow">FEEDBACK</p>
+            <FeedbackButtons
+              onChoose={(c) => {
+                setOpen(false);
+                setFeedback(c);
+              }}
+            />
+          </section>
         </DialogContent>
       </Dialog>
+      <FeedbackDialog
+        context={feedback}
+        code={code}
+        open={feedback !== null}
+        onOpenChange={(o) => !o && setFeedback(null)}
+      />
     </>
   );
 }

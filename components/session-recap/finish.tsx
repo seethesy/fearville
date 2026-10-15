@@ -12,6 +12,7 @@ import {
   DialogDescription,
 } from '../ui/dialog';
 import { gameDuration, roleColor } from './shared.tsx';
+import { InlineFeedback } from '../feedback/inline';
 export function GameEndPopup({
   game,
   refresh,
@@ -175,6 +176,14 @@ export function GameEndPopup({
             </button>
           ))}
         </div>
+        {/* FEAR-174: players rate the script; the Storyteller gets their
+            own form. The dialog itself holds tutorials, so ignore blockers. */}
+        <InlineFeedback
+          context={game.host ? 'storyteller' : 'script'}
+          subject={game.script}
+          occasion={`recap:${recap.id}`}
+          respectBlockers={false}
+        />
         {error && (
           <p className="error" role="alert">
             {error}

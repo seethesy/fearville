@@ -10,6 +10,7 @@ export const FORM_CONTEXTS = [
   'script',
   'puzzle',
   'game-end',
+  'storyteller', // FEAR-174: the Storyteller's post-game form
 ] as const;
 export type FormContext = (typeof FORM_CONTEXTS)[number];
 export const QUESTION_TYPES = [
@@ -271,7 +272,8 @@ export function gameContext(
 }
 
 // Minimal starting forms, one per context. Art replaces them with the editor.
-// Version 1 of each is inserted by the migration (drizzle/0011_*.sql).
+// Version 1 of each is inserted by a migration (drizzle/0011_*.sql,
+// drizzle/0014_*.sql for the Storyteller form).
 export const DEFAULT_FORMS: FormDefinition[] = [
   {
     context: 'general',
@@ -371,6 +373,35 @@ export const DEFAULT_FORMS: FormDefinition[] = [
         ],
       },
       { id: 'comment', type: 'long', label: 'Anything to add?' },
+    ],
+  },
+  {
+    context: 'storyteller',
+    title: 'How was running the game?',
+    subject: 'script',
+    questions: [
+      {
+        id: 'rating',
+        type: 'stars',
+        label: 'How much did you enjoy running this script?',
+        required: true,
+      },
+      {
+        id: 'helped',
+        type: 'multi',
+        label: 'What worked well for you?',
+        options: [
+          { id: 'night', label: 'Night prompts' },
+          { id: 'seats', label: 'Seats and tokens' },
+          { id: 'rite', label: 'Night Rite controls' },
+          { id: 'voting', label: 'Nominations and voting' },
+        ],
+      },
+      {
+        id: 'comment',
+        type: 'long',
+        label: 'What would make running a game easier?',
+      },
     ],
   },
 ];

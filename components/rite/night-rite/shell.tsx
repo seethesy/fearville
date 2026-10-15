@@ -12,6 +12,7 @@ import { Laboratory } from './laboratory.tsx';
 import { Sphinx } from './sphinx.tsx';
 import { Divination } from './divination.tsx';
 import { HostVigil } from './vigil.tsx';
+import { InlineFeedback } from '@/components/feedback/inline';
 export type Reply = {
   rite: RiteView;
   serverNow: number;
@@ -258,7 +259,15 @@ export function NightRite({
                   </p>
                 )}
                 {own.phase === 'done' && (
-                  <p className="rite-state">Your vigil’s puzzle is complete.</p>
+                  <>
+                    <p className="rite-state">Your vigil’s puzzle is complete.</p>
+                    {/* FEAR-174: rate this puzzle (sampled, dismissible). */}
+                    <InlineFeedback
+                      context="puzzle"
+                      subject={own.type}
+                      occasion={`rite:${game.code}:${r.epoch}:${own.type}`}
+                    />
+                  </>
                 )}
                 {own.type === 'board' && (
                   <Escape puzzle={own} send={send} busy={busy || !online} />

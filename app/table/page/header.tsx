@@ -132,6 +132,7 @@ export function TableHeader({
         host={game.host}
         seated={!game.host && !game.sandboxHost}
         tipSession={`${game.code}:${game.me}`}
+        code={game.code}
         ownGuides={ownGuide ? [ownGuide] : []}
       />
     </header>
