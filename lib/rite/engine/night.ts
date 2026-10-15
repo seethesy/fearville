@@ -71,7 +71,9 @@ export function beginRiteNight(g: Game, at: number) {
       order,
       cursor: 0,
       start: r.lockUntil ?? at,
-      deadline: r.timerless ? 0 : (r.lockUntil ?? at) + GENERATOR_STYLE.timing.turnMilliseconds,
+      deadline: r.timerless
+        ? 0
+        : (r.lockUntil ?? at) + GENERATOR_STYLE.timing.turnMilliseconds,
       snapshots: {},
       log: [],
       token: uuid(),
@@ -94,7 +96,8 @@ export function nextTurn(s: Squad, at: number, kind: string, detail?: string) {
   t.cursor = (t.cursor + 1) % t.order.length;
   t.token = uuid();
   t.start = at;
-  t.deadline = t.deadline > 0 ? at + GENERATOR_STYLE.timing.turnMilliseconds : 0;
+  t.deadline =
+    t.deadline > 0 ? at + GENERATOR_STYLE.timing.turnMilliseconds : 0;
 }
 export function recordMove(s: Squad, at: number, kind: string, detail: string) {
   const t = (s.state as BoardState | LabState).turn!;

@@ -1,6 +1,11 @@
 import { rng, shuffle } from './random.ts';
 import type { Altar, ControlName, RitualState, Page } from './types.ts';
-import { GENERATOR_STYLE, PUZZLE_PRESETS, DEFAULT_PRESET, type PuzzlePreset } from './generator-config.ts';
+import {
+  GENERATOR_STYLE,
+  PUZZLE_PRESETS,
+  DEFAULT_PRESET,
+  type PuzzlePreset,
+} from './generator-config.ts';
 export const CONTROL_COUNTS: Record<ControlName, number> = {
   candles: 8,
   offerings: 6,
@@ -75,7 +80,10 @@ export function generateRitual(
   const order = shuffle(members, random);
   const rituals = Object.fromEntries(
     order.map((performer, k) => {
-      const chosen = shuffle(controls, random).slice(0, PUZZLE_PRESETS[preset].ritual.omenCount);
+      const chosen = shuffle(controls, random).slice(
+        0,
+        PUZZLE_PRESETS[preset].ritual.omenCount,
+      );
       const target = chosen.map((control) => ({
         control,
         value: Math.floor(random() * CONTROL_COUNTS[control]),

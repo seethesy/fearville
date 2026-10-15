@@ -1,7 +1,12 @@
 import { rng } from './random.ts';
 import type { Block, BoardState } from './types.ts';
 import { BOARD_LAYOUTS } from './board-layouts.ts';
-import { GENERATOR_STYLE as style, PUZZLE_PRESETS, DEFAULT_PRESET, type PuzzlePreset } from './generator-config.ts';
+import {
+  GENERATOR_STYLE as style,
+  PUZZLE_PRESETS,
+  DEFAULT_PRESET,
+  type PuzzlePreset,
+} from './generator-config.ts';
 export type Slide = { block: string; x: number; y: number };
 export function slide(blocks: Block[], move: Slide): Block[] | null {
   const b = blocks.find((b) => b.id === move.block);
@@ -102,7 +107,10 @@ export function solveBoard(
 export const BOARD_PAR = PUZZLE_PRESETS.normal.board.par;
 type Field = { states: string[]; dist: Int16Array };
 // Every position reachable from `blocks`, with its optimal distance to escape.
-export function boardField(blocks: Block[], cap: number = style.board.fieldCap): Field | null {
+export function boardField(
+  blocks: Block[],
+  cap: number = style.board.fieldCap,
+): Field | null {
   const start = blocks
     .map((b) => String.fromCharCode(48 + (b.horiz ? b.x : b.y)))
     .join('');
@@ -221,7 +229,11 @@ export function boardCandidate(
     solved: false,
   };
 }
-export function generateBoard(seed: string, members: number, preset: PuzzlePreset = DEFAULT_PRESET): BoardState {
+export function generateBoard(
+  seed: string,
+  members: number,
+  preset: PuzzlePreset = DEFAULT_PRESET,
+): BoardState {
   for (let attempt = 0; attempt < style.board.maxAttempts; attempt++) {
     const candidate = boardCandidate(seed, members, attempt, preset);
     if (candidate) return candidate;
