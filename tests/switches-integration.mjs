@@ -119,8 +119,13 @@ try {
   assert.equal((await req('/api/admin?view=switches', 'alice')).status, 403);
   assert.equal((await flip('guests', 'off', {})).status, 200);
   assert.equal(
-    (await req('/api/admin', 'alice', { action: 'switch', key: 'guests', value: 'on' }))
-      .status,
+    (
+      await req('/api/admin', 'alice', {
+        action: 'switch',
+        key: 'guests',
+        value: 'on',
+      })
+    ).status,
     403,
   );
   const overview = await req('/api/admin?view=switches', 'admin');
@@ -202,8 +207,7 @@ try {
     400,
   );
   assert.equal(
-    (await flip('rite', 'kill', { confirmation: preview.confirmation }))
-      .status,
+    (await flip('rite', 'kill', { confirmation: preview.confirmation })).status,
     200,
   );
   assert.ok((await req('/api/flags')).off.includes('rite'));
@@ -245,10 +249,20 @@ try {
       )
       .all()
   ).results;
-  assert.ok(audit.some((a) => a.target === 'local:guests' && a.result === 'success'));
-  assert.ok(audit.some((a) => a.action === 'switch kill' && a.result === 'confirmation required'));
-  assert.ok(audit.some((a) => a.action === 'switch kill' && a.result === 'success'));
-  assert.ok(audit.some((a) => a.target === 'local:signups' && a.result === 'error'));
+  assert.ok(
+    audit.some((a) => a.target === 'local:guests' && a.result === 'success'),
+  );
+  assert.ok(
+    audit.some(
+      (a) => a.action === 'switch kill' && a.result === 'confirmation required',
+    ),
+  );
+  assert.ok(
+    audit.some((a) => a.action === 'switch kill' && a.result === 'success'),
+  );
+  assert.ok(
+    audit.some((a) => a.target === 'local:signups' && a.result === 'error'),
+  );
   assert.ok(audit.some((a) => a.target === 'local:maintenance'));
   console.log(
     'Switches integration passed: admin-only edits, kill confirmation, audit, banner, guests, paused games and Rite enforcement.',
