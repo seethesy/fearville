@@ -1,0 +1,4 @@
+// Registered Apple identifiers confirmed by Art for FEAR-94 / FEAR-115.
+FEARVILLE_TEAM_ID = TV2PQGFFGU
+FEARVILLE_PRODUCTION_BUNDLE_ID = app.fearville
+FEARVILLE_STAGING_BUNDLE_ID = app.fearville.staging

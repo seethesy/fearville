@@ -30,11 +30,15 @@ public class FearvilleAuthPlugin: CAPPlugin, CAPBridgedPlugin,
             return
         }
         DispatchQueue.main.async {
+            guard self.session == nil else {
+                call.reject("Sign-in is already in progress.")
+                return
+            }
             let session = ASWebAuthenticationSession(
                 url: url, callbackURLScheme: "fearville"
             ) { [weak self] callback, error in
                 self?.session = nil
-                if let callback {
+                if let callback, FearvilleURLPolicy.authCallback(callback) {
                     call.resolve(["url": callback.absoluteString])
                 } else if let error = error as? ASWebAuthenticationSessionError,
                     error.code == .canceledLogin

@@ -45,7 +45,7 @@ The first draft of this doc picked (b) because it "avoided a development-only se
   3. **iOS:** `FearvilleAuth.start` runs `ASWebAuthenticationSession` (callback scheme `fearville`, shares Safari cookies) and resolves with the `fearville://signin?code=…` URL. **Android:** Custom Tabs open, and the `fearville://signin` intent arrives through `@capacitor/app`'s `appUrlOpen`.
   4. Either way the web layer receives `{type: 'signin', code}` and POSTs `/api/accounts/exchange` same-origin.
   5. The response sets the HttpOnly `ct_account` cookie, so the WebView is signed in and page scripts never see the token. *(Implemented in this PR.)*
-  6. Sign in with Apple uses the native Apple sheet on iOS (FEAR-94).
+  6. Sign in with Apple uses the native Apple sheet on iOS (FEAR-117, built on the FEAR-94 shell).
 - **Deep links:** Universal Links / App Links for invite URLs (FEAR-94/95). The `fearville://` scheme stays for sign-in.
 
 ## App Store 4.2 (minimum functionality)

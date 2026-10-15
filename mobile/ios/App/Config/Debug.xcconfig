@@ -1,0 +1,2 @@
+#include "Staging.xcconfig"
+CAPACITOR_DEBUG = true
