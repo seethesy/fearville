@@ -1,5 +1,15 @@
 # Trust economy
 
+Tune `lib/trust/config.ts`: finish 20, win +10, night 2 and five distinct
+signed-in player accounts required (host excluded from that count). Host earns
+finish only. Sandbox, abandoned and unfinished games earn nothing. Total earned
+trust is capped at 200 per account per UTC day and 45 per game (30 play + 15
+ratings). Rating bonuses require three eligible distinct raters: 4 stars earns 5,
+5 stars earns 10, lower ratings earn zero, with a 15 trust rating cap per game.
+Caps use net earned ledger amounts, including corrections; purchases do not
+consume earning caps. There are no retroactive awards for guest seats linked
+after game end. Rewind reverses awards; re-ending begins a new idempotent cycle.
+
 Balances are integer trust. Only the wallet service writes ledger entries; SQL
 triggers atomically validate and apply each entry. The ledger is the immutable
 audit trail. `checkIntegrity(db)` returns wallets whose balance differs from the
