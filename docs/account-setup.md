@@ -50,7 +50,7 @@ Copy callback URLs without spaces or a trailing slash. The Google and Apple path
 ### D. Create the Google client
 
 1. In Google Auth Platform, click **Clients → Create client**.
-2. Choose **Web application** for application type. Name it **Fearville web and iOS backend**.
+2. Choose **Web application** for application type. Name it **Fearville web and mobile backend**.
 3. Leave **Authorized JavaScript origins** empty for this implementation: the backend handles the code exchange. This is not a Google JavaScript SDK integration.
 4. Under **Authorized redirect URIs**, click **Add URI** and paste:
 
@@ -61,7 +61,7 @@ Copy callback URLs without spaces or a trailing slash. The Google and Apple path
 
 [Google's client creation instructions](https://support.google.com/cloud/answer/15549257?hl=en)
 
-For this app, the same confidential web client serves the website and the system-browser sign-in flow on iPhone. A separate Google iOS client is not consumed by the current code. The client secret never goes in Xcode.
+For this app, the same confidential web client serves the website and the system-browser sign-in flow in mobile shells. A separate Google iOS client is not consumed by the current code. The client secret never goes in Xcode.
 
 ## 2. Set up Apple
 
@@ -120,15 +120,13 @@ The domain field has no scheme or path. The return URL includes both. Apple's cu
 
 [Apple's key creation instructions](https://developer.apple.com/help/account/keys/create-a-private-key/)
 
-### E. Match the Xcode project
+### E. Match the iOS shell
 
-1. On your Mac, extract the updated Fearville iOS ZIP and open `Fearville.xcodeproj`.
-2. In the left project navigator, click the blue project icon, then select **Fearville** under **TARGETS**.
-3. Open **Signing & Capabilities**, select your team, and enable automatic signing. Set **Bundle Identifier** to the exact App ID from section A.
-4. Click **+ Capability**, search for **Sign in with Apple**, and add it. [Apple's Xcode guidance](https://developer.apple.com/documentation/xcode/configuring-sign-in-with-apple)
-5. Check the target's **Info** settings or `Fearville/Info.plist`: `FearvilleAPIURL` must be `https://fearville.app`. The updated project already contains this value.
-6. Keep the URL scheme `fearville`. The app uses `fearville://signin` internally to return from its authentication browser. This internal scheme is not the website address, and must not replace Google's or Apple's HTTPS callback.
-7. Build and run on your iPhone. A previously built app must be rebuilt to pick up the new backend address. Follow the separate TestFlight guide for archive/upload steps.
+1. Use the checked-in Capacitor shell at `mobile/ios/App/App.xcodeproj`, following [mobile/README.md](../mobile/README.md). The separate SwiftUI project has been retired.
+2. Match the registered App IDs and Apple Team ID in `mobile/ios/App/Config/Identity.xcconfig`. Staging uses `app.fearville.staging`; Release uses `app.fearville`. Provisioning profiles must include Associated Domains.
+3. The shell build configurations select `https://staging.fearville.app` or `https://fearville.app`; there is no `FearvilleAPIURL` setting. Configure provider callbacks and Worker secrets for each origin.
+4. Google sign-in uses `ASWebAuthenticationSession`, which captures `fearville://signin` without a custom URL Type. Keep the HTTPS provider callbacks above; the internal scheme must never replace them. The web app exchanges the single-use PKCE code at `/api/accounts/exchange`, which sets the WebView cookie.
+5. Native Sign in with Apple is tracked in FEAR-117; signed CI uploads are tracked in FEAR-108. Follow the shell device checks for cancellation, relaunch and account restoration.
 
 ## 3. Install the credentials on Fearville's server
 
@@ -165,10 +163,10 @@ Save that output securely as `AUTH_ENCRYPTION_KEY`. Preserve it: changing it wit
 3. Create a game while signed in, then sign in with the same account on a second device and restore the saved seat.
 4. While signed in, explicitly connect Apple from Account. Sign out, sign back in with Apple, and check that it restores the same account. Matching email addresses alone do not link accounts.
 5. Test Apple Hide My Email, cancellation, and signing in again after the first authorization.
-6. On the rebuilt iPhone app, confirm sign-in returns from the system browser to Fearville.
+6. On the iOS shell, confirm sign-in returns from the system browser to Fearville.
 7. With a disposable account, test account deletion. It deletes that account's hosted games too; messages in another Storyteller's game may remain, as explained by the privacy page.
 
-The automated checks do not replace these real-provider and iPhone checks. No provider credentials have been supplied yet, and the iOS project has not been compiled on this Windows host.
+The automated checks do not replace these real-provider and iPhone checks. Keep real-provider and device evidence on the relevant mobile tickets.
 
 ## If you already followed the old guide
 
@@ -185,5 +183,5 @@ Browsers do not transfer sign-in cookies between these hostnames. If you had a g
 | Google access denied during testing | Correct account/project and Audience settings; add your test account if required. |
 | Apple `invalid_client` | Services ID, Team ID, Key ID and `.p8` belong together; key is associated with the primary App ID. |
 | Apple rejects the return URL | Services ID configuration uses the exact HTTPS Apple callback, not the Google callback or app scheme. |
-| Sign-in finishes but iPhone does not reopen | Use the updated build and retain the registered internal URL scheme. |
+| Sign-in finishes but iPhone does not reopen | Use the updated shell with its ASWebAuthenticationSession callback and native-code exchange. |
 | Provider buttons remain disabled | Credentials must be installed in the deployed server environment and republished; downloading them alone is insufficient. |

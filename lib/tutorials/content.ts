@@ -5,5 +5,4 @@ export {
   tutorial,
   isTutorialId,
   sectionTutorial,
-  IOS_SYMBOLS,
 } from './content/index.ts';

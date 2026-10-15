@@ -1,27 +1,12 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
-import {
-  GLOSSARY,
-  GLOSSARY_FORMS,
-  glossarySegments,
-} from '../lib/game/glossary.ts';
+import { GLOSSARY, glossarySegments } from '../lib/game/glossary.ts';
 
 void test('glossary defines the six key terms', () => {
   assert.deepEqual(
     GLOSSARY.map((t) => t.term),
     ['Fear', 'Visit', 'Save', 'Learn', 'Declare', 'Neighbor'],
   );
-});
-
-void test('the iPhone glossary matches the web glossary', () => {
-  const native = JSON.parse(
-    readFileSync(
-      new URL('../ios/Fearville/glossary.json', import.meta.url),
-      'utf8',
-    ),
-  );
-  assert.deepEqual(native, { terms: GLOSSARY, forms: GLOSSARY_FORMS });
 });
 
 void test('only the first form of each term links, case insensitively', () => {
