@@ -1,0 +1,9 @@
+# Puzzle Rush
+
+Open Play → Puzzle Rush while signed in. The `/puzzle-rush` screen and `/api/puzzle-rush` generator require an account. The API authenticates before generation, rate-limits requests, and returns a fresh normal puzzle; it never creates a table or writes game/social results. Moves, results and elapsed time stay in memory. Quitting/reloading discards the run. Difficulty selection and persistent stats belong to FEAR-171/172.
+
+Choose Escape, Sphinx, Laboratory or Mixed. Each run is one untimed puzzle. Elapsed time remains visible, including time spent in the background, and freezes on completion or Give up. Retry starts the same original puzzle with zero moves and a fresh stopwatch; Next draws another puzzle from the chosen mode. A failed generation leaves the previous result available and shows an error. Ritual of Divination is excluded.
+
+Escape reuses the slide controls and art, with Pass removed. Sphinx shows all twelve truthful clues immediately, with no forged cards or staged night reveals. Incorrect answers can be tried again. Laboratory is standard water sort: immediate direct pours, no votes/timers/turns, direct undo and restart. Full monochrome or empty tubes are required to finish. Existing Night Rite behavior is unchanged; shared components receive an optional `solo` prop.
+
+Test review: verify sign-in and expired sessions, selection/mixed flow, all three puzzle controls at 390px width, drag and keyboard Escape controls, lab undo/restart, invalid-move red feedback, Sphinx wrong/right answers, and frozen result time. Verify in Safari/Chrome and the Capacitor web shells; native builds are not required by this change. Unit tests cover runtime legality, immutable state, standard water-sort completion, no timers/turns/votes, retry, failure and generated clue uniqueness. Browser/native interaction checks remain part of In Test.
