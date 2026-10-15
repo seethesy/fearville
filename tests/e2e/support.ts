@@ -199,6 +199,7 @@ export async function signedIn(context: BrowserContext, name = 'E2E Host') {
       domain: url.hostname,
       path: '/',
       httpOnly: true,
+      secure: true,
       sameSite: 'Lax',
     },
   ]);

@@ -14,6 +14,8 @@ export default defineConfig({
   reporter: process.env.CI ? [['list'], ['github']] : 'list',
   use: {
     baseURL: process.env.E2E_BASE_URL,
+    // The local server's self-signed certificate (see scripts/run-e2e.mjs).
+    ignoreHTTPSErrors: true,
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
     video: 'off',

@@ -57,6 +57,7 @@ test('lobby to day vote in shell mode', async ({
     const context = await browser.newContext({
       ...device,
       baseURL: process.env.E2E_BASE_URL,
+      ignoreHTTPSErrors: true,
     });
     await fakeShell(context, platform);
     return context;
@@ -72,7 +73,10 @@ test('lobby to day vote in shell mode', async ({
   );
   const code: string = created.code;
   const api = () =>
-    playwright.request.newContext({ baseURL: process.env.E2E_BASE_URL });
+    playwright.request.newContext({
+      baseURL: process.env.E2E_BASE_URL,
+      ignoreHTTPSErrors: true,
+    });
   const host = seat(await api(), created.token);
 
   // Two players with shell pages; five more join over HTTP only.

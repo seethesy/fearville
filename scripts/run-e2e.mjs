@@ -18,6 +18,7 @@ import {
   writeFileSync,
 } from 'node:fs';
 import http from 'node:http';
+import https from 'node:https';
 import net from 'node:net';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -76,7 +77,9 @@ quiet(
 // The compiled site with its assets, as `npm start` serves it. Dummy Google
 // client values only enable the sign-in buttons; the test never reaches Google.
 const port = await freePort();
-const base = `http://127.0.0.1:${port}`;
+// HTTPS like production: the account cookie is Secure, and WebKit drops
+// Secure cookies on plain http (wrangler serves a self-signed certificate).
+const base = `https://127.0.0.1:${port}`;
 let serverLog = '';
 const server = spawn(
   process.execPath,
@@ -94,6 +97,8 @@ const server = spawn(
     '--show-interactive-dev-session=false',
     '--log-level',
     'warn',
+    '--local-protocol',
+    'https',
     '--var',
     'GOOGLE_CLIENT_ID:e2e-client',
     '--var',
@@ -149,14 +154,20 @@ process.on('SIGTERM', () => process.exit(143));
 
 const deadline = Date.now() + 90_000;
 for (;;) {
-  try {
-    const r = await fetch(base + '/api/health', {
-      signal: AbortSignal.timeout(2000),
-    });
-    if (r.ok) break;
-  } catch {
-    /* starting */
-  }
+  // The local self-signed certificate is trusted for this loopback check only.
+  const ready = await new Promise((resolve) => {
+    const request = https.get(
+      base + '/api/health',
+      { rejectUnauthorized: false, timeout: 2000 },
+      (response) => {
+        response.resume();
+        resolve(response.statusCode === 200);
+      },
+    );
+    request.on('error', () => resolve(false));
+    request.on('timeout', () => request.destroy());
+  });
+  if (ready) break;
   if (server.exitCode !== null || Date.now() > deadline) {
     writeFileSync(path.join(logDir, 'server.log'), serverLog);
     console.log(
