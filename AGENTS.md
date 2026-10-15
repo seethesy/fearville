@@ -66,7 +66,8 @@ The separate SwiftUI client was retired in FEAR-97. Android shell work is FEAR-9
 - One Git branch per Jira ticket: `FEAR-<key>-short-name`, branched from `main`. Open a PR; don't commit to `main`.
 - **Never deploy, never run mobile builds (`xcodebuild`, Gradle), never edit secret values or credential files.** Non-secret `.env.example` documentation may be updated for a ticket.
 - Migrations are additive only (new tables, nullable columns). A destructive change needs two releases; see [docs/deploy.md](docs/deploy.md).
-- API and view-model changes are additive: add optional fields; never rename or remove a field in the same release.
+- API and view-model changes are additive: add optional fields; never rename or remove a field in the same release. Remove a field or endpoint only after the minimum app build (admin console → Remote switches → App builds) is raised past every shell that used it; check `clients` in the console first (FEAR-120).
+- Native features only through `lib/native/bridge.ts` wrappers, which check `capabilities` and always fall back; never touch `window.FearvilleNative` or Capacitor elsewhere (`tests/compat.test.ts` enforces this).
 - **Hidden information** (roles, alignments, night actions, notes, private messages, tokens) never goes into another player's view, push payloads, logs, or error reports. `lib/game/view.ts` builds each player's view.
 - Rate-limit new write endpoints with `limited()` from `lib/game/store.ts`.
 - Generated files carry a `GENERATED` header. Regenerate them; never hand-edit.

@@ -29,6 +29,8 @@ export type ConnectionOptions = {
   status: (open: boolean) => void;
   phase?: (phase: ConnectionPhase) => void;
   version?: () => number;
+  /** FEAR-120: X-Fearville-Client value, sent in the hello frame. */
+  client?: () => string;
   random?: () => number;
   setTimer?: typeof setTimeout;
   clearTimer?: typeof clearTimeout;
@@ -125,6 +127,7 @@ export class TableConnection {
           JSON.stringify({
             type: 'hello',
             lastVersion: Math.max(this.version, this.options.version?.() ?? 0),
+            ...(this.options.client ? { client: this.options.client() } : {}),
           }),
         );
       } catch {

@@ -9,6 +9,7 @@ import { AccountProvider } from '@/components/hub/account-context';
 import { TutorialProvider } from '@/components/tutorials/provider';
 import { NativeShell } from '@/components/native-shell';
 import { MaintenanceBanner } from '@/components/remote-switches';
+import { UpdateGate } from '@/components/update-required';
 import { currentEnvironment } from '@/lib/runtime/environment';
 export const viewport: Viewport = {
   width: 'device-width',
@@ -38,6 +39,7 @@ export default function RootLayout({
       <body>
         <NativeShell />
         <MaintenanceBanner />
+        <UpdateGate />
         {currentEnvironment() === 'staging' && (
           <div className="staging-banner" role="note">
             STAGING · TEST DATA

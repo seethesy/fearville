@@ -5,6 +5,7 @@ import {
   type ConnectionPhase,
 } from '@/lib/game/socket-client';
 import { onLifecycle } from '@/lib/native/bridge';
+import { currentClientHeader } from '@/lib/compat/client';
 import type { ViewEnvelope } from '@/lib/game/socket-protocol';
 import type { GameView } from '@/lib/game/view';
 import type { ActionTiming } from '@/lib/game/action-timing';
@@ -102,11 +103,14 @@ export function useTableSocket({
       status: setConnected,
       phase: setPhase,
       version: () => lastVersion.current,
+      client: currentClientHeader,
       connect: () => {
         const url = new URL('/api/table/socket', location.href);
         url.protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
         url.searchParams.set('code', code!);
         if (pov && pov !== 'host') url.searchParams.set('pov', pov);
+        // Browsers can't set headers on a WebSocket; the gate reads this.
+        url.searchParams.set('client', currentClientHeader());
         return new WebSocket(url);
       },
     });

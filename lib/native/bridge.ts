@@ -29,6 +29,8 @@ type NativeHost = {
   version: number;
   capabilities: string[];
   call(method: string, args?: Record<string, unknown>): Promise<unknown>;
+  /** FEAR-120: the installed app, when the shell knows it (optional). */
+  app?: { platform?: string; version?: string; build?: string | number };
 };
 
 export const NATIVE_EVENT = 'fearville:native';
@@ -56,6 +58,30 @@ export function capabilities(): Capability[] {
   return Array.isArray(list)
     ? (list.filter((c) => typeof c === 'string') as Capability[])
     : [];
+}
+
+/**
+ * The installed app (FEAR-120), or null in a browser. Build is 0 when the
+ * shell can't report it yet; such clients are never gated.
+ */
+export function appInfo(): {
+  platform: 'ios' | 'android';
+  version: string;
+  build: number;
+  bridgeVersion: number;
+} | null {
+  const native = host();
+  if (!native) return null;
+  const platform = native.app?.platform;
+  if (platform !== 'ios' && platform !== 'android') return null;
+  const version = String(native.app?.version ?? '').replace(/[^\w.+-]/g, '');
+  const build = Number(native.app?.build);
+  return {
+    platform,
+    version: version.slice(0, 40) || 'unknown',
+    build: Number.isSafeInteger(build) && build > 0 ? build : 0,
+    bridgeVersion: bridgeVersion(),
+  };
 }
 
 export function hasCapability(capability: Capability) {

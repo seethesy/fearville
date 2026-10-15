@@ -32,6 +32,12 @@ export const COMMANDS: CommandSpec[] = [
   },
   { name: 'help', description: 'List commands and usage.', args: [] },
   {
+    name: 'clients',
+    description:
+      'Client versions per day (account loads), newest first; days defaults to 7.',
+    args: [{ name: 'days', type: 'integer', optional: true, max: 90 }],
+  },
+  {
     name: 'inspect',
     description:
       'Inspect an account by username or ID. Guests have no account.',
