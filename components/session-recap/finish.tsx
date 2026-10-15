@@ -12,7 +12,7 @@ import {
   DialogDescription,
 } from '../ui/dialog';
 import { gameDuration, roleColor } from './shared.tsx';
-import {GameTrustReward} from '../game-trust-reward';
+import { GameTrustReward } from '../game-trust-reward';
 export function GameEndPopup({
   game,
   refresh,
