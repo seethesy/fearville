@@ -2,12 +2,10 @@
 import {
   createContext,
   useContext,
-  useEffect,
   type ReactNode,
   type CSSProperties,
 } from 'react';
 import { useAccount } from './hub/account-context';
-import { ambientAudio } from './hub/audio';
 
 const EffectsContext = createContext(true);
 export function useCosmeticMotion() {
@@ -24,16 +22,6 @@ export function TableAtmosphere({
 }) {
   const { preferences } = useAccount();
   const motion = !preferences.reducedMotion;
-  useEffect(() => {
-    const start = () => ambientAudio(true);
-    document.addEventListener('pointerdown', start, { once: true });
-    document.addEventListener('keydown', start, { once: true });
-    return () => {
-      document.removeEventListener('pointerdown', start);
-      document.removeEventListener('keydown', start);
-      ambientAudio(false);
-    };
-  }, []);
   return (
     <EffectsContext.Provider value={motion}>
       <div className={`cosmetic-table ${motion ? '' : 'cosmetic-motion-off'}`}>

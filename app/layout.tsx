@@ -8,6 +8,7 @@ import { AccountBoundary } from '@/components/admin/boundary';
 import { AccountProvider } from '@/components/hub/account-context';
 import { TutorialProvider } from '@/components/tutorials/provider';
 import { NativeShell } from '@/components/native-shell';
+import { AudioProvider } from '@/components/hub/audio-provider';
 import { MaintenanceBanner } from '@/components/remote-switches';
 import { UpdateGate } from '@/components/update-required';
 import { StaleReload } from '@/components/stale-reload';
@@ -48,6 +49,7 @@ export default function RootLayout({
           </div>
         )}
         <AccountProvider>
+          <AudioProvider />
           <TextProvider>
             <AccountBoundary>
               <TutorialProvider>{children}</TutorialProvider>
