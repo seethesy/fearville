@@ -1,12 +1,5 @@
 import { randomBytes, createHash } from 'node:crypto';
-import { appendFileSync } from 'node:fs';
 import { remoteQuery } from './remote-database.mjs';
-import {
-  APP_IDS,
-  ASSOCIATION_PATH,
-  associationProblems,
-  fetchAssociation,
-} from './app-links.mjs';
 const environment = process.env.DEPLOY_ENVIRONMENT;
 const sha = process.env.DEPLOY_SHA;
 if (
@@ -46,35 +39,6 @@ if (!healthy)
   throw Error(
     'Health check did not reach the expected deployed SHA and environment.',
   );
-// FEAR-197: Universal Links. Apple caches a bad association, so check the
-// live response (no redirect following) for this environment's app ID.
-const host = new URL(base).hostname;
-let association;
-for (let attempt = 0; attempt < 3; attempt++) {
-  try {
-    association = await fetchAssociation(
-      (url, init) =>
-        fetch(url, { ...init, signal: AbortSignal.timeout(10000) }),
-      base + ASSOCIATION_PATH,
-    );
-    break;
-  } catch {
-    await new Promise((resolve) => setTimeout(resolve, 3000));
-  }
-}
-const linkProblems = association
-  ? associationProblems(association, APP_IDS[host])
-  : ['association request failed'];
-if (process.env.GITHUB_STEP_SUMMARY)
-  appendFileSync(
-    process.env.GITHUB_STEP_SUMMARY,
-    `Universal Links (${ASSOCIATION_PATH}, ${APP_IDS[host]}): ${
-      linkProblems.length ? 'FAILED: ' + linkProblems.join('; ') : 'passed'
-    }\n`,
-  );
-if (linkProblems.length)
-  throw Error('App link association check failed: ' + linkProblems.join('; '));
-// FEAR-95 (Android): check /.well-known/assetlinks.json here once it lands.
 const prefix = 'release-smoke-' + randomBytes(8).toString('hex');
 const accounts = [prefix + '-host', prefix + '-player'];
 const tokens = accounts.map(() => randomBytes(32).toString('base64url'));
@@ -135,7 +99,7 @@ try {
     name: 'Release smoke player',
   });
   console.log(
-    `PASS: ${environment} health, app link association, sandbox create/resume and multiplayer create/join for ${sha}.`,
+    `PASS: ${environment} health, sandbox create/resume and multiplayer create/join for ${sha}.`,
   );
 } finally {
   await remoteQuery(

@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<!-- Placeholder rating badge 2000 (FEAR-133), from scripts/generate-rating-badges.mjs. Replace this file with the final art; keep the name and the 100x100 viewBox. -->
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
-<polygon points="50.00,6.00 94.00,50.00 50.00,94.00 6.00,50.00" fill="#8c5f36" stroke="#1a1416" stroke-width="3" stroke-linejoin="round"/>
-<circle cx="50" cy="50" r="24" fill="none" stroke="#f5efe2" stroke-width="1.5" opacity="0.8"/><circle cx="50.00" cy="17.00" r="3" fill="#f5efe2"/><circle cx="50.00" cy="83.00" r="3" fill="#f5efe2"/>
-<text x="50" y="58" text-anchor="middle" font-family="Georgia, serif" font-size="24" font-weight="700" fill="#f5efe2" stroke="#1a1416" stroke-width="0.8">2K</text>
-</svg>

@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<!-- Placeholder rating badge 7000 (FEAR-133), from scripts/generate-rating-badges.mjs. Replace this file with the final art; keep the name and the 100x100 viewBox. -->
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
-<polygon points="50.00,6.00 78.28,16.29 93.33,42.36 88.11,72.00 65.05,91.35 34.95,91.35 11.89,72.00 6.67,42.36 21.72,16.29" fill="#c9a227" stroke="#1a1416" stroke-width="3" stroke-linejoin="round"/>
-<circle cx="50" cy="50" r="24" fill="none" stroke="#f5efe2" stroke-width="1.5" opacity="0.8"/><circle cx="50" cy="50" r="20" fill="none" stroke="#f5efe2" stroke-width="1.5" opacity="0.8"/><circle cx="50" cy="50" r="16" fill="none" stroke="#f5efe2" stroke-width="1.5" opacity="0.8"/><circle cx="50.00" cy="17.00" r="3" fill="#f5efe2"/><circle cx="75.80" cy="29.42" r="3" fill="#f5efe2"/><circle cx="82.17" cy="57.34" r="3" fill="#f5efe2"/><circle cx="64.32" cy="79.73" r="3" fill="#f5efe2"/><circle cx="35.68" cy="79.73" r="3" fill="#f5efe2"/><circle cx="17.83" cy="57.34" r="3" fill="#f5efe2"/><circle cx="24.20" cy="29.42" r="3" fill="#f5efe2"/>
-<text x="50" y="58" text-anchor="middle" font-family="Georgia, serif" font-size="24" font-weight="700" fill="#f5efe2" stroke="#1a1416" stroke-width="0.8">7K</text>
-</svg>

@@ -1,11 +1,5 @@
 import { rng, shuffle } from './random.ts';
 import type { Vial, LabState } from './types.ts';
-import {
-  GENERATOR_STYLE as style,
-  PUZZLE_PRESETS,
-  DEFAULT_PRESET,
-  type PuzzlePreset,
-} from './generator-config.ts';
 export type Pour = { from: string; to: string };
 export function pour(vials: Vial[], move: Pour): Vial[] | null {
   const from = vials.find((v) => v.id === move.from),
@@ -47,7 +41,7 @@ function heuristic(state: string[]) {
 }
 export function solveLab(
   vials: Vial[],
-  cap: number = style.lab.solverCap,
+  cap = 60000,
   deadline = Infinity,
 ): Pour[] | null | undefined {
   // A* with an admissible boundary heuristic. Canonical keys (sorted vial
@@ -144,42 +138,38 @@ export function solveLab(
 }
 // Every vigil, whatever its size, gets a hard laboratory: ten liquids in
 // twelve vials, certified at 28-32 pours by an optimal solver.
-export const LAB_COLORS = PUZZLE_PRESETS.normal.lab.colors;
-export const LAB_EMPTY = PUZZLE_PRESETS.normal.lab.empty;
-export const LAB_PAR = PUZZLE_PRESETS.normal.lab.par;
+export const LAB_COLORS = 10;
+export const LAB_EMPTY = 2;
+export const LAB_PAR = [28, 32] as const;
 export function labCandidate(
   seed: string,
   _members: number,
   attempt: number,
-  preset: PuzzlePreset = DEFAULT_PRESET,
 ): LabState | null {
-  const { colors, empty, par } = PUZZLE_PRESETS[preset].lab;
   const random = rng(`${seed}:${attempt}`);
   const units = shuffle(
-    Array.from({ length: colors * style.lab.layers }, (_, i) =>
-      Math.floor(i / style.lab.layers),
-    ),
+    Array.from({ length: LAB_COLORS * 4 }, (_, i) => i >> 2),
     random,
   );
-  let vials: Vial[] = Array.from({ length: colors + empty }, (_, i) => ({
-    id: `v${i}`,
-    shape: Math.floor(random() * style.lab.shapes),
-    layers:
-      i < colors
-        ? units.slice(i * style.lab.layers, (i + 1) * style.lab.layers)
-        : [],
-  }));
-  const solution = solveLab(vials, style.lab.certificationCap);
-  if (!solution || solution.length < par[0]) return null;
+  let vials: Vial[] = Array.from(
+    { length: LAB_COLORS + LAB_EMPTY },
+    (_, i) => ({
+      id: `v${i}`,
+      shape: Math.floor(random() * 7),
+      layers: i < LAB_COLORS ? units.slice(i * 4, i * 4 + 4) : [],
+    }),
+  );
+  const solution = solveLab(vials, 120000);
+  if (!solution || solution.length < LAB_PAR[0]) return null;
   // Playing the first optimal pours leaves a position exactly `target` away.
   const target = Math.min(
     solution.length,
-    par[0] + Math.floor(random() * (par[1] - par[0] + 1)),
+    LAB_PAR[0] + Math.floor(random() * (LAB_PAR[1] - LAB_PAR[0] + 1)),
   );
   for (const move of solution.slice(0, solution.length - target))
     vials = pour(vials, move)!;
   const palette = shuffle(
-    Array.from({ length: colors }, (_, i) => i),
+    Array.from({ length: LAB_COLORS }, (_, i) => i),
     rng(`${seed}:palette`),
   );
   vials = vials.map((v) => ({
@@ -197,13 +187,9 @@ export function labCandidate(
     history: [],
   };
 }
-export function generateLab(
-  seed: string,
-  members: number,
-  preset: PuzzlePreset = DEFAULT_PRESET,
-): LabState {
-  for (let attempt = 0; attempt < style.lab.maxAttempts; attempt++) {
-    const candidate = labCandidate(seed, members, attempt, preset);
+export function generateLab(seed: string, members: number): LabState {
+  for (let attempt = 0; attempt < 20000; attempt++) {
+    const candidate = labCandidate(seed, members, attempt);
     if (candidate) return candidate;
   }
   throw Error(

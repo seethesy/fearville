@@ -1,11 +1,5 @@
 import { rng, shuffle } from './random.ts';
 import type { Altar, ControlName, RitualState, Page } from './types.ts';
-import {
-  GENERATOR_STYLE,
-  PUZZLE_PRESETS,
-  DEFAULT_PRESET,
-  type PuzzlePreset,
-} from './generator-config.ts';
 export const CONTROL_COUNTS: Record<ControlName, number> = {
   candles: 8,
   offerings: 6,
@@ -34,7 +28,12 @@ export const OFFERINGS = [
 // Symbols come in look-alike pairs (0/1, 2/3, 4/5, 6/7). An omen never shows
 // both members of a pair, so it can't contain a skull and a skull and
 // crossbones together: each omen takes one symbol from three different pairs.
-export const SYMBOL_PAIRS = GENERATOR_STYLE.ritual.symbolPairs;
+export const SYMBOL_PAIRS = [
+  [0, 1],
+  [2, 3],
+  [4, 5],
+  [6, 7],
+];
 export function omenSets(): number[][] {
   const sets: number[][] = [];
   for (let skip = SYMBOL_PAIRS.length - 1; skip >= 0; skip--) {
@@ -62,7 +61,6 @@ export function generateRitual(
   seed: string,
   members: string[],
   evil: string[],
-  preset: PuzzlePreset = DEFAULT_PRESET,
 ): RitualState {
   if (members.length !== 3)
     throw Error('Divination needs exactly three players.');
@@ -80,10 +78,7 @@ export function generateRitual(
   const order = shuffle(members, random);
   const rituals = Object.fromEntries(
     order.map((performer, k) => {
-      const chosen = shuffle(controls, random).slice(
-        0,
-        PUZZLE_PRESETS[preset].ritual.omenCount,
-      );
+      const chosen = shuffle(controls, random).slice(0, 3);
       const target = chosen.map((control) => ({
         control,
         value: Math.floor(random() * CONTROL_COUNTS[control]),
@@ -131,8 +126,8 @@ export function validAltar(
 ): value is Altar {
   return (
     Array.isArray(value) &&
-    value.length === controls.length &&
-    new Set(value.map((v) => v?.control)).size === controls.length &&
+    value.length === 3 &&
+    new Set(value.map((v) => v?.control)).size === 3 &&
     value.every(
       (v) =>
         controls.includes(v?.control) &&

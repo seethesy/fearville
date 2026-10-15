@@ -182,11 +182,6 @@ export default function Home() {
           <section className="panel play-card">
             <p className="eyebrow">PLAY FEARVILLE</p>
             <div className="mode-stack">
-              <AppLink className="mode-button" href="/puzzle-rush">
-                <WandSparkles size={24} />
-                <span>Puzzle Rush</span>
-                <ArrowRight size={20} />
-              </AppLink>
               {[
                 { name: 'Standard', Icon: PlayIcon },
                 { name: 'Quickplay', Icon: Swords },

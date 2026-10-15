@@ -1,12 +1,6 @@
 import { rng } from './random.ts';
 import type { Block, BoardState } from './types.ts';
 import { BOARD_LAYOUTS } from './board-layouts.ts';
-import {
-  GENERATOR_STYLE as style,
-  PUZZLE_PRESETS,
-  DEFAULT_PRESET,
-  type PuzzlePreset,
-} from './generator-config.ts';
 export type Slide = { block: string; x: number; y: number };
 export function slide(blocks: Block[], move: Slide): Block[] | null {
   const b = blocks.find((b) => b.id === move.block);
@@ -51,7 +45,7 @@ export function boardMoves(blocks: Block[]) {
 }
 export function solveBoard(
   blocks: Block[],
-  cap: number = style.board.solverCap,
+  cap = 100000,
   deadline = Infinity,
 ): Slide[] | null | undefined {
   const start = blocks
@@ -104,13 +98,10 @@ export function solveBoard(
   }
   return null;
 }
-export const BOARD_PAR = PUZZLE_PRESETS.normal.board.par;
+export const BOARD_PAR = [28, 32] as const;
 type Field = { states: string[]; dist: Int16Array };
 // Every position reachable from `blocks`, with its optimal distance to escape.
-export function boardField(
-  blocks: Block[],
-  cap: number = style.board.fieldCap,
-): Field | null {
+export function boardField(blocks: Block[], cap = 40000): Field | null {
   const start = blocks
     .map((b) => String.fromCharCode(48 + (b.horiz ? b.x : b.y)))
     .join('');
@@ -172,16 +163,17 @@ export function boardField(
   }
   return { states, dist };
 }
-const SKINS = style.board.skins;
+const SKINS = {
+  2: ['wood', 'crates', 'car'],
+  3: ['tree', 'brick', 'coach'],
+} as const;
 export function boardCandidate(
   seed: string,
   _members: number,
   attempt: number,
-  preset: PuzzlePreset = DEFAULT_PRESET,
 ): BoardState | null {
   // Every vigil, whatever its size, gets a hard board: a position 28-32
   // optimal slides from escape, drawn from a certified seed layout's cluster.
-  const par = PUZZLE_PRESETS[preset].board.par;
   const random = rng(`${seed}:${attempt}`);
   const layout =
     BOARD_LAYOUTS[Math.floor(random() * BOARD_LAYOUTS.length)].split(' ');
@@ -209,10 +201,10 @@ export function boardCandidate(
   const field = boardField(base);
   if (!field) return null;
   const deepest = Math.max(...field.dist);
-  if (deepest < par[0]) return null;
+  if (deepest < BOARD_PAR[0]) return null;
   const target = Math.min(
     deepest,
-    par[0] + Math.floor(random() * (par[1] - par[0] + 1)),
+    BOARD_PAR[0] + Math.floor(random() * (BOARD_PAR[1] - BOARD_PAR[0] + 1)),
   );
   const starts = field.states.filter((_, i) => field.dist[i] === target);
   const start = starts[Math.floor(random() * starts.length)];
@@ -229,13 +221,9 @@ export function boardCandidate(
     solved: false,
   };
 }
-export function generateBoard(
-  seed: string,
-  members: number,
-  preset: PuzzlePreset = DEFAULT_PRESET,
-): BoardState {
-  for (let attempt = 0; attempt < style.board.maxAttempts; attempt++) {
-    const candidate = boardCandidate(seed, members, attempt, preset);
+export function generateBoard(seed: string, members: number): BoardState {
+  for (let attempt = 0; attempt < 20000; attempt++) {
+    const candidate = boardCandidate(seed, members, attempt);
     if (candidate) return candidate;
   }
   throw Error(

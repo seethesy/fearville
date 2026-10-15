@@ -7,12 +7,10 @@ export function Laboratory({
   puzzle,
   send,
   busy,
-  solo = false,
 }: {
   puzzle: RitePuzzleView;
   send: Send;
   busy: boolean;
-  solo?: boolean;
 }) {
   const [from, setFrom] = useState(''),
     [sheet, setSheet] = useState(false),
@@ -29,7 +27,6 @@ export function Laboratory({
             className={'vial ' + (from === v.id ? 'selected' : '')}
             key={v.id}
             aria-pressed={from === v.id}
-            aria-label={`Vial ${v.id}${from === v.id ? ', selected' : ''}`}
             disabled={!active}
             onClick={() => {
               if (from && from !== v.id) {
@@ -46,21 +43,7 @@ export function Laboratory({
         Tap a vial, then tap where to pour it. Match color and substance. Each
         vial holds four units.
       </p>
-      {active && solo && (
-        <div className="rite-buttons">
-          <button
-            className="secondary"
-            disabled={!puzzle.canUndo}
-            onClick={() => call('undo')}
-          >
-            Undo pour
-          </button>
-          <button className="secondary" onClick={() => call('reset')}>
-            Restart puzzle
-          </button>
-        </div>
-      )}
-      {active && !solo && (
+      {active && (
         <div className="rite-buttons">
           <button className="secondary" onClick={() => setSheet(true)}>
             Undo / Reset
@@ -73,7 +56,7 @@ export function Laboratory({
           </button>
         </div>
       )}
-      {sheet && !solo && (
+      {sheet && (
         <dialog open className="rite-vote-sheet" aria-label="Call a vote">
           <h3>Call a vote</h3>
           <button

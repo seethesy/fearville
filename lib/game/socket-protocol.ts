@@ -36,8 +36,6 @@ export type ViewEnvelope = {
   type: 'view';
   version: number;
   serverNow: number;
-  /** FEAR-121: protocol version; a mismatch means the page must reload. */
-  apiVersion?: number;
   data: GameView;
   cause?: string;
   committedAt?: number;
@@ -64,24 +62,6 @@ export function parseViewEnvelope(
     )
       return null;
     return value;
-  } catch {
-    return null;
-  }
-}
-/** FEAR-121: the server's first frame on every socket. */
-export type HelloEnvelope = {
-  type: 'hello';
-  buildId: string;
-  apiVersion: number;
-};
-export function parseHello(raw: string): HelloEnvelope | null {
-  try {
-    const value = JSON.parse(raw) as HelloEnvelope;
-    return value?.type === 'hello' &&
-      typeof value.buildId === 'string' &&
-      Number.isInteger(value.apiVersion)
-      ? value
-      : null;
   } catch {
     return null;
   }

@@ -1,5 +1,4 @@
 import type { Triple, Fact } from '../types.ts';
-import { GENERATOR_STYLE } from '../generator-config.ts';
 export const CHARACTERS = [
   'Watchman',
   'Doctor',
@@ -16,7 +15,7 @@ export const ACTIVITIES = [
   'Shopping',
   'Sleeping',
 ];
-export const CLUES_PER_PLAYER = GENERATOR_STYLE.grid.cluesPerPlayer;
+export const CLUES_PER_PLAYER = 4;
 export const names = {
   character: CHARACTERS,
   location: LOCATIONS,

@@ -1,4 +1,3 @@
-import { GENERATOR_STYLE } from '../generator-config.ts';
 import { shuffle } from '../random.ts';
 import type { Ent, Logic } from '../types.ts';
 import { type World, compile, bits, popcount } from './solver.ts';
@@ -234,7 +233,22 @@ export const MAKERS: Record<string, (r: R, w: World) => Made | null> = {
   },
 };
 // Relative frequency of each clue pattern in hard riddles.
-export const WEIGHTS: Record<string, number> = GENERATOR_STYLE.grid.weights;
+export const WEIGHTS: Record<string, number> = {
+  direct: 0.25,
+  negative: 0.8,
+  eitherOr: 1,
+  oneOfThree: 0.8,
+  neitherNor: 0.9,
+  exclusivePair: 1.1,
+  setMembership: 1,
+  threeWay: 0.8,
+  crossCategory: 0.9,
+  compound: 0.6,
+  exclusiveOr: 0.8,
+  conditional: 0.55,
+  relational: 2,
+  street: 0.6,
+};
 export const TOTAL = Object.values(WEIGHTS).reduce((a, b) => a + b);
 export function randomMaker(r: R) {
   let x = r() * TOTAL;

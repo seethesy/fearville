@@ -26,9 +26,3 @@ owner bypass token in a shell. APIs enforce account and per-seat credentials.
 System-browser sign-in returns a single-use PKCE code; `native_codes` and
 `/api/accounts/exchange` remain required, and the exchange sets the WebView's
 HttpOnly `ct_account` cookie.
-
-## Version compatibility (FEAR-120)
-
-- The web layer sends `X-Fearville-Client` on every same-origin request (`lib/compat/client.ts`): `ios/<version>/<build>/<bridge>` or `android/…` inside a shell (from the Capacitor App plugin, so existing shells report it with no native change), `web/<buildId>` in browsers. The table socket sends it as the `client` query parameter and in its `hello` frame.
-- Admin console → **Remote switches → App builds** sets the minimum and recommended build per platform, plus an optional update link. Below the minimum, every API call except `/api/flags` and `/api/health` returns `426 { updateUrl }` and the app shows a full-screen **Update required**. Below the recommended build, responses carry `X-Fearville-Update: recommended` and the app shows a dismissible banner. Shells that haven't reported a build yet, browsers and unknown clients are never gated.
-- Before raising the minimum, run `clients` in the developer console: daily counts per client version (counted on account loads).

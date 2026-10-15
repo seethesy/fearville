@@ -1,8 +1,4 @@
 'use client';
-import {
-  canSignInNatively,
-  signInNatively,
-} from '@/lib/accounts/native-signin';
 import AppLink from '@/components/app-link';
 import { useEffect, useState } from 'react';
 import type { ProfileDefaults } from '@/lib/accounts/preferences';
@@ -57,12 +53,6 @@ export function AccountPanel({ compact = false }: { compact?: boolean }) {
     setBusy(true);
     setError('');
     try {
-      // App shells: the system sign-in sheet, then reload signed in.
-      if (canSignInNatively()) {
-        if (await signInNatively(provider, !!state?.account)) location.reload();
-        else setBusy(false);
-        return;
-      }
       const response = await fetch('/api/accounts/start', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

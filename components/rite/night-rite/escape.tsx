@@ -7,12 +7,10 @@ export function Escape({
   puzzle,
   send,
   busy,
-  solo = false,
 }: {
   puzzle: RitePuzzleView;
   send: Send;
   busy: boolean;
-  solo?: boolean;
 }) {
   const [selected, setSelected] = useState('');
   const board = useRef<HTMLDivElement>(null),
@@ -100,7 +98,7 @@ export function Escape({
           ))}
         </div>
       )}
-      {active && !solo && (
+      {active && (
         <button
           className="secondary"
           disabled={busy}

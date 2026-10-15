@@ -9,7 +9,7 @@ import {
   actionID,
   normalizeCommand,
 } from '../socket-protocol';
-import { serverBuildId } from '../../runtime/server-build';
+import { BUILD_ID } from '../../runtime/build';
 import { allowlisted } from '../../admin/policy';
 import { adminAllowlist } from '../../admin/access';
 import type { Actor, Game } from '../types';
@@ -121,7 +121,6 @@ export async function broadcastMethod(
           type: 'view',
           version,
           serverNow: now,
-          apiVersion: TABLE_API_VERSION,
           data,
           ...(cause ? { cause } : {}),
           ...(committedAt !== undefined ? { committedAt } : {}),
@@ -166,7 +165,7 @@ export function fetchMethod(this: TableContext, r: Request) {
       server.send(
         JSON.stringify({
           type: 'hello',
-          buildId: serverBuildId(),
+          buildId: BUILD_ID,
           apiVersion: TABLE_API_VERSION,
         }),
       );
@@ -182,13 +181,7 @@ export function fetchMethod(this: TableContext, r: Request) {
         true,
       );
       server.send(
-        JSON.stringify({
-          type: 'view',
-          version,
-          serverNow: now,
-          apiVersion: TABLE_API_VERSION,
-          data,
-        }),
+        JSON.stringify({ type: 'view', version, serverNow: now, data }),
       );
       server.serializeAttachment({
         code,
@@ -248,13 +241,7 @@ export async function webSocketMessageMethod(
           true,
         );
         socket.send(
-          JSON.stringify({
-            type: 'view',
-            version,
-            serverNow: now,
-            apiVersion: TABLE_API_VERSION,
-            data,
-          }),
+          JSON.stringify({ type: 'view', version, serverNow: now, data }),
         );
         socket.serializeAttachment({
           ...seat,

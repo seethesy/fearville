@@ -32,24 +32,6 @@ export const handlers: Record<string, Handler> = {
     })),
   }),
   catalog: async () => ({ statements: [], output: ITEM_CATALOG }),
-  // FEAR-120: who is still on old builds before raising the minimum.
-  clients: async (args) => {
-    const days = Math.max(1, Number(args.days ?? 7));
-    const since = new Date(Date.now() - (days - 1) * 86400000)
-      .toISOString()
-      .slice(0, 10);
-    return {
-      statements: [],
-      output: (
-        await db()
-          .prepare(
-            'SELECT day,client,count FROM client_versions WHERE day>=? ORDER BY day DESC,count DESC LIMIT 500',
-          )
-          .bind(since)
-          .all()
-      ).results,
-    };
-  },
   ...Object.fromEntries(
     [
       'inspect',

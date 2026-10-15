@@ -520,15 +520,3 @@ export const featureFlags = sqliteTable(
   },
   (t) => [primaryKey({ columns: [t.key, t.environment] })],
 );
-
-// FEAR-120: requests per client version per UTC day (counted on account
-// loads), so the minimum build is raised only once old builds are gone.
-export const clientVersions = sqliteTable(
-  'client_versions',
-  {
-    day: text('day').notNull(), // YYYY-MM-DD
-    client: text('client').notNull(), // web | ios/<version>/<build> | …
-    count: integer('count').notNull().default(0),
-  },
-  (t) => [primaryKey({ columns: [t.day, t.client] })],
-);
