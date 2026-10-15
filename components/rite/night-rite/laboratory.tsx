@@ -48,8 +48,16 @@ export function Laboratory({
       </p>
       {active && solo && (
         <div className="rite-buttons">
-          <button className="secondary" disabled={!puzzle.canUndo} onClick={() => call('undo')}>Undo pour</button>
-          <button className="secondary" onClick={() => call('reset')}>Restart puzzle</button>
+          <button
+            className="secondary"
+            disabled={!puzzle.canUndo}
+            onClick={() => call('undo')}
+          >
+            Undo pour
+          </button>
+          <button className="secondary" onClick={() => call('reset')}>
+            Restart puzzle
+          </button>
         </div>
       )}
       {active && !solo && (

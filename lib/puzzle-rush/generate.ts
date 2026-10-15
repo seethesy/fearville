@@ -12,7 +12,11 @@ export function generateRush(kind: RushKind, seed: string): RushPuzzle {
     delete puzzle.turn;
     return puzzle;
   }
-  const puzzle = generateGrid(seed, ['solo','clues-2','clues-3'], [], 0, 0);
-  puzzle.clues = puzzle.clues.map(clue=>({...clue,holder:'solo',revealNight:0}));
+  const puzzle = generateGrid(seed, ['solo', 'clues-2', 'clues-3'], [], 0, 0);
+  puzzle.clues = puzzle.clues.map((clue) => ({
+    ...clue,
+    holder: 'solo',
+    revealNight: 0,
+  }));
   return puzzle;
 }
