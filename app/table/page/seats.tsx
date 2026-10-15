@@ -8,6 +8,8 @@ import { role, scriptRoles } from '@/lib/game/types';
 import { TabsContent } from '@/components/ui/tabs';
 import { TableMembership } from '@/components/table-membership';
 import { type TableContext } from './display.tsx';
+import { useRemoteSwitches } from '@/components/remote-switches';
+import { publicEnabled } from '@/lib/flags/catalog';
 export function TableSeats({
   game,
   refresh,
@@ -38,6 +40,8 @@ export function TableSeats({
   | 'setChatPlayer'
   | 'setActiveTab'
 >) {
+  // FEAR-122: switched-off scripts leave the picker (the server refuses them).
+  const switches = useRemoteSwitches();
   return (
     <TabsContent value="seats" keepMounted>
       {!game.host && (
@@ -66,7 +70,23 @@ export function TableSeats({
               <h2>{game.scriptName}</h2>
               {game.controls
                 .filter((c) => c.action === 'setScript')
-                .map((c) => button(c))}
+                .map((c) =>
+                  button({
+                    ...c,
+                    fields: c.fields?.map((f) =>
+                      f.key === 'script' && f.options
+                        ? {
+                            ...f,
+                            options: f.options.filter(
+                              (o) =>
+                                o.value === f.value ||
+                                publicEnabled(switches, 'script.' + o.value),
+                            ),
+                          }
+                        : f,
+                    ),
+                  }),
+                )}
               <h3>Role distribution</h3>
               <p className="muted">
                 {game.customRoleDistribution

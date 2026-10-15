@@ -4,6 +4,8 @@ import {
   auditLog,
   textHistory,
   editText,
+  flagsOverview,
+  setFlag,
 } from '@/lib/admin/service';
 import { checkOrigin, cookieName, errorResponse, json } from '@/lib/game/store';
 import { memberCookie } from '@/lib/game/join';
@@ -21,6 +23,7 @@ export async function GET(r: Request) {
         ),
       });
     if (params.get('view') === 'browse') return json(browseCatalog());
+    if (params.get('view') === 'switches') return json(await flagsOverview());
     if (params.get('view') === 'history')
       return json({ history: await textHistory(params.get('key') ?? '') });
     return json({ audit: await auditLog(params) });
@@ -36,6 +39,7 @@ export async function POST(r: Request) {
     if (raw.length > 12000) throw Error('Request is too large.');
     const body = JSON.parse(raw);
     if (body.action === 'text') return json(await editText(admin, body));
+    if (body.action === 'switch') return json(await setFlag(admin, body));
     if (body.action === 'browse') {
       const { token, clearTable, ...result } = await browse(admin, body);
       const headers: Record<string, string> = token

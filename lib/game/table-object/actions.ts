@@ -9,6 +9,14 @@ import { prepareProgression } from '../../social/start';
 import { syncResult } from '../../social/results';
 import type { Actor, Command } from '../types';
 import { OBSERVER_READ_ONLY } from '../pov';
+import { readFlags } from '../../flags/flags';
+import { applyStartFlags, enforceKills } from '../../flags/game';
+import {
+  patternEnabled,
+  riteEnabled,
+  scriptEnabled,
+} from '../../flags/catalog';
+import type { Pattern } from '../../rite/types';
 import { type TableContext } from './context.ts';
 export function actionMethod(
   this: TableContext,
@@ -27,8 +35,11 @@ export function actionMethod(
     if (cached) return this.actionReply(code, actor, c, rite, cached);
     try {
       const now = Date.now();
+      const flags = await readFlags();
       const caughtUp = structuredClone(this.game!);
-      if (tick(caughtUp, now)) await this.commit(caughtUp, actor, 'tick', now);
+      const killed = enforceKills(caughtUp, flags, now);
+      if (tick(caughtUp, now) || killed)
+        await this.commit(caughtUp, actor, 'tick', now);
       const g = structuredClone(this.game!),
         version = this.meta!.version;
       const viewer = this.viewer(g, actor, c.pov);
@@ -81,6 +92,25 @@ export function actionMethod(
             : g.history.find((h) => h.id === c.history);
         if (entry) entry.before = this.parts.snapshot(entry.id);
         await loadDecision(g, c);
+      }
+      // FEAR-122: switches are authoritative here, so old clients can't
+      // bypass them; a game captures them when it starts.
+      if (c.action === 'start') applyStartFlags(g, flags, now);
+      if (c.action === 'setScript')
+        requireThat(
+          typeof c.script !== 'string' || scriptEnabled(flags, c.script),
+          'That script is unavailable right now. Choose another script.',
+        );
+      if (c.action === 'configureRite') {
+        const config = c.config as
+          | { enabled?: boolean; patterns?: Pattern[] }
+          | undefined;
+        if (config?.enabled !== false)
+          requireThat(
+            riteEnabled(flags) &&
+              (config?.patterns ?? []).every((p) => patternEnabled(flags, p)),
+            'Some Night Rite puzzles are unavailable right now. Turn them off and save again.',
+          );
       }
       const summary = rite
         ? riteAction(g, viewer, c, now)

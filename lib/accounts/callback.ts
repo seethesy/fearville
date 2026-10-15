@@ -1,3 +1,5 @@
+import { readFlags } from '../flags/flags';
+import { enabled } from '../flags/catalog';
 import { removalPlan } from '@/lib/admin/lobbies';
 import { allowlisted } from '@/lib/admin/policy';
 import { adminAllowlist } from '@/lib/admin/access';
@@ -135,6 +137,9 @@ export async function callback(r: Request, provider: Provider) {
           )
         : null;
     if (!existing) {
+      // FEAR-122: new accounts can be paused; existing sign-ins still work.
+      if (!enabled(await readFlags(), 'signups'))
+        throw Error('New sign-ups are paused right now. Try again later.');
       await db.batch([
         db
           .prepare(
