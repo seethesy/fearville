@@ -87,38 +87,70 @@ export const accounts = sqliteTable(
 );
 export const wallets = sqliteTable('wallets', {
   id: text('id').primaryKey(),
-  account: text('account').unique().references(() => accounts.id, { onDelete: 'set null' }),
+  account: text('account')
+    .unique()
+    .references(() => accounts.id, { onDelete: 'set null' }),
   balance: integer('balance').notNull().default(0),
 });
-export const trustLedger = sqliteTable('trust_ledger', {
-  id: integer('id').primaryKey({ autoIncrement: true }),
-  wallet: text('wallet').notNull().references(() => wallets.id),
-  amount: integer('amount').notNull(),
-  balanceAfter: integer('balance_after').notNull(),
-  kind: text('kind').notNull(),
-  origin: text('origin').notNull(),
-  source: text('source').notNull(),
-  reason: text('reason').notNull(),
-  idempotencyKey: text('idempotency_key').notNull(),
-  created: integer('created').notNull(),
-}, (t) => [uniqueIndex('idx_trust_ledger_key').on(t.wallet,t.idempotencyKey)]);
+export const trustLedger = sqliteTable(
+  'trust_ledger',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    wallet: text('wallet')
+      .notNull()
+      .references(() => wallets.id),
+    amount: integer('amount').notNull(),
+    balanceAfter: integer('balance_after').notNull(),
+    kind: text('kind').notNull(),
+    origin: text('origin').notNull(),
+    source: text('source').notNull(),
+    reason: text('reason').notNull(),
+    idempotencyKey: text('idempotency_key').notNull(),
+    created: integer('created').notNull(),
+  },
+  (t) => [uniqueIndex('idx_trust_ledger_key').on(t.wallet, t.idempotencyKey)],
+);
 export const cosmetics = sqliteTable('cosmetics', {
-  id: text('id').primaryKey(), category: text('category').notNull(),
-  name: text('name').notNull(), description: text('description').notNull().default(''),
-  price: integer('price').notNull(), tier: text('tier').notNull().default('standard'),
-  preview: text('preview').notNull(), available: integer('available').notNull().default(1),
-  starts: integer('starts'), ends: integer('ends'), sortOrder: integer('sort_order').notNull().default(0),
-  isDefault: integer('is_default').notNull().default(0), created: integer('created').notNull(), updated: integer('updated').notNull(),
+  id: text('id').primaryKey(),
+  category: text('category').notNull(),
+  name: text('name').notNull(),
+  description: text('description').notNull().default(''),
+  price: integer('price').notNull(),
+  tier: text('tier').notNull().default('standard'),
+  preview: text('preview').notNull(),
+  available: integer('available').notNull().default(1),
+  starts: integer('starts'),
+  ends: integer('ends'),
+  sortOrder: integer('sort_order').notNull().default(0),
+  isDefault: integer('is_default').notNull().default(0),
+  created: integer('created').notNull(),
+  updated: integer('updated').notNull(),
 });
-export const ownedCosmetics = sqliteTable('owned_cosmetics', {
-  account: text('account').notNull().references(() => accounts.id, {onDelete:'cascade'}),
-  cosmetic: text('cosmetic').notNull().references(() => cosmetics.id),
-  acquired: integer('acquired').notNull(), method: text('method').notNull(),
-}, t => [primaryKey({columns:[t.account,t.cosmetic]})]);
-export const equippedCosmetics = sqliteTable('equipped_cosmetics', {
-  account: text('account').notNull().references(() => accounts.id, {onDelete:'cascade'}),
-  category: text('category').notNull(), cosmetic: text('cosmetic').references(() => cosmetics.id),
-}, t => [primaryKey({columns:[t.account,t.category]})]);
+export const ownedCosmetics = sqliteTable(
+  'owned_cosmetics',
+  {
+    account: text('account')
+      .notNull()
+      .references(() => accounts.id, { onDelete: 'cascade' }),
+    cosmetic: text('cosmetic')
+      .notNull()
+      .references(() => cosmetics.id),
+    acquired: integer('acquired').notNull(),
+    method: text('method').notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.account, t.cosmetic] })],
+);
+export const equippedCosmetics = sqliteTable(
+  'equipped_cosmetics',
+  {
+    account: text('account')
+      .notNull()
+      .references(() => accounts.id, { onDelete: 'cascade' }),
+    category: text('category').notNull(),
+    cosmetic: text('cosmetic').references(() => cosmetics.id),
+  },
+  (t) => [primaryKey({ columns: [t.account, t.category] })],
+);
 export const identities = sqliteTable(
   'identities',
   {
