@@ -20,7 +20,9 @@ export type AwardResult = {
 };
 export function computeAwards(result: AwardResult): Award[] {
   const players = new Set(
-    result.players.flatMap((p) => (p.account ? [p.account] : [])),
+    result.players.flatMap((p) =>
+      p.account && p.account !== result.host ? [p.account] : [],
+    ),
   );
   if (
     !result.ended ||
@@ -37,8 +39,7 @@ export function computeAwards(result: AwardResult): Award[] {
         p.account,
         (participants.get(p.account) ?? false) || p.won,
       );
-  if (result.host && !participants.has(result.host))
-    participants.set(result.host, false);
+  if (result.host) participants.set(result.host, false);
   const awards: Award[] = [];
   for (const [account, won] of participants) {
     let remaining = Math.max(
@@ -79,7 +80,7 @@ export function awardStatement(
   return db
     .prepare(`INSERT INTO trust_ledger(wallet,amount,balance_after,kind,origin,source,reason,idempotency_key,created)
     SELECT id,pay,balance+pay,'earn','earned',?,?,?,? FROM (
-      SELECT w.id,w.balance,MIN(?,MAX(0,?-COALESCE((SELECT SUM(amount) FROM trust_ledger WHERE wallet=w.id AND origin='earned' AND created>=? AND created<?),0)),MAX(0,?-COALESCE((SELECT SUM(amount) FROM trust_ledger WHERE wallet=w.id AND origin='earned' AND source=?),0))) AS pay
+      SELECT w.id,w.balance,MIN(?,MAX(0,?-COALESCE((SELECT SUM(amount) FROM trust_ledger WHERE wallet=w.id AND origin='earned' AND kind IN ('earn','reversal') AND created>=? AND created<?),0)),MAX(0,?-COALESCE((SELECT SUM(amount) FROM trust_ledger WHERE wallet=w.id AND origin='earned' AND kind IN ('earn','reversal') AND source=?),0))) AS pay
       FROM wallets w WHERE account=? AND ${guard}
       AND NOT EXISTS(SELECT 1 FROM trust_ledger WHERE wallet=w.id AND idempotency_key=?)
     ) WHERE pay>0`)
