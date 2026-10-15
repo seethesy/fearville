@@ -42,12 +42,10 @@ function shell(
   const calls: [string, unknown][] = [];
   const listeners: Record<string, Handler> = {};
   const events: Record<string, unknown>[] = [];
-  const record =
-    (name: string, result?: unknown) =>
-    async (args: unknown) => {
-      calls.push([name, args]);
-      return result;
-    };
+  const record = (name: string, result?: unknown) => async (args: unknown) => {
+    calls.push([name, args]);
+    return result;
+  };
   const plugins: Record<string, Record<string, unknown>> = {
     Haptics: {
       impact: record('Haptics.impact'),
