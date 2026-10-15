@@ -36,12 +36,20 @@ export function useTableState() {
   useKeepAwake(keepAwake && !!game);
   const previousPhase = useRef<string | null>(null);
   const phase = game?.phase;
-  const riteActive=game?.phase==='night' && game.rite?.status==='open';
-  const ritePattern=game?.rite && !game.rite.host ? game.rite.squad.kind : undefined;
-  const winner=game?.winner;
-  useEffect(()=>{
-    setMusicContext(musicContext({path:'/table',phase,winner,rite:{active:riteActive,pattern:ritePattern}}));
-  },[phase,winner,riteActive,ritePattern]);
+  const riteActive = game?.phase === 'night' && game.rite?.status === 'open';
+  const ritePattern =
+    game?.rite && !game.rite.host ? game.rite.squad.kind : undefined;
+  const winner = game?.winner;
+  useEffect(() => {
+    setMusicContext(
+      musicContext({
+        path: '/table',
+        phase,
+        winner,
+        rite: { active: riteActive, pattern: ritePattern },
+      }),
+    );
+  }, [phase, winner, riteActive, ritePattern]);
   useEffect(() => {
     if (phase && previousPhase.current && previousPhase.current !== phase)
       playCue();
