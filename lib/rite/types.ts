@@ -1,3 +1,4 @@
+import { GENERATOR_STYLE } from './generator-config.ts';
 export const PATTERNS = {
   board: 'Escape Fearville',
   grid: 'The Sphinx’s Riddles',
@@ -23,8 +24,8 @@ export const DEFAULT_CONFIG: RiteConfig = {
   patterns: ['board', 'grid', 'ritual', 'lab'],
   opensNight: 2,
   threshold: 0.5,
-  lockSeconds: 30,
-  windowSeconds: 90,
+  lockSeconds: GENERATOR_STYLE.timing.lockSeconds,
+  windowSeconds: GENERATOR_STYLE.timing.windowSeconds,
   ritualFirstNight: 3,
   forgedPerEvil: 1,
   notifyCompletion: true,

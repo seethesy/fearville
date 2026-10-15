@@ -16,7 +16,8 @@
     "test:unit": "node scripts/run-unit.mjs",
     "test:integration": "node scripts/run-integration.mjs",
     "test": "node scripts/run-unit.mjs && node scripts/run-integration.mjs",
-    "check": "node scripts/check.mjs"
+    "check": "node scripts/check.mjs",
+    "puzzles:sample": "node --experimental-strip-types scripts/sample-puzzles.mjs"
   },
   "dependencies": {
     "@base-ui/react": "1.7.0",

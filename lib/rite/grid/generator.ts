@@ -1,3 +1,4 @@
+import { GENERATOR_STYLE } from '../generator-config.ts';
 import { rng, shuffle } from '../random.ts';
 import type { Triple, Clue, GridState } from '../types.ts';
 import { CLUES_PER_PLAYER } from './vocabulary.ts';
@@ -19,7 +20,7 @@ import { type Card, makeCard, people, MAKERS } from './makers.ts';
 export type GridDifficulty = { rounds: number; stalled: boolean };
 export function makePool(r: R, w: World) {
   const pool = new Map<string, Card>();
-  for (let i = 0; i < 500 && pool.size < 110; i++) {
+  for (let i = 0; i < GENERATOR_STYLE.grid.poolAttempts && pool.size < GENERATOR_STYLE.grid.poolSize; i++) {
     const c = makeCard(r, w);
     if (c && !pool.has(c.key)) pool.set(c.key, c);
   }
@@ -118,10 +119,10 @@ export function makeRiddle(
   const sets: { cards: Card[]; essential: number; patterns: number }[] = [];
   for (
     let attempt = 0;
-    attempt < 40 || (!sets.length && attempt < 80);
+    attempt < GENERATOR_STYLE.grid.setAttempts || (!sets.length && attempt < GENERATOR_STYLE.grid.fallbackAttempts);
     attempt++
   ) {
-    const set = buildSet(random, pool, size, attempt < 40 ? FLOOR(size) : 0.04);
+    const set = buildSet(random, pool, size, attempt < GENERATOR_STYLE.grid.setAttempts ? FLOOR(size) : 0.04);
     if (!set || set.extra.length + set.essential.length < size) continue;
     const cards = [...set.essential, ...set.extra];
     sets.push({
@@ -138,7 +139,7 @@ export function makeRiddle(
     difficulty: GridDifficulty;
     score: number;
   } | null = null;
-  for (const set of sets.slice(0, 10)) {
+  for (const set of sets.slice(0, GENERATOR_STYLE.grid.gradedSets)) {
     const d = difficulty(set.cards.map((c) => c.bits));
     // Hard: the one-clue-at-a-time solver needs many rounds or stalls, the
     // cards span many patterns, and most of them are needed.
@@ -190,7 +191,7 @@ export function generateGrid(
   const texts = new Set<string>();
   const word = (c: Card) => {
     let text = render(random, c.logic, c.form);
-    for (let i = 0; i < 20 && texts.has(text); i++)
+    for (let i = 0; i < GENERATOR_STYLE.grid.wordingAttempts && texts.has(text); i++)
       text = render(random, c.logic, c.form);
     texts.add(text);
     return text;
