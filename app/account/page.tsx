@@ -3,6 +3,7 @@ import AppLink from '@/components/app-link';
 import { useEffect, useState } from 'react';
 import { HubShell } from '@/components/hub/shell';
 import { AccountPanel } from '@/components/account-panel';
+import { TrustBalance } from '@/components/trust-balance';
 import { useAccount, accountAction } from '@/components/hub/account-context';
 import { ProfileEditor } from '@/components/hub/profile-editor';
 import { SettingsPanel } from '@/components/hub/settings';
@@ -105,6 +106,7 @@ export default function Account() {
       }
       settings
     >
+      <TrustBalance />
       <fieldset className="account-tabs" aria-label="Account sections">
         <button
           className={tab === 'profile' ? 'active' : ''}

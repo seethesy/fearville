@@ -1,0 +1,6 @@
+.wallet-panel { max-width: 52rem; min-width: 0; }
+.wallet-history { list-style: none; padding: 0; margin: 1.5rem 0; }
+.wallet-history li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .5rem 1rem; padding: 1rem 0; border-bottom: 1px solid #ffffff26; overflow-wrap: anywhere; }
+.wallet-history time { grid-column: 1 / -1; font-size: .85rem; opacity: .75; }
+.wallet-history small { grid-column: 1 / -1; }
+.wallet-panel select { max-width: 100%; min-height: 44px; }
