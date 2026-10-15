@@ -7,6 +7,7 @@ import { newestView } from '@/lib/game/live';
 import type { GameView } from '@/lib/game/view';
 import type { Control } from '@/lib/game/types';
 import { useTableSocket } from '@/hooks/use-table-socket';
+import { useSafeReload } from '@/components/stale-reload';
 import { type Values } from './fields.tsx';
 export function useTableState() {
   const [game, setGame] = useState<GameView | null>(null),
@@ -151,6 +152,12 @@ export function useTableState() {
       setConnectionError('');
     },
     [applyGame],
+  );
+  // FEAR-121: after a deploy, reload at the next phase change.
+  useSafeReload(
+    game?.phase,
+    `${game?.phase}:${game?.day}:${game?.night}`,
+    busy,
   );
   const socket = useTableSocket({
     code: game?.code,

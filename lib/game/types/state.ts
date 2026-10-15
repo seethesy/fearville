@@ -194,6 +194,8 @@ export type SessionRecap = {
   votes?: Record<string, string[]>;
 };
 export type Game = {
+  /** FEAR-121: stored-state schema; lib/game/saved-state.ts migrates older ones. */
+  schemaVersion?: number;
   roleDistribution?: Record<Team, number>;
   rite?: import('../../rite/types.ts').RiteState;
   ranked?: boolean;
@@ -301,6 +303,7 @@ export function newPlayer(name: string, seat: number): Player {
 }
 export function newGame(code: string, name: string): Game {
   return {
+    schemaVersion: 1,
     script: 'horrors',
     assignmentSeed: uuid(),
     decisions: [],
