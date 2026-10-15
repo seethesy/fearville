@@ -17,7 +17,8 @@
     "test:integration": "node scripts/run-integration.mjs",
     "test:e2e": "node scripts/run-e2e.mjs",
     "test": "node scripts/run-unit.mjs && node scripts/run-integration.mjs",
-    "check": "node scripts/check.mjs"
+    "check": "node scripts/check.mjs",
+    "content:export": "node scripts/export-content.mjs"
   },
   "dependencies": {
     "@base-ui/react": "1.7.0",
