@@ -105,6 +105,7 @@ export const trustLedger = sqliteTable(
     origin: text('origin').notNull(),
     source: text('source').notNull(),
     reason: text('reason').notNull(),
+    metadata: text('metadata').notNull().default('{}'),
     idempotencyKey: text('idempotency_key').notNull(),
     created: integer('created').notNull(),
   },
