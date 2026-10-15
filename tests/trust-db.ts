@@ -5,10 +5,27 @@ export function trustDB(migrations = ['0014_trust_ledger.sql']) {
   sqlite.exec(
     "PRAGMA foreign_keys=ON; CREATE TABLE accounts(id TEXT PRIMARY KEY,role TEXT DEFAULT 'player'); INSERT INTO accounts(id) VALUES ('a'),('b');",
   );
-  for (const name of migrations)
-    sqlite.exec(
-      readFileSync(new URL('../drizzle/' + name, import.meta.url), 'utf8'),
-    );
+  for (const name of migrations) {
+    // Match the existing Miniflare integration migration loader, which extracts
+    // trigger bodies before splitting the remaining SQL on semicolons.
+    let source = readFileSync(
+      new URL('../drizzle/' + name, import.meta.url),
+      'utf8',
+    ).replace(/--[^\n]*/g, '');
+    const triggers: string[] = [];
+    source = source.replace(/CREATE TRIGGER[\s\S]*?END;/gi, (sql) => {
+      triggers.push(sql);
+      return '';
+    });
+    for (const statement of [
+      ...source
+        .split(';')
+        .map((s) => s.trim())
+        .filter(Boolean),
+      ...triggers,
+    ])
+      sqlite.exec(statement);
+  }
   function prepare(sql: string) {
     let values: (string | number | null)[] = [];
     return {

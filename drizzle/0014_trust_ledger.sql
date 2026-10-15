@@ -18,12 +18,9 @@ CREATE TABLE trust_ledger (
 );
 CREATE INDEX idx_trust_ledger_wallet ON trust_ledger(wallet,id);
 CREATE TRIGGER trust_ledger_validate BEFORE INSERT ON trust_ledger BEGIN
-  SELECT CASE WHEN NEW.balance_after<>(SELECT balance+NEW.amount FROM wallets WHERE id=NEW.wallet)
-    THEN RAISE(ABORT,'wallet_conflict') END;
-  SELECT CASE WHEN NEW.amount<0 AND NEW.balance_after<0 AND NEW.kind NOT IN ('refund','chargeback','reversal')
-    THEN RAISE(ABORT,'insufficient_trust') END;
-  SELECT CASE WHEN NEW.kind='spend' AND NEW.amount>0
-    THEN RAISE(ABORT,'invalid_amount') END;
+  SELECT RAISE(ABORT,'wallet_conflict') WHERE NEW.balance_after<>(SELECT balance+NEW.amount FROM wallets WHERE id=NEW.wallet);
+  SELECT RAISE(ABORT,'insufficient_trust') WHERE NEW.amount<0 AND NEW.balance_after<0 AND NEW.kind NOT IN ('refund','chargeback','reversal');
+  SELECT RAISE(ABORT,'invalid_amount') WHERE NEW.kind='spend' AND NEW.amount>0;
 END;
 CREATE TRIGGER trust_ledger_apply AFTER INSERT ON trust_ledger BEGIN
   UPDATE wallets SET balance=NEW.balance_after WHERE id=NEW.wallet;
