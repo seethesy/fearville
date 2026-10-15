@@ -6,6 +6,7 @@ import {
 } from '@/lib/game/socket-client';
 import { onLifecycle } from '@/lib/native/bridge';
 import { currentClientHeader } from '@/lib/compat/client';
+import { BUILD_EVENT } from '@/lib/compat/stale';
 import type { ViewEnvelope } from '@/lib/game/socket-protocol';
 import type { GameView } from '@/lib/game/view';
 import type { ActionTiming } from '@/lib/game/action-timing';
@@ -104,6 +105,8 @@ export function useTableSocket({
       phase: setPhase,
       version: () => lastVersion.current,
       client: currentClientHeader,
+      protocol: (detail) =>
+        window.dispatchEvent(new CustomEvent(BUILD_EVENT, { detail })),
       connect: () => {
         const url = new URL('/api/table/socket', location.href);
         url.protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';

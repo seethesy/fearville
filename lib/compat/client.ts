@@ -8,6 +8,7 @@ import {
   clientHeader,
   type ClientInfo,
 } from './versions.ts';
+import { BUILD_EVENT, BUILD_HEADER } from './stale.ts';
 
 export const UPDATE_EVENT = 'fearville:update';
 export type UpdateDetail = {
@@ -57,6 +58,12 @@ export function installClientHeader() {
     if (!headers.has(CLIENT_HEADER))
       headers.set(CLIENT_HEADER, currentClientHeader());
     const response = await original(input, { ...init, headers });
+    // FEAR-121: a newer server build means this page may need a reload.
+    const build = response.headers.get(BUILD_HEADER);
+    if (build)
+      window.dispatchEvent(
+        new CustomEvent(BUILD_EVENT, { detail: { buildId: build } }),
+      );
     const verdict =
       response.status === 426
         ? 'required'
