@@ -87,21 +87,29 @@ export const accounts = sqliteTable(
 );
 export const wallets = sqliteTable('wallets', {
   id: text('id').primaryKey(),
-  account: text('account').unique().references(() => accounts.id, { onDelete: 'set null' }),
+  account: text('account')
+    .unique()
+    .references(() => accounts.id, { onDelete: 'set null' }),
   balance: integer('balance').notNull().default(0),
 });
-export const trustLedger = sqliteTable('trust_ledger', {
-  id: integer('id').primaryKey({ autoIncrement: true }),
-  wallet: text('wallet').notNull().references(() => wallets.id),
-  amount: integer('amount').notNull(),
-  balanceAfter: integer('balance_after').notNull(),
-  kind: text('kind').notNull(),
-  origin: text('origin').notNull(),
-  source: text('source').notNull(),
-  reason: text('reason').notNull(),
-  idempotencyKey: text('idempotency_key').notNull(),
-  created: integer('created').notNull(),
-}, (t) => [uniqueIndex('idx_trust_ledger_key').on(t.wallet,t.idempotencyKey)]);
+export const trustLedger = sqliteTable(
+  'trust_ledger',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    wallet: text('wallet')
+      .notNull()
+      .references(() => wallets.id),
+    amount: integer('amount').notNull(),
+    balanceAfter: integer('balance_after').notNull(),
+    kind: text('kind').notNull(),
+    origin: text('origin').notNull(),
+    source: text('source').notNull(),
+    reason: text('reason').notNull(),
+    idempotencyKey: text('idempotency_key').notNull(),
+    created: integer('created').notNull(),
+  },
+  (t) => [uniqueIndex('idx_trust_ledger_key').on(t.wallet, t.idempotencyKey)],
+);
 export const identities = sqliteTable(
   'identities',
   {
