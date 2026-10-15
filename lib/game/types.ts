@@ -44,4 +44,5 @@ export {
   uuid,
   newPlayer,
   newGame,
+  OBSERVER_ID,
 } from './types/state.ts';

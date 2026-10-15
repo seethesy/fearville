@@ -154,7 +154,7 @@ export function useTableState() {
   );
   const socket = useTableSocket({
     code: game?.code,
-    me: game?.sandboxHost ? sandboxPov : game?.me,
+    me: game?.sandboxHost || game?.observer ? sandboxPov : game?.me,
     pov: sandboxPov,
     version: game?.version,
     onView: receiveView,

@@ -6,8 +6,17 @@ Built from the code on `main` (Oct 2026). Fill one [template](template.md) entry
 ## How to get there fast (staging only)
 
 Open **https://staging.fearville.app/staging** in a browser that is **not signed in as the admin account**
-(a private window works). The admin account always sees the administration console instead of the app,
-so it cannot browse player screens. Production returns "Not found" for this page and `/api/staging`.
+(a private window works). Production returns "Not found" for this page and `/api/staging`.
+
+**Signed in as the admin account (FEAR-158, staging and production):** console → **Browse as**.
+
+- **View as** guest, player or Storyteller. Player and Storyteller use the demo account below (in
+  production its synthetic accounts have no handles, so nobody can find them). Account pages are
+  read-only; an **ADMIN VIEW** banner stays on screen to switch viewer or go back to the console.
+- **Sandbox table**: the admin's own private table, reset to any state below, for either script and
+  5–18 players (Ritual-only needs a multiple of three). Point of view switches to any seat.
+- **Observe a live table** by code: Storyteller view or any seat's view, strictly read-only.
+- Every switch, sandbox and observed table is in the audit log (`browse view|sandbox|observe|exit`).
 
 - **Sign in as the demo account** → signs the browser in as *QA Demo* (`@stage_qa_demo`): 3 friends,
   1 incoming and 1 outgoing request, 1 blocked player, 1 pending table invitation (to the Lobby fixture),

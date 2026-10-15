@@ -31,6 +31,14 @@ import {
 export async function GET(r: Request) {
   try {
     const { actor, code, game } = await authenticatedRead(r);
+    if (actor.observer)
+      return json({
+        code,
+        host: false,
+        observer: true,
+        name: 'Admin observer',
+        phase: game.phase,
+      });
     const player = game.players.find((p) => p.id === actor.id);
     requireThat(
       actor.host || (player && !player.departed),

@@ -13,6 +13,7 @@ import {
 import {
   accountAuth,
   accountView,
+  adminViewState,
   accountToken,
   accountCookie,
   cookie,
@@ -28,7 +29,11 @@ import {
 import { setHandle } from '@/lib/social/friends';
 export async function GET(r: Request) {
   try {
-    return json(await accountView(r));
+    const adminView = await adminViewState(r);
+    return json({
+      ...(await accountView(r)),
+      ...(adminView ? { adminView } : {}),
+    });
   } catch (e) {
     return errorResponse(e);
   }
