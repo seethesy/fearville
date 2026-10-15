@@ -1,4 +1,5 @@
 import { sql } from 'drizzle-orm';
+// Trust tables use SQL triggers in 0014_trust_ledger.sql for atomic balances.
 import {
   sqliteTable,
   check,
@@ -83,6 +84,32 @@ export const accounts = sqliteTable(
     adminRevision: integer('admin_revision').notNull().default(0),
   },
   (t) => [uniqueIndex('idx_accounts_handle').on(t.handle)],
+);
+export const wallets = sqliteTable('wallets', {
+  id: text('id').primaryKey(),
+  account: text('account')
+    .unique()
+    .references(() => accounts.id, { onDelete: 'set null' }),
+  balance: integer('balance').notNull().default(0),
+});
+export const trustLedger = sqliteTable(
+  'trust_ledger',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    wallet: text('wallet')
+      .notNull()
+      .references(() => wallets.id),
+    amount: integer('amount').notNull(),
+    balanceAfter: integer('balance_after').notNull(),
+    kind: text('kind').notNull(),
+    origin: text('origin').notNull(),
+    source: text('source').notNull(),
+    reason: text('reason').notNull(),
+    metadata: text('metadata').notNull().default('{}'),
+    idempotencyKey: text('idempotency_key').notNull(),
+    created: integer('created').notNull(),
+  },
+  (t) => [uniqueIndex('idx_trust_ledger_key').on(t.wallet, t.idempotencyKey)],
 );
 export const identities = sqliteTable(
   'identities',
