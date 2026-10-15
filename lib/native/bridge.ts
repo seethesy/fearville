@@ -23,6 +23,7 @@ export type Capability =
   | 'lifecycle'
   | 'share'
   | 'keepAwake'
+  | 'auth'
   | 'push';
 
 type NativeHost = {
@@ -259,4 +260,50 @@ export async function share(content: {
 export async function nativeKeepAwake(on: boolean) {
   if (!hasCapability('keepAwake')) return false;
   return (await call('keepAwake', 'keepAwake.set', { on })).ok;
+}
+
+// ── Sign-in sheet ───────────────────────────────────────────────────────────
+
+export type SigninResult = { code: string | null; error: string | null };
+
+/**
+ * Open a sign-in URL in the system's sign-in browser (iOS
+ * ASWebAuthenticationSession, Android Custom Tabs) and wait for the
+ * fearville://signin callback. Returns null when the shell has no sign-in
+ * capability (the caller navigates instead) and 'cancelled' if the sheet is
+ * dismissed.
+ */
+export async function nativeSignin(
+  url: string,
+  timeoutMs = 600000,
+): Promise<SigninResult | 'cancelled' | null> {
+  if (typeof window === 'undefined' || !hasCapability('auth')) return null;
+  let off = () => {};
+  const callback = new Promise<SigninResult>((resolve) => {
+    const listener = (event: Event) => {
+      const detail = (event as CustomEvent<Record<string, unknown>>).detail;
+      if (detail?.type !== 'signin') return;
+      resolve({
+        code: typeof detail.code === 'string' ? detail.code : null,
+        error: typeof detail.error === 'string' ? detail.error : null,
+      });
+    };
+    window.addEventListener(NATIVE_EVENT, listener);
+    off = () => window.removeEventListener(NATIVE_EVENT, listener);
+  });
+  try {
+    const opened = await call('auth', 'auth.open', { url });
+    if (!opened.ok) return null;
+    // iOS reports a dismissed sheet; Android's Custom Tab can't, so a
+    // timeout ends the wait there.
+    if (opened.value === false) return 'cancelled';
+    return await Promise.race([
+      callback,
+      new Promise<'cancelled'>((resolve) =>
+        setTimeout(() => resolve('cancelled'), timeoutMs),
+      ),
+    ]);
+  } finally {
+    off();
+  }
 }
