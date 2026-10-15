@@ -1,34 +1,64 @@
 import Foundation
 
+// FEAR-194: cases live in url-policy-cases.json, shared with the Android
+// shell so both enforce identical rules. Foundation only, so this compiles
+// and runs on Linux (the mobile-static CI job) as well as macOS.
+//   swiftc mobile/native/ios/FearvilleURLPolicy.swift mobile/tests/ios-url-policy.swift -o work/ios-url-policy
+//   work/ios-url-policy mobile/tests/url-policy-cases.json
+
+struct PolicyCase: Decodable {
+    let kind: String
+    let url: String
+    let site: String?
+    let expected: Bool
+}
+struct PolicyCases: Decodable { let cases: [PolicyCase] }
+
 @main
 struct URLPolicyTests {
     static func main() {
-        let staging = URL(string: "https://staging.fearville.app")!
-        func invite(_ raw: String, site: URL = URL(string: "https://fearville.app")!) -> Bool {
-            FearvilleURLPolicy.invite(URL(string: raw)!, site: site)
+        let path = CommandLine.arguments.dropFirst().first ?? "mobile/tests/url-policy-cases.json"
+        guard let data = FileManager.default.contents(atPath: path),
+              let fixture = try? JSONDecoder().decode(PolicyCases.self, from: data),
+              !fixture.cases.isEmpty
+        else {
+            print("iOS URL policy: could not read cases from \(path)")
+            exit(2)
         }
-        precondition(invite("https://fearville.app/table?code=ABCD"))
-        precondition(invite("https://fearville.app/friends"))
-        precondition(invite("https://staging.fearville.app/table?code=ABCD", site: staging))
-        for raw in [
-            "https://staging.fearville.app/table?code=ABCD",
-            "https://fearville.app.evil.test/table?code=ABCD",
-            "http://fearville.app/table?code=ABCD",
-            "https://user@fearville.app/table?code=ABCD",
-            "https://fearville.app:444/table?code=ABCD",
-            "https://fearville.app/table", "https://fearville.app/table?code=",
-            "https://fearville.app/privacy", "https://fearville.app/store",
-            "https://fearville.app/api/accounts/exchange"
-        ] { precondition(!invite(raw), raw) }
-        precondition(!invite("https://fearville.app/table?code=ABCD", site: staging))
-        for path in ["/privacy", "/privacy/", "/store", "/store/trust"] {
-            precondition(FearvilleURLPolicy.browserOnly(URL(string: "https://fearville.app" + path)!))
+        var failures = 0
+        for item in fixture.cases {
+            guard let url = URL(string: item.url) else {
+                print("FAIL unparseable URL \(item.url)")
+                failures += 1
+                continue
+            }
+            let actual: Bool
+            switch item.kind {
+            case "invite":
+                guard let raw = item.site, let site = URL(string: raw) else {
+                    print("FAIL invite case without a site: \(item.url)")
+                    failures += 1
+                    continue
+                }
+                actual = FearvilleURLPolicy.invite(url, site: site)
+            case "browserOnly":
+                actual = FearvilleURLPolicy.browserOnly(url)
+            case "authCallback":
+                actual = FearvilleURLPolicy.authCallback(url)
+            default:
+                print("FAIL unknown case kind \(item.kind)")
+                failures += 1
+                continue
+            }
+            if actual != item.expected {
+                print("FAIL \(item.kind) \(item.url)\(item.site.map { " site=\($0)" } ?? ""): expected \(item.expected), got \(actual)")
+                failures += 1
+            }
         }
-        precondition(!FearvilleURLPolicy.browserOnly(URL(string: "https://fearville.app/table")!))
-        precondition(FearvilleURLPolicy.authCallback(URL(string: "fearville://signin?code=test")!))
-        for raw in ["fearville://signin.evil?code=test", "https://signin?code=test", "fearville://signin/wrong", "fearville://user@signin?code=test"] {
-            precondition(!FearvilleURLPolicy.authCallback(URL(string: raw)!))
+        if failures > 0 {
+            print("iOS URL policy: \(failures) of \(fixture.cases.count) cases failed")
+            exit(1)
         }
-        print("iOS URL policy: passed")
+        print("iOS URL policy: \(fixture.cases.count) cases passed")
     }
 }
