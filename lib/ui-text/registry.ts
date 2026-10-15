@@ -15,6 +15,7 @@ for (const t of TUTORIALS.filter((t) => t.kind === 'walkthrough')) {
 export const UI_TEXT: Record<string, string> = {
   ...tutorialText,
   'wallet.title':'Your trust',
+  'wallet.gameEarned':'You earned {amount} trust',
   'wallet.balance':'{amount} trust',
   'wallet.guest':'Sign in to earn trust.',
   'wallet.filter':'Transaction type',

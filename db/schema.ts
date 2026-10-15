@@ -126,6 +126,11 @@ export const trustPurchases = sqliteTable('trust_purchases', {
   price: integer('price').notNull(), balanceAfter: integer('balance_after').notNull(),
   idempotencyKey: text('idempotency_key').notNull(), created: integer('created').notNull(),
 }, t => [uniqueIndex('idx_trust_purchase_key').on(t.wallet,t.idempotencyKey)]);
+export const trustGameRewards = sqliteTable('trust_game_rewards', {
+  game:text('game').primaryKey(), cycle:integer('cycle').notNull().default(1),
+  active:integer('active').notNull().default(1), eligible:text('eligible').notNull(),
+  playerCount:integer('player_count').notNull(), created:integer('created').notNull(),
+});
 export const identities = sqliteTable(
   'identities',
   {

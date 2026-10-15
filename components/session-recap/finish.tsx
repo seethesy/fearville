@@ -12,6 +12,7 @@ import {
   DialogDescription,
 } from '../ui/dialog';
 import { gameDuration, roleColor } from './shared.tsx';
+import {GameTrustReward} from '../game-trust-reward';
 export function GameEndPopup({
   game,
   refresh,
@@ -99,6 +100,7 @@ export function GameEndPopup({
         {/* Mounted only while open: holds tutorial popups. */}
         <TutorialHold name="game-end" active />
         <DialogHeader>
+          <GameTrustReward game={recap.id} />
           <div className="recap-heading">
             <DialogTitle>{recap.winner} wins</DialogTitle>
             <span aria-label="Game duration">{gameDuration(recap)}</span>

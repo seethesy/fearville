@@ -3,6 +3,7 @@ import type { Game } from '@/lib/game/types';
 import { recapOf } from '@/lib/game/lobby';
 import { deriveResult, gameID } from './derive';
 import { BASE_XP, mvpShares } from './progression';
+import {beginGameRewardsStatement,syncGameRewards,withdrawGameRewardsStatements} from '../trust/game-rewards';
 
 // Version guards prevent a delayed poll from restoring a withdrawn result or
 // overwriting newer MVP rewards. D1 batches commit the whole result atomically.
@@ -92,7 +93,9 @@ export async function recordResult(
       .prepare(`DELETE FROM ranked_seats WHERE game=? AND ${guard}`)
       .bind(record.id, ...guarded),
   );
+  statements.push(beginGameRewardsStatement(db,record.id,ended,guard,guarded));
   const result = await db.batch(statements);
+  await syncGameRewards(db,record.id,ended,guard,guarded);
   return result[0].meta.changes > 0;
 }
 
@@ -101,12 +104,13 @@ export async function voidResult(
   started: number,
   version?: number,
 ) {
-  await database()
-    .prepare(
-      'DELETE FROM games WHERE id=? AND EXISTS (SELECT 1 FROM sessions WHERE code=? AND (? IS NULL OR version=?))',
-    )
-    .bind(gameID(code, started), code, version ?? null, version ?? null)
-    .run();
+  const db=database();
+  const guard='EXISTS (SELECT 1 FROM sessions WHERE code=? AND (? IS NULL OR version=?))';
+  const values=[code,version??null,version??null];
+  await db.batch([
+    ...withdrawGameRewardsStatements(db,gameID(code,started),Date.now(),guard,values),
+    db.prepare(`DELETE FROM games WHERE id=? AND ${guard}`).bind(gameID(code,started),...values),
+  ]);
 }
 export async function isRecorded(code: string, started: number) {
   return !!(await database()
@@ -202,7 +206,11 @@ export async function syncResult(
   if (g.phase === 'ended') {
     if (update || !(await isRecorded(g.code, started)))
       await recordResult(g, started, g.gameEndedAt ?? now, version);
-    else await syncMvp(g, version);
+    else {
+      await syncMvp(g, version);
+      await syncGameRewards(database(),gameID(g.code,started),g.gameEndedAt??now,
+        'EXISTS (SELECT 1 FROM sessions WHERE code=? AND (? IS NULL OR version=?))',[g.code,version??null,version??null]);
+    }
   } else if (g.night > 0 && (await isRecorded(g.code, started)))
     await voidResult(g.code, started, version);
 }
