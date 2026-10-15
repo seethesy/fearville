@@ -12,6 +12,7 @@ import { solveLab } from '../lab.ts';
 import { generateGrid } from '../grid.ts';
 import { generateRitual } from '../ritual.ts';
 import { check, riteSetupCheck } from './setup.ts';
+import { GENERATOR_STYLE } from '../generator-config.ts';
 export function deal(g: Game, plan: Plan): Squad {
   const r = g.rite!,
     seed = `${r.seed}:${plan.id}`,
@@ -70,7 +71,9 @@ export function beginRiteNight(g: Game, at: number) {
       order,
       cursor: 0,
       start: r.lockUntil ?? at,
-      deadline: r.timerless ? 0 : (r.lockUntil ?? at) + 5000,
+      deadline: r.timerless
+        ? 0
+        : (r.lockUntil ?? at) + GENERATOR_STYLE.timing.turnMilliseconds,
       snapshots: {},
       log: [],
       token: uuid(),
@@ -93,7 +96,8 @@ export function nextTurn(s: Squad, at: number, kind: string, detail?: string) {
   t.cursor = (t.cursor + 1) % t.order.length;
   t.token = uuid();
   t.start = at;
-  t.deadline = t.deadline > 0 ? at + 5000 : 0;
+  t.deadline =
+    t.deadline > 0 ? at + GENERATOR_STYLE.timing.turnMilliseconds : 0;
 }
 export function recordMove(s: Squad, at: number, kind: string, detail: string) {
   const t = (s.state as BoardState | LabState).turn!;

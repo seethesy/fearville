@@ -11,6 +11,7 @@
     "start": "wrangler dev --config dist/server/wrangler.json",
     "lint": "oxlint app lib components db tests",
     "format": "oxfmt",
+    "puzzles:sample": "node --experimental-strip-types scripts/sample-puzzles.mjs",
     "db:generate": "drizzle-kit generate",
     "typecheck": "tsc --noEmit",
     "test:unit": "node scripts/run-unit.mjs",
