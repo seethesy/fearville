@@ -1,21 +1,96 @@
 name: iOS shell validation
+# FEAR-194 cost guards. Anything that doesn't need a Mac runs on Linux
+# (mobile-static). The macOS simulator job:
+#   - cancels superseded runs (concurrency below);
+#   - skips when the only mobile/ changes are Markdown;
+#   - builds Staging only on PRs, Staging + Release on main and dispatch;
+#   - cost switch: while the repository is private, runs only on push to main,
+#     workflow_dispatch, or a PR labelled `ios-ci`. While public (macOS minutes
+#     are free), it runs on every PR touching mobile/. See docs/testing.md.
 on:
   pull_request:
+    types: [opened, synchronize, reopened, labeled]
     paths: ['mobile/**', '.github/workflows/mobile-ios.yml']
   push:
     branches: [main]
     paths: ['mobile/**', '.github/workflows/mobile-ios.yml']
   workflow_dispatch:
+concurrency:
+  # Pushes supersede each other; a label event gets its own group so adding an
+  # unrelated label never cancels a running build.
+  group: mobile-ios-${{ github.head_ref || github.ref }}${{ github.event.action == 'labeled' && format('-label-{0}', github.event.label.name) || '' }}
+  cancel-in-progress: true
 permissions:
   contents: read
 jobs:
+  # Decides whether the change needs a native build (not Markdown-only).
+  changes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    # A label event only matters when the label is ios-ci.
+    if: github.event.action != 'labeled' || github.event.label.name == 'ios-ci'
+    outputs:
+      native: ${{ steps.diff.outputs.native }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - name: Native changes
+        id: diff
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          if [ "${{ github.event_name }}" != "pull_request" ]; then
+            echo "native=true" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          base=$(git merge-base "$BASE" "$HEAD")
+          if git diff --name-only "$base" "$HEAD" -- mobile .github/workflows/mobile-ios.yml | grep -qvE '\.md$'; then
+            echo "native=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "native=false" >> "$GITHUB_OUTPUT"
+            echo "Markdown-only mobile changes: native jobs skipped." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+  # Linux: checks that don't need Xcode (free or ~10x cheaper than macOS).
+  mobile-static:
+    needs: changes
+    if: needs.changes.outputs.native == 'true' && github.event.action != 'labeled'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - name: Swift toolchain
+        id: swift
+        run: |
+          if command -v swiftc >/dev/null; then
+            echo "present=true" >> "$GITHUB_OUTPUT"; swiftc --version
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: swift-actions/setup-swift@v2
+        if: steps.swift.outputs.present != 'true'
+      - name: Test URL policy (shared cases)
+        run: |
+          mkdir -p work
+          swiftc mobile/native/ios/FearvilleURLPolicy.swift mobile/tests/ios-url-policy.swift -o work/ios-url-policy
+          work/ios-url-policy mobile/tests/url-policy-cases.json
+
   simulator:
+    needs: [changes, mobile-static]
+    if: >-
+      always() &&
+      needs.changes.outputs.native == 'true' &&
+      (needs.mobile-static.result == 'success' || needs.mobile-static.result == 'skipped') &&
+      (!github.event.repository.private ||
+        github.event_name != 'pull_request' ||
+        contains(github.event.pull_request.labels.*.name, 'ios-ci'))
     runs-on: macos-latest
     timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
-        configuration: [Staging, Release]
+        configuration: ${{ fromJSON(github.event_name == 'pull_request' && '["Staging"]' || '["Staging","Release"]') }}
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
@@ -29,16 +104,12 @@ jobs:
       - name: Sync Capacitor dependencies
         working-directory: mobile
         run: npm ci --no-audit --no-fund && npm run sync:ios
-      - name: Test URL policy
-        run: |
-          mkdir -p work
-          swiftc mobile/native/ios/FearvilleURLPolicy.swift mobile/tests/ios-url-policy.swift -o work/ios-url-policy
-          work/ios-url-policy
       - name: Build unsigned simulator shell
         env:
           CONFIGURATION: ${{ matrix.configuration }}
         run: |
           set -o pipefail
+          mkdir -p work
           xcodebuild -project mobile/ios/App/App.xcodeproj -scheme Fearville \
             -configuration "$CONFIGURATION" -sdk iphonesimulator \
             -destination 'generic/platform=iOS Simulator' \

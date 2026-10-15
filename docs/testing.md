@@ -24,3 +24,11 @@ For API verification on Windows, build first and run `node scripts/local-api-tes
 - TypeScript checking, app/domain lint, and the production build passed.
 - `npm run lint` covers `app lib components db tests`; the unmodified starter catalog in `components/ui` is excluded in `.oxlintrc.json`.
 
+
+## Mobile CI cost guards (FEAR-194)
+
+`.github/workflows/mobile-ios.yml` keeps macOS minutes to what needs a Mac:
+
+- **`mobile-static` (Linux)**: compiles `FearvilleURLPolicy.swift` with the shared cases in `mobile/tests/url-policy-cases.json` (also used by the Android shell) and fails the PR on any broken case. Add other non-Xcode checks here.
+- **`simulator` (macOS)**: skipped when the only `mobile/` changes are Markdown; superseded pushes cancel the running build; PRs build **Staging** only, `main` and manual runs build Staging + Release.
+- **Private-repo cost switch**: while `seethesy/fearville` is public, GitHub-hosted runners (macOS included) are free and the simulator job runs on every PR touching `mobile/`. If the repository becomes private (`github.event.repository.private`), the simulator job runs only on push to `main`, `workflow_dispatch`, or a PR labelled **`ios-ci`** (adding the label starts it). Nothing needs changing when the visibility flips.
