@@ -6,7 +6,6 @@ import { StorytellerVote } from '@/components/storyteller-vote';
 import { TableSeating } from '@/components/table-seating';
 import { TabsContent } from '@/components/ui/tabs';
 import { InviteFriends } from '@/components/social/invite-friends';
-import { RateStoryteller } from '@/components/social/rate-storyteller';
 import { RoleTipsPanel } from '@/components/role-tips';
 import { type TableContext } from './display.tsx';
 export function TableFlow({
@@ -301,9 +300,6 @@ export function TableFlow({
                   </div>
                 )}
               </>
-            )}
-            {game.phase === 'ended' && (
-              <RateStoryteller code={game.code} host={game.host} />
             )}
             {game.hints.map((h) => (
               <p className="error" key={h}>

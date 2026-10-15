@@ -43,7 +43,8 @@ export function useTableState() {
   const [followChoice, setFollowChoice] = useState(true);
   const confirmation =
     selected?.action === 'night' &&
-    game?.nightConfirmation?.task === values.task
+    game?.nightConfirmation &&
+    game.nightConfirmation.task === values.task
       ? game.nightConfirmation
       : null;
   const actionControl = confirmation

@@ -1,0 +1,4 @@
+// Non-secret Apple identifiers confirmed in FEAR-115 belong in Identity.xcconfig.
+#include "Identity.xcconfig"
+DEVELOPMENT_TEAM = $(FEARVILLE_TEAM_ID)
+CAPACITOR_DEBUG = false
