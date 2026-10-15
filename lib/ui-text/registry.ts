@@ -10,7 +10,8 @@ for (const t of TUTORIALS.filter((t) => t.kind === 'walkthrough')) {
     }
   });
 }
-// Stable keys are shared by web and native clients. Never reuse a retired key.
+// Stable keys serve browsers and mobile shells. Keep legacy native keys for
+// saved text versions and older clients; never reuse a retired key.
 export const UI_TEXT: Record<string, string> = {
   ...tutorialText,
   'home.welcome': 'Welcome to Fearville.',

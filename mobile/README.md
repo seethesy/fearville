@@ -80,8 +80,8 @@ Deploy the association through the normal Worker release process before testing
 Universal Links. Apple caches the association, so installation/reinstallation
 may be needed after a change.
 
-Existing icon, Fearville logo, and Metal Mania font assets are reused from the
-retained SwiftUI app. The offline page includes the same logo/font. The privacy
+Icon, Fearville logo, and Metal Mania font assets were preserved from the
+retired SwiftUI app. The offline page includes the same logo/font and OFL license. The privacy
 manifest preserves the existing data inventory and adds the app-owned
 UserDefaults access used by Capacitor for its binary version and resource path
 (`CA92.1`). No analytics or tracking SDK was added.
@@ -90,7 +90,8 @@ UserDefaults access used by Capacitor for its binary version and resource path
 
 `.github/workflows/mobile-ios.yml` validates the URL policy, compiles unsigned
 Staging and Release simulator apps, and checks their actual bundled settings and
-resources. It does not upload an IPA. The existing SwiftUI workflow is retained.
+resources, including the font license. It replaces the retired SwiftUI workflow
+(`ios.yml`); it does not upload an IPA.
 
 Signed upload and TestFlight automation belong to **FEAR-108**, signing secrets
 to **FEAR-109**, and native Sign in with Apple to **FEAR-117**. This shell alone

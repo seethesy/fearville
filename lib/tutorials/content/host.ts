@@ -5,7 +5,7 @@ import type { Tutorial } from '../types.ts';
 // seated player): guests every time they host a table, accounts the first
 // time. Skipping either chapter ends the whole tour. Web only for now: the
 // iPhone client can host, but its triggers and spotlight targets would need
-// native work (and FEAR-79 plans to move native clients onto the web UI).
+// client layouts. Mobile shells now use these web tutorials too.
 // ---------------------------------------------------------------------------
 export const HOST_TOUR: Tutorial[] = [
   {

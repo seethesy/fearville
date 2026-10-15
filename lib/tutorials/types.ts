@@ -1,5 +1,6 @@
-// Tutorials are plain data. The engine, overlay, Help menu and the iPhone app
-// all read the same definitions, so later tickets only add content.
+// Tutorials are plain data shared by the web UI in browsers and mobile shells.
+// Legacy ios platform metadata is retained for saved IDs and API compatibility.
+// Shells use the web platform; new content belongs in the shared web UI.
 
 import type { RiteDiagram } from './diagrams.ts';
 
@@ -8,10 +9,9 @@ export type TutorialKind = 'walkthrough' | 'section' | 'tour' | 'guide';
 // (the tour and Storyteller-only sections; never requested for players).
 export type TutorialAudience = 'player' | 'host' | 'all';
 export type Platform = 'web' | 'ios';
-// Tabs on the iPhone client (GameView).
+// Retired native tab names retained as legacy tutorial metadata.
 export type IosTab = 'game' | 'seats' | 'messages' | 'script' | 'controls';
-// Decorative illustration shown on a step. Web draws an icon tile; iPhone
-// maps each to an SF Symbol (see IOS_SYMBOLS).
+// Decorative illustration shown as an icon tile in the shared web UI.
 export type Illustration =
   | 'welcome'
   | 'seat'
@@ -51,8 +51,7 @@ export interface TutorialStep {
   diagram?: RiteDiagram;
   // Limit a step to one platform (default: both).
   platforms?: Platform[];
-  // iPhone overrides: different wording for the native layout, and the tab to
-  // open while the step is showing.
+  // Legacy native wording/tab overrides, retained for compatibility.
   ios?: { body?: string; title?: string; tab?: IosTab };
 }
 

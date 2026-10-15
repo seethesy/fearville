@@ -22,7 +22,6 @@ import { PATTERNS } from '../lib/rite/types.ts';
 import { TUTORIALS, tutorial } from '../lib/tutorials/content.ts';
 import { readGuest, writeGuest, isNewScope } from '../lib/tutorials/guest.ts';
 import { parseItems } from '../lib/tutorials/validate.ts';
-import { iosCatalog } from '../lib/tutorials/ios.ts';
 import { ALL_ROLES } from '../lib/game/types.ts';
 
 const run = (events: TutorialEvent[], start = initialState('web')) =>
@@ -544,16 +543,6 @@ void test('every web target exists in the table or a component', () => {
           sources.includes(`data-tutorial="${s.target}"`),
           `${t.id}: no element has data-tutorial="${s.target}"`,
         );
-});
-
-void test('the iPhone tutorial catalog matches the web content', () => {
-  const native = JSON.parse(
-    readFileSync(
-      new URL('../ios/Fearville/tutorials.json', import.meta.url),
-      'utf8',
-    ),
-  );
-  assert.deepEqual(native, iosCatalog());
 });
 
 void test('every Night Rite pattern has a guide with a diagram, shown on night 1 to its own vigil only', () => {

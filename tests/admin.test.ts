@@ -1,13 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
 import {
   allowlisted,
   adminSessionValid,
   ADMIN_SESSION_MS,
 } from '../lib/admin/policy.ts';
 import { COMMANDS, parseCommand } from '../lib/admin/commands.ts';
-import { UI_TEXT, validateText, formatText } from '../lib/ui-text/registry.ts';
+import { validateText, formatText } from '../lib/ui-text/registry.ts';
 import {
   auditValue,
   auditTarget,
@@ -97,7 +96,7 @@ void test('command parser validates typed arguments and never accepts additional
     ),
   );
 });
-void test('text values remain literal, preserve placeholder sets, and have native defaults', () => {
+void test('text values remain literal and preserve placeholder sets', () => {
   assert.equal(
     validateText('home.welcome', '<script>alert(1)</script>'),
     '<script>alert(1)</script>',
@@ -107,13 +106,4 @@ void test('text values remain literal, preserve placeholder sets, and have nativ
   assert.throws(() => validateText('__proto__', 'value'));
   assert.throws(() => validateText('home.welcome', 'a'.repeat(4001)));
   assert.equal(formatText('{count} players', { count: 8 }), '8 players');
-  assert.deepEqual(
-    JSON.parse(
-      readFileSync(
-        new URL('../ios/Fearville/ui-text.json', import.meta.url),
-        'utf8',
-      ),
-    ),
-    UI_TEXT,
-  );
 });

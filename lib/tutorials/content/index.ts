@@ -1,4 +1,4 @@
-import type { Illustration, Tutorial } from '../types.ts';
+import type { Tutorial } from '../types.ts';
 import { WALKTHROUGH } from './walkthrough.ts';
 import { SECTIONS } from './sections.ts';
 import { RITE_GUIDES } from './rite.ts';
@@ -22,29 +22,3 @@ export function isTutorialId(id: unknown): id is string {
 export function sectionTutorial(section: string): Tutorial | undefined {
   return TUTORIALS.find((t) => t.kind === 'section' && t.section === section);
 }
-// iPhone: SF Symbol for each illustration.
-export const IOS_SYMBOLS: Record<Illustration, string> = {
-  welcome: 'sparkles',
-  seat: 'chair',
-  appearance: 'person.crop.circle',
-  invite: 'person.badge.plus',
-  script: 'scroll',
-  character: 'eye.slash',
-  flow: 'list.bullet.rectangle',
-  clock: 'timer',
-  'day-night': 'sun.horizon',
-  night: 'moon.stars',
-  nominate: 'hand.raised',
-  vote: 'checkmark.circle',
-  notes: 'note.text',
-  messages: 'bubble.left.and.bubble.right',
-  help: 'questionmark.circle',
-  settings: 'gearshape',
-  rules: 'book',
-  recap: 'clock.arrow.circlepath',
-  friends: 'person.2',
-  stats: 'chart.bar',
-  profile: 'person.text.rectangle',
-  account: 'person.crop.square',
-  done: 'checkmark.seal',
-};
