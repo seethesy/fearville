@@ -1,0 +1,354 @@
+/* Four-second finishers: anticipation, impact, then a lingering aftermath. */
+.death-fx {
+  --fx-color: #98fff0;
+  --fx-dim: #356d92;
+  position: absolute;
+  inset: 0;
+  display: block;
+  pointer-events: none;
+  z-index: 6;
+  animation: finisher-lifetime 4s linear both;
+}
+.death-fx-embers {
+  --fx-color: #ffd58a;
+  --fx-dim: #ed531a;
+}
+.death-fx-petals {
+  --fx-color: #ffc3dd;
+  --fx-dim: #af245f;
+}
+.death-fx-mist {
+  --fx-color: #c6bcff;
+  --fx-dim: #6252b6;
+}
+.death-scene {
+  position: absolute;
+  width: 260px;
+  height: 260px;
+  top: calc(50% - 130px);
+  left: calc(50% - 130px);
+  transform: scale(var(--finisher-scale, 1));
+}
+.circle-seat .death-scene {
+  --finisher-scale: 0.7;
+}
+.death-scene > i {
+  display: block;
+  position: absolute;
+  pointer-events: none;
+}
+.fx-aura {
+  inset: -15%;
+  border-radius: 50%;
+  background: radial-gradient(ellipse, var(--fx-dim), transparent 67%);
+  animation: finisher-aura 3.8s ease-out both;
+}
+.fx-charge {
+  inset: 25%;
+  border-radius: 50%;
+  border: 2px solid var(--fx-color);
+  box-shadow:
+    inset 0 0 25px var(--fx-dim),
+    0 0 20px var(--fx-dim);
+  animation: finisher-charge 0.68s cubic-bezier(0.7, 0, 1, 1) both;
+}
+.fx-rune {
+  inset: 22%;
+  border: 2px dashed var(--fx-color);
+  outline: 1px solid var(--fx-dim);
+  outline-offset: 7px;
+  border-radius: 50%;
+  animation: finisher-rune 2.7s ease-out both;
+}
+.fx-impact {
+  inset: 32%;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    #fff8de,
+    var(--fx-color) 20%,
+    var(--fx-dim) 48%,
+    transparent 70%
+  );
+  animation: finisher-impact 0.8s 0.58s ease-out both;
+}
+.fx-ring {
+  inset: 25%;
+  border: 3px solid var(--fx-color);
+  border-radius: 50%;
+  box-shadow:
+    0 0 18px var(--fx-dim),
+    inset 0 0 15px var(--fx-dim);
+  animation: finisher-ring 1s 0.62s cubic-bezier(0.1, 0.65, 0.2, 1) both;
+}
+.fx-ring-echo {
+  border-width: 1px;
+  animation-delay: 0.84s;
+  animation-duration: 1.35s;
+}
+.fx-beam {
+  left: 39%;
+  top: -50%;
+  width: 22%;
+  height: 105%;
+  transform-origin: bottom;
+  background: linear-gradient(
+    0deg,
+    transparent,
+    var(--fx-color) 15%,
+    var(--fx-dim) 60%,
+    transparent
+  );
+  clip-path: polygon(30% 0, 70% 0, 100% 100%, 0 100%);
+  animation: finisher-beam 2.8s 0.62s ease-out both;
+}
+.death-fx .fx-sigil {
+  position: absolute;
+  width: 82px;
+  height: 82px;
+  top: calc(50% - 41px);
+  left: calc(50% - 41px);
+  color: var(--fx-color);
+  filter: drop-shadow(0 0 12px var(--fx-dim));
+  animation: finisher-soul 3s 0.62s cubic-bezier(0.2, 0.6, 0.3, 1) both;
+}
+.fx-spark {
+  width: 5px;
+  height: 5px;
+  top: calc(50% - 2px);
+  left: calc(50% - 2px);
+  border-radius: 50%;
+  background: var(--fx-color);
+  box-shadow: 0 0 8px var(--fx-dim);
+  animation: finisher-spark var(--duration) var(--delay)
+    cubic-bezier(0.12, 0.55, 0.3, 1) both;
+}
+.fx-shard {
+  width: 6px;
+  height: 20px;
+  border-radius: 0;
+  clip-path: polygon(50% 0, 100% 80%, 0 100%);
+}
+.fx-smoke {
+  inset: 20%;
+  border-radius: 50%;
+  background: radial-gradient(ellipse, var(--fx-dim), transparent 65%);
+  animation: finisher-smoke 2.6s var(--delay) ease-out both;
+}
+.death-fx-embers .fx-beam {
+  width: 70%;
+  left: 15%;
+  top: -15%;
+  height: 80%;
+  background: linear-gradient(
+    0deg,
+    var(--fx-dim),
+    var(--fx-color),
+    transparent
+  );
+  clip-path: polygon(
+    0 100%,
+    15% 25%,
+    35% 70%,
+    50% 0,
+    67% 60%,
+    86% 20%,
+    100% 100%
+  );
+}
+.death-fx-embers .fx-sigil {
+  animation-name: finisher-flame;
+}
+.death-fx-petals .fx-spark {
+  width: 13px;
+  height: 8px;
+  border-radius: 90% 0 90% 10%;
+  background: linear-gradient(120deg, var(--fx-color), var(--fx-dim));
+  box-shadow: none;
+  clip-path: none;
+  animation-name: finisher-petal;
+}
+.death-fx-petals .fx-sigil {
+  width: 110px;
+  height: 110px;
+  left: calc(50% - 55px);
+  top: calc(50% - 55px);
+  animation-name: finisher-bloom;
+}
+.death-fx-petals .fx-beam {
+  display: none;
+}
+.death-fx-mist .fx-rune {
+  border-style: solid;
+  background: repeating-conic-gradient(
+    from 0deg,
+    transparent 0deg 35deg,
+    #b5a1ed44 40deg 45deg
+  );
+  animation: finisher-vortex 3.6s ease-in-out both;
+}
+.death-fx-mist .fx-spark {
+  animation-name: finisher-inward;
+}
+.death-fx-mist .fx-beam {
+  display: none;
+}
+.death-fx-mist .fx-sigil {
+  animation-name: finisher-eclipse;
+}
+.portrait-stage:has(> .death-fx) > .player-avatar,
+.cosmetic-preview-stage:has(> .death-fx) > .portrait-stage > .player-avatar {
+  animation: portrait-impact 1.4s ease-out both;
+}
+.farewell-preview {
+  display: grid;
+  justify-items: center;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  min-height: 320px;
+  margin: 1.3rem 0;
+  padding: 3rem 1rem 1rem;
+  border: 1px solid #6c6052;
+  border-radius: 16px;
+  background: radial-gradient(ellipse at 50% 30%, #333c51, #151b26 75%);
+}
+.farewell-preview .cosmetic-preview-stage {
+  padding: 35px;
+}
+.farewell-preview .player-avatar {
+  width: 90px;
+  height: 90px;
+}
+.farewell-preview > div:last-child {
+  position: relative;
+  z-index: 8;
+}
+.avatar-options {
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+}
+.avatar-options small {
+  font-size: 0.68rem;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+.avatar-options button:disabled {
+  opacity: 0.55;
+}
+@keyframes fog-drift {
+  from {
+    transform: translate3d(-8%, 0, 0) scale(1);
+  }
+  to {
+    transform: translate3d(8%, -8%, 0) scale(1.1);
+  }
+}
+@keyframes mote-drift {
+  0%,
+  100% {
+    opacity: 0;
+  }
+  25%,
+  65% {
+    opacity: 0.35;
+  }
+  to {
+    transform: translate3d(25px, -100px, 0);
+  }
+}
+@keyframes finisher-lifetime {
+  0%,
+  90% {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+@keyframes finisher-aura {
+  0% {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+  16% {
+    opacity: 0.4;
+    transform: scale(0.7);
+  }
+  26% {
+    opacity: 0.7;
+    transform: scale(1.1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(1.4);
+  }
+}
+@keyframes finisher-charge {
+  0% {
+    opacity: 0;
+    transform: scale(1.6) rotate(-60deg);
+  }
+  30% {
+    opacity: 0.9;
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.15) rotate(90deg);
+  }
+}
+@keyframes finisher-rune {
+  0% {
+    opacity: 0;
+    transform: scale(0.6) rotate(-45deg);
+  }
+  22% {
+    opacity: 0.8;
+    transform: scale(1) rotate(0);
+  }
+  to {
+    opacity: 0;
+    transform: scale(1.5) rotate(110deg);
+  }
+}
+@keyframes finisher-impact {
+  0% {
+    opacity: 0;
+    transform: scale(0.2);
+  }
+  15% {
+    opacity: 0.85;
+    transform: scale(1.8);
+  }
+  to {
+    opacity: 0;
+    transform: scale(2.5);
+  }
+}
+@keyframes finisher-ring {
+  from {
+    opacity: 0.9;
+    transform: scale(0.3);
+  }
+  to {
+    opacity: 0;
+    transform: scale(2.6);
+  }
+}
+@keyframes finisher-beam {
+  0% {
+    opacity: 0;
+    transform: scaleX(0.1) scaleY(0.3);
+  }
+  12% {
+    opacity: 0.7;
+    transform: scaleX(1) scaleY(1);
+  }
+  45% {
+    opacity: 0.45;
+  }
+  to {
+    opacity: 0;
+    transform: scaleX(0.05) scaleY(1.3);
+  }
+}

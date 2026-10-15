@@ -373,10 +373,7 @@ void test('submissions are private, replaceable, majority checked at dawn, and n
     action: 'riteGridSubmit',
     solution: state.solution,
   });
-  assert.equal(
-    memberView(g, s.members[1], 200).puzzle!.submission!.length,
-    0,
-  );
+  assert.equal(memberView(g, s.members[1], 200).puzzle!.submission!.length, 0);
   resolveRite(g, 300);
   assert.equal(s.completeNight, undefined);
   assert.equal(g.messages.filter((m) => m.text.includes('vigil')).length, 0);
@@ -393,7 +390,7 @@ void test('submissions are private, replaceable, majority checked at dawn, and n
     s.members.length,
   );
 });
-void test('Escape allows repeated moves without deadlines, cycles turns until manual close and keeps snapshots private', () => {
+void test('Escape hands off on each move, cycles turns until manual close and keeps snapshots private', () => {
   const g = game('board'),
     r = g.rite!,
     s = r.squads[0],
@@ -414,14 +411,9 @@ void test('Escape allows repeated moves without deadlines, cycles turns until ma
     /could not be completed/,
   );
   const token = t.token;
-  action(
-    g,
-    first,
-    { action: 'riteBoardMove', ...move, turn: token },
-    201,
-  );
-  assert.equal(t.cursor, 0);
-  assert.equal(memberView(g, first, t.start).puzzle!.phase, 'turn');
+  action(g, first, { action: 'riteBoardMove', ...move, turn: token }, 201);
+  assert.equal(t.cursor, 1);
+  assert.equal(memberView(g, first, t.start).puzzle!.phase, 'wait');
   assert.throws(
     () =>
       action(
@@ -432,11 +424,6 @@ void test('Escape allows repeated moves without deadlines, cycles turns until ma
       ),
     /could not be completed/,
   );
-  const secondMove = boardMoves(state.blocks)[0].move;
-  action(g, first, { action: 'riteBoardMove', ...secondMove, turn: t.token }, 100000);
-  assert.equal(t.cursor, 0);
-  action(g, first, { action: 'ritePass', turn: t.token }, 100001);
-  assert.equal(t.cursor, 1);
   assert.equal(memberView(g, second, t.start).puzzle!.phase, 'turn');
   const frozen = memberView(g, first, t.start).puzzle!.blocks;
   const next = boardMoves(state.blocks)[0].move;
@@ -447,8 +434,7 @@ void test('Escape allows repeated moves without deadlines, cycles turns until ma
     t.start,
   );
   assert.deepEqual(memberView(g, first, t.start).puzzle!.blocks, frozen);
-  assert.equal(t.cursor, 1);
-  action(g, second, { action: 'ritePass', turn: t.token }, t.start);
+  assert.equal(t.cursor, 2);
   const third = t.order[2];
   assert.equal(memberView(g, third, t.start).puzzle!.phase, 'turn');
   action(g, third, { action: 'ritePass', turn: t.token }, t.start);
@@ -493,12 +479,15 @@ void test('Escape rejects illegal slides but never advances a turn because time 
   assert.equal(t.cursor, 1);
 });
 void test('an active timed Rite migrates to open play without losing its board or turn', () => {
-  const g = game('board'), r = g.rite!, state = r.squads[0].state as BoardState;
+  const g = game('board'),
+    r = g.rite!,
+    state = r.squads[0].state as BoardState;
   r.timerless = undefined;
   r.lockUntil = 300;
   r.windowEnd = 500;
   state.turn!.deadline = 350;
-  const token = state.turn!.token, board = structuredClone(state.blocks);
+  const token = state.turn!.token,
+    board = structuredClone(state.blocks);
   assert.equal(tickRite(g, 1000), true);
   assert.equal(r.timerless, true);
   assert.equal(r.lockUntil, undefined);
@@ -509,11 +498,14 @@ void test('an active timed Rite migrates to open play without losing its board o
   assert.equal(memberView(g, state.turn!.order[0], 1000).puzzle!.phase, 'turn');
 });
 void test('Storyteller can pass an absent player’s Rite turn without a timer', () => {
-  const g = game('board'), squad = g.rite!.squads[0];
+  const g = game('board'),
+    squad = g.rite!.squads[0];
   const turn = (squad.state as BoardState).turn!;
   const first = turn.order[0];
-  assert.equal(riteAction(g, host, { action: 'ritePassTurn', squad: squad.id }, 500000),
-    'The Storyteller passed this vigil’s turn.');
+  assert.equal(
+    riteAction(g, host, { action: 'ritePassTurn', squad: squad.id }, 500000),
+    'The Storyteller passed this vigil’s turn.',
+  );
   assert.equal(turn.cursor, 1);
   assert.equal(memberView(g, first, 500000).puzzle!.phase, 'wait');
   assert.equal(memberView(g, turn.order[1], 500000).puzzle!.phase, 'turn');
@@ -620,9 +612,22 @@ void test('Lab unanimous votes remain open without deadlines and preserve tonigh
   );
   tickRite(g, 1000000);
   assert.ok(t.vote);
-  action(g, s.members.find((id) => id !== t.order[1])!, { action: 'riteLabBallot', vote: t.vote!.id, yes: false }, 1000000);
-  const remaining = s.members.find((id) => id !== t.order[1] && !Object.hasOwn(t.vote!.ballots, id));
-  if (remaining) action(g, remaining, { action: 'riteLabBallot', vote: t.vote!.id, yes: true }, 1000001);
+  action(
+    g,
+    s.members.find((id) => id !== t.order[1])!,
+    { action: 'riteLabBallot', vote: t.vote!.id, yes: false },
+    1000000,
+  );
+  const remaining = s.members.find(
+    (id) => id !== t.order[1] && !Object.hasOwn(t.vote!.ballots, id),
+  );
+  if (remaining)
+    action(
+      g,
+      remaining,
+      { action: 'riteLabBallot', vote: t.vote!.id, yes: true },
+      1000001,
+    );
   assert.equal(t.voteResult!.passed, false);
   assert.equal(t.cursor, 2 % t.order.length);
   assert.equal(memberView(g, t.order[t.cursor], 1000002).puzzle!.phase, 'turn');
@@ -857,15 +862,9 @@ void test('save compatibility, disabled older tables, setup authorization, force
 void test('Rite does not shorten independent night choice deadlines', () => {
   const g = game();
   g.nightChoiceDeadlines = { redirect: 60200 };
-  assert.equal(
-    nightChoiceDeadlineFor(g, { key: 'redirect' }),
-    60200,
-  );
+  assert.equal(nightChoiceDeadlineFor(g, { key: 'redirect' }), 60200);
   g.rite!.status = 'complete';
-  assert.equal(
-    nightChoiceDeadlineFor(g, { key: 'redirect' }),
-    60200,
-  );
+  assert.equal(nightChoiceDeadlineFor(g, { key: 'redirect' }), 60200);
 });
 
 void test('a pending redeal never stalls another vigil, and force close cancels preparation', () => {
@@ -873,17 +872,15 @@ void test('a pending redeal never stalls another vigil, and force close cancels 
     r = g.rite!,
     first = r.squads[0],
     other = r.squads[1];
-  riteAction(
-    g,
-    host,
-    { action: 'riteRedeal', squad: first.id },
-    200,
-  );
+  riteAction(g, host, { action: 'riteRedeal', squad: first.id }, 200);
   assert.ok(r.pendingRedeal?.includes(first.id));
   const turn = (other.state as BoardState).turn!;
   tickRite(g, 30200);
   assert.equal(turn.log.length, 0);
-  assert.equal(memberView(g, turn.order[turn.cursor], 30200).puzzle!.phase, 'turn');
+  assert.equal(
+    memberView(g, turn.order[turn.cursor], 30200).puzzle!.phase,
+    'turn',
+  );
   riteAction(g, host, { action: 'riteForce' }, 31200);
   assert.deepEqual(r.pendingRedeal, []);
   assert.equal(riteReady(g, 31200), true);

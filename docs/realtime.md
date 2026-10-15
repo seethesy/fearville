@@ -51,3 +51,51 @@ The idle HTTP suite verifies advancement with no polling or sockets. Fake
 clock tests cover exact deadline boundaries and catch-up. Cloudflare alarm
 delivery is at least once; the 250 ms accuracy target needs measurement in
 staging and on phones and is not a guaranteed platform delivery SLA.
+
+`GET /api/table/socket?code=…` authenticates the existing seat cookie or bearer
+header, checks the origin and code, and upgrades to the table object. It uses
+`acceptWebSocket` and serialized viewer attachments, which survive hibernation.
+The hello frame contains the source build ID and API version. Every committed
+change queues a per-viewer push; hashes exclude version/clock metadata and
+suppress unchanged content. Membership, ban and admin restrictions are checked
+again before sending. Blocking filters chat before paging and hashing.
+
+Web table state uses `useTableSocket`. Action responses and push frames follow
+the same version ordering; fallback polls run at 30 seconds when the socket is
+down, with bounded reconnect backoff and a foreground refresh. HTTP actions
+remain available as a fallback and for older clients. Live clients send
+`{type: 'action', id, command}` and receive `{type: 'ack', id, ok, error?}`.
+The latest 100 receipts per seat persist atomically with the game commit;
+HTTP `requestId` shares the same receipts, so losing an ack never applies a
+retried command twice. Rejections retain their original result too.
+Night Rite predicts only the acting player's slides, pours, grid marks and
+altar picks. A rejected ack clears the prediction, reveals the latest server
+view, flashes red and plays the error cue. Votes and nominations wait for ack.
+Escape moves hand off immediately; optional timed turns still expire by alarm.
+Night Rite consumes the same pushed game view.
+Sandbox shows request round-trip time and the arrival time of the matching
+push after send, using a request ID without including credentials in URLs.
+Friends, invites and presence polling is unchanged.
+
+Reconnect starts after socket close/error, browser visibility/online/focus,
+and native lifecycle resume. Retry delays grow from 250 ms to at most 5 s
+with jitter; resume and Retry replace even a socket that still reports OPEN.
+The client sends `hello` with `lastVersion`, receives a full authorized view
+and fresh `serverNow`, then resends pending actions in order using their
+original ids. Rejected stale actions remain visible in the initiating form.
+One second without a caught-up socket shows Reconnecting; fifteen seconds
+shows Offline and Retry. Server controls and Rite moves stay disabled during
+recovery. Reconnection reuses the existing HttpOnly seat cookie.
+
+Socket frames and the current web client defer archived chat/decision
+transcripts; opening a player's recap fetches that game's full detail through
+the authenticated table recap endpoint. This prevents past heavy-chat games
+from enlarging every routine push. Older native HTTP clients retain their full
+recap response; the compact mode and deferred-detail fields are additive.
+
+CI opens nineteen actual Miniflare sockets, checks each payload against its
+authorized `view()`, verifies private information and notes stay private, tests
+hash suppression for unrelated viewers, and closes a revoked seat's socket.
+Fake transports test disconnection, 30-second fallback, backoff, recovery and
+stale-frame rejection. Physical phone latency and background-app checks remain
+part of the separate playtest tickets.

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import {
   helpSections,
   initialState,
@@ -22,7 +22,6 @@ import { PATTERNS } from '../lib/rite/types.ts';
 import { TUTORIALS, tutorial } from '../lib/tutorials/content.ts';
 import { readGuest, writeGuest, isNewScope } from '../lib/tutorials/guest.ts';
 import { parseItems } from '../lib/tutorials/validate.ts';
-import { iosCatalog } from '../lib/tutorials/ios.ts';
 import { ALL_ROLES } from '../lib/game/types.ts';
 
 const run = (events: TutorialEvent[], start = initialState('web')) =>
@@ -525,9 +524,15 @@ void test('tutorial definitions are well formed', () => {
 
 void test('every web target exists in the table or a component', () => {
   const sources = [
-    'app/table/page.tsx',
     'components/tutorials/help-menu.tsx',
-    'components/rite/night-rite.tsx',
+    ...['app/table', 'components/rite'].flatMap((directory) =>
+      readdirSync(new URL('../' + directory, import.meta.url), {
+        recursive: true,
+        encoding: 'utf8',
+      })
+        .filter((file) => file.endsWith('.tsx'))
+        .map((file) => directory + '/' + file.replaceAll('\\', '/')),
+    ),
   ]
     .map((f) => readFileSync(new URL('../' + f, import.meta.url), 'utf8'))
     .join('\n');
@@ -538,16 +543,6 @@ void test('every web target exists in the table or a component', () => {
           sources.includes(`data-tutorial="${s.target}"`),
           `${t.id}: no element has data-tutorial="${s.target}"`,
         );
-});
-
-void test('the iPhone tutorial catalog matches the web content', () => {
-  const native = JSON.parse(
-    readFileSync(
-      new URL('../ios/Fearville/tutorials.json', import.meta.url),
-      'utf8',
-    ),
-  );
-  assert.deepEqual(native, iosCatalog());
 });
 
 void test('every Night Rite pattern has a guide with a diagram, shown on night 1 to its own vigil only', () => {

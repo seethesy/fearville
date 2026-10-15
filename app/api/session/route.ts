@@ -16,6 +16,10 @@ import {
   memberCookie as cookie,
 } from '@/lib/game/join';
 import { createStatements } from '@/lib/game/part-store';
+import { readFlags } from '@/lib/flags/flags';
+import { enabled, newGamesAllowed, scriptEnabled } from '@/lib/flags/catalog';
+import { NEW_GAMES_OFF } from '@/lib/flags/game';
+import { SCRIPTS } from '@/lib/game/types';
 import {
   auth,
   hash,
@@ -31,6 +35,14 @@ import {
 export async function GET(r: Request) {
   try {
     const { actor, code, game } = await authenticatedRead(r);
+    if (actor.observer)
+      return json({
+        code,
+        host: false,
+        observer: true,
+        name: 'Admin observer',
+        phase: game.phase,
+      });
     const player = game.players.find((p) => p.id === actor.id);
     requireThat(
       actor.host || (player && !player.departed),
@@ -91,6 +103,10 @@ export async function POST(r: Request) {
         { error: 'Sign in to create a lobby or open the sandbox.' },
         401,
       );
+    // FEAR-122 remote switches. Returning seats (below) are never refused.
+    const flags = await readFlags();
+    if (body.action === 'create' || body.action === 'createSandbox')
+      requireThat(newGamesAllowed(flags), NEW_GAMES_OFF);
     // A returning device keeps its existing identity, including Storyteller
     // permissions, instead of creating another seat or failing after start.
     if (body.action === 'join' && tokenOf(r)) {
@@ -147,6 +163,13 @@ export async function POST(r: Request) {
           body.action === 'createSandbox'
             ? newSandboxGame(code, name)
             : newGame(code, name);
+        if (!game.sandbox && !scriptEnabled(flags, game.script ?? 'horrors')) {
+          const open = Object.keys(SCRIPTS).find((k) =>
+            scriptEnabled(flags, k),
+          );
+          requireThat(open, NEW_GAMES_OFF);
+          game.script = open as typeof game.script;
+        }
         await db.batch([
           ...createStatements(db, game, Date.now()),
           db
@@ -190,6 +213,10 @@ export async function POST(r: Request) {
         }
       }
     }
+    requireThat(
+      account || enabled(flags, 'guests'),
+      'Guest play is paused right now. Sign in to join this table.',
+    );
     if (await joinSession(code, name, tokenHash, undefined, defaults)) {
       if (account) await attachMember(tokenHash, account.id);
       return json({ code, token }, 200, { 'Set-Cookie': cookie(r, token) });

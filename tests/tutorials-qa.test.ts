@@ -406,7 +406,9 @@ void test('real views: a Rite turn holds popups until the turn passes, then the 
     5002,
   );
   reasons = suppressionReasons(playerView(g, current, 5003)).filter(
-    (r) => r !== 'night-choice',
+    // Vigils are randomly assigned: the current member may also hold a
+    // Sphinx glimpse. This test isolates the Rite blocker, not those tasks.
+    (r) => !['night-choice', 'night-glimpse'].includes(r),
   );
   assert.ok(!reasons.includes('rite-turn'));
   s = reduce(s, { type: 'pump', blocked: reasons.length > 0 });
@@ -644,7 +646,7 @@ void test('accounts see each tutorial once on any device; guests see them again 
 
 void test('role tips: the list is on the Game Flow screen and the toggle is in Help and Settings', () => {
   const page = readFileSync(
-    new URL('../app/table/page.tsx', import.meta.url),
+    new URL('../app/table/page/flow.tsx', import.meta.url),
     'utf8',
   );
   assert.match(page, /<RoleTipsPanel[\s\S]*?tips=\{game\.character\.tips\}/);
@@ -703,7 +705,7 @@ void test('the tutorial overlay is an accessible modal', () => {
 
 void test('the tutorial card fits a 400px phone and honours reduced motion', () => {
   const css = readFileSync(
-    new URL('../app/globals.css', import.meta.url),
+    new URL('../app/styles/globals/tutorials.css', import.meta.url),
     'utf8',
   );
   const card = css.match(/\.tutorial-card \{[^}]*\}/)?.[0] ?? '';

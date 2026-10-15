@@ -59,6 +59,11 @@ for (const token of [host.token, players[0].token]) {
   assert.equal(after.me, before.me);
   assert.equal(after.host, before.host);
   assert.equal(after.players.length, 5);
+  assert.equal(
+    resumed.token,
+    token,
+    'resume retains the credential used for socket reconnect',
+  );
   assert.equal(after.version, before.version);
   const info = ok(await call('/api/session', token));
   assert.equal(info.host, before.host);

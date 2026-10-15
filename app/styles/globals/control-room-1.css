@@ -1,0 +1,351 @@
+/* Control-room layout with the Tabletop type pairing. Fonts are served locally. */
+@font-face {
+  font-family: 'Cinzel';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/cinzel-400.ttf') format('truetype');
+}
+@font-face {
+  font-family: 'Cinzel';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('/fonts/cinzel-500.ttf') format('truetype');
+}
+@font-face {
+  font-family: 'Cinzel';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('/fonts/cinzel-600.ttf') format('truetype');
+}
+@font-face {
+  font-family: 'Cinzel';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('/fonts/cinzel-700.ttf') format('truetype');
+}
+@font-face {
+  font-family: 'Manrope';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/manrope-400.ttf') format('truetype');
+}
+@font-face {
+  font-family: 'Manrope';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('/fonts/manrope-500.ttf') format('truetype');
+}
+@font-face {
+  font-family: 'Manrope';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('/fonts/manrope-600.ttf') format('truetype');
+}
+@font-face {
+  font-family: 'Manrope';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('/fonts/manrope-700.ttf') format('truetype');
+}
+h1,
+h2,
+h3,
+.brand,
+.intro h1,
+.table-title h1,
+.account-layout h1,
+.clock-box strong {
+  font-family: 'Cinzel', Georgia, serif;
+  letter-spacing: 0;
+  font-weight: 500;
+}
+.eyebrow,
+.table-identity,
+.table-script,
+.connection,
+.session-code,
+.edition {
+  font-family: 'Manrope', Arial, sans-serif;
+}
+.intro h1 {
+  font-size: clamp(2.8rem, 5vw, 4.7rem);
+  line-height: 1.15;
+}
+.table-shell {
+  --nav-width: 240px;
+  max-width: 1680px;
+  min-height: 100dvh;
+  padding: 0 40px 28px calc(var(--nav-width) + 40px);
+}
+.table-header {
+  position: fixed;
+  z-index: 20;
+  left: max(0px, calc((100vw - 1680px) / 2));
+  top: 0;
+  width: var(--nav-width);
+  height: 100dvh;
+  border: 0;
+  border-right: 1px solid var(--border);
+  background: var(--card);
+  padding: 36px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+}
+.table-wordmark {
+  color: var(--ring);
+  font-size: 1.8rem;
+  letter-spacing: 0.02em;
+  line-height: 1.3;
+}
+.table-identity {
+  font-size: 0.75rem;
+  letter-spacing: 0.19em;
+  overflow-wrap: anywhere;
+}
+.table-script {
+  color: var(--muted-foreground);
+  font-size: 0.875rem;
+  letter-spacing: 0;
+}
+.table-header .session-code {
+  order: 1;
+  margin-top: 8px;
+  padding: 0;
+  border: 0;
+  font-size: 0.875rem;
+  color: var(--foreground);
+  letter-spacing: 0.12em;
+}
+.table-setup {
+  order: 1;
+  display: grid;
+  gap: 6px;
+  margin-top: 8px;
+  color: var(--foreground);
+  font:
+    13px 'Manrope',
+    Arial,
+    sans-serif;
+  line-height: 1.4;
+}
+.table-setup strong {
+  font-weight: 700;
+}
+.table-setup small {
+  color: var(--muted-foreground);
+  font-size: 11px;
+}
+.table-settings {
+  order: 4;
+  margin-top: 10px;
+}
+.settings-dialog {
+  max-width: min(680px, calc(100vw - 24px));
+  max-height: min(90dvh, 900px);
+  overflow-y: auto;
+}
+.settings-dialog .settings-panel {
+  border: 0;
+  padding: 0;
+  box-shadow: none;
+}
+.session-code > span {
+  color: var(--muted-foreground);
+  letter-spacing: 0;
+  margin-right: 8px;
+}
+.table-header .connection {
+  order: 2;
+  margin: auto 0 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted-foreground);
+}
+.table-population {
+  order: 3;
+  font:
+    0.875rem 'Manrope',
+    sans-serif;
+  color: var(--muted-foreground);
+  letter-spacing: 0;
+}
+.table-title {
+  min-height: 158px;
+  margin: 0 0 30px;
+  padding: 28px 0;
+  border-bottom: 1px solid var(--border);
+}
+.table-title h1 {
+  font-size: clamp(1.6rem, 2.6vw, 2.4rem);
+}
+.table-title .eyebrow {
+  font-size: 0.75rem;
+  letter-spacing: 0.13em;
+}
+.timer-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+.clock-box {
+  min-width: 112px;
+}
+.clock-box strong {
+  color: var(--ring);
+  font-size: 3.25rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.timer-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  max-width: 250px;
+}
+.timer-actions button {
+  font-size: 0.875rem;
+  padding: 10px 14px;
+  background: transparent;
+  min-height: 44px;
+}
+.game-tabs {
+  display: block;
+  min-width: 0;
+}
+.game-tabs > [data-slot='tabs-content'] {
+  min-width: 0;
+  font-size: 1rem;
+}
+.table-tabs {
+  position: fixed;
+  z-index: 21;
+  top: 230px;
+  left: max(16px, calc((100vw - 1680px) / 2 + 16px));
+  width: calc(var(--nav-width) - 32px);
+  max-height: calc(100dvh - 350px);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  height: auto;
+  min-height: 0;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  background: transparent;
+}
+.table-tabs button {
+  flex: none;
+  width: 100%;
+  height: auto;
+  min-height: 50px;
+  padding: 12px 14px;
+  justify-content: flex-start;
+  gap: 12px;
+  border: 1px solid transparent;
+  color: var(--muted-foreground);
+  font-size: 0.875rem;
+}
+.table-tabs button[data-active] {
+  background: #be510326;
+  color: var(--ring);
+  border-color: transparent;
+  border-left: 3px solid var(--primary);
+  box-shadow: none;
+}
+.table-tabs button svg {
+  width: 20px;
+  height: 20px;
+}
+.table-tabs .count {
+  margin-left: auto;
+  opacity: 1;
+  font-size: 0.75rem;
+}
+.flow-dashboard {
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+  gap: 24px;
+}
+.flow-dashboard .flow-panel {
+  grid-column: 1 / -1;
+  min-height: 0;
+  padding: 30px;
+}
+.flow-panel h2 {
+  font-size: clamp(1.6rem, 2.5vw, 2.4rem);
+  line-height: 1.25;
+}
+.flow-panel .muted {
+  max-width: 70ch;
+}
+.flow-panel .eyebrow {
+  margin-bottom: 18px;
+}
+.character-panel,
+.recent-messages {
+  min-width: 0;
+}
+.character-panel h2 {
+  overflow-wrap: anywhere;
+}
+.character-panel .seat-mini-list {
+  margin: 20px 0;
+}
+.seat-mini-list > div > div {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.recent-messages .message p {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  font-size: 0.875rem;
+}
+.recent-messages .message:first-of-type {
+  padding-top: 0;
+}
+.recent-messages .message:last-of-type {
+  border-bottom: 0;
+}
+.text-action {
+  color: var(--ring);
+  font-size: 0.875rem;
+  white-space: nowrap;
+  min-height: 32px;
+}
+.section-heading .eyebrow {
+  margin-bottom: 18px;
+}
+.message-panel {
+  max-width: none;
+}
+.player-table .flow-dashboard {
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+}
+.player-table .flow-panel {
+  grid-column: 1;
+}
+.player-table .character-panel {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+}
+.player-table .recent-messages {
+  grid-column: 1;
+}
+.table-shell footer {
+  flex-wrap: wrap;
+  font-size: 0.8125rem;
+}

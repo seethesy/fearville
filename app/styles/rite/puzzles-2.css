@@ -1,0 +1,369 @@
+.town-place > strong {
+  display: block;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-family: Georgia, serif;
+  font-size: 11px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  border: 2px solid #bc9d46;
+  border-radius: 20px;
+  background: #302817;
+  padding: 4px;
+}
+.town-spots {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  height: 75px;
+}
+.character-token {
+  display: inline-grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: 3px solid #b5b8ad;
+  color: #422d66;
+  font-size: 29px;
+  padding: 0 !important;
+  min-height: 0 !important;
+  min-width: 0 !important;
+}
+.character-token:empty {
+  border-style: dashed;
+}
+.character-token svg {
+  width: 80%;
+  height: 80%;
+}
+.activity-spot svg,
+.activity-token svg {
+  width: 100%;
+  height: 100%;
+}
+.activity-token {
+  width: 38px;
+  height: 38px;
+}
+.activity-spot {
+  width: 42px;
+  height: 42px;
+  border: 2px dashed #a9b9b2;
+  border-radius: 10px;
+  position: relative;
+  z-index: 1;
+  padding: 0 !important;
+  background: #142a25 !important;
+  min-height: 0 !important;
+  font-size: 23px;
+}
+.activity-spot:empty::after {
+  content: '+';
+  color: #d8c881;
+  font-size: 22px;
+}
+.character-tray-card {
+  display: grid;
+  justify-items: center;
+  gap: 5px;
+  border: 1px solid #8d7e59;
+  border-radius: 10px;
+  padding: 8px 3px;
+  background: #142a25;
+}
+.character-tray-card > button:first-child {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+}
+.character-tray-card .activity-spot {
+  margin: 0;
+}
+.character-tray-card .activity-spot:disabled {
+  opacity: 0.55;
+}
+.rite-tray {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 5px;
+  margin: 20px 0;
+}
+.rite-tray button {
+  background: transparent;
+  border: none;
+  color: var(--rite-cream);
+  padding: 3px;
+  min-width: 0;
+  display: grid;
+  justify-items: center;
+  gap: 7px;
+}
+.rite-tray button > span {
+  font-size: 27px;
+}
+.rite-tray small {
+  font-size: 10px;
+}
+.rite-tray .used {
+  opacity: 0.45;
+}
+.rite-tray [aria-pressed='true'] {
+  opacity: 1;
+  outline: 2px dashed #d7b45b;
+  border-radius: 8px;
+}
+.rite-clues {
+  border: 1px solid #4a6960;
+  background: #101f1d;
+  border-radius: 15px;
+  padding: 16px;
+  margin-top: 22px;
+  max-height: 500px;
+  overflow: auto;
+}
+.rite-clues h3 {
+  font-family: Georgia, serif;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-size: 15px;
+}
+.rite-clue {
+  display: flex;
+  gap: 12px;
+  padding: 16px 0;
+  border-bottom: 1px solid #36554a;
+  align-items: center;
+  font-family: Georgia, serif;
+  font-size: 15px;
+}
+.rite-clue > b {
+  flex-shrink: 0;
+  border: 2px solid var(--rite-gold);
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+}
+.hidden-clue {
+  color: #91a59b;
+  font-style: italic;
+}
+.forged-clues {
+  border: 2px dashed #a73648;
+  background: #301820;
+  border-radius: 12px;
+  padding: 12px;
+  margin-top: 16px;
+  color: #ed8998;
+}
+.forged-clues b {
+  font-size: 11px;
+  background: #a42f40;
+  border-radius: 20px;
+  padding: 4px 8px;
+}
+.divination-puzzle {
+  background: #130d25;
+  padding: 18px;
+  border: 1px solid #72604e;
+  border-radius: 18px;
+}
+.ritual-tabs {
+  display: flex;
+  gap: 5px;
+  margin: 12px 0;
+  flex-wrap: wrap;
+}
+.ritual-tabs button {
+  flex: 1;
+  background: #2e2143;
+  border: 1px solid #68528b;
+  color: #b6a7cb;
+  border-radius: 8px;
+  padding: 10px 6px;
+  font-size: 12px;
+  min-height: 44px;
+}
+.ritual-tabs [aria-selected='true'],
+.ritual-tabs [aria-pressed='true'] {
+  border-color: #d3b04f;
+  color: #e9c467;
+}
+.altar-control {
+  border: 1px solid #594276;
+  background: #1e1533;
+  padding: 14px;
+  border-radius: 15px;
+  margin: 16px 0;
+}
+.altar-control h3 {
+  text-transform: uppercase;
+  letter-spacing: 0.13em;
+  font-family: Georgia, serif;
+  font-size: 14px;
+  color: #ceac52;
+  margin: 0;
+}
+.altar-control > svg {
+  width: 100%;
+  height: 130px;
+  margin: 12px 0;
+}
+.omen-card {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  border: 1px solid #594276;
+  border-radius: 15px;
+  padding: 18px 10px;
+  margin: 18px 0;
+  background: #1e1533;
+}
+.omen-card > b {
+  border: 1px solid #d3b04f;
+  border-radius: 50%;
+  width: 28px;
+  flex-shrink: 0;
+  text-align: center;
+  color: #e5c577;
+}
+.omen-card svg {
+  width: 25%;
+  max-width: 72px;
+}
+.grimoire-entry {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 8px;
+  border: 1px solid #584176;
+  border-radius: 9px;
+  margin: 10px 0;
+  background: #1e1533;
+}
+.grimoire-entry > div {
+  width: 46%;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.grimoire-entry > div:first-child {
+  flex-wrap: nowrap;
+}
+.grimoire-entry > span {
+  color: #d3b04f;
+}
+.grimoire-entry svg {
+  width: 33%;
+}
+.grimoire-entry > div:last-child svg {
+  width: 100%;
+  height: 70px;
+}
+.grimoire-entry small {
+  font-size: 10px;
+  text-align: center;
+  color: #b6a7cb;
+}
+.night-rite .primary {
+  background: #cba747;
+  color: #251c15;
+  border-color: #e3c976;
+}
+.night-rite .hint {
+  color: #a6b8ab;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.rite-flash {
+  animation: rite-falter 0.4s ease-out;
+}
+@keyframes rite-falter {
+  0%,
+  55% {
+    box-shadow: inset 0 0 0 1000px #c6385060;
+    transform: translateX(-2px);
+  }
+  25%,
+  75% {
+    transform: translateX(2px);
+  }
+  100% {
+    transform: translateX(0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rite-flash {
+    animation: rite-pulse 0.4s;
+  }
+  .vial {
+    transition: none !important;
+  }
+}
+[data-reduced-motion='true'] .rite-flash {
+  animation: rite-pulse 0.4s;
+}
+.reduce-motion .rite-flash {
+  animation: rite-pulse 0.4s;
+}
+.reduce-motion .vial {
+  transition: none !important;
+}
+.rite-control-buttons {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+.rite-control-buttons button {
+  font-size: 11px;
+  padding: 8px 4px;
+  min-height: 44px;
+  background: #241c38;
+  border: 1px solid #7e668d;
+  border-radius: 8px;
+  color: var(--rite-cream);
+}
+.rite-control-buttons button[aria-pressed='true'] {
+  background: var(--rite-gold);
+  color: #21192d;
+}
+.rite-control-buttons label {
+  font-size: 11px;
+  min-width: 0;
+}
+.rite-control-buttons select {
+  padding: 5px;
+  font-size: 12px;
+}
+.rite-control-buttons.dial-marks {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+.rite-art-control {
+  display: grid;
+  width: 100%;
+  color: var(--rite-cream);
+  background: transparent;
+  border: 0;
+}
+.rite-art-control svg {
+  width: 100%;
+  height: 100px;
+}
+.ritual-performed {
+  box-shadow:
+    0 0 24px #d4ae4f55,
+    inset 0 0 15px #d4ae4f22;
+}
+@keyframes rite-pulse {
+  0% {
+    box-shadow: inset 0 0 0 1000px #c6385060;
+  }
+  100% {
+    box-shadow: none;
+  }
+}

@@ -7,6 +7,7 @@ import type { GameView } from '@/lib/game/view';
 import { ReportDialog } from '@/components/social/report-dialog';
 import { useAccount } from '@/components/hub/account-context';
 import { useOlderFeed } from '@/hooks/use-older-feed';
+import { useTableActions } from '@/hooks/use-table-actions';
 
 export function TableMessages({
   game,
@@ -23,6 +24,7 @@ export function TableMessages({
   refresh: () => Promise<void>;
   active: boolean;
 }) {
+  const actionFetch = useTableActions();
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [sending, setSending] = useState(false);
   const [error, setError] = useState('');
@@ -40,6 +42,7 @@ export function TableMessages({
     'messages',
     game.feeds?.messages ?? null,
     game.sandboxHost && !game.host ? game.me : undefined,
+    `${game.phase}:${game.channel?.id ?? ''}`,
   );
   const inChannel = !game.host && thread === 'channel' && !!game.channel;
   const to = game.host ? recipient : inChannel ? 'channel' : 'host';
@@ -52,9 +55,17 @@ export function TableMessages({
         : inChannel
           ? `Channel with ${game.channel!.with}`
           : 'Storyteller';
-  const combined = [...older.items, ...game.messages].filter(
-    (m, i, all) => all.findIndex((x) => x.id === m.id) === i,
-  );
+  const combined = [...older.items, ...game.messages]
+    .filter(
+      (m) => !(m.kind === 'chat' && game.blockedChatSenders?.includes(m.from)),
+    )
+    .filter(
+      (m) =>
+        !m.to.startsWith('channel:') ||
+        (game.phase === 'night' &&
+          (game.host || m.to === 'channel:' + game.channel?.id)),
+    )
+    .filter((m, i, all) => all.findIndex((x) => x.id === m.id) === i);
   const messages = combined.filter((m) =>
     game.host
       ? to === 'all'
@@ -104,7 +115,7 @@ export function TableMessages({
         : { to, text, id: crypto.randomUUID() };
     retry.current = pending;
     try {
-      const r = await fetch('/api/game', {
+      const r = await actionFetch('/api/game', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

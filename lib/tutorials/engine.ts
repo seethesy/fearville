@@ -8,8 +8,8 @@ import type {
 import { TUTORIALS, tutorial as lookup } from './content.ts';
 
 // ---------------------------------------------------------------------------
-// Pure tutorial state machine shared by the web overlay (and mirrored by the
-// iPhone TutorialCenter). Side effects (persisting seen items, switching
+// Pure tutorial state machine shared by browsers and mobile shells.
+// Side effects (persisting seen items, switching
 // tabs) are derived by the caller from state changes.
 // ---------------------------------------------------------------------------
 

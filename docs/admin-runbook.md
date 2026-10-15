@@ -37,9 +37,9 @@ Removing an active player uses the engine's departed-player semantics, clears pe
 
 Successful command mutations and their audit entry commit in the same D1 transaction. Failed audit insertion rolls back the mutation. Accepted command errors and confirmation previews are also recorded. Authentication failures are rejected before command execution. Database triggers prevent updating or deleting audit and text-version rows. Audit filters support action, target and date range, with 100-row pages. Treat audit contents as privileged account data and retain database backups under the normal operational policy.
 
-Enable **Edit text** in the admin shell. Click a registered text sample, edit its value, then save, reset to default, or preview/revert a version. React and SwiftUI render values as plain text. Named placeholders such as `{count}` must be preserved exactly. Concurrent saves fail with a reload instruction instead of silently replacing another edit. Reset and revert append versions; they never rewrite history. The editor displays the most recent 200 versions; an older known version ID can still be reverted using the console.
+Enable **Edit text** in the admin shell. Click a registered text sample, edit its value, then save, reset to default, or preview/revert a version. React renders values as plain text in browsers and mobile shells. Named placeholders such as `{count}` must be preserved exactly. Concurrent saves fail with a reload instruction instead of silently replacing another edit. Reset and revert append versions; they never rewrite history. The editor displays the most recent 200 versions; an older known version ID can still be reverted using the console.
 
-The initial registry covers main-menu copy, navigation, lobby/game tab labels, player counts, the footer and walkthrough titles/steps. Rules content, role definitions and arbitrary player-generated text are outside this initial registry. Add stable keys in `lib/ui-text/registry.ts`, wire the appropriate web/native consumers, and regenerate native data with `node --experimental-strip-types scripts/generate-ios-reference.mjs`. Never reuse a retired key. Native-specific wording has separate keys where needed.
+The initial registry covers main-menu copy, navigation, lobby/game tab labels, player counts, the footer and walkthrough titles/steps. Rules content, role definitions and arbitrary player-generated text are outside this initial registry. Add stable keys in `lib/ui-text/registry.ts`, wire the shared web UI consumers. Never reuse a retired key; legacy native-specific keys remain reserved for compatibility with saved text versions.
 
 Active web and iPhone clients poll published text every three seconds. Offline clients retain the last loaded values or bundled defaults. The public endpoint exposes only registered current values and version numbers, never audit history or editor identities.
 
@@ -49,8 +49,21 @@ The web admin shell lists reports oldest first, with reporter, reported handle/c
 
 Admin game changes use the split-part store and preserve concurrent-write guards. Saved credentials are rechecked in the same core/chat write, so a revoked request cannot commit after a ban or Storyteller transfer. Audit records omit roles, private notes, night choices and credentials.
 
+## Remote switches (FEAR-122)
+
+**Remote switches** tab. Switches are stored per environment in `feature_flags` (`lib/flags/`). Workers cache them for about 30 seconds; the public subset is served at `/api/flags`, which the maintenance banner and setup screens poll.
+
+- **on / off**: off affects new games and new requests only. A game captures switches when it starts: switched-off Rite puzzles leave its Rite (vigils are re-planned) and a switched-off script can't be started.
+- **kill** (Night Rite and each puzzle): off, and running games end it. Killing the Rite closes it with no reward and a message. Killing one puzzle withdraws its unfinished vigils and the remaining vigils decide the Rite. Kills need a confirmation; running tables in this environment are notified immediately.
+- **Accounts**: `signups` off refuses new accounts (existing sign-ins work); `guests` off refuses joining a table without an account.
+- **Reserved** (push, shop, purchases): stored and audited now; the features that ship later enforce them.
+- **Maintenance banner**: text, severity, optional *pause new games* (refuses creating tables and starting games; running games continue).
+- **App builds**: minimum/recommended build and optional update link per platform (used by FEAR-120).
+
+The production console also edits **staging** switches through the `STAGING_DB` binding (switches only); the staging console edits staging only. Edits made from production to staging are audited in production's log and reach staging tables on their next action (no immediate push).
+
 ## Verification and release checks
 
-Run `npm run check` before committing. CI builds the Worker, runs every HTTP integration suite against isolated D1 and compiles the retained SwiftUI app in the unsigned iOS simulator workflow. Admin integration uses an ephemeral Miniflare/D1 database with no deployed credentials or test-authentication endpoint; it covers provenance, privilege escalation, expired/revoked sessions, gameplay denial, confirmations, audit rollback, moderation, split-storage controls and text history.
+Run `npm run check` before committing. CI builds the Worker, runs every HTTP integration suite against isolated D1 and validates the Capacitor shell in `.github/workflows/mobile-ios.yml`. Admin integration uses an ephemeral Miniflare/D1 database with no deployed credentials or test-authentication endpoint; it covers provenance, privilege escalation, expired/revoked sessions, gameplay denial, confirmations, audit rollback, moderation, split-storage controls and text history.
 
 Real Google sign-in and device interaction are exercised on configured staging. Staging OAuth callbacks and provider secrets are handled in FEAR-106. Do not apply local fixture scripts to production.

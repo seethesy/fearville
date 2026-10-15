@@ -1,0 +1,49 @@
+name: Staging table load test
+on:
+  workflow_dispatch:
+    inputs:
+      tables:
+        description: Concurrent tables (1–5)
+        type: choice
+        options: ['1', '2', '3', '4', '5']
+        default: '5'
+      players:
+        description: Players per table (5–18), plus Storyteller
+        type: string
+        default: '18'
+      cycles:
+        description: Day/night cycles (1–10)
+        type: string
+        default: '3'
+permissions:
+  contents: read
+concurrency:
+  group: staging-table-load
+  cancel-in-progress: false
+jobs:
+  load:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: staging
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22.x
+          cache: npm
+      - run: npm ci --no-audit --no-fund --loglevel=error
+      - name: Measure staging tables
+        env:
+          FEAR_LOAD_ACCOUNT_TOKEN: ${{ secrets.FEAR_LOAD_ACCOUNT_TOKEN }}
+          LOAD_TABLES: ${{ inputs.tables }}
+          LOAD_PLAYERS: ${{ inputs.players }}
+          LOAD_CYCLES: ${{ inputs.cycles }}
+        run: node --experimental-strip-types scripts/load-table.mjs --url https://staging.fearville.app --tables "$LOAD_TABLES" --players "$LOAD_PLAYERS" --cycles "$LOAD_CYCLES" --output work/table-load.json
+      - name: Upload measurements
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: staging-table-load
+          path: work/table-load.json
+          if-no-files-found: ignore
+          retention-days: 14

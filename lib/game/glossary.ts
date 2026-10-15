@@ -1,5 +1,5 @@
 // Key game terms, shared by the web rules reference and role descriptions.
-// scripts/generate-ios-reference.mjs exports these data for the iPhone client.
+// Browsers and mobile shells consume these definitions through the shared web UI.
 export type GlossaryTerm = {
   id: string;
   term: string;

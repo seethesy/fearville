@@ -19,12 +19,23 @@ export async function tableView(
   now: number,
   sandboxHost = false,
   credentialViewer = actor.id,
+  compactRecaps = false,
 ) {
-  return view(
-    await visibleGame(game, credentialViewer),
-    actor,
-    version,
-    now,
-    sandboxHost,
-  );
+  const hidden = await hiddenChatSenders(game.code, credentialViewer);
+  return {
+    ...view(
+      {
+        ...game,
+        messages: game.messages.filter(
+          (m) => !(m.kind === 'chat' && hidden.includes(m.from)),
+        ),
+      },
+      actor,
+      version,
+      now,
+      sandboxHost,
+      compactRecaps,
+    ),
+    blockedChatSenders: hidden,
+  };
 }

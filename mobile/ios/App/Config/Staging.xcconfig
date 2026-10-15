@@ -1,0 +1,5 @@
+#include "Shared.xcconfig"
+FEARVILLE_HOST = staging.fearville.app
+FEARVILLE_BUNDLE_ID = $(FEARVILLE_STAGING_BUNDLE_ID)
+FEARVILLE_DISPLAY_NAME = Fearville β
+FEARVILLE_APP_ICON = AppIconStaging

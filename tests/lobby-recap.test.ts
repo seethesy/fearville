@@ -13,6 +13,29 @@ function setup() {
   return g;
 }
 const actor = (id: string) => ({ id, host: false });
+void test('all eighteen players can claim distinct seats; seat nineteen remains invalid', () => {
+  const g = newGame('FULL', 'Storyteller');
+  g.players = Array.from({ length: 18 }, (_, i) =>
+    newPlayer(`Player ${i + 1}`, 0),
+  );
+  for (const [i, player] of g.players.entries())
+    execute(g, actor(player.id), { action: 'claimSeat', seat: i + 1 }, i);
+  assert.deepEqual(
+    g.players.map((player) => player.seat),
+    Array.from({ length: 18 }, (_, i) => i + 1),
+  );
+  execute(g, actor(g.players[17].id), { action: 'leaveSeat' }, 20);
+  assert.throws(
+    () =>
+      execute(
+        g,
+        actor(g.players[17].id),
+        { action: 'claimSeat', seat: 19 },
+        21,
+      ),
+    /valid seat/,
+  );
+});
 function finished() {
   const g = setup();
   execute(g, host, { action: 'start' }, 1000);
@@ -140,7 +163,11 @@ void test('notes and direct messages stay private during play and are revealed o
   const g = setup(),
     ids = g.players.map((p) => p.id);
   execute(g, host, { action: 'start' }, 1000);
-  const notebook = { text: 'Secret suspicion', roles: { monster: 2 }, players: {} };
+  const notebook = {
+    text: 'Secret suspicion',
+    roles: { monster: 2 },
+    players: {},
+  };
   execute(
     g,
     actor(ids[0]),

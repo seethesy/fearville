@@ -16,7 +16,7 @@ Divination deals one shared five-page grimoire with 28 globally distinct symbol 
 
 At dawn, at least `ceil(threshold × vigils)` completed puzzles refresh everyone's spent ability flags once, including Evil and Traveler roles and Nightmare/Star Traveler state. Alive/dead eligibility remains governed by the existing role rules. Starting information is queued on the following night for eligible characters in both scripts. Executioner targets, Guardian wards and Constellation links are preserved; their owners receive a reminder. Death-trigger state is left intact for Storyteller rulings. The sole public announcement is “The Rite is complete.” Failed vigils are not announced. No hard cap or hint dealer is enabled; `lib/rite/hints.ts` supplies internal solver/true-target support for future hints.
 
-Web and native SwiftUI include all four puzzles, host setup, voting and private cards. Feedback uses a short red flash, small shake and low sound with audio preferences respected. Reduced motion replaces the shake with a pulse; successful rituals get a gold glow. The new Swift file belongs to the Xcode target and the project generator includes it.
+The shared web UI in browsers and mobile shells includes all four puzzles, host setup, voting and private cards. Feedback uses a short red flash, small shake and low sound with audio preferences respected. Reduced motion replaces the shake with a pulse; successful rituals get a gold glow. The shell loads the same puzzle components as the browser.
 
 Validation commands:
 

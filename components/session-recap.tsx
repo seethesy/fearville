@@ -14,6 +14,7 @@ import {
   DialogDescription,
 } from './ui/dialog';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from './ui/tabs';
+import { RecapRating } from './social/rate-storyteller';
 
 type Recap = GameView['recaps'][number];
 type RecapPlayer = Recap['players'][number];
@@ -130,6 +131,7 @@ export function GameEndPopup({
             <DialogTitle>{recap.winner} wins</DialogTitle>
             <span aria-label="Game duration">{gameDuration(recap)}</span>
           </div>
+          <RecapRating game={recap.id} explain />
           <DialogDescription>
             Choose your MVP{game.host ? 's' : ''}.{' '}
             {limit - recap.myVotes.length} of {limit} votes remaining.{' '}
@@ -329,14 +331,56 @@ export function SessionRecaps({
   game,
   expanded = false,
 }: {
-  game: Pick<GameView, 'recaps' | 'me' | 'host'>;
+  game: Pick<GameView, 'recaps' | 'me' | 'host'> & { code?: string };
   expanded?: boolean;
 }) {
   const [selected, setSelected] = useState<{
     recap: string;
     player: string;
   } | null>(null);
-  const recap = game.recaps.find((r) => r.id === selected?.recap);
+  const summary = game.recaps.find((r) => r.id === selected?.recap);
+  const selectionKey = `${selected?.recap}:${selected?.player}:${summary?.detailsRevision}`;
+  const [loaded, setLoaded] = useState<{ key: string; recap: Recap } | null>(
+    null,
+  );
+  const [loadError, setLoadError] = useState('');
+  const [attempt, setAttempt] = useState(0);
+  useEffect(() => {
+    if (!summary?.detailsDeferred || !selected) return;
+    const controller = new AbortController();
+    const params = new URLSearchParams({ id: summary.id, pov: game.me });
+    void fetch('/api/table/recap?' + params, {
+      cache: 'no-store',
+      signal: controller.signal,
+    })
+      .then(async (response) => {
+        const data = (await response.json()) as {
+          recap: Recap;
+          error?: string;
+        };
+        if (!response.ok)
+          throw Error(data.error || 'Could not load this recap.');
+        if (!controller.signal.aborted)
+          setLoaded({ key: selectionKey, recap: data.recap });
+      })
+      .catch((error: unknown) => {
+        if (!controller.signal.aborted)
+          setLoadError(
+            error instanceof Error
+              ? error.message
+              : 'Could not load this recap.',
+          );
+      });
+    return () => controller.abort();
+  }, [
+    summary?.detailsDeferred,
+    summary?.id,
+    selected,
+    selectionKey,
+    game.me,
+    attempt,
+  ]);
+  const recap = loaded?.key === selectionKey ? loaded.recap : summary;
   const player = recap?.players.find((p) => p.id === selected?.player);
   return (
     <section className="session-recaps">
@@ -363,12 +407,16 @@ export function SessionRecaps({
                   : (mine?.role ?? 'Not in this session')}
               </span>
             </summary>
+            {!game.host && <RecapRating game={r.id} />}
             <div className="recap-heading">
               <h3>{r.winner} wins</h3>
               <span>{gameDuration(r)}</span>
             </div>
             <p className="muted">{SCRIPTS[r.script]}</p>
-            <SeatChartZoom width={Math.max(520, r.players.length * 57)} height={Math.max(520, r.players.length * 57)}>
+            <SeatChartZoom
+              width={Math.max(520, r.players.length * 57)}
+              height={Math.max(520, r.players.length * 57)}
+            >
               <div
                 className="seat-circle recap-circle"
                 style={{
@@ -393,7 +441,11 @@ export function SessionRecaps({
                         left: `${50 + 37 * Math.cos(angle)}%`,
                         top: `${50 + 36 * Math.sin(angle)}%`,
                       }}
-                      onClick={() => setSelected({ recap: r.id, player: p.id })}
+                      onClick={() => {
+                        setLoaded(null);
+                        setLoadError('');
+                        setSelected({ recap: r.id, player: p.id });
+                      }}
                       aria-label={`View ${p.name}'s session recap`}
                     >
                       <small
@@ -439,13 +491,29 @@ export function SessionRecaps({
               {recap?.number ?? (recap ? game.recaps.indexOf(recap) + 1 : '')}
             </DialogDescription>
           </DialogHeader>
-          {recap && player && (
-            <PlayerDetails
-              key={recap.id + player.id}
-              recap={recap}
-              player={player}
-            />
-          )}
+          {recap &&
+            player &&
+            (recap.detailsDeferred ? (
+              <div>
+                <p role={loadError ? 'alert' : 'status'}>
+                  {loadError || 'Loading session details…'}
+                </p>
+                {loadError && (
+                  <button
+                    className="secondary"
+                    onClick={() => setAttempt((old) => old + 1)}
+                  >
+                    Try again
+                  </button>
+                )}
+              </div>
+            ) : (
+              <PlayerDetails
+                key={recap.id + player.id}
+                recap={recap}
+                player={player}
+              />
+            ))}
         </DialogContent>
       </Dialog>
     </section>

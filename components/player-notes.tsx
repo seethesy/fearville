@@ -1,4 +1,5 @@
 'use client';
+import { useTableActions } from '@/hooks/use-table-actions';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Check, CircleHelp } from 'lucide-react';
 import { scriptRoles } from '@/lib/game/types';
@@ -16,6 +17,7 @@ const colors = ['red', 'yellow', 'green'];
 const labels = ['Ruled out', 'Possible', 'In play'];
 export function PlayerNotes({ game }: { game: GameView }) {
   const storageKey = `fearville-notes:${game.code}:${game.me}:${game.gameStartedAt}`;
+  const actionFetch = useTableActions();
   const [notes, setNotes] = useState<Notebook>(game.notebook ?? empty);
   const [initialNotebook] = useState(game.notebook);
   const [ready, setReady] = useState(false);
@@ -29,7 +31,7 @@ export function PlayerNotes({ game }: { game: GameView }) {
       setSaving(true);
       queued.current = queued.current.then(async () => {
         try {
-          const r = await fetch('/api/game', {
+          const r = await actionFetch('/api/game', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             keepalive: true,
@@ -62,7 +64,7 @@ export function PlayerNotes({ game }: { game: GameView }) {
         }
       });
     },
-    [game.gameStartedAt, game.me, game.sandboxHost, storageKey],
+    [game.gameStartedAt, game.me, game.sandboxHost, storageKey, actionFetch],
   );
   useEffect(() => {
     function flush() {

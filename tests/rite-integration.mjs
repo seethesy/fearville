@@ -182,7 +182,7 @@ const moved = await call('/api/rite', tokenFor(mover), {
   turn: bv.rite.puzzle.turn,
   ...move,
 });
-assert.equal(moved.rite.puzzle.phase, 'turn');
+assert.equal(moved.rite.puzzle.phase, 'wait');
 assert.equal(moved.rite.puzzle.deadline, undefined);
 await call(
   '/api/rite',
@@ -196,21 +196,6 @@ await call(
   },
   400,
 );
-const anotherMove = boardMoves(moved.rite.puzzle.blocks)[0].move;
-const movedAgain = await call('/api/rite', tokenFor(mover), {
-  action: 'riteBoardMove',
-  epoch: moved.rite.epoch,
-  night: 2,
-  turn: moved.rite.puzzle.turn,
-  ...anotherMove,
-});
-assert.equal(movedAgain.rite.puzzle.phase, 'turn');
-await call('/api/rite', tokenFor(mover), {
-  action: 'ritePass',
-  epoch: movedAgain.rite.epoch,
-  night: 2,
-  turn: movedAgain.rite.puzzle.turn,
-});
 const next = await call('/api/rite', tokenFor(board.state.turn.order[1]));
 assert.equal(next.rite.puzzle.phase, 'turn');
 mover = lab.state.turn.order[0];

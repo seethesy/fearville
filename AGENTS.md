@@ -11,37 +11,45 @@ Storyteller runs the table and 5–18 players use phones. One server-authoritati
 backend: a Cloudflare Worker (vinext, React server components) with D1
 (`DB`, schema in `db/schema.ts`, migrations in `drizzle/`). Each table's game
 state is JSON in `sessions.state`; clients poll `/api/game` and post actions.
-Durable Objects + WebSockets (Jira FEAR-78) and web-in-native shells (FEAR-79)
-are planned work, not the current architecture. The `ios/` SwiftUI client
-currently remains supported; keep its workflow until its replacement lands.
+The iOS Capacitor shell (`mobile/ios/`, FEAR-94) loads the hosted web UI.
+The separate SwiftUI client was retired in FEAR-97. Android shell work is FEAR-95.
 
 ## Repo map
 
-- `app/`: routes and pages. `app/table/page.tsx` is the live table UI. `app/api/*/route.ts` holds the HTTP APIs: `session` (create/join/leave), `game` (poll and actions), `rite`, `social`, `accounts`, `tutorials`.
-- `components/`: UI. `rite/night-rite.tsx` (Rite UI) and `rite/art.tsx` (puzzle artwork), `table-*.tsx`, `hub/` (site shell, settings), `social/`, `tutorials/`. `components/ui/` is the untouched shadcn starter.
+- `app/`: routes and pages. `app/table/page.tsx` is the live table route; `app/table/page/` holds state, display values, fields, header/navigation, flow, seats, dialogs and the entry screen. `app/api/*/route.ts` holds the HTTP APIs: `session` (create/join/leave), `game` (poll and actions), `rite`, `social`, `accounts`, `tutorials`.
+- `app/globals.css`: ordered imports from `app/styles/globals/` for base UI, control room, social/phone layout, navigation, portraits/cosmetics, finishers, recaps, glossary and tutorials.
+- `app/hub.css`: ordered shell and responsive styles in `app/styles/hub/`.
+- `app/rite.css`: ordered puzzle, animation and responsive styles in `app/styles/rite/`.
+- `components/`: UI. `rite/night-rite.tsx` (Rite UI entry; `rite/night-rite/` contains shell, setup, pattern controls and host vigil) and `rite/art.tsx` (artwork entry; `rite/art/` contains one module per pattern), `table-*.tsx`, `hub/` (site shell, settings), `social/`, `tutorials/`. `components/ui/` contains shadcn primitives; `ui/sidebar.tsx` preserves its exports with context, shell, sections and menu modules in `ui/sidebar/`.
+- `components/session-recap.tsx`: recap entry; `session-recap/` contains shared formatting, finish popup, player details and history.
 - `lib/game/`: game domain.
-  - `engine.ts`: rules and actions (`execute`)
-  - `view.ts`: per-player view model and controls; never leak hidden info
+  - `engine.ts`: rules/actions entry (`execute`); `engine/` contains shared helpers, lifecycle, voting, execution and focused command modules
+  - `view.ts`: per-player view entry; `view/` contains fields, host phase/seat controls, shared controls and player view; never leak hidden info
   - `store.ts`: auth, D1 reads/writes, `limited()` rate limit
-  - `hof.ts` / `hof-view.ts`: Horrors of Fearville (default script)
-  - `hms.ts` / `hms-view.ts`: Holy Moon and Stars
-  - `types.ts`: roles and game types
+  - `hof.ts`: Horrors of Fearville entry (default script); `hof/` contains shared helpers, setup, night resolution, death/dawn/win handling and actions
+  - `hof-view.ts`: view entry; `hof-view/` contains field helpers, night/death fields and script controls.
+  - `hms.ts`: shared queued night entry; `hms/` contains helpers, tasks, choices, setup, night, suggestions, resolution/abilities, deaths, dawn and actions
+  - `hms-view.ts`: view entry; `hms-view/` contains field helpers, night fields, death and script controls.
+  - `types.ts`: types entry; `types/` contains role catalogs, setup/counts, night orders and state/factories
   - `saved-state.ts`: loading older saved tables
+  - `table-object.ts`: Durable Object entry; `table-object/` contains the host class, typed context, storage/authentication, persistence, actions and socket handlers.
   - `lobby.ts`, `join.ts`, `membership.ts`, `sandbox.ts`, `scoped-update.ts` / `concurrency.ts`: concurrent writes
 - `lib/rite/`: the Night Rite (team puzzles).
   - `types.ts`: `DEFAULT_CONFIG` (opening night, `lockSeconds`, `windowSeconds` = puzzle window, threshold) and patterns
-  - `engine.ts`: config validation and ranges, vigils, night lifecycle, **turn order and handoff (`nextTurn`)**, `riteAction`
+  - `engine.ts`: Rite entry; `engine/` contains setup/configuration, night dealing and **turn order/handoff (`nextTurn`)**, lifecycle/deadlines and actions (`riteAction`)
   - `view.ts`: player view of a puzzle
   - Patterns: `board.ts` (Escape Fearville), `grid.ts` (The Sphinx's Riddles), `ritual.ts` (Ritual of Divination), `lab.ts` (Alchemist's Laboratory)
+  - `grid.ts`: Sphinx entry; `grid/` contains vocabulary, solver, difficulty, prose, clue makers and generation/validation.
   - `bank.ts` with generated `bank-data.ts`
+- `lib/admin/service.ts`: admin service entry; `service/` contains audit/transactions, text, accounts, lobby plans and commands.
 - `lib/social/`: friends, invites, ratings, results, stats, progression, privacy.
 - `lib/accounts/`: Google/Apple OIDC, account service, profile, preferences.
-- `lib/tutorials/`: tutorial content, engine, progress.
+- `lib/tutorials/`: tutorial content, engine, progress. `content.ts` preserves catalog exports; `content/` contains walkthroughs, help sections, Rite guides, host tour/sections and lookup.
 - `db/`: Drizzle schema and D1 accessor.
 - `tests/`: `*.test.ts` unit tests (node:test) and `*-integration.mjs` HTTP suites (local D1 only).
 - `scripts/`: test runners (`check.mjs`, `run-unit.mjs`, `run-integration.mjs`) and offline generators.
 - `hooks/`: shared React hooks; `public/`: static branding, fonts and illustrations.
-- `ios/`: native SwiftUI client and project; `.github/`: CI and retained iOS workflow.
+- `mobile/`: Capacitor shells, native bridge plugins and offline assets; `.github/`: CI, including `mobile-ios.yml` shell validation.
 - `drizzle/`: numbered additive SQL migrations; `.openai/`: existing Sites identity.
 - `package.json`: commands/dependencies; `vite.config.ts`: Worker build; `wrangler.local.json`: local DB binding; `wrangler.jsonc` (FEAR-83): own-account environments.
 - `docs/`: [setup](docs/setup.md), [testing](docs/testing.md), [deploy](docs/deploy.md), [mobile](docs/mobile.md), [account setup](docs/account-setup.md), [social system](docs/social-system.md), [features](docs/features.md), [Night Rite](docs/night-rite.md).
@@ -75,8 +83,7 @@ These are generated, binary, vendored or build output. Don't open or search them
 `node_modules/`, `dist/`, `.next/`, `.vinext/`, `.wrangler/`, `outputs/`, `work/`,
 `package-lock.json`, `*.tsbuildinfo`, `lib/rite/bank-data.ts` (generated, ~50 KB;
 `node --experimental-strip-types scripts/generate-rite-bank.mjs`),
-`ios/Fearville/{glossary,roles,tutorials}.json` (generated by
-`scripts/generate-ios-reference.mjs`), `drizzle/meta/`, `docs/design/*.png`,
+`drizzle/meta/`, `docs/design/*.png`,
 `docs/design/*.svg`, `artifacts/`, `Claude outputs/`, `public/*.png`, `public/fonts/`.
 
 Screenshots in `artifacts/` and `Claude outputs/` are local-only and ignored by

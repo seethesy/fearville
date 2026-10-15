@@ -427,6 +427,29 @@ assert.equal(
   ).rating.mine.stars,
   3,
 );
+// FEAR-160: recap screens read the same rating by game id (no double count).
+const byGame = (token) =>
+  call('/api/social/rating?game=' + encodeURIComponent(game), token);
+const recapB = await ok(byGame(tB), 'recap rating B');
+assert.equal(recapB.rating.mine.stars, 3);
+assert.equal(recapB.rating.canRate, true);
+const recapA = await ok(byGame(tA), 'recap rating Storyteller');
+assert.equal(recapA.rating.host, true);
+assert.equal(recapA.rating.canRate, false);
+assert.equal((await ok(byGame(tE), 'recap rating outsider')).rating, null);
+await ok(
+  social(tB, { action: 'rate', game, stars: 5, comment: 'From the recap.' }),
+  'B revises from recap',
+);
+assert.equal((await ok(byGame(tB), 'recap revised')).rating.mine.stars, 5);
+assert.equal(
+  (await ok(social(tA), 'A after recap')).stats.storyteller.ratings,
+  2,
+);
+await ok(
+  social(tB, { action: 'rate', game, stars: 3, comment: 'Revised.' }),
+  'B restores rating',
+);
 // Friends see the average; the profile view never exposes comments.
 const profile = await ok(
   call('/api/social/profile?handle=' + handles[0], tB),

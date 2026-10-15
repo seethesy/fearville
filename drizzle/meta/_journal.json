@@ -78,6 +78,27 @@
       "when": 1791851140641,
       "tag": "0010_immutable_admin_history",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "6",
+      "when": 1791996689152,
+      "tag": "0011_feedback_forms",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "6",
+      "when": 1792013826695,
+      "tag": "0012_admin_browse",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "6",
+      "when": 1792047955301,
+      "tag": "0013_remote_switches",
+      "breakpoints": true
     }
   ]
 }

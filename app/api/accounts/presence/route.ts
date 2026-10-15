@@ -4,7 +4,8 @@ import { checkOrigin, errorResponse, json, limited } from '@/lib/game/store';
 export async function POST(r: Request) {
   try {
     checkOrigin(r);
-    const account = await accountAuth(r);
+    // The admin's own session even while it browses as another viewer (FEAR-158).
+    const account = await accountAuth(r, true);
     if (!account) return json({ error: 'Sign in first.' }, 401);
     if (account.role === 'admin') return json({ ok: true });
     await limited(r, 'presence', 120);

@@ -1,5 +1,6 @@
 import { requirePlayerAccount } from '@/lib/admin/access';
 import { database } from '@/db';
+import { table } from '@/lib/game/table-client';
 import { deleteAccountData } from '@/lib/accounts/deletion';
 import {
   json,
@@ -12,6 +13,7 @@ import {
 import {
   accountAuth,
   accountView,
+  adminViewState,
   accountToken,
   accountCookie,
   cookie,
@@ -27,7 +29,11 @@ import {
 import { setHandle } from '@/lib/social/friends';
 export async function GET(r: Request) {
   try {
-    return json(await accountView(r));
+    const adminView = await adminViewState(r);
+    return json({
+      ...(await accountView(r)),
+      ...(adminView ? { adminView } : {}),
+    });
   } catch (e) {
     return errorResponse(e);
   }
@@ -112,7 +118,16 @@ export async function POST(r: Request) {
       if (body.confirm !== 'DELETE')
         throw Error('Type DELETE to confirm account deletion.');
       await revokeApple(a.id);
+      const lobbies = (
+        await db
+          .prepare('SELECT DISTINCT code FROM account_seats WHERE account=?')
+          .bind(a.id)
+          .all<{ code: string }>()
+      ).results;
       await deleteAccountData(db, a.id);
+      await Promise.allSettled(
+        lobbies.map(({ code }) => table(code).notify(code)),
+      );
     } else throw Error('Unknown account action.');
     const headers = new Headers({
       'Content-Type': 'application/json',

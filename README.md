@@ -2,7 +2,7 @@
 
 Own-account Cloudflare configuration and durable-data transfer: [Deploy](docs/cloudflare-deploy.md). Deployments run through CI only.
 
-A text-only, in-person game companion: a web app, shared Cloudflare Worker/D1 backend, and native SwiftUI iPhone client. Both clients use the same server-authoritative rules and action forms.
+A text-only, in-person game companion: a web app, shared Cloudflare Worker/D1 backend, and Capacitor iPhone shell. The shell loads the hosted web UI, so features use the same server-authoritative rules and action forms everywhere. Android shell work is tracked in FEAR-95.
 
 Horrors of Fearville (default) and Holy Moon and Stars support 5–18 players. The Storyteller runs the game; players use their phones at the table.
 

@@ -674,24 +674,3 @@ void test('the Sphinx sees every role until the night-choice timer ends', () => 
   assert.equal(view(g, as(g, 2), 1, clock).glimpse, null);
   assert.equal(view(g, as(g, 1), 1, g.nightChoiceDeadline! + 1).glimpse, null);
 });
-
-void test('the iPhone role list matches every script', async () => {
-  const { readFileSync } = await import('node:fs');
-  const { HMS_ROLES } = await import('../lib/game/types.ts');
-  const rows = JSON.parse(
-    readFileSync(
-      new URL('../ios/Fearville/roles.json', import.meta.url),
-      'utf8',
-    ),
-  ) as { id: string; description: string; script: string }[];
-  for (const [script, list] of [
-    ['holyMoonStars', HMS_ROLES],
-    ['horrors', HOF_ROLES],
-  ] as const)
-    for (const r of list)
-      assert.equal(
-        rows.find((x) => x.script === script && x.id === r.id)?.description,
-        r.description,
-        `${script}/${r.id}`,
-      );
-});

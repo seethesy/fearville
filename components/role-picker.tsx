@@ -1,4 +1,5 @@
 'use client';
+import { useTableActions, useTableOnline } from '@/hooks/use-table-actions';
 import { GlossaryText } from '@/components/glossary-text';
 import { useState } from 'react';
 import {
@@ -17,10 +18,13 @@ export function RolePicker({
   game: GameView;
   refresh: () => Promise<void>;
 }) {
+  const actionFetch = useTableActions();
+  const online = useTableOnline();
   const [selected, setSelected] = useState<string[]>(() =>
     game.players.map((p) => p.role).filter((r): r is string => !!r),
   );
-  const [busy, setBusy] = useState(false);
+  const [pendingAction, setBusy] = useState(false);
+  const busy = pendingAction || !online;
   const [error, setError] = useState('');
   const counts = game.roleDistribution;
   const ROLES = scriptRoles(game.script);
@@ -31,18 +35,18 @@ export function RolePicker({
     ? null
     : game.customRoleDistribution
       ? counts
-    : atheist
-      ? {
-          ...counts,
-          townsfolk: game.players.length - counts.outsider,
-          minion: 0,
-          demon: 0,
-        }
-      : {
-          ...counts,
-          townsfolk: counts.townsfolk - extra,
-          outsider: counts.outsider + extra,
-        };
+      : atheist
+        ? {
+            ...counts,
+            townsfolk: game.players.length - counts.outsider,
+            minion: 0,
+            demon: 0,
+          }
+        : {
+            ...counts,
+            townsfolk: counts.townsfolk - extra,
+            outsider: counts.outsider + extra,
+          };
   const teams = TEAM_ORDER.filter((t) => ROLES.some((r) => r.team === t));
   const valid =
     expected &&
@@ -117,7 +121,7 @@ export function RolePicker({
           setBusy(true);
           setError('');
           try {
-            const r = await fetch('/api/game', {
+            const r = await actionFetch('/api/game', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({

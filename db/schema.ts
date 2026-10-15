@@ -425,3 +425,98 @@ export const adminConfirmations = sqliteTable('admin_confirmations', {
   digest: text('digest').notNull(),
   expires: integer('expires').notNull(),
 });
+
+// FEAR-158: an admin session browsing the normal UI. While a row exists for the
+// admin's account session, account reads resolve to `account` (null = guest)
+// and every non-admin account write is refused.
+export const adminViews = sqliteTable('admin_views', {
+  session: text('session').primaryKey(), // account_sessions.hash of the admin
+  admin: text('admin')
+    .notNull()
+    .references(() => accounts.id, { onDelete: 'cascade' }),
+  viewer: text('viewer').notNull(), // guest | player | storyteller | observer
+  account: text('account').references(() => accounts.id, {
+    onDelete: 'cascade',
+  }),
+  created: integer('created').notNull(),
+});
+
+// FEAR-158: a table credential that only the admin account can use. `sandbox`
+// is a private Sandbox table the admin hosts; `observe` is a read-only seat on
+// a real table. Without a valid admin session the credential is refused.
+export const adminTableGrants = sqliteTable(
+  'admin_table_grants',
+  {
+    token: text('token').primaryKey(), // members.token_hash
+    admin: text('admin')
+      .notNull()
+      .references(() => accounts.id, { onDelete: 'cascade' }),
+    code: text('code').notNull(),
+    mode: text('mode').notNull(), // sandbox | observe
+    created: integer('created').notNull(),
+  },
+  (t) => [index('idx_admin_table_grants_admin').on(t.admin)],
+);
+
+// FEAR-159: feedback and bug report forms. A form is immutable once stored;
+// editing publishes a new version and moves `active` to it.
+export const feedbackForms = sqliteTable(
+  'feedback_forms',
+  {
+    id: text('id').primaryKey(), // context:version
+    context: text('context').notNull(),
+    version: integer('version').notNull(),
+    active: integer('active').notNull().default(0),
+    definition: text('definition').notNull(), // JSON FormDefinition
+    created: integer('created').notNull(),
+    createdBy: text('created_by'),
+  },
+  (t) => [
+    uniqueIndex('idx_feedback_forms_version').on(t.context, t.version),
+    uniqueIndex('idx_feedback_forms_active')
+      .on(t.context)
+      .where(sql`${t.active} = 1`),
+  ],
+);
+export const feedbackSubmissions = sqliteTable(
+  'feedback_submissions',
+  {
+    id: text('id').primaryKey(),
+    form: text('form')
+      .notNull()
+      .references(() => feedbackForms.id),
+    context: text('context').notNull(),
+    version: integer('version').notNull(),
+    account: text('account').references(() => accounts.id, {
+      onDelete: 'set null',
+    }),
+    // Anonymous random id a guest's device keeps; never a credential.
+    guest: text('guest'),
+    subject: text('subject'),
+    answers: text('answers').notNull(), // JSON, plain text only
+    client: text('client'), // JSON app details (bug reports)
+    game: text('game'), // JSON public table details (bug reports)
+    flagged: integer('flagged').notNull().default(0), // objectionable text
+    status: text('status').notNull().default('new'),
+    created: integer('created').notNull(),
+  },
+  (t) => [
+    index('idx_feedback_submissions_context').on(t.context, t.created),
+    index('idx_feedback_submissions_account').on(t.account),
+  ],
+);
+
+// FEAR-122: remote switches (feature flags, kill switches, maintenance banner,
+// app build policy). value is JSON; see lib/flags/catalog.ts. Rows are per
+// environment; a missing row means the default (on / no banner).
+export const featureFlags = sqliteTable(
+  'feature_flags',
+  {
+    key: text('key').notNull(),
+    environment: text('environment').notNull(),
+    value: text('value').notNull(),
+    updatedBy: text('updated_by').notNull(),
+    updatedAt: integer('updated_at').notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.key, t.environment] })],
+);

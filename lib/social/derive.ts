@@ -131,3 +131,24 @@ export function validStars(value: unknown): number {
     throw Error('Choose a rating from 1 to 5 stars.');
   return stars;
 }
+
+// Ratings stay open for two weeks after a game ends and can be revised then.
+export const RATING_WINDOW = 14 * 24 * 60 * 60 * 1000;
+// Why a viewer cannot rate a game's Storyteller ('' when they can).
+export function ratingBlock(input: {
+  me: string;
+  storyteller: string | null;
+  played: boolean;
+  ended: number;
+  now: number;
+}) {
+  return !input.storyteller
+    ? 'This Storyteller has not linked an account, so ratings cannot be credited.'
+    : input.storyteller === input.me
+      ? 'You were the Storyteller for this game.'
+      : !input.played
+        ? 'Only players seated at this table can rate the Storyteller. Save your seat to your account first.'
+        : input.now - input.ended >= RATING_WINDOW
+          ? 'The rating window for this game has closed.'
+          : '';
+}
