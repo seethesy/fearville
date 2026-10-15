@@ -45,6 +45,13 @@
           "database_id": "ee5bb171-1470-433f-8610-4ed13f1a5a56",
           "migrations_dir": "drizzle",
         },
+        // FEAR-122: lets the production admin console edit staging's remote
+        // switches (lib/flags/flags.ts). Used for feature_flags only.
+        {
+          "binding": "STAGING_DB",
+          "database_name": "fearville-staging",
+          "database_id": "bc2ceaef-1022-4e01-abfa-44a022ed52aa",
+        },
       ],
     },
   },

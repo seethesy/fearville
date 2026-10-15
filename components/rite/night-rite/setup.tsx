@@ -1,5 +1,7 @@
 'use client';
 import { useState } from 'react';
+import { useRemoteSwitches } from '@/components/remote-switches';
+import { publicEnabled } from '@/lib/flags/catalog';
 import type { GameView } from '@/lib/game/view';
 import { PATTERNS, type Plan, type RiteConfig } from '@/lib/rite/types';
 import { type Send } from './shell.tsx';
@@ -16,10 +18,21 @@ export function RiteSetup({
   send: Send;
   busy: boolean;
 }) {
-  const [draft, setDraft] = useState(config),
-    [teams, setTeams] = useState(plans);
+  const [stored, setDraft] = useState(config),
+    [storedTeams, setTeams] = useState(plans);
   const update = (key: keyof RiteConfig, value: unknown) =>
     setDraft((d) => ({ ...d, [key]: value }));
+  // FEAR-122: switched-off puzzles leave new-game setup (the server refuses them).
+  const switches = useRemoteSwitches();
+  const available = (kind: string) => publicEnabled(switches, 'rite.' + kind);
+  const riteAvailable = publicEnabled(switches, 'rite');
+  const kept = stored.patterns.filter(available);
+  const draft: RiteConfig = {
+    ...stored,
+    patterns: kept.length ? kept : stored.patterns,
+    enabled: stored.enabled && riteAvailable && kept.length > 0,
+  };
+  const teams = storedTeams.some((t) => !available(t.kind)) ? [] : storedTeams;
   return (
     <form
       className="rite-setup"
@@ -36,9 +49,11 @@ export function RiteSetup({
         <input
           type="checkbox"
           checked={draft.enabled}
+          disabled={!riteAvailable}
           onChange={(e) => update('enabled', e.target.checked)}
         />{' '}
         Enable Night Rite
+        {!riteAvailable && ' (unavailable right now)'}
       </label>
       <label className="rite-check">
         <input
@@ -74,23 +89,25 @@ export function RiteSetup({
       )}
       <fieldset>
         <legend>Puzzle patterns</legend>
-        {Object.entries(PATTERNS).map(([kind, title]) => (
-          <label key={kind} className="rite-check">
-            <input
-              type="checkbox"
-              checked={draft.patterns.includes(kind as keyof typeof PATTERNS)}
-              onChange={(e) =>
-                update(
-                  'patterns',
-                  e.target.checked
-                    ? [...draft.patterns, kind]
-                    : draft.patterns.filter((p) => p !== kind),
-                )
-              }
-            />
-            {title}
-          </label>
-        ))}
+        {Object.entries(PATTERNS)
+          .filter(([kind]) => available(kind))
+          .map(([kind, title]) => (
+            <label key={kind} className="rite-check">
+              <input
+                type="checkbox"
+                checked={draft.patterns.includes(kind as keyof typeof PATTERNS)}
+                onChange={(e) =>
+                  update(
+                    'patterns',
+                    e.target.checked
+                      ? [...draft.patterns, kind]
+                      : draft.patterns.filter((p) => p !== kind),
+                  )
+                }
+              />
+              {title}
+            </label>
+          ))}
       </fieldset>
       <div className="rite-settings">
         {[

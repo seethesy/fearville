@@ -92,6 +92,13 @@
       "when": 1792013826695,
       "tag": "0012_admin_browse",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "6",
+      "when": 1792047955301,
+      "tag": "0013_remote_switches",
+      "breakpoints": true
     }
   ]
 }

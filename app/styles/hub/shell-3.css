@@ -227,6 +227,29 @@
 .hub .profile-options[open] > summary {
   margin-bottom: 22px;
 }
+.maintenance-banner {
+  position: sticky;
+  top: 0;
+  z-index: 101;
+  padding: 8px 16px;
+  padding-top: max(8px, env(safe-area-inset-top));
+  text-align: center;
+  font-size: 14px;
+  font-weight: 700;
+  color: #f5efe2;
+  background: #2b3a55;
+}
+.maintenance-warning {
+  color: #1c1705;
+  background: #f0a63a;
+}
+.maintenance-critical {
+  color: #fff;
+  background: #a3262d;
+}
+.maintenance-note {
+  font-weight: 500;
+}
 .staging-banner {
   position: sticky;
   top: 0;

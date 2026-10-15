@@ -12,6 +12,8 @@ import { OBSERVER_READ_ONLY, povViewer } from '../pov';
 import { ObjectParts, type TableMeta } from '../object-storage';
 import type { Actor, Command, Game } from '../types';
 import { type TableContext } from './context.ts';
+import { readFlags } from '../../flags/flags';
+import { enforceKills } from '../../flags/game';
 import {
   authenticateMethod,
   importD1Method,
@@ -224,7 +226,8 @@ export class GameTable extends DurableObject {
         const now = Date.now(),
           due = nextDeadline(this.game!, this.meta!.timerThrough ?? 0);
         const next = structuredClone(this.game!);
-        const changed = tick(next, now);
+        const killed = enforceKills(next, await readFlags(), now);
+        const changed = tick(next, now) || killed;
         this.meta!.timerThrough = now;
         if (changed || (due !== null && due <= now))
           await this.commit(next, undefined, 'alarm', now);
@@ -278,7 +281,12 @@ export class GameTable extends DurableObject {
     return this.queue.run(async () => {
       try {
         await this.current(code);
-        this.publish();
+        // FEAR-122: a switch change may kill a running feature.
+        const now = Date.now(),
+          next = structuredClone(this.game!);
+        if (enforceKills(next, await readFlags(undefined, true), now))
+          await this.commit(next, undefined, 'switches', now);
+        else this.publish();
       } catch (e) {
         if (e instanceof Error && e.message === 'Session not found.') return;
         throw e;

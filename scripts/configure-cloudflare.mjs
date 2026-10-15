@@ -74,6 +74,13 @@ for (const name of names) {
   binding.database_name = matches[0].name;
   binding.database_id = matches[0].uuid;
 }
+// FEAR-122: production's STAGING_DB (remote switches only) mirrors staging's DB.
+const stagingBinding = config.env.staging.d1_databases[0];
+for (const binding of config.env.production.d1_databases)
+  if (binding.binding === 'STAGING_DB') {
+    binding.database_name = stagingBinding.database_name;
+    binding.database_id = stagingBinding.database_id;
+  }
 config.account_id = account;
 writeFileSync('wrangler.jsonc', JSON.stringify(config, null, 2) + '\n');
 // Only public binding metadata is exported. Never include credentials or the

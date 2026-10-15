@@ -505,3 +505,18 @@ export const feedbackSubmissions = sqliteTable(
     index('idx_feedback_submissions_account').on(t.account),
   ],
 );
+
+// FEAR-122: remote switches (feature flags, kill switches, maintenance banner,
+// app build policy). value is JSON; see lib/flags/catalog.ts. Rows are per
+// environment; a missing row means the default (on / no banner).
+export const featureFlags = sqliteTable(
+  'feature_flags',
+  {
+    key: text('key').notNull(),
+    environment: text('environment').notNull(),
+    value: text('value').notNull(),
+    updatedBy: text('updated_by').notNull(),
+    updatedAt: integer('updated_at').notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.key, t.environment] })],
+);
