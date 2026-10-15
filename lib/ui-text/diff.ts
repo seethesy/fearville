@@ -37,7 +37,8 @@ export function diffWords(before: string, after: string): DiffPart[] {
       mid.push({ t: 'same', v: x[i] });
       i++;
       j++;
-    } else if (lcs[i + 1][j] >= lcs[i][j + 1]) mid.push({ t: 'del', v: x[i++] });
+    } else if (lcs[i + 1][j] >= lcs[i][j + 1])
+      mid.push({ t: 'del', v: x[i++] });
     else mid.push({ t: 'add', v: y[j++] });
   }
   while (i < n) mid.push({ t: 'del', v: x[i++] });

@@ -359,8 +359,7 @@ export function RulesReference({
                   <>
                     {' '}
                     <span className="glossary-example">
-                      Example:{' '}
-                      <UiText id={`glossary.${t.id}.example`} inline />
+                      Example: <UiText id={`glossary.${t.id}.example`} inline />
                     </span>
                   </>
                 )}
@@ -395,8 +394,8 @@ export function RulesReference({
           </li>
           <li>
             <strong>Keep your seat.</strong> Closing a tab does not leave the
-            game. Return from the home page in the same browser. Save your
-            Sign in to your account to return from another device.
+            game. Return from the home page in the same browser. Save your Sign
+            in to your account to return from another device.
           </li>
         </ol>
       </section>

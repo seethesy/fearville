@@ -73,7 +73,20 @@ void test('markdown parses to safe blocks', () => {
   const p = blocks[0].t === 'p' ? blocks[0].c : [];
   assert.deepEqual(
     p.map((n) => n.t),
-    ['text', 'b', 'text', 'i', 'text', 'term', 'text', 'link', 'text', 'text', 'br', 'text'],
+    [
+      'text',
+      'b',
+      'text',
+      'i',
+      'text',
+      'term',
+      'text',
+      'link',
+      'text',
+      'text',
+      'br',
+      'text',
+    ],
   );
   // The unsafe link keeps only its words.
   assert.ok(p.some((n) => n.t === 'text' && n.v === 'b'));
@@ -84,7 +97,10 @@ void test('markdown parses to safe blocks', () => {
 });
 
 void test('word diff marks additions and deletions', () => {
-  const d = diffWords('The red carriage escapes.', 'The brown carriage escapes now.');
+  const d = diffWords(
+    'The red carriage escapes.',
+    'The brown carriage escapes now.',
+  );
   assert.deepEqual(d, [
     { t: 'same', v: 'The ' },
     { t: 'del', v: 'red' },

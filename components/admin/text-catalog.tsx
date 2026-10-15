@@ -68,7 +68,9 @@ export function TextCatalog() {
             </div>
           ))}
           {keys.length > 300 && (
-            <p className="hint">Showing 300 of {keys.length}. Search to narrow.</p>
+            <p className="hint">
+              Showing 300 of {keys.length}. Search to narrow.
+            </p>
           )}
         </details>
       ))}

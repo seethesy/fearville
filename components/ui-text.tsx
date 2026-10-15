@@ -412,9 +412,7 @@ function TextEditorDialog({
                     <button
                       className="secondary"
                       aria-expanded={compare === v.id}
-                      onClick={() =>
-                        setCompare(compare === v.id ? null : v.id)
-                      }
+                      onClick={() => setCompare(compare === v.id ? null : v.id)}
                     >
                       {compare === v.id ? 'Hide changes' : 'Show changes'}
                     </button>

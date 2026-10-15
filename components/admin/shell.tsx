@@ -250,8 +250,8 @@ export default function AdminShell() {
           <p>
             Turn on edit mode, then use the pencil on any highlighted text —
             here or anywhere in the app (the Edit text button stays at the
-            bottom left). Edits are drafts until you publish that field.
-            Grant trusted editors with <code>editor grant @username</code>.
+            bottom left). Edits are drafts until you publish that field. Grant
+            trusted editors with <code>editor grant @username</code>.
           </p>
           <div className="panel">
             <h1>

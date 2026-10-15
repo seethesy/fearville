@@ -119,27 +119,23 @@ export function saveDraft(editor: Editor, body: Record<string, unknown>) {
 }
 
 export function discardDraft(editor: Editor, body: Record<string, unknown>) {
-  return audited(
-    editor,
-    'text discard',
-    rawKey(body),
-    body,
-    async () => {
-      const key = keyOf(body);
-      return commit(
-        editor,
-        'text discard',
-        { key },
-        {
-          target: key,
-          output: { key },
-          statements: [
-            database().prepare('DELETE FROM ui_text_drafts WHERE key=?').bind(key),
-          ],
-        },
-      );
-    },
-  );
+  return audited(editor, 'text discard', rawKey(body), body, async () => {
+    const key = keyOf(body);
+    return commit(
+      editor,
+      'text discard',
+      { key },
+      {
+        target: key,
+        output: { key },
+        statements: [
+          database()
+            .prepare('DELETE FROM ui_text_drafts WHERE key=?')
+            .bind(key),
+        ],
+      },
+    );
+  });
 }
 
 /**
@@ -147,54 +143,52 @@ export function discardDraft(editor: Editor, body: Record<string, unknown>) {
  * published version the editor last saw, so concurrent edits are caught.
  */
 export function publishDraft(editor: Editor, body: Record<string, unknown>) {
-  return audited(
-    editor,
-    'text publish',
-    rawKey(body),
-    body,
-    async () => {
-      const key = keyOf(body);
-      const draft = await database()
-        .prepare('SELECT value,summary,base FROM ui_text_drafts WHERE key=?')
-        .bind(key)
-        .first<{ value: string; summary: string | null; base: number }>();
-      if (!draft) throw Error('There is no draft to publish.');
-      const value = validateText(key, draft.value);
-      const before = await latest(key);
-      const expected = Number(body.version ?? draft.base);
-      if ((before?.id ?? 0) !== expected)
-        throw Error('Someone published this text since you started. Review the latest version first.');
-      return commit(
-        editor,
-        'text publish',
-        { key, summary: draft.summary },
-        {
-          target: key,
-          before: before?.value ?? textDefault(key),
-          after: value,
-          output: { key, value },
-          statements: [
-            assertSQL(
-              'COALESCE((SELECT MAX(id) FROM ui_text_versions WHERE key=?),0)=?',
-              key,
-              expected,
-            ),
-            assertSQL(
-              'EXISTS (SELECT 1 FROM ui_text_drafts WHERE key=? AND value=?)',
-              key,
-              draft.value,
-            ),
-            database()
-              .prepare(
-                'INSERT INTO ui_text_versions(key,value,at,admin,summary) VALUES (?,?,?,?,?)',
-              )
-              .bind(key, value, Date.now(), editor.id, draft.summary),
-            database().prepare('DELETE FROM ui_text_drafts WHERE key=?').bind(key),
-          ],
-        },
+  return audited(editor, 'text publish', rawKey(body), body, async () => {
+    const key = keyOf(body);
+    const draft = await database()
+      .prepare('SELECT value,summary,base FROM ui_text_drafts WHERE key=?')
+      .bind(key)
+      .first<{ value: string; summary: string | null; base: number }>();
+    if (!draft) throw Error('There is no draft to publish.');
+    const value = validateText(key, draft.value);
+    const before = await latest(key);
+    const expected = Number(body.version ?? draft.base);
+    if ((before?.id ?? 0) !== expected)
+      throw Error(
+        'Someone published this text since you started. Review the latest version first.',
       );
-    },
-  );
+    return commit(
+      editor,
+      'text publish',
+      { key, summary: draft.summary },
+      {
+        target: key,
+        before: before?.value ?? textDefault(key),
+        after: value,
+        output: { key, value },
+        statements: [
+          assertSQL(
+            'COALESCE((SELECT MAX(id) FROM ui_text_versions WHERE key=?),0)=?',
+            key,
+            expected,
+          ),
+          assertSQL(
+            'EXISTS (SELECT 1 FROM ui_text_drafts WHERE key=? AND value=?)',
+            key,
+            draft.value,
+          ),
+          database()
+            .prepare(
+              'INSERT INTO ui_text_versions(key,value,at,admin,summary) VALUES (?,?,?,?,?)',
+            )
+            .bind(key, value, Date.now(), editor.id, draft.summary),
+          database()
+            .prepare('DELETE FROM ui_text_drafts WHERE key=?')
+            .bind(key),
+        ],
+      },
+    );
+  });
 }
 
 /**
@@ -202,54 +196,48 @@ export function publishDraft(editor: Editor, body: Record<string, unknown>) {
  * version. Reverts are immediate: the editor chose an already-reviewed text.
  */
 export function revertText(editor: Editor, body: Record<string, unknown>) {
-  return audited(
-    editor,
-    'text revert',
-    rawKey(body),
-    body,
-    async () => {
-      const key = keyOf(body);
-      const to = Number(body.to);
-      if (!Number.isSafeInteger(to) || to < 0) throw Error('Choose a version.');
-      let value = textDefault(key);
-      if (to > 0) {
-        const row = await database()
-          .prepare('SELECT value FROM ui_text_versions WHERE id=? AND key=?')
-          .bind(to, key)
-          .first<{ value: string }>();
-        if (!row) throw Error('Unknown version for this text.');
-        value = row.value;
-      }
-      value = validateText(key, value);
-      const before = await latest(key);
-      const summary =
-        summaryOf(body.summary) ??
-        (to ? `Reverted to version ${to}` : 'Reset to default');
-      return commit(
-        editor,
-        'text revert',
-        { key, to, summary },
-        {
-          target: key,
-          before: before?.value ?? textDefault(key),
-          after: value,
-          output: { key, value },
-          statements: [
-            assertSQL(
-              'COALESCE((SELECT MAX(id) FROM ui_text_versions WHERE key=?),0)=?',
-              key,
-              before?.id ?? 0,
-            ),
-            database()
-              .prepare(
-                'INSERT INTO ui_text_versions(key,value,at,admin,summary) VALUES (?,?,?,?,?)',
-              )
-              .bind(key, value, Date.now(), editor.id, summary),
-          ],
-        },
-      );
-    },
-  );
+  return audited(editor, 'text revert', rawKey(body), body, async () => {
+    const key = keyOf(body);
+    const to = Number(body.to);
+    if (!Number.isSafeInteger(to) || to < 0) throw Error('Choose a version.');
+    let value = textDefault(key);
+    if (to > 0) {
+      const row = await database()
+        .prepare('SELECT value FROM ui_text_versions WHERE id=? AND key=?')
+        .bind(to, key)
+        .first<{ value: string }>();
+      if (!row) throw Error('Unknown version for this text.');
+      value = row.value;
+    }
+    value = validateText(key, value);
+    const before = await latest(key);
+    const summary =
+      summaryOf(body.summary) ??
+      (to ? `Reverted to version ${to}` : 'Reset to default');
+    return commit(
+      editor,
+      'text revert',
+      { key, to, summary },
+      {
+        target: key,
+        before: before?.value ?? textDefault(key),
+        after: value,
+        output: { key, value },
+        statements: [
+          assertSQL(
+            'COALESCE((SELECT MAX(id) FROM ui_text_versions WHERE key=?),0)=?',
+            key,
+            before?.id ?? 0,
+          ),
+          database()
+            .prepare(
+              'INSERT INTO ui_text_versions(key,value,at,admin,summary) VALUES (?,?,?,?,?)',
+            )
+            .bind(key, value, Date.now(), editor.id, summary),
+        ],
+      },
+    );
+  });
 }
 
 export type HistoryEntry = {

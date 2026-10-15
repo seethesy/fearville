@@ -28,22 +28,15 @@
           "name": "account_items_account_accounts_id_fk",
           "tableFrom": "account_items",
           "tableTo": "accounts",
-          "columnsFrom": [
-            "account"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["account"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {
         "account_items_account_item_pk": {
-          "columns": [
-            "account",
-            "item"
-          ],
+          "columns": ["account", "item"],
           "name": "account_items_account_item_pk"
         }
       },
@@ -115,12 +108,8 @@
           "name": "account_profiles_account_accounts_id_fk",
           "tableFrom": "account_profiles",
           "tableTo": "accounts",
-          "columnsFrom": [
-            "account"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["account"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -171,9 +160,7 @@
       "indexes": {
         "idx_account_seats_account": {
           "name": "idx_account_seats_account",
-          "columns": [
-            "account"
-          ],
+          "columns": ["account"],
           "isUnique": false
         }
       },
@@ -182,12 +169,8 @@
           "name": "account_seats_account_accounts_id_fk",
           "tableFrom": "account_seats",
           "tableTo": "accounts",
-          "columnsFrom": [
-            "account"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["account"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -195,12 +178,8 @@
           "name": "account_seats_code_sessions_code_fk",
           "tableFrom": "account_seats",
           "tableTo": "sessions",
-          "columnsFrom": [
-            "code"
-          ],
-          "columnsTo": [
-            "code"
-          ],
+          "columnsFrom": ["code"],
+          "columnsTo": ["code"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -259,9 +238,7 @@
       "indexes": {
         "idx_account_sessions_account": {
           "name": "idx_account_sessions_account",
-          "columns": [
-            "account"
-          ],
+          "columns": ["account"],
           "isUnique": false
         }
       },
@@ -270,12 +247,8 @@
           "name": "account_sessions_account_accounts_id_fk",
           "tableFrom": "account_sessions",
           "tableTo": "accounts",
-          "columnsFrom": [
-            "account"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["account"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -333,12 +306,8 @@
           "name": "account_settings_account_accounts_id_fk",
           "tableFrom": "account_settings",
           "tableTo": "accounts",
-          "columnsFrom": [
-            "account"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["account"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -433,9 +402,7 @@
       "indexes": {
         "idx_accounts_handle": {
           "name": "idx_accounts_handle",
-          "columns": [
-            "handle"
-          ],
+          "columns": ["handle"],
           "isUnique": true
         }
       },
@@ -536,9 +503,7 @@
       "indexes": {
         "idx_admin_audit_at": {
           "name": "idx_admin_audit_at",
-          "columns": [
-            "at"
-          ],
+          "columns": ["at"],
           "isUnique": false
         }
       },
@@ -624,12 +589,8 @@
           "name": "admin_progression_account_accounts_id_fk",
           "tableFrom": "admin_progression",
           "tableTo": "accounts",
-          "columnsFrom": [
-            "account"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["account"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -680,9 +641,7 @@
       "indexes": {
         "idx_admin_table_grants_admin": {
           "name": "idx_admin_table_grants_admin",
-          "columns": [
-            "admin"
-          ],
+          "columns": ["admin"],
           "isUnique": false
         }
       },
@@ -691,12 +650,8 @@
           "name": "admin_table_grants_admin_accounts_id_fk",
           "tableFrom": "admin_table_grants",
           "tableTo": "accounts",
-          "columnsFrom": [
-            "admin"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["admin"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -750,12 +705,8 @@
           "name": "admin_views_admin_accounts_id_fk",
           "tableFrom": "admin_views",
           "tableTo": "accounts",
-          "columnsFrom": [
-            "admin"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["admin"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -763,12 +714,8 @@
           "name": "admin_views_account_accounts_id_fk",
           "tableFrom": "admin_views",
           "tableTo": "accounts",
-          "columnsFrom": [
-            "account"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["account"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -820,10 +767,7 @@
       "foreignKeys": {},
       "compositePrimaryKeys": {
         "feature_flags_key_environment_pk": {
-          "columns": [
-            "key",
-            "environment"
-          ],
+          "columns": ["key", "environment"],
           "name": "feature_flags_key_environment_pk"
         }
       },
@@ -887,17 +831,12 @@
       "indexes": {
         "idx_feedback_forms_version": {
           "name": "idx_feedback_forms_version",
-          "columns": [
-            "context",
-            "version"
-          ],
+          "columns": ["context", "version"],
           "isUnique": true
         },
         "idx_feedback_forms_active": {
           "name": "idx_feedback_forms_active",
-          "columns": [
-            "context"
-          ],
+          "columns": ["context"],
           "isUnique": true,
           "where": "\"feedback_forms\".\"active\" = 1"
         }
@@ -1007,17 +946,12 @@
       "indexes": {
         "idx_feedback_submissions_context": {
           "name": "idx_feedback_submissions_context",
-          "columns": [
-            "context",
-            "created"
-          ],
+          "columns": ["context", "created"],
           "isUnique": false
         },
         "idx_feedback_submissions_account": {
           "name": "idx_feedback_submissions_account",
-          "columns": [
-            "account"
-          ],
+          "columns": ["account"],
           "isUnique": false
         }
       },
@@ -1026,12 +960,8 @@
           "name": "feedback_submissions_form_feedback_forms_id_fk",
           "tableFrom": "feedback_submissions",
           "tableTo": "feedback_forms",
-          "columnsFrom": [
-            "form"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["form"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -1039,12 +969,8 @@
           "name": "feedback_submissions_account_accounts_id_fk",
           "tableFrom": "feedback_submissions",
           "tableTo": "accounts",
-          "columnsFrom": [
-            "account"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["account"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         }
@@ -1095,9 +1021,7 @@
       "indexes": {
         "idx_friendships_addressee": {
           "name": "idx_friendships_addressee",
-          "columns": [
-            "addressee"
-          ],
+          "columns": ["addressee"],
           "isUnique": false
         }
       },
@@ -1106,12 +1030,8 @@
           "name": "friendships_requester_accounts_id_fk",
           "tableFrom": "friendships",
           "tableTo": "accounts",
-          "columnsFrom": [
-            "requester"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["requester"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -1119,22 +1039,15 @@
           "name": "friendships_addressee_accounts_id_fk",
           "tableFrom": "friendships",
           "tableTo": "accounts",
-          "columnsFrom": [
-            "addressee"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["addressee"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {
         "friendships_requester_addressee_pk": {
-          "columns": [
-            "requester",
-            "addressee"
-          ],
+          "columns": ["requester", "addressee"],
           "name": "friendships_requester_addressee_pk"
         }
       },
@@ -1265,9 +1178,7 @@
       "indexes": {
         "idx_game_players_account": {
           "name": "idx_game_players_account",
-          "columns": [
-            "account"
-          ],
+          "columns": ["account"],
           "isUnique": false
         }
       },
@@ -1276,12 +1187,8 @@
           "name": "game_players_game_games_id_fk",
           "tableFrom": "game_players",
           "tableTo": "games",
-          "columnsFrom": [
-            "game"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["game"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -1289,22 +1196,15 @@
           "name": "game_players_account_accounts_id_fk",
           "tableFrom": "game_players",
           "tableTo": "accounts",
-          "columnsFrom": [
-            "account"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["account"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {
         "game_players_game_player_pk": {
-          "columns": [
-            "game",
-            "player"
-          ],
+          "columns": ["game", "player"],
           "name": "game_players_game_player_pk"
         }
       },
@@ -1426,16 +1326,12 @@
       "indexes": {
         "idx_games_host": {
           "name": "idx_games_host",
-          "columns": [
-            "host_account"
-          ],
+          "columns": ["host_account"],
           "isUnique": false
         },
         "idx_games_ended": {
           "name": "idx_games_ended",
-          "columns": [
-            "ended"
-          ],
+          "columns": ["ended"],
           "isUnique": false
         }
       },
@@ -1444,12 +1340,8 @@
           "name": "games_host_account_accounts_id_fk",
           "tableFrom": "games",
           "tableTo": "accounts",
-          "columnsFrom": [
-            "host_account"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["host_account"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         }
@@ -1493,9 +1385,7 @@
       "indexes": {
         "idx_identities_account": {
           "name": "idx_identities_account",
-          "columns": [
-            "account"
-          ],
+          "columns": ["account"],
           "isUnique": false
         }
       },
@@ -1504,12 +1394,8 @@
           "name": "identities_account_accounts_id_fk",
           "tableFrom": "identities",
           "tableTo": "accounts",
-          "columnsFrom": [
-            "account"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["account"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1560,9 +1446,7 @@
       "indexes": {
         "idx_members_code": {
           "name": "idx_members_code",
-          "columns": [
-            "code"
-          ],
+          "columns": ["code"],
           "isUnique": false
         }
       },
@@ -1571,12 +1455,8 @@
           "name": "members_code_sessions_code_fk",
           "tableFrom": "members",
           "tableTo": "sessions",
-          "columnsFrom": [
-            "code"
-          ],
-          "columnsTo": [
-            "code"
-          ],
+          "columnsFrom": ["code"],
+          "columnsTo": ["code"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1637,12 +1517,8 @@
           "name": "native_codes_account_accounts_id_fk",
           "tableFrom": "native_codes",
           "tableTo": "accounts",
-          "columnsFrom": [
-            "account"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["account"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1862,17 +1738,12 @@
       "indexes": {
         "idx_player_reports_status": {
           "name": "idx_player_reports_status",
-          "columns": [
-            "status",
-            "created"
-          ],
+          "columns": ["status", "created"],
           "isUnique": false
         },
         "idx_player_reports_target": {
           "name": "idx_player_reports_target",
-          "columns": [
-            "target_account"
-          ],
+          "columns": ["target_account"],
           "isUnique": false
         }
       },
@@ -1881,12 +1752,8 @@
           "name": "player_reports_reporter_account_accounts_id_fk",
           "tableFrom": "player_reports",
           "tableTo": "accounts",
-          "columnsFrom": [
-            "reporter_account"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["reporter_account"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         },
@@ -1894,12 +1761,8 @@
           "name": "player_reports_target_account_accounts_id_fk",
           "tableFrom": "player_reports",
           "tableTo": "accounts",
-          "columnsFrom": [
-            "target_account"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["target_account"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         }
@@ -1936,9 +1799,7 @@
       "indexes": {
         "idx_ranked_seats_code": {
           "name": "idx_ranked_seats_code",
-          "columns": [
-            "code"
-          ],
+          "columns": ["code"],
           "isUnique": false
         }
       },
@@ -1947,12 +1808,8 @@
           "name": "ranked_seats_account_accounts_id_fk",
           "tableFrom": "ranked_seats",
           "tableTo": "accounts",
-          "columnsFrom": [
-            "account"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["account"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -1960,12 +1817,8 @@
           "name": "ranked_seats_code_sessions_code_fk",
           "tableFrom": "ranked_seats",
           "tableTo": "sessions",
-          "columnsFrom": [
-            "code"
-          ],
-          "columnsTo": [
-            "code"
-          ],
+          "columnsFrom": ["code"],
+          "columnsTo": ["code"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -2061,17 +1914,12 @@
       "indexes": {
         "idx_session_invites_pair": {
           "name": "idx_session_invites_pair",
-          "columns": [
-            "code",
-            "recipient"
-          ],
+          "columns": ["code", "recipient"],
           "isUnique": true
         },
         "idx_session_invites_recipient": {
           "name": "idx_session_invites_recipient",
-          "columns": [
-            "recipient"
-          ],
+          "columns": ["recipient"],
           "isUnique": false
         }
       },
@@ -2080,12 +1928,8 @@
           "name": "session_invites_code_sessions_code_fk",
           "tableFrom": "session_invites",
           "tableTo": "sessions",
-          "columnsFrom": [
-            "code"
-          ],
-          "columnsTo": [
-            "code"
-          ],
+          "columnsFrom": ["code"],
+          "columnsTo": ["code"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -2093,12 +1937,8 @@
           "name": "session_invites_sender_accounts_id_fk",
           "tableFrom": "session_invites",
           "tableTo": "accounts",
-          "columnsFrom": [
-            "sender"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["sender"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -2106,12 +1946,8 @@
           "name": "session_invites_recipient_accounts_id_fk",
           "tableFrom": "session_invites",
           "tableTo": "accounts",
-          "columnsFrom": [
-            "recipient"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["recipient"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -2159,22 +1995,15 @@
           "name": "session_parts_code_sessions_code_fk",
           "tableFrom": "session_parts",
           "tableTo": "sessions",
-          "columnsFrom": [
-            "code"
-          ],
-          "columnsTo": [
-            "code"
-          ],
+          "columnsFrom": ["code"],
+          "columnsTo": ["code"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {
         "session_parts_code_part_pk": {
-          "columns": [
-            "code",
-            "part"
-          ],
+          "columns": ["code", "part"],
           "name": "session_parts_code_part_pk"
         }
       },
@@ -2212,22 +2041,15 @@
           "name": "session_snapshots_code_sessions_code_fk",
           "tableFrom": "session_snapshots",
           "tableTo": "sessions",
-          "columnsFrom": [
-            "code"
-          ],
-          "columnsTo": [
-            "code"
-          ],
+          "columnsFrom": ["code"],
+          "columnsTo": ["code"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {
         "session_snapshots_code_id_pk": {
-          "columns": [
-            "code",
-            "id"
-          ],
+          "columns": ["code", "id"],
           "name": "session_snapshots_code_id_pk"
         }
       },
@@ -2329,9 +2151,7 @@
       "indexes": {
         "idx_ratings_storyteller": {
           "name": "idx_ratings_storyteller",
-          "columns": [
-            "storyteller"
-          ],
+          "columns": ["storyteller"],
           "isUnique": false
         }
       },
@@ -2340,12 +2160,8 @@
           "name": "storyteller_ratings_game_games_id_fk",
           "tableFrom": "storyteller_ratings",
           "tableTo": "games",
-          "columnsFrom": [
-            "game"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["game"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -2353,12 +2169,8 @@
           "name": "storyteller_ratings_rater_accounts_id_fk",
           "tableFrom": "storyteller_ratings",
           "tableTo": "accounts",
-          "columnsFrom": [
-            "rater"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["rater"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -2366,22 +2178,15 @@
           "name": "storyteller_ratings_storyteller_accounts_id_fk",
           "tableFrom": "storyteller_ratings",
           "tableTo": "accounts",
-          "columnsFrom": [
-            "storyteller"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["storyteller"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {
         "storyteller_ratings_game_rater_pk": {
-          "columns": [
-            "game",
-            "rater"
-          ],
+          "columns": ["game", "rater"],
           "name": "storyteller_ratings_game_rater_pk"
         }
       },
@@ -2419,12 +2224,8 @@
           "name": "text_editors_account_accounts_id_fk",
           "tableFrom": "text_editors",
           "tableTo": "accounts",
-          "columnsFrom": [
-            "account"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["account"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -2471,22 +2272,15 @@
           "name": "tutorial_progress_account_accounts_id_fk",
           "tableFrom": "tutorial_progress",
           "tableTo": "accounts",
-          "columnsFrom": [
-            "account"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["account"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {
         "tutorial_progress_account_tutorial_pk": {
-          "columns": [
-            "account",
-            "tutorial"
-          ],
+          "columns": ["account", "tutorial"],
           "name": "tutorial_progress_account_tutorial_pk"
         }
       },
@@ -2595,10 +2389,7 @@
       "indexes": {
         "idx_ui_text_versions_key": {
           "name": "idx_ui_text_versions_key",
-          "columns": [
-            "key",
-            "id"
-          ],
+          "columns": ["key", "id"],
           "isUnique": false
         }
       },

@@ -100,7 +100,8 @@ const area = (f) => {
   if (/rules|glossary/.test(f)) return 'Rules and glossary';
   if (/tutorial/.test(f)) return 'Tutorials and help';
   if (/push|notif|mail/.test(f)) return 'Notifications and emails';
-  if (f.startsWith('lib/game') || f.startsWith('app/table')) return 'Game table';
+  if (f.startsWith('lib/game') || f.startsWith('app/table'))
+    return 'Game table';
   if (/social|friends|profile|stats/.test(f)) return 'Social and profiles';
   if (/account|privacy|terms|delete/.test(f)) return 'Accounts and legal';
   return 'Other pages';
@@ -141,15 +142,21 @@ for (const [a, list] of [...byArea].sort((x, y) => y[1].length - x[1].length)) {
   out.push(`### ${a} (${list.length})`);
   out.push('');
   const perFile = new Map();
-  for (const f of list) perFile.set(f.file, [...(perFile.get(f.file) ?? []), f]);
+  for (const f of list)
+    perFile.set(f.file, [...(perFile.get(f.file) ?? []), f]);
   for (const [file, items] of [...perFile].sort(
     (x, y) => y[1].length - x[1].length,
   )) {
-    out.push(`<details><summary><code>${file}</code> (${items.length})</summary>`);
+    out.push(
+      `<details><summary><code>${file}</code> (${items.length})</summary>`,
+    );
     out.push('');
     for (const i of items)
       out.push(
-        `- L${i.line} · ${i.kind}: ${i.text.length > 120 ? i.text.slice(0, 117) + '…' : i.text}`.replaceAll('|', '\\|'),
+        `- L${i.line} · ${i.kind}: ${i.text.length > 120 ? i.text.slice(0, 117) + '…' : i.text}`.replaceAll(
+          '|',
+          '\\|',
+        ),
       );
     out.push('');
     out.push('</details>');

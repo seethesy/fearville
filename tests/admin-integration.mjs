@@ -519,8 +519,9 @@ try {
     undefined,
   );
   assert.equal(
-    (await req('/api/ui-text?view=drafts', 'writer')).drafts['glossary.fear.term']
-      .value,
+    (await req('/api/ui-text?view=drafts', 'writer')).drafts[
+      'glossary.fear.term'
+    ].value,
     'Dread',
   );
   assert.equal((await req('/api/ui-text?view=drafts')).status, 403);

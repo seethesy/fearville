@@ -59,8 +59,10 @@ export async function POST(r: Request) {
     if (raw.length > 12000) throw Error('Request is too large.');
     const body = JSON.parse(raw) as Record<string, unknown>;
     if (body.action === 'draft') return json(await saveDraft(editor, body));
-    if (body.action === 'discard') return json(await discardDraft(editor, body));
-    if (body.action === 'publish') return json(await publishDraft(editor, body));
+    if (body.action === 'discard')
+      return json(await discardDraft(editor, body));
+    if (body.action === 'publish')
+      return json(await publishDraft(editor, body));
     if (body.action === 'revert') return json(await revertText(editor, body));
     throw Error('Unknown action.');
   } catch (e) {

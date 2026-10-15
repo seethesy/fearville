@@ -104,8 +104,7 @@ export function validateMarkdown(value: string) {
     if (!/^(https:\/\/|http:\/\/|\/(?!\/)|glossary:[a-z0-9-]+$)/.test(href))
       throw Error('Links must start with https://, / or glossary:.');
   for (const [, term] of value.matchAll(/\[\[([^\]]+)\]\]/g))
-    if (!glossaryId(term))
-      throw Error(`“${term}” is not a glossary term.`);
+    if (!glossaryId(term)) throw Error(`“${term}” is not a glossary term.`);
 }
 
 /** Glossary id for a term name or id, case-insensitive. */
