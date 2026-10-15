@@ -9,10 +9,10 @@ CREATE TABLE trust_purchases (
  UNIQUE(wallet,idempotency_key)
 );
 CREATE TRIGGER trust_purchase_validate BEFORE INSERT ON trust_purchases BEGIN
- SELECT CASE WHEN NOT EXISTS(SELECT 1 FROM cosmetics WHERE id=NEW.cosmetic AND available=1 AND (starts IS NULL OR starts<=NEW.created) AND (ends IS NULL OR ends>NEW.created)) THEN RAISE(ABORT,'unavailable') END;
- SELECT CASE WHEN EXISTS(SELECT 1 FROM cosmetics WHERE id=NEW.cosmetic AND is_default=1) OR EXISTS(SELECT 1 FROM owned_cosmetics o JOIN wallets w ON o.account=w.account WHERE w.id=NEW.wallet AND o.cosmetic=NEW.cosmetic) THEN RAISE(ABORT,'already_owned') END;
- SELECT CASE WHEN NEW.price<>(SELECT price FROM cosmetics WHERE id=NEW.cosmetic) OR NEW.balance_after<>(SELECT balance-NEW.price FROM wallets WHERE id=NEW.wallet) THEN RAISE(ABORT,'wallet_conflict') END;
- SELECT CASE WHEN (SELECT balance FROM wallets WHERE id=NEW.wallet)<0 OR NEW.balance_after<0 THEN RAISE(ABORT,'insufficient_trust') END;
+ SELECT RAISE(ABORT,'unavailable') WHERE NOT EXISTS(SELECT 1 FROM cosmetics WHERE id=NEW.cosmetic AND available=1 AND (starts IS NULL OR starts<=NEW.created) AND (ends IS NULL OR ends>NEW.created));
+ SELECT RAISE(ABORT,'already_owned') WHERE EXISTS(SELECT 1 FROM cosmetics WHERE id=NEW.cosmetic AND is_default=1) OR EXISTS(SELECT 1 FROM owned_cosmetics o JOIN wallets w ON o.account=w.account WHERE w.id=NEW.wallet AND o.cosmetic=NEW.cosmetic);
+ SELECT RAISE(ABORT,'wallet_conflict') WHERE NEW.price<>(SELECT price FROM cosmetics WHERE id=NEW.cosmetic) OR NEW.balance_after<>(SELECT balance-NEW.price FROM wallets WHERE id=NEW.wallet);
+ SELECT RAISE(ABORT,'insufficient_trust') WHERE (SELECT balance FROM wallets WHERE id=NEW.wallet)<0 OR NEW.balance_after<0;
 END;
 CREATE TRIGGER trust_purchase_apply AFTER INSERT ON trust_purchases BEGIN
  INSERT INTO trust_ledger(wallet,amount,balance_after,kind,origin,source,reason,idempotency_key,created)

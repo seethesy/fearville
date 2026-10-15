@@ -4,7 +4,7 @@ import { validStars, text, ratingBlock, RATING_WINDOW } from './derive';
 import { linkSeatRecords } from './results';
 import { isObjectionable, OBJECTIONABLE_COMMENT } from './moderation';
 import { ratingRef } from './reports';
-import {ratingRewardStatements} from '../trust/rating-rewards';
+import { ratingRewardStatements } from '../trust/rating-rewards';
 
 // Ratings stay open for two weeks after a game ends, and can be revised
 // within that window. The Storyteller must hold a linked account (otherwise
@@ -127,12 +127,15 @@ export async function rateStoryteller(
     played,
     'Only players seated at this table can rate the Storyteller.',
   );
-  const statement=db
+  const statement = db
     .prepare(
       'INSERT INTO storyteller_ratings (game,rater,storyteller,stars,comment,created) VALUES (?,?,?,?,?,?) ON CONFLICT(game,rater) DO UPDATE SET stars=excluded.stars,comment=excluded.comment,created=excluded.created',
     )
     .bind(game.id, me, game.host_account, stars, comment, now);
-  await db.batch([statement,...ratingRewardStatements(db,game.id,game.host_account,now)]);
+  await db.batch([
+    statement,
+    ...ratingRewardStatements(db, game.id, game.host_account, now),
+  ]);
   return { stars, comment };
 }
 
