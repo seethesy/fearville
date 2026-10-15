@@ -1,5 +1,6 @@
 'use client';
-import { playCue } from '@/components/hub/audio';
+import { playCue, setMusicContext } from '@/components/hub/audio';
+import { musicContext } from '@/lib/audio/context';
 import { haptic } from '@/lib/native/bridge';
 import { useKeepAwake, useKeepAwakeSetting } from '@/hooks/use-keep-awake';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -7,6 +8,7 @@ import { newestView } from '@/lib/game/live';
 import type { GameView } from '@/lib/game/view';
 import type { Control } from '@/lib/game/types';
 import { useTableSocket } from '@/hooks/use-table-socket';
+import { useSafeReload } from '@/components/stale-reload';
 import { type Values } from './fields.tsx';
 export function useTableState() {
   const [game, setGame] = useState<GameView | null>(null),
@@ -35,6 +37,20 @@ export function useTableState() {
   useKeepAwake(keepAwake && !!game);
   const previousPhase = useRef<string | null>(null);
   const phase = game?.phase;
+  const riteActive = game?.phase === 'night' && game.rite?.status === 'open';
+  const ritePattern =
+    game?.rite && !game.rite.host ? game.rite.squad.kind : undefined;
+  const winner = game?.winner;
+  useEffect(() => {
+    setMusicContext(
+      musicContext({
+        path: '/table',
+        phase,
+        winner,
+        rite: { active: riteActive, pattern: ritePattern },
+      }),
+    );
+  }, [phase, winner, riteActive, ritePattern]);
   useEffect(() => {
     if (phase && previousPhase.current && previousPhase.current !== phase)
       playCue();
@@ -151,6 +167,12 @@ export function useTableState() {
       setConnectionError('');
     },
     [applyGame],
+  );
+  // FEAR-121: after a deploy, reload at the next phase change.
+  useSafeReload(
+    game?.phase,
+    `${game?.phase}:${game?.day}:${game?.night}`,
+    busy,
   );
   const socket = useTableSocket({
     code: game?.code,

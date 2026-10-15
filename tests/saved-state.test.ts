@@ -1,7 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { newGame, newPlayer } from '../lib/game/types.ts';
-import { savedGame } from '../lib/game/saved-state.ts';
+import {
+  savedGame,
+  migrateGame,
+  MIGRATIONS,
+  SCHEMA_VERSION,
+} from '../lib/game/saved-state.ts';
 import { beginNight, execute, snapshot } from '../lib/game/engine.ts';
 import { recapOf } from '../lib/game/lobby.ts';
 void test('new tables default to Horrors and only supported saved scripts load', () => {
@@ -65,4 +70,35 @@ void test('unsupported saved feature data is discarded and stays discarded after
   assert.equal(game.nightChoiceRound, undefined);
   assert.equal(Object.hasOwn(game, 'obsoleteWidget'), false);
   assert.deepEqual(savedGame(JSON.stringify(game)).players, original.players);
+});
+
+void test('FEAR-121: stored tables carry schemaVersion and older versions migrate forward', () => {
+  const fresh = newGame('SCHEMA', 'Host');
+  assert.equal(fresh.schemaVersion, SCHEMA_VERSION);
+  // Tables saved before versioning (no field) load as the current version
+  // with their data intact.
+  const legacy = newGame('SCHEMA', 'Host');
+  delete legacy.schemaVersion;
+  legacy.players = [newPlayer('Ada', 1)];
+  legacy.day = 3;
+  const loaded = savedGame(JSON.stringify(legacy));
+  assert.equal(loaded.schemaVersion, SCHEMA_VERSION);
+  assert.equal(loaded.day, 3);
+  assert.equal(loaded.players[0].name, 'Ada');
+  // Migrations are pure: the input is not modified.
+  const before = JSON.stringify(legacy);
+  migrateGame(legacy);
+  assert.equal(JSON.stringify(legacy), before);
+  // Every version below the current one has a step.
+  for (let v = 0; v < SCHEMA_VERSION; v++)
+    assert.equal(typeof MIGRATIONS[v], 'function', 'missing migration ' + v);
+  // A newer schema (rollback) is read without downgrading its version.
+  const newer = {
+    ...newGame('SCHEMA', 'Host'),
+    schemaVersion: SCHEMA_VERSION + 1,
+  };
+  assert.equal(
+    savedGame(JSON.stringify(newer)).schemaVersion,
+    SCHEMA_VERSION + 1,
+  );
 });

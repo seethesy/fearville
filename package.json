@@ -11,12 +11,15 @@
     "start": "wrangler dev --config dist/server/wrangler.json",
     "lint": "oxlint app lib components db tests",
     "format": "oxfmt",
+    "puzzles:sample": "node --experimental-strip-types scripts/sample-puzzles.mjs",
     "db:generate": "drizzle-kit generate",
     "typecheck": "tsc --noEmit",
     "test:unit": "node scripts/run-unit.mjs",
     "test:integration": "node scripts/run-integration.mjs",
+    "test:e2e": "node scripts/run-e2e.mjs",
     "test": "node scripts/run-unit.mjs && node scripts/run-integration.mjs",
-    "check": "node scripts/check.mjs"
+    "check": "node scripts/check.mjs",
+    "content:export": "node scripts/export-content.mjs"
   },
   "dependencies": {
     "@base-ui/react": "1.7.0",
@@ -45,6 +48,7 @@
   "devDependencies": {
     "@cloudflare/vite-plugin": "1.37.1",
     "@cloudflare/workers-types": "4.20260515.1",
+    "@playwright/test": "1.56.0",
     "@tailwindcss/postcss": "4.2.1",
     "@types/node": "22.19.19",
     "@types/react": "19.2.14",

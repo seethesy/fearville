@@ -1,0 +1,139 @@
+{
+  "$comment": "FEAR-194: URL policy cases shared by the iOS (mobile/tests/ios-url-policy.swift) and Android shells. invite needs site; browserOnly and authCallback ignore it.",
+  "cases": [
+    {
+      "kind": "invite",
+      "url": "https://fearville.app/table?code=ABCD",
+      "expected": true,
+      "site": "https://fearville.app"
+    },
+    {
+      "kind": "invite",
+      "url": "https://fearville.app/friends",
+      "expected": true,
+      "site": "https://fearville.app"
+    },
+    {
+      "kind": "invite",
+      "url": "https://staging.fearville.app/table?code=ABCD",
+      "expected": true,
+      "site": "https://staging.fearville.app"
+    },
+    {
+      "kind": "invite",
+      "url": "https://staging.fearville.app/table?code=ABCD",
+      "expected": false,
+      "site": "https://fearville.app"
+    },
+    {
+      "kind": "invite",
+      "url": "https://fearville.app.evil.test/table?code=ABCD",
+      "expected": false,
+      "site": "https://fearville.app"
+    },
+    {
+      "kind": "invite",
+      "url": "http://fearville.app/table?code=ABCD",
+      "expected": false,
+      "site": "https://fearville.app"
+    },
+    {
+      "kind": "invite",
+      "url": "https://user@fearville.app/table?code=ABCD",
+      "expected": false,
+      "site": "https://fearville.app"
+    },
+    {
+      "kind": "invite",
+      "url": "https://fearville.app:444/table?code=ABCD",
+      "expected": false,
+      "site": "https://fearville.app"
+    },
+    {
+      "kind": "invite",
+      "url": "https://fearville.app/table",
+      "expected": false,
+      "site": "https://fearville.app"
+    },
+    {
+      "kind": "invite",
+      "url": "https://fearville.app/table?code=",
+      "expected": false,
+      "site": "https://fearville.app"
+    },
+    {
+      "kind": "invite",
+      "url": "https://fearville.app/privacy",
+      "expected": false,
+      "site": "https://fearville.app"
+    },
+    {
+      "kind": "invite",
+      "url": "https://fearville.app/store",
+      "expected": false,
+      "site": "https://fearville.app"
+    },
+    {
+      "kind": "invite",
+      "url": "https://fearville.app/api/accounts/exchange",
+      "expected": false,
+      "site": "https://fearville.app"
+    },
+    {
+      "kind": "invite",
+      "url": "https://fearville.app/table?code=ABCD",
+      "expected": false,
+      "site": "https://staging.fearville.app"
+    },
+    {
+      "kind": "browserOnly",
+      "url": "https://fearville.app/privacy",
+      "expected": true
+    },
+    {
+      "kind": "browserOnly",
+      "url": "https://fearville.app/privacy/",
+      "expected": true
+    },
+    {
+      "kind": "browserOnly",
+      "url": "https://fearville.app/store",
+      "expected": true
+    },
+    {
+      "kind": "browserOnly",
+      "url": "https://fearville.app/store/trust",
+      "expected": true
+    },
+    {
+      "kind": "browserOnly",
+      "url": "https://fearville.app/table",
+      "expected": false
+    },
+    {
+      "kind": "authCallback",
+      "url": "fearville://signin?code=test",
+      "expected": true
+    },
+    {
+      "kind": "authCallback",
+      "url": "fearville://signin.evil?code=test",
+      "expected": false
+    },
+    {
+      "kind": "authCallback",
+      "url": "https://signin?code=test",
+      "expected": false
+    },
+    {
+      "kind": "authCallback",
+      "url": "fearville://signin/wrong",
+      "expected": false
+    },
+    {
+      "kind": "authCallback",
+      "url": "fearville://user@signin?code=test",
+      "expected": false
+    }
+  ]
+}

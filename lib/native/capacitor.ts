@@ -11,11 +11,41 @@ type Plugin = Record<string, (...args: unknown[]) => Promise<unknown>> & {
 };
 type CapacitorGlobal = {
   isNativePlatform(): boolean;
+  getPlatform?(): string;
   isPluginAvailable(name: string): boolean;
   Plugins: Record<string, Plugin | undefined>;
 };
 
 const SHELL_BRIDGE_VERSION = 1;
+
+/**
+ * A sign-in callback, matching the shells' URL policy (authCallback in
+ * mobile/native/ios/FearvilleURLPolicy.swift and url-policy-cases.json):
+ * fearville://signin with no user, password, port or path, carrying a code
+ * or an error. Anything else returns null.
+ */
+export function signinCallback(
+  raw: string,
+): { code: string | null; error: string | null } | null {
+  let url: URL;
+  try {
+    url = new URL(raw);
+  } catch {
+    return null;
+  }
+  if (
+    url.protocol !== 'fearville:' ||
+    url.hostname !== 'signin' ||
+    url.username ||
+    url.password ||
+    url.port ||
+    (url.pathname !== '' && url.pathname !== '/')
+  )
+    return null;
+  const code = url.searchParams.get('code') || null,
+    error = url.searchParams.get('error') || null;
+  return code || error ? { code, error } : null;
+}
 
 export function installCapacitorBridge() {
   if (typeof window === 'undefined') return;
@@ -45,14 +75,10 @@ export function installCapacitorBridge() {
   > = {};
   const capabilities: string[] = [];
   // Sign-in returns through fearville://signin?code=… (lib/accounts/callback.ts).
+  // Lookalikes (fearville://signin.evil, other paths, user info) are ignored.
   const emitSignin = (url: string) => {
-    const params = new URL(url.replace('fearville://', 'https://x/'))
-      .searchParams;
-    emit({
-      type: 'signin',
-      code: params.get('code'),
-      error: params.get('error'),
-    });
+    const callback = signinCallback(url);
+    if (callback) emit({ type: 'signin', ...callback });
   };
   if (haptics) {
     capabilities.push('haptics');
@@ -97,7 +123,7 @@ export function installCapacitorBridge() {
     // Android: Custom Tabs hand fearville://signin?code=… back to the app.
     app.addListener('appUrlOpen', (e) => {
       const url = typeof e.url === 'string' ? e.url : '';
-      if (!url.startsWith('fearville://signin')) return;
+      if (!signinCallback(url)) return;
       void browser?.close?.().catch(() => {});
       emitSignin(url);
     });
@@ -124,9 +150,26 @@ export function installCapacitorBridge() {
     };
   }
 
+  // FEAR-120: the installed app's platform and build for X-Fearville-Client.
+  // Filled asynchronously; until then the build is 0 (never gated).
+  const appDetails: { platform: string; version: string; build: string } = {
+    platform: cap.getPlatform?.() ?? '',
+    version: '',
+    build: '0',
+  };
+  void app
+    ?.getInfo?.()
+    .then((info) => {
+      const i = info as { version?: string; build?: string } | undefined;
+      appDetails.version = String(i?.version ?? '');
+      appDetails.build = String(i?.build ?? '0');
+      emit({ type: 'app' });
+    })
+    .catch(() => {});
   w.FearvilleNative = {
     version: SHELL_BRIDGE_VERSION,
     capabilities,
+    app: appDetails,
     call: (method: string, args: Record<string, unknown> = {}) => {
       const run = methods[method];
       return run

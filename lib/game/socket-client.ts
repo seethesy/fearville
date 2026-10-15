@@ -1,4 +1,5 @@
 import {
+  parseHello,
   parseViewEnvelope,
   type ViewEnvelope,
   type ActionAck,
@@ -29,6 +30,10 @@ export type ConnectionOptions = {
   status: (open: boolean) => void;
   phase?: (phase: ConnectionPhase) => void;
   version?: () => number;
+  /** FEAR-121: the server's build and protocol (hello and view frames). */
+  protocol?: (notice: { buildId?: string; apiVersion?: number }) => void;
+  /** FEAR-120: X-Fearville-Client value, sent in the hello frame. */
+  client?: () => string;
   random?: () => number;
   setTimer?: typeof setTimeout;
   clearTimer?: typeof clearTimeout;
@@ -125,6 +130,7 @@ export class TableConnection {
           JSON.stringify({
             type: 'hello',
             lastVersion: Math.max(this.version, this.options.version?.() ?? 0),
+            ...(this.options.client ? { client: this.options.client() } : {}),
           }),
         );
       } catch {
@@ -158,11 +164,18 @@ export class TableConnection {
       } catch {
         /* malformed frames never settle an action */
       }
+      const hello = parseHello(event.data);
+      if (hello) {
+        this.options.protocol?.(hello);
+        return;
+      }
       const frame = parseViewEnvelope(
         event.data,
         this.options.code,
         this.options.me,
       );
+      if (frame?.apiVersion !== undefined)
+        this.options.protocol?.({ apiVersion: frame.apiVersion });
       if (!frame || frame.version < this.version) return;
       this.version = frame.version;
       this.options.view(frame);
