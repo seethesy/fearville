@@ -14,10 +14,12 @@ export function Sphinx({
   puzzle,
   send,
   busy,
+  solo = false,
 }: {
   puzzle: RitePuzzleView;
   send: Send;
   busy: boolean;
+  solo?: boolean;
 }) {
   const placements: Triple[] = puzzle.placements?.length
     ? puzzle.placements
@@ -179,7 +181,7 @@ export function Sphinx({
           }
           onClick={() => void send('riteGridSubmit', { solution: placements })}
         >
-          Submit for tonight
+          {solo ? 'Check answer' : 'Submit for tonight'}
         </button>
       </div>
       {puzzle.submission?.length === 5 && (
