@@ -11,6 +11,7 @@ type Plugin = Record<string, (...args: unknown[]) => Promise<unknown>> & {
 };
 type CapacitorGlobal = {
   isNativePlatform(): boolean;
+  getPlatform?(): string;
   isPluginAvailable(name: string): boolean;
   Plugins: Record<string, Plugin | undefined>;
 };
@@ -124,9 +125,26 @@ export function installCapacitorBridge() {
     };
   }
 
+  // FEAR-120: the installed app's platform and build for X-Fearville-Client.
+  // Filled asynchronously; until then the build is 0 (never gated).
+  const appDetails: { platform: string; version: string; build: string } = {
+    platform: cap.getPlatform?.() ?? '',
+    version: '',
+    build: '0',
+  };
+  void app
+    ?.getInfo?.()
+    .then((info) => {
+      const i = info as { version?: string; build?: string } | undefined;
+      appDetails.version = String(i?.version ?? '');
+      appDetails.build = String(i?.build ?? '0');
+      emit({ type: 'app' });
+    })
+    .catch(() => {});
   w.FearvilleNative = {
     version: SHELL_BRIDGE_VERSION,
     capabilities,
+    app: appDetails,
     call: (method: string, args: Record<string, unknown> = {}) => {
       const run = methods[method];
       return run
