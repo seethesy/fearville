@@ -12,6 +12,7 @@ CREATE TABLE trust_ledger (
   origin TEXT NOT NULL CHECK(origin IN ('earned','purchased','mixed')),
   source TEXT NOT NULL,
   reason TEXT NOT NULL,
+  metadata TEXT NOT NULL DEFAULT '{}' CHECK(json_valid(metadata) AND json_type(metadata)='object'),
   idempotency_key TEXT NOT NULL,
   created INTEGER NOT NULL,
   UNIQUE(wallet,idempotency_key)
