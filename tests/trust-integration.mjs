@@ -42,9 +42,17 @@ try {
   assert.equal((await call('/api/wallet',undefined,5)).balance,20);
   for(let i=0;i<3;i++) await call('/api/game',undefined,0,0);
   assert.equal((await call('/api/wallet',undefined,1)).entries.length,2);
+  const recordedGame=code+':'+now;
+  for(const [index,stars] of [[1,5],[2,4],[3,3]]) await call('/api/social',{action:'rate',game:recordedGame,stars},index);
+  assert.equal((await call('/api/wallet')).balance,35);
+  await call('/api/social',{action:'rate',game:recordedGame,stars:2},1);
+  assert.equal((await call('/api/wallet')).balance,25);
+  const visibleWallet=JSON.stringify(await call('/api/wallet'));
+  assert.ok(!visibleWallet.includes(accounts[1]) && !visibleWallet.includes('rater') && !visibleWallet.includes('idempotency'));
   await call('/api/accounts',{action:'attach'},6,6);
   assert.equal((await call('/api/wallet',undefined,6)).balance,0);
   await act({action:'undo'});
+  assert.equal((await call('/api/wallet')).balance,0);
   assert.equal((await call('/api/wallet',undefined,1)).balance,0);
   await act({action:'end',winner:'evil'});
   assert.equal((await call('/api/wallet',undefined,1)).balance,20);

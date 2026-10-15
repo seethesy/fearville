@@ -131,6 +131,13 @@ export const trustGameRewards = sqliteTable('trust_game_rewards', {
   active:integer('active').notNull().default(1), eligible:text('eligible').notNull(),
   playerCount:integer('player_count').notNull(), created:integer('created').notNull(),
 });
+export const trustAccountLinks = sqliteTable('trust_account_links', {
+  accountLow:text('account_low').notNull().references(() => accounts.id,{onDelete:'cascade'}),
+  accountHigh:text('account_high').notNull().references(() => accounts.id,{onDelete:'cascade'}),
+},t=>[primaryKey({columns:[t.accountLow,t.accountHigh]})]);
+export const trustRatingStates = sqliteTable('trust_rating_states', {
+  game:text('game').primaryKey(),revision:integer('revision').notNull().default(1),
+});
 export const identities = sqliteTable(
   'identities',
   {

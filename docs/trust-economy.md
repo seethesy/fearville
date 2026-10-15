@@ -10,6 +10,15 @@ Caps use net earned ledger amounts, including corrections; purchases do not
 consume earning caps. There are no retroactive awards for guest seats linked
 after game end. Rewind reverses awards; re-ending begins a new idempotent cycle.
 
+Rating revisions recompute the capped per-game entitlement and append only its
+difference from the net bonus already paid. The rating upsert and bonus update
+share one D1 transaction. Lower ratings may create a negative wallet after trust
+has been spent. The private `trust_account_links` table excludes known account
+pairs from rating rewards; insert ordered account IDs after an administrative
+review. This release does not infer identity from shared IPs or add an admin UI.
+Only the opaque game reference appears in the bonus ledger; pair exclusions and
+individual ratings are never returned by the wallet API.
+
 Balances are integer trust. Only the wallet service writes ledger entries; SQL
 triggers atomically validate and apply each entry. The ledger is the immutable
 audit trail. `checkIntegrity(db)` returns wallets whose balance differs from the

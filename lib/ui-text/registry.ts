@@ -30,6 +30,7 @@ export const UI_TEXT: Record<string, string> = {
   'wallet.finish':'Finished a game',
   'wallet.win':'Won a game',
   'wallet.rating':'Storyteller rating bonus',
+  'wallet.ratingEarned':'You earned {amount} trust from Storyteller ratings.',
   'wallet.purchase':'Purchased {amount} trust',
   'wallet.cosmetic':'Bought {item}',
   'wallet.item':'a cosmetic',
