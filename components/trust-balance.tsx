@@ -34,12 +34,7 @@ export function TrustBalance({ accountId }: { accountId?: string | null }) {
                 lastEntry === null
                   ? 0
                   : data.entries
-                      .filter(
-                        (e) =>
-                          e.id > lastEntry! &&
-                          e.reason === 'rating' &&
-                          e.amount > 0,
-                      )
+                      .filter((e) => e.id > lastEntry! && e.reason === 'rating')
                       .reduce((sum, e) => sum + e.amount, 0);
               if (earned > 0) setNotice({ account: id, amount: earned });
               lastEntry = Math.max(
