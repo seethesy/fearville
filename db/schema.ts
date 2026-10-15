@@ -119,6 +119,13 @@ export const equippedCosmetics = sqliteTable('equipped_cosmetics', {
   account: text('account').notNull().references(() => accounts.id, {onDelete:'cascade'}),
   category: text('category').notNull(), cosmetic: text('cosmetic').references(() => cosmetics.id),
 }, t => [primaryKey({columns:[t.account,t.category]})]);
+export const trustPurchases = sqliteTable('trust_purchases', {
+  id: integer('id').primaryKey({autoIncrement:true}),
+  wallet: text('wallet').notNull().references(() => wallets.id),
+  cosmetic: text('cosmetic').notNull().references(() => cosmetics.id),
+  price: integer('price').notNull(), balanceAfter: integer('balance_after').notNull(),
+  idempotencyKey: text('idempotency_key').notNull(), created: integer('created').notNull(),
+}, t => [uniqueIndex('idx_trust_purchase_key').on(t.wallet,t.idempotencyKey)]);
 export const identities = sqliteTable(
   'identities',
   {
