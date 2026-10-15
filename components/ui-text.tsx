@@ -1,28 +1,40 @@
 'use client';
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useState,
-} from 'react';
+import { useCallback, useContext, useEffect, useState } from 'react';
+import { Pencil } from 'lucide-react';
 import { useAccount } from '@/components/hub/account-context';
-import { UI_TEXT, formatText, type TextKey } from '@/lib/ui-text/registry';
+import {
+  UI_TEXT,
+  formatText,
+  textFormat,
+  textGroup,
+  type TextKey,
+} from '@/lib/ui-text/registry';
+import { diffWords } from '@/lib/ui-text/diff';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-type Override = { value: string; version: number };
-type Version = { id: number; value: string; at: number; admin: string };
-const Context = createContext({
-  overrides: {} as Record<string, Override>,
-  edit: false,
-  setEdit: (_value: boolean) => {},
-  select: (_key: TextKey) => {},
-  refresh: async () => {},
-});
+import {
+  type Draft,
+  type Override,
+  TextContext,
+  useLiveText,
+} from './text-context';
+import { MarkdownText } from './markdown-text';
+
+export { useLiveText } from './text-context';
+
+type Version = {
+  id: number;
+  value: string;
+  at: number;
+  editor: string;
+  summary: string | null;
+};
+
 export async function adminRequest(body: Record<string, unknown>) {
   const r = await fetch('/api/admin', {
     method: 'POST',
@@ -38,17 +50,27 @@ export async function adminRequest(body: Record<string, unknown>) {
   if (!r.ok) throw Error(data.error ?? 'Could not save.');
   return data;
 }
+
+// FEAR-173: wiki edits go through /api/ui-text (admin or trusted editors).
+async function textRequest(body: Record<string, unknown>) {
+  const r = await fetch('/api/ui-text', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  const data = (await r.json()) as { error?: string };
+  if (!r.ok) throw Error(data.error ?? 'Could not save.');
+  return data;
+}
+
 export function TextProvider({ children }: { children: React.ReactNode }) {
   const { state } = useAccount();
-  const admin = state?.account?.role === 'admin';
+  const accountId = state?.account?.id;
   const [overrides, setOverrides] = useState<Record<string, Override>>({}),
+    [drafts, setDrafts] = useState<Record<string, Draft>>({}),
+    [role, setRole] = useState({ editor: false, admin: false }),
     [edit, setEdit] = useState(false),
-    [key, select] = useState<TextKey | null>(null);
-  const [value, setValue] = useState(''),
-    [version, setVersion] = useState(0),
-    [history, setHistory] = useState<Version[]>([]),
-    [error, setError] = useState(''),
-    [busy, setBusy] = useState(false);
+    [key, select] = useState<string | null>(null);
   const refresh = useCallback(async () => {
     try {
       const r = await fetch('/api/ui-text', {
@@ -64,12 +86,43 @@ export function TextProvider({ children }: { children: React.ReactNode }) {
       /* Bundled defaults and last good values remain available. */
     }
   }, []);
+  const refreshDrafts = useCallback(async () => {
+    try {
+      const r = await fetch('/api/ui-text?view=drafts', { cache: 'no-store' });
+      if (r.ok)
+        setDrafts(
+          ((await r.json()) as { drafts: Record<string, Draft> }).drafts,
+        );
+    } catch {
+      /* Keep the last drafts. */
+    }
+  }, []);
+  useEffect(() => {
+    let live = true;
+    if (!accountId) {
+      const t = setTimeout(() => setRole({ editor: false, admin: false }), 0);
+      return () => clearTimeout(t);
+    }
+    void fetch('/api/ui-text?view=me', { cache: 'no-store' })
+      .then((r) => r.json() as Promise<{ editor?: boolean; admin?: boolean }>)
+      .then((d) => {
+        if (live) setRole({ editor: !!d.editor, admin: !!d.admin });
+      })
+      .catch(() => {});
+    return () => {
+      live = false;
+    };
+  }, [accountId]);
+  const canEdit = role.editor;
   useEffect(() => {
     let stopped = false;
     let timer: ReturnType<typeof setTimeout>;
     const poll = async () => {
-      if (!document.hidden) await refresh();
-      if (!stopped) timer = setTimeout(poll, 3000);
+      if (!document.hidden) {
+        await refresh();
+        if (edit && canEdit) await refreshDrafts();
+      }
+      if (!stopped) timer = setTimeout(poll, edit ? 5000 : 3000);
     };
     void poll();
     const resume = () => {
@@ -81,156 +134,388 @@ export function TextProvider({ children }: { children: React.ReactNode }) {
       clearTimeout(timer);
       document.removeEventListener('visibilitychange', resume);
     };
-  }, [refresh]);
-  const open = (selected: TextKey) => {
-    select(selected);
-    setValue(overrides[selected]?.value ?? UI_TEXT[selected]);
-    setVersion(overrides[selected]?.version ?? 0);
-    setError('');
-    setHistory([]);
-    void fetch('/api/admin?view=history&key=' + encodeURIComponent(selected))
-      .then(async (r) => {
-        const d = (await r.json()) as { error?: string; history: Version[] };
-        if (!r.ok) throw Error(d.error);
-        setHistory(d.history);
-      })
-      .catch((e) => setError(e.message));
+  }, [refresh, refreshDrafts, edit, canEdit]);
+  const both = async () => {
+    await Promise.all([refresh(), refreshDrafts()]);
   };
-  const save = async (reset = false) => {
-    if (!key) return;
+  return (
+    <TextContext.Provider
+      value={{
+        overrides,
+        drafts,
+        edit: edit && canEdit,
+        canEdit,
+        admin: role.admin,
+        setEdit,
+        select: (k) => {
+          if (Object.hasOwn(UI_TEXT, k)) select(k);
+        },
+        refresh: both,
+      }}
+    >
+      {children}
+      {canEdit && (
+        <button
+          type="button"
+          className={'text-edit-toggle ' + (edit ? 'primary' : 'secondary')}
+          aria-pressed={edit}
+          onClick={() => setEdit(!edit)}
+        >
+          <Pencil aria-hidden="true" size={14} />{' '}
+          {edit ? 'Editing text' : 'Edit text'}
+        </button>
+      )}
+      {key && canEdit && (
+        <TextEditorDialog
+          key={key}
+          textKey={key}
+          override={overrides[key]}
+          draft={drafts[key]}
+          onClose={() => select(null)}
+          onChanged={both}
+        />
+      )}
+    </TextContext.Provider>
+  );
+}
+
+function Preview({ textKey, value }: { textKey: string; value: string }) {
+  return textFormat(textKey) === 'markdown' ? (
+    <div className="text-preview">
+      <MarkdownText text={value} />
+    </div>
+  ) : (
+    <p className="text-preview admin-plain">{value}</p>
+  );
+}
+
+function Diff({ before, after }: { before: string; after: string }) {
+  return (
+    <p className="text-diff admin-plain">
+      {diffWords(before, after).map((p, i) =>
+        p.t === 'same' ? (
+          <span key={i}>{p.v}</span>
+        ) : p.t === 'add' ? (
+          <ins key={i}>{p.v}</ins>
+        ) : (
+          <del key={i}>{p.v}</del>
+        ),
+      )}
+    </p>
+  );
+}
+
+function TextEditorDialog({
+  textKey,
+  override,
+  draft,
+  onClose,
+  onChanged,
+}: {
+  textKey: string;
+  override?: Override;
+  draft?: Draft;
+  onClose: () => void;
+  onChanged: () => Promise<void>;
+}) {
+  const fallback = UI_TEXT[textKey];
+  const published = override?.value ?? fallback;
+  const [value, setValue] = useState(draft?.value ?? published),
+    [summary, setSummary] = useState(draft?.summary ?? ''),
+    [saved, setSaved] = useState<{ value: string; summary: string } | null>(
+      draft ? { value: draft.value, summary: draft.summary ?? '' } : null,
+    ),
+    [tab, setTab] = useState<'write' | 'preview'>('write'),
+    [history, setHistory] = useState<Version[] | null>(null),
+    [compare, setCompare] = useState<number | null>(null),
+    [error, setError] = useState(''),
+    [notice, setNotice] = useState(''),
+    [busy, setBusy] = useState(false);
+  const markdown = textFormat(textKey) === 'markdown';
+  const loadHistory = useCallback(async () => {
+    try {
+      const r = await fetch(
+        '/api/ui-text?view=history&key=' + encodeURIComponent(textKey),
+        { cache: 'no-store' },
+      );
+      const d = (await r.json()) as { error?: string; history: Version[] };
+      if (!r.ok) throw Error(d.error);
+      setHistory(d.history);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not load history.');
+    }
+  }, [textKey]);
+  useEffect(() => {
+    const t = setTimeout(() => void loadHistory(), 0);
+    return () => clearTimeout(t);
+  }, [loadHistory]);
+  const unsaved =
+    value !== (saved?.value ?? published) ||
+    (!!saved && summary !== saved.summary);
+  async function act(body: Record<string, unknown>, done: string) {
     setBusy(true);
     setError('');
+    setNotice('');
     try {
-      await adminRequest({ action: 'text', key, value, version, reset });
-      await refresh();
-      select(null);
+      await textRequest({ key: textKey, ...body });
+      setNotice(done);
+      await Promise.all([onChanged(), loadHistory()]);
+      return true;
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Save failed.');
+      setError(e instanceof Error ? e.message : 'Could not save.');
+      return false;
     } finally {
       setBusy(false);
     }
-  };
+  }
+  const versions = history ?? [];
   return (
-    <Context.Provider
-      value={{ overrides, edit: edit && admin, setEdit, select: open, refresh }}
-    >
-      {children}
-      <Dialog
-        open={!!key && admin}
-        onOpenChange={(v) => {
-          if (!v) select(null);
-        }}
-      >
-        <DialogContent className="admin-text-dialog">
-          <DialogHeader>
-            <DialogTitle>Edit official text</DialogTitle>
-          </DialogHeader>
-          <code>{key}</code>
-          <p>Plain text. Keep named placeholders such as {'{count}'} intact.</p>
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="admin-text-dialog">
+        <DialogHeader>
+          <DialogTitle>Edit official text</DialogTitle>
+          <DialogDescription>
+            {textGroup(textKey)} · <code>{textKey}</code> ·{' '}
+            {markdown
+              ? 'Markdown: **bold**, *italic*, - lists, [link](https://…), [[Glossary term]].'
+              : 'Plain text.'}{' '}
+            Keep named placeholders such as {'{count}'} intact. Changes reach
+            players only when you publish.
+          </DialogDescription>
+        </DialogHeader>
+        <p className="hint">
+          {saved
+            ? `Draft ${draft ? `by ${draft.editor}` : ''} — not live yet.`
+            : override
+              ? `Live: version ${override.version}.`
+              : 'Live: the bundled default.'}
+        </p>
+        <div className="admin-actions" role="tablist">
+          <button
+            role="tab"
+            aria-selected={tab === 'write'}
+            className={tab === 'write' ? 'primary' : 'secondary'}
+            onClick={() => setTab('write')}
+          >
+            Write
+          </button>
+          <button
+            role="tab"
+            aria-selected={tab === 'preview'}
+            className={tab === 'preview' ? 'primary' : 'secondary'}
+            onClick={() => setTab('preview')}
+          >
+            Preview
+          </button>
+        </div>
+        {tab === 'write' ? (
           <label className="field">
-            Published text
+            Text
             <textarea
               value={value}
               onChange={(e) => setValue(e.target.value)}
               maxLength={4000}
-              rows={5}
+              rows={markdown ? 10 : 3}
             />
           </label>
-          {error && <p role="alert">{error}</p>}
-          <div className="admin-actions">
-            <button
-              className="primary"
-              disabled={busy}
-              onClick={() => void save()}
-            >
-              Save and publish
-            </button>
+        ) : (
+          <Preview textKey={textKey} value={value} />
+        )}
+        {value !== published && (
+          <details>
+            <summary>Changes from the live text</summary>
+            <Diff before={published} after={value} />
+          </details>
+        )}
+        <label className="field">
+          Edit summary
+          <input
+            value={summary}
+            maxLength={200}
+            placeholder="What changed and why"
+            onChange={(e) => setSummary(e.target.value)}
+          />
+        </label>
+        {error && (
+          <p className="error" role="alert">
+            {error}
+          </p>
+        )}
+        {notice && <output className="hint">{notice}</output>}
+        <div className="admin-actions">
+          <button
+            className="secondary"
+            disabled={busy || !unsaved}
+            onClick={async () => {
+              if (
+                await act(
+                  { action: 'draft', value, summary },
+                  'Draft saved. Players still see the live text.',
+                )
+              )
+                setSaved({ value, summary });
+            }}
+          >
+            Save draft
+          </button>
+          <button
+            className="primary"
+            disabled={busy || !saved || unsaved}
+            title={
+              unsaved ? 'Save the draft first' : !saved ? 'No draft' : undefined
+            }
+            onClick={async () => {
+              if (
+                await act(
+                  { action: 'publish', version: override?.version ?? 0 },
+                  'Published. Players see it within a few seconds.',
+                )
+              )
+                setSaved(null);
+            }}
+          >
+            Publish this field
+          </button>
+          {saved && (
             <button
               className="secondary"
               disabled={busy}
-              onClick={() => void save(true)}
+              onClick={async () => {
+                if (await act({ action: 'discard' }, 'Draft discarded.')) {
+                  setSaved(null);
+                  setValue(published);
+                  setSummary('');
+                }
+              }}
             >
-              Reset to default
+              Discard draft
             </button>
-            <button className="secondary" onClick={() => select(null)}>
-              Cancel
-            </button>
-          </div>
-          <details>
-            <summary>Version history ({history.length})</summary>
-            {history.map((h) => (
-              <article key={h.id}>
-                <small>
-                  Version {h.id} · {new Date(h.at).toLocaleString()}
-                </small>
-                <p className="admin-plain">{h.value}</p>
+          )}
+          <button className="secondary" onClick={onClose}>
+            Close
+          </button>
+        </div>
+        <details>
+          <summary>History ({versions.length + 1} versions)</summary>
+          <ol className="text-history">
+            {versions.map((v, i) => {
+              const older = versions[i + 1]?.value ?? fallback;
+              return (
+                <li key={v.id}>
+                  <div>
+                    <strong>Version {v.id}</strong> ·{' '}
+                    {new Date(v.at).toLocaleString()} · {v.editor}
+                    {i === 0 && ' · live'}
+                  </div>
+                  {v.summary && <em>{v.summary}</em>}
+                  <div className="admin-actions">
+                    <button
+                      className="secondary"
+                      aria-expanded={compare === v.id}
+                      onClick={() =>
+                        setCompare(compare === v.id ? null : v.id)
+                      }
+                    >
+                      {compare === v.id ? 'Hide changes' : 'Show changes'}
+                    </button>
+                    {i > 0 && (
+                      <button
+                        className="secondary"
+                        disabled={busy}
+                        onClick={() =>
+                          void act(
+                            { action: 'revert', to: v.id },
+                            `Reverted to version ${v.id}.`,
+                          )
+                        }
+                      >
+                        Revert to this
+                      </button>
+                    )}
+                  </div>
+                  {compare === v.id && <Diff before={older} after={v.value} />}
+                </li>
+              );
+            })}
+            <li>
+              <div>
+                <strong>Default</strong> · bundled with the app
+                {versions.length === 0 && ' · live'}
+              </div>
+              {versions.length > 0 && (
                 <button
+                  className="secondary"
                   disabled={busy}
-                  onClick={() => {
-                    setValue(h.value);
-                  }}
+                  onClick={() =>
+                    void act(
+                      { action: 'revert', to: 0 },
+                      'Reset to the default text.',
+                    )
+                  }
                 >
-                  Preview this version
+                  Revert to default
                 </button>
-                <button
-                  disabled={busy}
-                  onClick={() => {
-                    setBusy(true);
-                    void adminRequest({ command: `text revert ${key} ${h.id}` })
-                      .then(async () => {
-                        await refresh();
-                        select(null);
-                      })
-                      .catch((e) => setError(e.message))
-                      .finally(() => setBusy(false));
-                  }}
-                >
-                  Revert and publish
-                </button>
-              </article>
-            ))}
-          </details>
-        </DialogContent>
-      </Dialog>
-    </Context.Provider>
+              )}
+            </li>
+          </ol>
+        </details>
+      </DialogContent>
+    </Dialog>
   );
 }
-export const useTextEditor = () => useContext(Context);
+
+export const useTextEditor = () => useContext(TextContext);
 export function useText() {
-  const { overrides } = useContext(Context);
+  const live = useLiveText();
   return (key: TextKey, values?: Record<string, string | number>) =>
-    formatText(overrides[key]?.value ?? UI_TEXT[key], values);
+    formatText(live(key), values);
 }
+
+/**
+ * Editable official text. In edit mode an admin or trusted editor sees a
+ * pencil to open the editor; drafts show with a dashed outline.
+ * Markdown keys render as blocks unless `inline` (inside a <p> or heading).
+ */
 export function UiText({
   id,
   values,
+  fallback,
+  inline,
 }: {
   id: TextKey;
   values?: Record<string, string | number>;
+  fallback?: string;
+  inline?: boolean;
 }) {
-  const context = useContext(Context);
-  const text = formatText(context.overrides[id]?.value ?? UI_TEXT[id], values);
-  return context.edit ? (
-    <button
-      type="button"
-      className="editable-text"
-      title={id}
-      onClick={(e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        context.select(id);
-      }}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
+  const context = useContext(TextContext);
+  const live = useLiveText();
+  const raw = formatText(live(id, fallback), values);
+  const content =
+    textFormat(id) === 'markdown' ? (
+      <MarkdownText text={raw} inline={inline} />
+    ) : (
+      raw
+    );
+  if (!context.edit || !Object.hasOwn(UI_TEXT, id)) return <>{content}</>;
+  const Wrapper = textFormat(id) === 'markdown' && !inline ? 'div' : 'span';
+  return (
+    <Wrapper
+      className={'editable-text' + (context.drafts[id] ? ' has-draft' : '')}
+      title={id + (context.drafts[id] ? ' (draft)' : '')}
+    >
+      {content}
+      <button
+        type="button"
+        className="edit-pencil"
+        aria-label={`Edit text ${id}`}
+        onClick={(e) => {
           e.preventDefault();
           e.stopPropagation();
           context.select(id);
-        }
-      }}
-    >
-      {text}
-    </button>
-  ) : (
-    <>{text}</>
+        }}
+      >
+        <Pencil aria-hidden="true" size={12} />
+      </button>
+    </Wrapper>
   );
 }

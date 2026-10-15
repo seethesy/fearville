@@ -408,9 +408,29 @@ export const uiTextVersions = sqliteTable(
     value: text('value').notNull(),
     at: integer('at').notNull(),
     admin: text('admin').notNull(),
+    // FEAR-173: the editor's note for this version ("fixed typo").
+    summary: text('summary'),
   },
   (t) => [index('idx_ui_text_versions_key').on(t.key, t.id)],
 );
+// FEAR-173: unpublished edits, one per key. Never served to players.
+export const uiTextDrafts = sqliteTable('ui_text_drafts', {
+  key: text('key').primaryKey(),
+  value: text('value').notNull(),
+  summary: text('summary'),
+  // Published version id the draft was based on (0 = bundled default).
+  base: integer('base').notNull().default(0),
+  editor: text('editor').notNull(),
+  updated: integer('updated').notNull(),
+});
+// FEAR-173: trusted accounts that may edit and publish official text.
+export const textEditors = sqliteTable('text_editors', {
+  account: text('account')
+    .primaryKey()
+    .references(() => accounts.id, { onDelete: 'cascade' }),
+  granted: integer('granted').notNull(),
+  grantedBy: text('granted_by').notNull(),
+});
 export const adminAssertions = sqliteTable(
   'admin_assertions',
   { ok: integer('ok').notNull() },

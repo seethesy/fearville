@@ -1,3 +1,5 @@
+import { UiText } from '@/components/ui-text';
+import { RoleAbility, RoleName } from '@/components/role-text';
 import { GlossaryText } from '@/components/glossary-text';
 import { RoleIcon } from './role-icon';
 import { RiteGuides } from './tutorials/rite-diagram';
@@ -82,10 +84,11 @@ export function RoleTeams({ script }: { script: RoleScript }) {
               .map((r) => (
                 <article key={r.id} id={`role-${r.id}`}>
                   <h4>
-                    <RoleIcon role={r.id} /> {r.name}
+                    <RoleIcon role={r.id} />{' '}
+                    <RoleName id={r.id} fallback={r.name} />
                   </h4>
                   <p>
-                    <GlossaryText text={r.description} />
+                    <RoleAbility id={r.id} fallback={r.description} />
                   </p>
                 </article>
               ))}
@@ -347,14 +350,17 @@ export function RulesReference({
         <dl className="glossary">
           {GLOSSARY.map((t) => (
             <div key={t.id} id={`glossary-${t.id}`} className="glossary-term">
-              <dt>{t.term}</dt>
+              <dt>
+                <UiText id={`glossary.${t.id}.term`} />
+              </dt>
               <dd>
-                {t.definition}
+                <UiText id={`glossary.${t.id}.definition`} inline />
                 {t.example && (
                   <>
                     {' '}
                     <span className="glossary-example">
-                      Example: {t.example}
+                      Example:{' '}
+                      <UiText id={`glossary.${t.id}.example`} inline />
                     </span>
                   </>
                 )}

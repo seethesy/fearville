@@ -14,7 +14,7 @@ import {
   publicError,
 } from './audit.ts';
 import { textHistory, textPlan } from './text.ts';
-import { accountPlan } from './accounts.ts';
+import { accountPlan, targetAccount } from './accounts.ts';
 import { lobbyPlan } from './lobbies.ts';
 export type Handler = (args: Args, admin: Admin) => Promise<Plan>;
 export const handlers: Record<string, Handler> = {
@@ -54,6 +54,45 @@ export const handlers: Record<string, Handler> = {
       (args: Args) => lobbyPlan(name, args),
     ]),
   ),
+  editors: async () => ({
+    statements: [],
+    output: (
+      await db()
+        .prepare(
+          'SELECT a.handle,a.name,e.granted FROM text_editors e JOIN accounts a ON a.id=e.account ORDER BY e.granted',
+        )
+        .all()
+    ).results,
+  }),
+  'editor grant': async (args, admin) => {
+    const a = await targetAccount(String(args.account));
+    return {
+      target: a.id,
+      before: { editor: false },
+      after: { editor: true },
+      output: { account: a.id, editor: true },
+      statements: [
+        db()
+          .prepare(
+            'INSERT INTO text_editors(account,granted,granted_by) VALUES (?,?,?) ON CONFLICT(account) DO NOTHING',
+          )
+          .bind(a.id, Date.now(), admin.id),
+      ],
+    };
+  },
+  'editor revoke': async (args) => {
+    const a = await targetAccount(String(args.account));
+    return {
+      target: a.id,
+      before: { editor: true },
+      after: { editor: false },
+      output: { account: a.id, editor: false },
+      statements: [
+        db().prepare('DELETE FROM text_editors WHERE account=?').bind(a.id),
+        // Their unpublished drafts stay for other editors to review.
+      ],
+    };
+  },
   'text history': async (args) => ({
     statements: [],
     target: String(args.key),

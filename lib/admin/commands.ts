@@ -106,6 +106,16 @@ export const COMMANDS: CommandSpec[] = [
       'Transfer Storyteller access to an account; an active seated player is removed from play.',
     args: [lobby, account],
   },
+  // FEAR-173: trusted accounts that may edit official text wiki-style.
+  { name: 'editors', description: 'List trusted text editors.', args: [] },
+  ...['grant', 'revoke'].map((verb) => ({
+    name: 'editor ' + verb,
+    description:
+      verb === 'grant'
+        ? 'Let an account edit and publish official text.'
+        : 'Remove an account’s text editing rights.',
+    args: [account],
+  })),
   {
     name: 'text history',
     description: 'Show immutable text versions.',

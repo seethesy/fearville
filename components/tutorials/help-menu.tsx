@@ -17,6 +17,7 @@ import {
   FeedbackDialog,
   type HelpContext,
 } from '@/components/feedback/dialog';
+import { UiText, useLiveText } from '@/components/ui-text';
 
 // FEAR-20: replay any tutorial or guide on demand. Lists only what applies
 // to this viewer: the player walkthrough for seated players, the Storyteller
@@ -41,6 +42,7 @@ export function HelpMenu({
 }) {
   const [open, setOpen] = useState(false);
   const [feedback, setFeedback] = useState<HelpContext | null>(null);
+  const live = useLiveText();
   const { state, replay, blocked, account } = useTutorials();
   const sections = helpSections({
     platform: 'web',
@@ -79,13 +81,24 @@ export function HelpMenu({
                 {section.items.map((item) => (
                   <li key={item.id}>
                     <div>
-                      <strong>{item.title}</strong>
-                      <span className="muted">{item.summary}</span>
+                      <strong>
+                        <UiText
+                          id={`tutorial.${item.id}.title`}
+                          fallback={item.title}
+                        />
+                      </strong>
+                      <span className="muted">
+                        <UiText
+                          id={`tutorial.${item.id}.summary`}
+                          fallback={item.summary}
+                          inline
+                        />
+                      </span>
                     </div>
                     <button
                       type="button"
                       className="secondary"
-                      aria-label={`${item.seen ? 'Replay' : 'Start'} ${item.title}`}
+                      aria-label={`${item.seen ? 'Replay' : 'Start'} ${live(`tutorial.${item.id}.title`, item.title)}`}
                       onClick={() => {
                         setOpen(false);
                         replay(item.id);

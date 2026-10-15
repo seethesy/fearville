@@ -24,7 +24,7 @@ const PRIVATE_KEYS = new Set([
   'confirmation',
 ]);
 export function auditTarget(action: string, target: string) {
-  return /^(inspect|xp (give|remove|set)|grant|revoke|ban|unban|mute|unmute|signout|reset|kick)$/.test(
+  return /^(inspect|xp (give|remove|set)|grant|revoke|ban|unban|mute|unmute|signout|reset|kick|editor (grant|revoke))$/.test(
     action,
   )
     ? 'account:' + createHash('sha256').update(target).digest('hex')

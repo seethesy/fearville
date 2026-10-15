@@ -9,10 +9,12 @@ import {
   PopoverTitle,
   PopoverDescription,
 } from './ui/popover';
+import { useLiveText } from './text-context';
 
-function DefinitionTerm({ text, termId }: { text: string; termId: string }) {
+export function DefinitionTerm({ text, termId }: { text: string; termId: string }) {
   const descriptionId = useId();
   const term = glossaryTerm(termId);
+  const live = useLiveText();
   if (!term) return text;
   return (
     <Popover>
@@ -24,12 +26,14 @@ function DefinitionTerm({ text, termId }: { text: string; termId: string }) {
         {text}
       </PopoverTrigger>
       <PopoverContent className="glossary-bubble" sideOffset={8}>
-        <PopoverTitle>{term.term}</PopoverTitle>
+        <PopoverTitle>{live(`glossary.${term.id}.term`, term.term)}</PopoverTitle>
         <PopoverDescription id={descriptionId}>
-          {term.definition}
+          {live(`glossary.${term.id}.definition`, term.definition)}
         </PopoverDescription>
         {term.example && (
-          <p className="glossary-example">Example: {term.example}</p>
+          <p className="glossary-example">
+            Example: {live(`glossary.${term.id}.example`, term.example)}
+          </p>
         )}
       </PopoverContent>
     </Popover>

@@ -320,6 +320,9 @@ export function view(
     character:
       !a.host && g.phase !== 'lobby' && me
         ? {
+            // FEAR-173: the viewer's own (perceived) role id, so the client
+            // can show edited name/ability text. Same info as `name`.
+            id: me.shown || me.role,
             name: role(me.shown || me.role)?.name,
             description: role(me.shown || me.role)?.description,
             alignment: alignment({ ...me, role: me.shown || me.role }),

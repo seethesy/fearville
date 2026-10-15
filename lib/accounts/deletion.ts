@@ -234,6 +234,10 @@ async function deleteAccountAttempt(db: D1Database, account: string) {
     db
       .prepare('DELETE FROM feedback_submissions WHERE account = ?')
       .bind(account),
+    // FEAR-173: editor rights and unpublished drafts go with the account.
+    // Published text versions stay (official content), shown as a deleted account.
+    db.prepare('DELETE FROM text_editors WHERE account = ?').bind(account),
+    db.prepare('DELETE FROM ui_text_drafts WHERE editor = ?').bind(account),
     db.prepare('DELETE FROM accounts WHERE id = ?').bind(account),
   );
   await db.batch(statements);
