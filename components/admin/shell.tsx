@@ -6,6 +6,7 @@ import { UI_TEXT, type TextKey } from '@/lib/ui-text/registry';
 import { ReportQueue } from './reports';
 import { BrowsePanel } from './browse-panel';
 import { RemoteSwitches } from './switches';
+import { FeedbackAdmin, FeedbackSummary } from './feedback';
 type Entry = { command: string; output: unknown };
 export default function AdminShell() {
   const { refresh } = useAccount();
@@ -103,7 +104,15 @@ export default function AdminShell() {
         </button>
       </header>
       <nav aria-label="Administration">
-        {['console', 'browse', 'reports', 'switches', 'text', 'audit'].map(
+        {[
+          'console',
+          'browse',
+          'reports',
+          'feedback',
+          'switches',
+          'text',
+          'audit',
+        ].map(
           (t) => (
             <button
               key={t}
@@ -120,6 +129,8 @@ export default function AdminShell() {
                   ? 'Browse as'
                   : t === 'reports'
                     ? 'Moderation queue'
+                    : t === 'feedback'
+                      ? 'Feedback'
                     : t === 'switches'
                       ? 'Remote switches'
                       : t === 'text'
@@ -137,6 +148,10 @@ export default function AdminShell() {
       {tab === 'reports' && <ReportQueue />}
       {tab === 'browse' && <BrowsePanel />}
       {tab === 'switches' && <RemoteSwitches />}
+      {tab === 'feedback' && <FeedbackAdmin />}
+      {tab === 'console' && (
+        <FeedbackSummary onOpen={() => setTab('feedback')} />
+      )}
       {tab === 'console' && (
         <section className="panel">
           <h2>Developer console</h2>
