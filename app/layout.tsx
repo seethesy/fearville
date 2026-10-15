@@ -8,6 +8,7 @@ import { AccountBoundary } from '@/components/admin/boundary';
 import { AccountProvider } from '@/components/hub/account-context';
 import { TutorialProvider } from '@/components/tutorials/provider';
 import { NativeShell } from '@/components/native-shell';
+import { AudioProvider } from '@/components/hub/audio-provider';
 import { MaintenanceBanner } from '@/components/remote-switches';
 import { currentEnvironment } from '@/lib/runtime/environment';
 export const viewport: Viewport = {
@@ -44,6 +45,7 @@ export default function RootLayout({
           </div>
         )}
         <AccountProvider>
+          <AudioProvider />
           <TextProvider>
             <AccountBoundary>
               <TutorialProvider>{children}</TutorialProvider>

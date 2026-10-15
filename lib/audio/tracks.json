@@ -1,0 +1,14 @@
+{
+  "music": {
+    "hub": "/audio/placeholder.wav",
+    "lobby": "/audio/placeholder.wav",
+    "night": "/audio/placeholder.wav",
+    "day": "/audio/placeholder.wav",
+    "voting": "/audio/placeholder.wav",
+    "rite": "/audio/placeholder.wav",
+    "puzzleRush": "/audio/placeholder.wav",
+    "end.good": "/audio/placeholder.wav",
+    "end.evil": "/audio/placeholder.wav"
+  },
+  "effects": { "phase": "/audio/phase.wav", "error": "/audio/error.wav" }
+}
