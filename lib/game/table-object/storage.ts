@@ -13,16 +13,21 @@ export async function authenticateMethod(
   communication = false,
 ): Promise<void> {
   requireThat(actor.credentialHash, 'AUTH');
+  // FEAR-158: an admin credential must arrive with the matching observer flag.
   const member = await database()
     .prepare(
-      'SELECT player,host FROM members WHERE code=? AND token_hash=? AND expires>?',
+      'SELECT m.player,m.host,g.mode FROM members m LEFT JOIN admin_table_grants g ON g.token=m.token_hash AND g.code=m.code WHERE m.code=? AND m.token_hash=? AND m.expires>?',
     )
     .bind(code, actor.credentialHash, Date.now())
-    .first<{ player: string; host: number }>();
+    .first<{ player: string; host: number; mode: string | null }>();
   requireThat(
-    member && member.player === actor.id && !!member.host === actor.host,
+    member &&
+      member.player === actor.id &&
+      !!member.host === actor.host &&
+      !!actor.observer === (member.mode === 'observe'),
     'AUTH',
   );
+  if (actor.observer) return;
   await checkSeatAccount(code, actor.id, communication);
   requireThat(
     actor.host ||

@@ -26,6 +26,8 @@ export type AccountView = {
     hostName: string;
   }[];
   pending: { requests: number; invites: number };
+  /** FEAR-158: present while the admin browses the normal UI. */
+  adminView?: { viewer: string };
 };
 export function AccountPanel({ compact = false }: { compact?: boolean }) {
   const [state, setState] = useState<AccountView | null>(null),

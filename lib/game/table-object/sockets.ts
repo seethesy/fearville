@@ -95,6 +95,7 @@ export async function broadcastMethod(
             allowlisted(m.google_email || m.email || '', adminAllowlist()),
         ) ||
         (!seat.actor.host &&
+          !seat.actor.observer &&
           !game.players.some((p) => p.id === seat.actor.id && !p.departed))
       ) {
         socket.close(1008, 'Session expired.');

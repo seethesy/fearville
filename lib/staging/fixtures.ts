@@ -140,12 +140,25 @@ export const fixture = (id: unknown) => FIXTURES.find((f) => f.id === id);
 const host = { id: 'host', host: true };
 const teamOf = (id: string) => role(id)?.team ?? '';
 const SEATS = 12; // divisible by three so a Ritual-only Rite plans cleanly
+export const MIN_SEATS = 5;
+export const MAX_SEATS = 18;
+export type FixtureScript = 'horrors' | 'holyMoonStars';
+
+/** FEAR-158: admin sandbox tables reuse the fixtures with their own code, script and seats. */
+export type FixtureOptions = {
+  code?: string;
+  script?: FixtureScript;
+  seats?: number;
+  hostName?: string;
+};
 
 class Driver {
   g: Game;
   t: number;
-  constructor(code: string, now: number) {
-    this.g = newSandboxGame(code, 'QA Storyteller');
+  seats: number;
+  constructor(code: string, now: number, seats: number, hostName: string) {
+    this.seats = seats;
+    this.g = newSandboxGame(code, hostName, Math.min(6, seats));
     // Every action is stamped in the recent past and strictly ordered.
     this.t = now - 120_000;
   }
@@ -156,7 +169,7 @@ class Driver {
     return execute(this.g, host, c, this.t);
   }
   seat() {
-    for (let i = this.g.players.length + 1; i <= SEATS; i++)
+    for (let i = this.g.players.length + 1; i <= this.seats; i++)
       this.run({ action: 'addDummy', name: `Player ${i}` });
   }
   rite(patterns: Pattern[]) {
@@ -206,13 +219,36 @@ class Driver {
   }
 }
 
+/** Fixtures that only exist for one script (the Guardian is a Horrors Traveler). */
+export function fixtureScripts(id: FixtureId): FixtureScript[] {
+  if (id.startsWith('hms-')) return ['holyMoonStars'];
+  if (id === 'ended-traveler' || id === 'recap') return ['horrors'];
+  return ['horrors', 'holyMoonStars'];
+}
+
 /** Build a fresh game for a fixture. `now` is the server clock. */
-export function buildFixture(id: FixtureId, now: number): Game {
+export function buildFixture(
+  id: FixtureId,
+  now: number,
+  options: FixtureOptions = {},
+): Game {
   const f = fixture(id);
   if (!f) throw Error('Unknown fixture.');
-  const d = new Driver(f.code, now);
+  const seats = options.seats ?? SEATS;
+  if (!Number.isInteger(seats) || seats < MIN_SEATS || seats > MAX_SEATS)
+    throw Error(`Choose ${MIN_SEATS} to ${MAX_SEATS} players.`);
+  const script =
+    options.script ?? (id.startsWith('hms-') ? 'holyMoonStars' : 'horrors');
+  if (!fixtureScripts(id).includes(script))
+    throw Error('That state is not available for this script.');
+  const d = new Driver(
+    options.code ?? f.code,
+    now,
+    seats,
+    options.hostName ?? 'QA Storyteller',
+  );
   d.seat();
-  const hms = id.startsWith('hms-');
+  const hms = script === 'holyMoonStars';
   if (hms) d.run({ action: 'setScript', script: 'holyMoonStars' });
   const pattern = id.startsWith('rite-') ? (id.slice(5) as Pattern) : undefined;
   d.rite(pattern ? [pattern] : DEFAULT_CONFIG.patterns);

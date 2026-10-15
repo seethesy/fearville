@@ -49,7 +49,6 @@ for (const resource of [
   'Base.lproj/LaunchScreen.storyboardc',
   'public/error.html',
   'public/assets/MetalMania-Regular.ttf',
-  'public/assets/OFL-MetalMania.txt',
   'public/assets/fearville-logo.png',
 ]) {
   assert.ok(

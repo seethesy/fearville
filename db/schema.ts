@@ -426,6 +426,38 @@ export const adminConfirmations = sqliteTable('admin_confirmations', {
   expires: integer('expires').notNull(),
 });
 
+// FEAR-158: an admin session browsing the normal UI. While a row exists for the
+// admin's account session, account reads resolve to `account` (null = guest)
+// and every non-admin account write is refused.
+export const adminViews = sqliteTable('admin_views', {
+  session: text('session').primaryKey(), // account_sessions.hash of the admin
+  admin: text('admin')
+    .notNull()
+    .references(() => accounts.id, { onDelete: 'cascade' }),
+  viewer: text('viewer').notNull(), // guest | player | storyteller | observer
+  account: text('account').references(() => accounts.id, {
+    onDelete: 'cascade',
+  }),
+  created: integer('created').notNull(),
+});
+
+// FEAR-158: a table credential that only the admin account can use. `sandbox`
+// is a private Sandbox table the admin hosts; `observe` is a read-only seat on
+// a real table. Without a valid admin session the credential is refused.
+export const adminTableGrants = sqliteTable(
+  'admin_table_grants',
+  {
+    token: text('token').primaryKey(), // members.token_hash
+    admin: text('admin')
+      .notNull()
+      .references(() => accounts.id, { onDelete: 'cascade' }),
+    code: text('code').notNull(),
+    mode: text('mode').notNull(), // sandbox | observe
+    created: integer('created').notNull(),
+  },
+  (t) => [index('idx_admin_table_grants_admin').on(t.admin)],
+);
+
 // FEAR-159: feedback and bug report forms. A form is immutable once stored;
 // editing publishes a new version and moves `active` to it.
 export const feedbackForms = sqliteTable(

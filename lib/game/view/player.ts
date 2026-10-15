@@ -55,6 +55,8 @@ export function view(
     rite: riteView(g, a, now),
     sandbox: !!g.sandbox,
     sandboxHost,
+    // FEAR-158: an admin watching a live table (read-only).
+    observer: !!a.observer,
     script: g.script ?? 'horrors',
     scriptName: SCRIPTS[g.script ?? 'horrors'],
     // Horrors of Fearville: the Sphinx's glimpse of every role, shown until

@@ -1,5 +1,6 @@
 import { checkSeatAccount } from '@/lib/admin/access';
-import { requirePlayerRequest } from '@/lib/accounts/service';
+import { accountAuth, requirePlayerRequest } from '@/lib/accounts/service';
+import { OBSERVER_READ_ONLY } from './pov';
 import { database } from '@/db';
 import type { Actor, Command, Game } from './types';
 import type { ScopedUpdate } from './scoped-update';
@@ -46,18 +47,36 @@ export async function authMember(
   if (!token || token.length > 200) throw Error('AUTH');
   const member = await database()
     .prepare(
-      'SELECT code, player, host FROM members WHERE token_hash = ? AND expires > ?',
+      'SELECT m.code, m.player, m.host, g.mode, g.admin FROM members m LEFT JOIN admin_table_grants g ON g.token = m.token_hash AND g.code = m.code WHERE m.token_hash = ? AND m.expires > ?',
     )
     .bind(await hash(token), Date.now())
-    .first<{ code: string; player: string; host: number }>();
+    .first<{
+      code: string;
+      player: string;
+      host: number;
+      mode: string | null;
+      admin: string | null;
+    }>();
   if (!member) throw Error('AUTH');
-  await requirePlayerRequest(r);
-  await checkSeatAccount(member.code, member.player);
+  // FEAR-158: admin table credentials work only with that admin's own valid
+  // session. Everyone else keeps the player-only rule.
+  const observer = member.mode === 'observe';
+  if (member.mode) {
+    const admin = await accountAuth(r, true);
+    if (admin?.role !== 'admin' || admin.id !== member.admin)
+      throw Error('AUTH');
+    if (observer && r.method !== 'GET' && r.method !== 'HEAD')
+      throw Error(OBSERVER_READ_ONLY);
+  } else {
+    await requirePlayerRequest(r);
+    await checkSeatAccount(member.code, member.player);
+  }
   return {
     actor: {
       id: member.player,
       host: !!member.host,
       credentialHash: await hash(token),
+      ...(observer ? { observer: true } : {}),
     },
     code: member.code,
   };
@@ -66,6 +85,7 @@ export async function auth(
   r: Request,
 ): Promise<{ actor: Actor; code: string }> {
   const { actor, code } = await authMember(r);
+  if (actor.observer) throw Error(OBSERVER_READ_ONLY);
   const { game } = await read(code);
   if (
     !actor.host &&
@@ -243,6 +263,7 @@ export function errorResponse(e: unknown) {
   if (
     message === 'FORBIDDEN' ||
     message === 'ADMIN_GAMEPLAY' ||
+    message === 'ADMIN_VIEW' ||
     message === 'BANNED'
   )
     return json(
@@ -252,7 +273,9 @@ export function errorResponse(e: unknown) {
             ? 'This account is banned.'
             : message === 'ADMIN_GAMEPLAY'
               ? 'Admin accounts cannot participate in games.'
-              : 'Admin access required.',
+              : message === 'ADMIN_VIEW'
+                ? 'Admin view is read-only. Exit the admin view to make changes.'
+                : 'Admin access required.',
       },
       403,
     );

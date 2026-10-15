@@ -43,7 +43,8 @@ export function useTableState() {
   const [followChoice, setFollowChoice] = useState(true);
   const confirmation =
     selected?.action === 'night' &&
-    game?.nightConfirmation?.task === values.task
+    game?.nightConfirmation &&
+    game.nightConfirmation.task === values.task
       ? game.nightConfirmation
       : null;
   const actionControl = confirmation
@@ -153,7 +154,7 @@ export function useTableState() {
   );
   const socket = useTableSocket({
     code: game?.code,
-    me: game?.sandboxHost ? sandboxPov : game?.me,
+    me: game?.sandboxHost || game?.observer ? sandboxPov : game?.me,
     pov: sandboxPov,
     version: game?.version,
     onView: receiveView,

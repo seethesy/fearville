@@ -1,7 +1,8 @@
 // Synthetic records only: no provider identities or sign-in credentials.
 export const SEED_ACCOUNT_PREFIX = 'staging-fixture-';
 const quote = (value: string) => `'${value.replaceAll("'", "''")}'`;
-export function seedStatements(now: number) {
+/** `hidden` (FEAR-158, production): no handles, so real players can never find these accounts. */
+export function seedStatements(now: number, hidden = false) {
   const accounts = [
     { id: 'host', name: 'QA Storyteller', handle: 'stage_qa_storyteller' },
     ...Array.from({ length: 5 }, (_, i) => ({
@@ -14,7 +15,7 @@ export function seedStatements(now: number) {
   for (const account of accounts) {
     const id = SEED_ACCOUNT_PREFIX + account.id;
     sql.push(
-      `INSERT INTO accounts(id,name,email,handle,created) VALUES (${quote(id)},${quote(account.name)},${quote(id + '@example.invalid')},${quote(account.handle)},${now}) ON CONFLICT(id) DO NOTHING;`,
+      `INSERT INTO accounts(id,name,email,handle,created) VALUES (${quote(id)},${quote(account.name)},${quote(id + '@example.invalid')},${hidden ? 'NULL' : quote(account.handle)},${now}) ON CONFLICT(id) DO NOTHING;`,
     );
     sql.push(
       `INSERT INTO account_profiles(account,lobby_name) VALUES (${quote(id)},${quote(account.name)}) ON CONFLICT(account) DO NOTHING;`,
