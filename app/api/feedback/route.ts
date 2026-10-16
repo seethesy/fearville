@@ -1,5 +1,5 @@
 // FEAR-159: feedback and bug report forms.
-//   GET  /api/feedback?context=general|bug|script|puzzle|game-end → { form }
+//   GET  /api/feedback?context=general|bug|script|puzzle|game-end|storyteller → { form }
 //   POST /api/feedback { form, answers, subject?, guest?, client?, code? }
 // Accounts and guests can submit. A guest sends an anonymous random id its
 // device keeps. Bug reports attach whitelisted app details and, when the

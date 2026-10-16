@@ -8,6 +8,7 @@ import { ProfileEditor } from '@/components/hub/profile-editor';
 import { SettingsPanel } from '@/components/hub/settings';
 import { useSectionTutorial } from '@/components/tutorials/provider';
 import { ResetTutorials } from '@/components/tutorials/help-menu';
+import { FeedbackButtons } from '@/components/feedback/dialog';
 import {
   Record,
   RecentGames,
@@ -239,6 +240,11 @@ export default function Account() {
             <div className="settings-layout">
               <SettingsPanel />
               <ResetTutorials />
+              <section className="panel">
+                <p className="eyebrow">FEEDBACK</p>
+                <h2>Help us improve Fearville.</h2>
+                <FeedbackButtons />
+              </section>
               <section className="panel">
                 <h2>Account & connections</h2>
                 <p className="muted">{state.account.email}</p>
