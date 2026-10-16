@@ -6,9 +6,7 @@ import {
   type Answer,
   type FormContext,
   type FormDefinition,
-  formId,
   validateAnswers,
-  validateForm,
   validSubject,
 } from './forms';
 
@@ -40,30 +38,7 @@ async function formById(id: string) {
   return row ? parse(row) : null;
 }
 
-/** Store a new version of a form and make it the active one (for the editor). */
-export async function publishForm(value: unknown, by: string, now: number) {
-  const form = validateForm(value);
-  const db = database();
-  const latest = await db
-    .prepare('SELECT MAX(version) AS v FROM feedback_forms WHERE context=?')
-    .bind(form.context)
-    .first<{ v: number | null }>();
-  const version = (latest?.v ?? 0) + 1;
-  const id = formId(form.context, version);
-  await db.batch([
-    db
-      .prepare(
-        'UPDATE feedback_forms SET active=0 WHERE context=? AND active=1',
-      )
-      .bind(form.context),
-    db
-      .prepare(
-        'INSERT INTO feedback_forms (id,context,version,active,definition,created,created_by) VALUES (?,?,?,1,?,?,?)',
-      )
-      .bind(id, form.context, version, JSON.stringify(form), now, by),
-  ]);
-  return { id, version };
-}
+// Publishing new versions lives in ./admin.ts (FEAR-175), audited.
 
 export type Submission = {
   form: unknown;

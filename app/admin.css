@@ -222,3 +222,104 @@ button.editable-text {
   margin: 0;
   padding: 0;
 }
+
+/* FEAR-175: feedback form editor, response viewer and console summary. */
+.feedback-editor-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  gap: 1.25rem;
+  align-items: start;
+}
+.feedback-editor-fields,
+.feedback-questions > li {
+  display: grid;
+  gap: 0.6rem;
+}
+.feedback-questions {
+  display: grid;
+  gap: 1rem;
+  padding: 0;
+  list-style: none;
+}
+.feedback-questions > li {
+  padding: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.feedback-options {
+  display: grid;
+  gap: 0.4rem;
+  padding: 0;
+  list-style: none;
+}
+.feedback-options li {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+}
+.feedback-preview {
+  position: sticky;
+  top: 1rem;
+  padding: 1rem;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+}
+.feedback-versions li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  margin-block: 0.4rem;
+}
+.feedback-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 1rem;
+  margin-block: 1rem;
+}
+.feedback-stats figure {
+  margin: 0;
+}
+.feedback-bar {
+  display: grid;
+  grid-template-columns: 2.5rem 1fr 2.5rem;
+  gap: 0.4rem;
+  align-items: center;
+  font-size: 0.85rem;
+}
+.feedback-bar .track {
+  height: 0.6rem;
+  border-radius: 999px;
+  background: var(--muted);
+  overflow: hidden;
+}
+.feedback-bar .track span {
+  display: block;
+  height: 100%;
+  background: #f2b544;
+}
+.feedback-response dl > div {
+  margin-block: 0.4rem;
+}
+.feedback-response dt {
+  font-weight: 600;
+}
+.feedback-response dd {
+  margin: 0;
+}
+.feedback-response .badge.new {
+  color: var(--ring);
+}
+.feedback-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 1rem;
+}
+@media (max-width: 720px) {
+  .feedback-editor-grid {
+    grid-template-columns: 1fr;
+  }
+  .feedback-preview {
+    position: static;
+  }
+}
