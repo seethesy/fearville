@@ -7,6 +7,7 @@ import { ReportQueue } from './reports';
 import { BrowsePanel } from './browse-panel';
 import { RemoteSwitches } from './switches';
 import { FeedbackAdmin, FeedbackSummary } from './feedback';
+import { PuzzleTuning } from './puzzles';
 type Entry = { command: string; output: unknown };
 export default function AdminShell() {
   const { refresh } = useAccount();
@@ -110,6 +111,7 @@ export default function AdminShell() {
           'reports',
           'feedback',
           'switches',
+          'puzzles',
           'text',
           'audit',
         ].map((t) => (
@@ -132,9 +134,11 @@ export default function AdminShell() {
                     ? 'Feedback'
                     : t === 'switches'
                       ? 'Remote switches'
-                      : t === 'text'
-                        ? 'Edit official text'
-                        : 'Audit log'}
+                      : t === 'puzzles'
+                        ? 'Puzzle workshop'
+                        : t === 'text'
+                          ? 'Edit official text'
+                          : 'Audit log'}
           </button>
         ))}
       </nav>
@@ -150,6 +154,7 @@ export default function AdminShell() {
       {tab === 'console' && (
         <FeedbackSummary onOpen={() => setTab('feedback')} />
       )}
+      {tab === 'puzzles' && <PuzzleTuning />}
       {tab === 'console' && (
         <section className="panel">
           <h2>Developer console</h2>

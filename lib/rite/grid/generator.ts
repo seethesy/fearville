@@ -9,6 +9,7 @@ import {
   worldOf,
   world,
   compile,
+  bits,
 } from './solver.ts';
 import { difficulty } from './difficulty.ts';
 import { type R, pick, render } from './prose.ts';
@@ -17,10 +18,47 @@ import { type Card, makeCard, people, MAKERS } from './makers.ts';
 // Generator
 // ---------------------------------------------------------------------------
 export type GridDifficulty = { rounds: number; stalled: boolean };
-export function makePool(r: R, w: World) {
+export type GridGenerationOptions = {
+  difficulty?: 'easy' | 'standard' | 'hard';
+  candidateCount?: number;
+  targetRounds?: number;
+};
+const EASY_MAKERS = [
+  'direct',
+  'direct',
+  'negative',
+  'eitherOr',
+  'neitherNor',
+  'relational',
+  'relational',
+  'street',
+  'exclusivePair',
+  'setMembership',
+];
+const STANDARD_MAKERS = [
+  ...EASY_MAKERS,
+  'oneOfThree',
+  'threeWay',
+  'crossCategory',
+  'compound',
+  'exclusiveOr',
+];
+export function makePool(
+  r: R,
+  w: World,
+  level?: GridGenerationOptions['difficulty'],
+) {
   const pool = new Map<string, Card>();
   for (let i = 0; i < 500 && pool.size < 110; i++) {
-    const c = makeCard(r, w);
+    const c = makeCard(
+      r,
+      w,
+      level === 'easy'
+        ? pick(r, EASY_MAKERS)
+        : level === 'standard'
+          ? pick(r, STANDARD_MAKERS)
+          : undefined,
+    );
     if (c && !pool.has(c.key)) pool.set(c.key, c);
   }
   return [...pool.values()];
@@ -30,7 +68,13 @@ export const DENSE = new Set([
   'set-membership',
   'cross-category',
 ]);
-export function buildSet(r: R, pool: Card[], size: number, floor: number) {
+export function buildSet(
+  r: R,
+  pool: Card[],
+  size: number,
+  floor: number,
+  directLimit = 1,
+) {
   const cards = shuffle(
     // Pairings, sets and cross-category cards are dense by nature; a looser
     // floor keeps them in play so every riddle mixes many patterns.
@@ -46,8 +90,11 @@ export function buildSet(r: R, pool: Card[], size: number, floor: number) {
   live[WORDS - 1] = 0xffffffff;
   const chosen: Card[] = [];
   for (const c of cards) {
-    // At most one direct statement and two dense cards per riddle.
-    if (c.pattern === 'direct' && chosen.some((x) => x.pattern === 'direct'))
+    // Easier profiles admit more direct anchors; dense cards stay limited.
+    if (
+      c.pattern === 'direct' &&
+      chosen.filter((x) => x.pattern === 'direct').length >= directLimit
+    )
       continue;
     if (
       DENSE.has(c.pattern) &&
@@ -99,7 +146,12 @@ export function makeRiddle(
   seed: string,
   size: number,
   solution?: Triple[],
+  options?: GridGenerationOptions,
 ): { solution: Triple[]; cards: Card[]; difficulty: GridDifficulty } {
+  if (!Number.isInteger(size) || size < 8 || size > 16)
+    throw Error('A Sphinx riddle needs between 8 and 16 clue cards.');
+  if (solution && !validTriples(solution))
+    throw Error('The Sphinx solution must contain five distinct triples.');
   const random = rng(seed);
   const sol =
     solution ??
@@ -113,15 +165,34 @@ export function makeRiddle(
       }));
     })();
   const w = worldOf(sol);
-  const pool = makePool(random, w);
+  const level = options?.difficulty ?? 'hard';
+  const pool = makePool(random, w, level);
+  const candidates = Number.isFinite(options?.candidateCount)
+    ? Math.max(8, Math.min(64, Math.round(options!.candidateCount!)))
+    : 40;
+  const targetRounds = Number.isFinite(options?.targetRounds)
+    ? Math.max(1, Math.min(8, Math.round(options!.targetRounds!)))
+    : level === 'easy'
+      ? 1
+      : level === 'standard'
+        ? 2
+        : 4;
   // Build many candidate card sets cheaply, then grade the most promising.
   const sets: { cards: Card[]; essential: number; patterns: number }[] = [];
   for (
     let attempt = 0;
-    attempt < 40 || (!sets.length && attempt < 80);
+    attempt < candidates || (!sets.length && attempt < candidates * 2);
     attempt++
   ) {
-    const set = buildSet(random, pool, size, attempt < 40 ? FLOOR(size) : 0.04);
+    const floor =
+      level === 'easy' ? 0.08 : level === 'standard' ? 0.15 : FLOOR(size);
+    const set = buildSet(
+      random,
+      pool,
+      size,
+      attempt < candidates ? floor : 0.04,
+      level === 'easy' ? 4 : level === 'standard' ? 2 : 1,
+    );
     if (!set || set.extra.length + set.essential.length < size) continue;
     const cards = [...set.essential, ...set.extra];
     sets.push({
@@ -130,8 +201,10 @@ export function makeRiddle(
       patterns: new Set(cards.map((c) => c.pattern)).size,
     });
   }
-  sets.sort(
-    (a, b) => b.essential + 0.5 * b.patterns - (a.essential + 0.5 * a.patterns),
+  sets.sort((a, b) =>
+    level === 'hard'
+      ? b.essential + 0.5 * b.patterns - (a.essential + 0.5 * a.patterns)
+      : a.essential - b.essential || b.patterns - a.patterns,
   );
   let best: {
     cards: Card[];
@@ -142,13 +215,20 @@ export function makeRiddle(
     const d = difficulty(set.cards.map((c) => c.bits));
     // Hard: the one-clue-at-a-time solver needs many rounds or stalls, the
     // cards span many patterns, and most of them are needed.
-    const score =
-      (d.stalled ? 6 : d.rounds) +
-      Math.min(set.patterns, 9) * 0.4 +
-      set.essential * 0.3;
+    const distance = d.stalled
+      ? Math.abs(6 - targetRounds) +
+        (level === 'hard' && targetRounds >= 4 ? 0 : 12)
+      : Math.abs(d.rounds - targetRounds);
+    const score = options
+      ? -distance * 4 +
+        Math.min(set.patterns, 9) * 0.4 +
+        set.essential * (level === 'hard' ? 0.3 : -0.1)
+      : (d.stalled ? 6 : d.rounds) +
+        Math.min(set.patterns, 9) * 0.4 +
+        set.essential * 0.3;
     if (!best || score > best.score)
       best = { cards: set.cards, difficulty: d, score };
-    if (d.stalled || d.rounds >= 4) break;
+    if (!options && (d.stalled || d.rounds >= 4)) break;
   }
   if (!best) throw Error('Could not generate the Sphinx’s riddle.');
   return { solution: sol, cards: best.cards, difficulty: best.difficulty };
@@ -156,7 +236,7 @@ export function makeRiddle(
 export function forgedCard(r: R, solution: Triple[]): Card {
   // A forgery is true of a nearby wrong answer (two people trade places or
   // pastimes) and false of the real one, so it reads like any other clue.
-  for (;;) {
+  for (let attempt = 0; attempt < 256; attempt++) {
     const w = worldOf(solution),
       [p, q] = people(r, 2);
     const loc = w.loc.slice(),
@@ -174,6 +254,20 @@ export function forgedCard(r: R, solution: Triple[]): Card {
     );
     if (c && !compile(c.logic)(w)) return c;
   }
+  // A bounded fallback is a direct statement about a swapped location.
+  const logic = {
+    t: 'is' as const,
+    a: { cat: 'character' as const, id: 0 },
+    b: { cat: 'location' as const, id: worldOf(solution).loc[1] },
+  };
+  const values = bits(compile(logic));
+  return {
+    logic,
+    pattern: 'direct',
+    key: JSON.stringify(logic),
+    bits: values,
+    count: popcount(values),
+  };
 }
 export function generateGrid(
   seed: string,
@@ -181,11 +275,14 @@ export function generateGrid(
   evil: string[],
   opensNight: number,
   forgedCount = 1,
+  options?: GridGenerationOptions,
 ): GridState {
   const random = rng(`${seed}:deal`);
   const { solution, cards } = makeRiddle(
     seed,
     members.length * CLUES_PER_PLAYER,
+    undefined,
+    options,
   );
   const texts = new Set<string>();
   const word = (c: Card) => {

@@ -7,6 +7,7 @@ import {
   type RiteConfig,
 } from '../types.ts';
 import { rng, shuffle } from '../random.ts';
+import { DEFAULT_GENERATION } from '../generation-settings.ts';
 export const check: (ok: unknown, message: string) => asserts ok = (
   ok,
   message,
@@ -143,6 +144,7 @@ export function configureRite(g: Game, c: Command) {
       : [];
   if (config.enabled && ids.length >= 2) validatePlans(plans, ids, config);
   g.rite = {
+    generation: { revision: 0, settings: structuredClone(DEFAULT_GENERATION) },
     config,
     seed,
     epoch: uuid(),

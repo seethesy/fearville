@@ -297,6 +297,10 @@ export default function Home() {
               <BookOpen size={20} /> Brush up on the rules{' '}
               <ArrowRight size={16} />
             </AppLink>
+            <AppLink className="learn-link" href="/puzzles">
+              <WandSparkles size={20} /> Play the puzzle room{' '}
+              <ArrowRight size={16} />
+            </AppLink>
           </aside>
         </div>
       </HubShell>
@@ -311,6 +315,7 @@ export default function Home() {
       </header>
       <nav className="public-nav" aria-label="Explore Fearville">
         <AppLink href="#play">Play</AppLink>
+        <AppLink href="/puzzles">Puzzle room</AppLink>
         <AppLink href="#about">What is Fearville?</AppLink>
         <AppLink href="#rules">Rules</AppLink>
         <AppLink href="#scripts">Scripts</AppLink>

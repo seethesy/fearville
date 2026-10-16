@@ -18,6 +18,7 @@ import {
 } from '../../flags/catalog';
 import type { Pattern } from '../../rite/types';
 import { type TableContext } from './context.ts';
+import { readGeneration } from '../../rite/generation-store';
 export function actionMethod(
   this: TableContext,
   code: string,
@@ -116,6 +117,8 @@ export function actionMethod(
         ? riteAction(g, viewer, c, now)
         : execute(g, viewer, c, now);
       requireThat(summary !== null, 'Choose a Rite action.');
+      if (c.action === 'configureRite' && g.rite)
+        g.rite.generation = await readGeneration();
       if (c.action === 'start') await prepareProgression(g);
       if (c.preview) {
         if (id)
