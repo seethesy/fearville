@@ -40,8 +40,11 @@ export function trustDB(migrations = ['0014_trust_ledger.sql']) {
         return { results: sqlite.prepare(sql).all(...values) };
       },
       async run() {
-        const result = sqlite.prepare(sql).run(...values);
-        return { meta: { changes: Number(result.changes) } };
+        const statement = sqlite.prepare(sql);
+        if (/^\s*SELECT/i.test(sql))
+          return { results: statement.all(...values), meta: { changes: 0 } };
+        const result = statement.run(...values);
+        return { results: [], meta: { changes: Number(result.changes) } };
       },
     };
   }

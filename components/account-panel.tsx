@@ -2,6 +2,7 @@
 import AppLink from '@/components/app-link';
 import { useEffect, useState } from 'react';
 import type { ProfileDefaults } from '@/lib/accounts/preferences';
+import { TrustBalance } from '@/components/trust-balance';
 export type AccountView = {
   account: {
     role?: 'admin' | 'player';
@@ -84,6 +85,7 @@ export function AccountPanel({ compact = false }: { compact?: boolean }) {
             )}
           </p>
           <div className="social-links">
+            <TrustBalance accountId={state.account.id} />
             <AppLink href="/account" className="quiet-link">
               Account & saved games →
             </AppLink>
