@@ -6,6 +6,7 @@ import { UI_TEXT, type TextKey } from '@/lib/ui-text/registry';
 import { ReportQueue } from './reports';
 import { BrowsePanel } from './browse-panel';
 import { RemoteSwitches } from './switches';
+import { FeedbackAdmin, FeedbackSummary } from './feedback';
 type Entry = { command: string; output: unknown };
 export default function AdminShell() {
   const { refresh } = useAccount();
@@ -103,31 +104,39 @@ export default function AdminShell() {
         </button>
       </header>
       <nav aria-label="Administration">
-        {['console', 'browse', 'reports', 'switches', 'text', 'audit'].map(
-          (t) => (
-            <button
-              key={t}
-              className={tab === t ? 'primary' : 'secondary'}
-              aria-current={tab === t ? 'page' : undefined}
-              onClick={() => {
-                setTab(t);
-                if (t === 'audit') void loadAudit();
-              }}
-            >
-              {t === 'console'
-                ? 'Developer console'
-                : t === 'browse'
-                  ? 'Browse as'
-                  : t === 'reports'
-                    ? 'Moderation queue'
+        {[
+          'console',
+          'browse',
+          'reports',
+          'feedback',
+          'switches',
+          'text',
+          'audit',
+        ].map((t) => (
+          <button
+            key={t}
+            className={tab === t ? 'primary' : 'secondary'}
+            aria-current={tab === t ? 'page' : undefined}
+            onClick={() => {
+              setTab(t);
+              if (t === 'audit') void loadAudit();
+            }}
+          >
+            {t === 'console'
+              ? 'Developer console'
+              : t === 'browse'
+                ? 'Browse as'
+                : t === 'reports'
+                  ? 'Moderation queue'
+                  : t === 'feedback'
+                    ? 'Feedback'
                     : t === 'switches'
                       ? 'Remote switches'
                       : t === 'text'
                         ? 'Edit official text'
                         : 'Audit log'}
-            </button>
-          ),
-        )}
+          </button>
+        ))}
       </nav>
       {error && (
         <p role="alert" className="error">
@@ -137,6 +146,10 @@ export default function AdminShell() {
       {tab === 'reports' && <ReportQueue />}
       {tab === 'browse' && <BrowsePanel />}
       {tab === 'switches' && <RemoteSwitches />}
+      {tab === 'feedback' && <FeedbackAdmin />}
+      {tab === 'console' && (
+        <FeedbackSummary onOpen={() => setTab('feedback')} />
+      )}
       {tab === 'console' && (
         <section className="panel">
           <h2>Developer console</h2>
