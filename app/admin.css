@@ -323,3 +323,68 @@ button.editable-text {
     position: static;
   }
 }
+
+/* FEAR-173: wiki-style editing. */
+.editable-text {
+  position: relative;
+}
+.editable-text.has-draft {
+  outline-style: dotted;
+  outline-color: #7fb4ff;
+}
+.edit-pencil {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  min-height: 0;
+  margin-left: 4px;
+  padding: 0;
+  border: 1px solid #e6c76d;
+  border-radius: 999px;
+  background: #2a2a2a;
+  color: #e6c76d;
+  vertical-align: middle;
+  opacity: 0.55;
+  cursor: pointer;
+}
+.editable-text:hover > .edit-pencil,
+.edit-pencil:focus-visible {
+  opacity: 1;
+}
+@media (hover: none) {
+  .edit-pencil {
+    opacity: 1;
+    width: 28px;
+    height: 28px;
+  }
+}
+.text-edit-toggle {
+  position: fixed;
+  left: 12px;
+  bottom: calc(12px + env(safe-area-inset-bottom));
+  z-index: 60;
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+}
+.text-preview {
+  padding: 8px 12px;
+  border: 1px dashed #585858;
+  border-radius: 6px;
+}
+.text-diff ins {
+  background: rgba(80, 200, 120, 0.25);
+  text-decoration: none;
+}
+.text-diff del {
+  background: rgba(255, 110, 110, 0.25);
+}
+.text-history {
+  display: grid;
+  gap: 12px;
+  padding-left: 1.2rem;
+}
+.tutorial-body > p:first-child {
+  margin-top: 0;
+}

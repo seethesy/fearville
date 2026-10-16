@@ -1,6 +1,6 @@
 'use client';
+import { RoleAbility, RoleName } from '@/components/role-text';
 import { useTableActions, useTableOnline } from '@/hooks/use-table-actions';
-import { GlossaryText } from '@/components/glossary-text';
 import { useState } from 'react';
 import {
   scriptRoles,
@@ -99,10 +99,12 @@ export function RolePicker({
                   }
                 >
                   <RoleIcon role={r.id} />
-                  <strong>{r.name}</strong>
+                  <strong>
+                    <RoleName id={r.id} fallback={r.name} />
+                  </strong>
                 </button>
                 <small>
-                  <GlossaryText text={r.description} />
+                  <RoleAbility id={r.id} fallback={r.description} />
                 </small>
               </article>
             ))}

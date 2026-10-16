@@ -1,7 +1,7 @@
 'use client';
+import { RoleAbility, RoleName } from '@/components/role-text';
 import { NightRite } from '@/components/rite/night-rite';
 import { ShareInvite } from '@/components/share-invite';
-import { GlossaryText } from '@/components/glossary-text';
 import { StorytellerVote } from '@/components/storyteller-vote';
 import { TableSeating } from '@/components/table-seating';
 import { TabsContent } from '@/components/ui/tabs';
@@ -40,6 +40,8 @@ export function TableFlow({
       {game.character && (
         <RoleTipsPanel
           tips={game.character.tips}
+          script={game.script}
+          roleId={game.character.id}
           session={`${game.code}:${game.me}`}
         />
       )}
@@ -322,10 +324,18 @@ export function TableFlow({
             </button>
             {revealed && (
               <div className="character-reveal">
-                <h2>{game.character.name}</h2>
+                <h2>
+                  <RoleName
+                    id={game.character.id ?? ''}
+                    fallback={game.character.name}
+                  />
+                </h2>
                 <p className="alignment">{game.character.alignment} team</p>
                 <p>
-                  <GlossaryText text={game.character.description} />
+                  <RoleAbility
+                    id={game.character.id}
+                    fallback={game.character.description}
+                  />
                 </p>
               </div>
             )}

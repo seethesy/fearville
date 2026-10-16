@@ -1,4 +1,5 @@
 'use client';
+import { UiText } from './ui-text';
 import { useEffect, useId, useState } from 'react';
 import { useAccount, accountAction } from './hub/account-context';
 
@@ -88,9 +89,14 @@ export function RoleTipsToggle({ session }: { session: string }) {
 export function RoleTipsPanel({
   tips,
   session,
+  script,
+  roleId,
 }: {
   tips: string[];
   session: string;
+  /** FEAR-173: with script and role, each tip is editable official text. */
+  script?: string;
+  roleId?: string;
 }) {
   const { enabled, setEnabled, busy, error } = useRoleTipsSetting(session);
   const [open, setOpen] = useState(false);
@@ -138,8 +144,14 @@ export function RoleTipsPanel({
       </div>
       <div id={id} hidden={!enabled || !open}>
         <ul>
-          {tips.map((tip) => (
-            <li key={tip}>{tip}</li>
+          {tips.map((tip, i) => (
+            <li key={tip}>
+              <UiText
+                id={`tips.${script}.${roleId}.${i}`}
+                fallback={tip}
+                inline
+              />
+            </li>
           ))}
         </ul>
       </div>

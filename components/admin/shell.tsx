@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import { accountAction, useAccount } from '@/components/hub/account-context';
 import { UiText, adminRequest, useTextEditor } from '@/components/ui-text';
-import { UI_TEXT, type TextKey } from '@/lib/ui-text/registry';
+import { TextCatalog } from './text-catalog';
 import { ReportQueue } from './reports';
 import { BrowsePanel } from './browse-panel';
 import { RemoteSwitches } from './switches';
@@ -248,8 +248,10 @@ export default function AdminShell() {
             </label>
           </div>
           <p>
-            Turn on edit mode, then click highlighted text. Saves are published
-            to connected clients within a few seconds.
+            Turn on edit mode, then use the pencil on any highlighted text —
+            here or anywhere in the app (the Edit text button stays at the
+            bottom left). Edits are drafts until you publish that field. Grant
+            trusted editors with <code>editor grant @username</code>.
           </p>
           <div className="panel">
             <h1>
@@ -270,23 +272,7 @@ export default function AdminShell() {
               <UiText id="home.sandbox" />
             </div>
           </div>
-          {['home', 'lobby', 'flow', 'nav', 'footer', 'tutorial'].map(
-            (group) => (
-              <section className="panel" key={group}>
-                <h2>{group === 'tutorial' ? 'Tutorials' : group}</h2>
-                {(Object.keys(UI_TEXT) as TextKey[])
-                  .filter((key) => key.startsWith(group + '.'))
-                  .map((key) => (
-                    <div className="admin-text-row" key={key}>
-                      <small>{key}</small>
-                      <p>
-                        <UiText id={key} values={{ count: 8 }} />
-                      </p>
-                    </div>
-                  ))}
-              </section>
-            ),
-          )}
+          <TextCatalog />
         </section>
       )}
       {tab === 'audit' && (

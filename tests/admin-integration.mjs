@@ -491,6 +491,87 @@ try {
     markup,
   );
   assert.equal((await ok('text history home.welcome')).output.length, 3);
+  // FEAR-173: trusted editors, drafts, per-field publish, history and revert.
+  await fixture('writer');
+  assert.equal((await req('/api/ui-text?view=me', 'writer')).editor, false);
+  const wiki = (body, who = 'writer') => req('/api/ui-text', who, body);
+  assert.equal(
+    (await wiki({ action: 'draft', key: 'glossary.fear.term', value: 'Dread' }))
+      .status,
+    403,
+  );
+  await ok('editor grant writer');
+  assert.equal((await req('/api/ui-text?view=me', 'writer')).editor, true);
+  assert.equal(
+    (
+      await wiki({
+        action: 'draft',
+        key: 'glossary.fear.term',
+        value: 'Dread',
+        summary: 'Try a new name',
+      })
+    ).status,
+    200,
+  );
+  // Drafts never reach players.
+  assert.equal(
+    (await req('/api/ui-text')).overrides['glossary.fear.term'],
+    undefined,
+  );
+  assert.equal(
+    (await req('/api/ui-text?view=drafts', 'writer')).drafts[
+      'glossary.fear.term'
+    ].value,
+    'Dread',
+  );
+  assert.equal((await req('/api/ui-text?view=drafts')).status, 403);
+  assert.equal(
+    (
+      await wiki({
+        action: 'draft',
+        key: 'glossary.fear.definition',
+        value: 'See [this](javascript:alert(1)).',
+      })
+    ).status,
+    400,
+  );
+  assert.equal(
+    (await wiki({ action: 'publish', key: 'glossary.fear.term', version: 0 }))
+      .status,
+    200,
+  );
+  assert.equal(
+    (await req('/api/ui-text')).overrides['glossary.fear.term'].value,
+    'Dread',
+  );
+  assert.equal(
+    (await wiki({ action: 'publish', key: 'glossary.fear.term', version: 0 }))
+      .status,
+    400,
+  );
+  const textLog = (
+    await req('/api/ui-text?view=history&key=glossary.fear.term', 'writer')
+  ).history;
+  assert.equal(textLog[0].editor, 'writer');
+  assert.equal(textLog[0].summary, 'Try a new name');
+  assert.equal(
+    (await wiki({ action: 'revert', key: 'glossary.fear.term', to: 0 })).status,
+    200,
+  );
+  assert.equal(
+    (await req('/api/ui-text')).overrides['glossary.fear.term'].value,
+    'Fear',
+  );
+  assert.ok(
+    (await req('/api/admin?action=text%20publish', 'admin')).audit.some(
+      (x) => x.admin === 'writer' && x.result === 'success',
+    ),
+  );
+  await ok('editor revoke writer');
+  assert.equal(
+    (await wiki({ action: 'draft', key: 'home.welcome', value: 'Hi' })).status,
+    403,
+  );
   await assert.rejects(() =>
     db.prepare("UPDATE admin_audit SET action='tampered'").run(),
   );
