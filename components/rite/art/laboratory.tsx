@@ -1,9 +1,10 @@
 'use client';
-/* SVG has no dedicated HTML image tag; role=img gives these vector controls an accessible name. */
+/* SVG composes the unchanged liquid masks and the painted transparent glass. */
 /* eslint-disable jsx-a11y/prefer-tag-over-role */
-/* SVG has no dedicated HTML image tag; role=img gives these vector controls an accessible name. */
-/* eslint-disable jsx-a11y/prefer-tag-over-role */
+import { useId } from 'react';
 import type { Vial } from '@/lib/rite/types';
+import { RITE_ART } from '@/lib/rite/art-assets';
+import { spriteSource } from './painted';
 export const LIQUIDS = [
   '#50bf43',
   '#d73142',
@@ -37,21 +38,14 @@ export function LiquidPattern({
   x: number;
   y: number;
 }) {
-  const glyph = ['◉', '○', '✦', '∿', 'ϟ', '⋊', '◎', 'ᛟ', '❦', '✚'][color];
-  // Light liquids (yellow, silver) carry dark markings.
-  const ink = color === 4 ? '#ac6a0b' : color === 9 ? '#3f4652' : '#f4ecc9';
   return (
-    <g fill={ink} fontSize="9" opacity=".9">
-      <text x={x + 5} y={y + 10}>
-        {glyph}
-      </text>
-      <text x={x + 18} y={y + 7}>
-        {glyph}
-      </text>
-      <text x={x + 27} y={y + 12}>
-        {glyph}
-      </text>
-    </g>
+    <image
+      href={spriteSource(`laboratory/liquid-${color}`)}
+      x={x}
+      y={y}
+      width="50"
+      height="17"
+    />
   );
 }
 export function VialArt({
@@ -61,16 +55,8 @@ export function VialArt({
   vial: Vial;
   selected?: boolean;
 }) {
-  const paths = [
-    'M12 12H48V85Q48 91 42 91H18Q12 91 12 85Z',
-    'M25 8H35V38L52 88Q52 91 47 91H13Q8 91 8 88L25 38Z',
-    'M25 8H35V41C66 51 61 91 30 91S-6 51 25 41Z',
-    'M24 8H36V85Q36 95 30 95Q24 95 24 85Z',
-    'M17 8H43V88H17Z',
-    'M24 23H36V43Q53 46 53 62V88H7V62Q7 46 24 43Z',
-    'M8 35H52V73Q52 94 30 94Q8 94 8 73Z',
-  ];
-  const id = `vial-${vial.id}`;
+  const id = useId();
+  const shape = RITE_ART.vialPaths[vial.shape];
   return (
     <svg
       viewBox="0 0 60 106"
@@ -79,37 +65,31 @@ export function VialArt({
     >
       <defs>
         <clipPath id={id}>
-          <path d={paths[vial.shape]} />
+          <path d={shape} />
         </clipPath>
       </defs>
-      <ellipse cx="30" cy="100" rx="26" ry="3" fill="#070e11" />
       <g clipPath={`url(#${id})`}>
-        {vial.layers.map((c, i) => (
-          <g key={i}>
+        {vial.layers.map((color, index) => (
+          <g key={index}>
             <rect
               x="5"
-              y={90 - (i + 1) * 17}
+              y={90 - (index + 1) * 17}
               width="50"
               height="17"
-              fill={LIQUIDS[c]}
+              fill={LIQUIDS[color]}
             />
-            <LiquidPattern color={c} x={13} y={90 - (i + 1) * 17} />
+            <LiquidPattern color={color} x={5} y={90 - (index + 1) * 17} />
           </g>
         ))}
-        <path d="M19 13V89" stroke="#e6f5ff" opacity=".18" strokeWidth="5" />
       </g>
-      <path
-        d={paths[vial.shape]}
-        fill="none"
-        stroke={selected ? '#e5bd54' : '#bdd5dc'}
-        strokeWidth={selected ? 3 : 2}
+      <image
+        href={spriteSource(`laboratory/shell-${vial.shape}`)}
+        width="60"
+        height="106"
       />
-      <path
-        d={vial.shape === 5 ? 'M20 23H40V15H20Z' : 'M10 8H50'}
-        stroke="#c5dce1"
-        fill="#94683b"
-        strokeWidth="2"
-      />
+      {selected && (
+        <path d={shape} fill="none" stroke="#f5d77b" strokeWidth="2" />
+      )}
     </svg>
   );
 }

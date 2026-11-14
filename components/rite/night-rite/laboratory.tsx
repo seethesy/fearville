@@ -1,7 +1,7 @@
 'use client';
 import { useState } from 'react';
 import type { RitePuzzleView } from '@/lib/rite/view';
-import { VialArt } from '../art';
+import { LaboratoryShelves } from '../art/surfaces';
 import { type Send } from './shell.tsx';
 export function Laboratory({
   puzzle,
@@ -21,24 +21,17 @@ export function Laboratory({
   };
   return (
     <div className="lab-puzzle">
-      <div className="lab-shelves">
-        {puzzle.vials?.map((v) => (
-          <button
-            className={'vial ' + (from === v.id ? 'selected' : '')}
-            key={v.id}
-            aria-pressed={from === v.id}
-            disabled={!active}
-            onClick={() => {
-              if (from && from !== v.id) {
-                void send('riteLabPour', { from, to: v.id, turn: puzzle.turn });
-                setFrom('');
-              } else setFrom(from === v.id ? '' : v.id);
-            }}
-          >
-            <VialArt vial={v} selected={from === v.id} />
-          </button>
-        ))}
-      </div>
+      <LaboratoryShelves
+        vials={puzzle.vials ?? []}
+        selected={from}
+        disabled={!active}
+        onSelect={(v) => {
+          if (from && from !== v.id) {
+            void send('riteLabPour', { from, to: v.id, turn: puzzle.turn });
+            setFrom('');
+          } else setFrom(from === v.id ? '' : v.id);
+        }}
+      />
       <p className="hint">
         Tap a vial, then tap where to pour it. Match color and substance. Each
         vial holds four units.

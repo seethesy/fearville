@@ -8,7 +8,9 @@ import {
   controlLabel,
   ritualRuleText,
 } from '@/lib/rite/ritual';
-import { SymbolArt, AltarArt } from '../art';
+import { AltarArt } from '../art';
+import { OmensTablet } from '../art/surfaces';
+import { Grimoire } from './grimoire';
 import { type Send } from './shell.tsx';
 export function RitualRules({ rules = [] }: { rules?: RitualRule[] }) {
   if (!rules.length) return null;
@@ -154,8 +156,7 @@ export function Divination({
   busy: boolean;
   name: (id: string) => string;
 }) {
-  const [tab, setTab] = useState('altar'),
-    [page, setPage] = useState(0);
+  const [tab, setTab] = useState('altar');
   const altar = puzzle.altar ?? [];
   return (
     <div
@@ -186,23 +187,25 @@ export function Divination({
             {name(puzzle.myKeeper ?? '')}
           </p>
           <RitualRules rules={puzzle.rules} />
-          {altar.map((a) => (
-            <div className="altar-control" key={a.control}>
-              <h3>{a.control === 'dial' ? 'Moon dial' : a.control}</h3>
-              <RitualControl
-                control={a.control}
-                value={a.value}
-                disabled={busy || puzzle.phase !== 'turn' || puzzle.performed}
-                onChange={(value) =>
-                  void send('riteRitualPick', {
-                    altar: altar.map((x) =>
-                      x.control === a.control ? { ...x, value } : x,
-                    ),
-                  })
-                }
-              />
-            </div>
-          ))}
+          <div className="altar-scene">
+            {altar.map((a) => (
+              <div className="altar-control" key={a.control}>
+                <h3>{a.control === 'dial' ? 'Moon dial' : a.control}</h3>
+                <RitualControl
+                  control={a.control}
+                  value={a.value}
+                  disabled={busy || puzzle.phase !== 'turn' || puzzle.performed}
+                  onChange={(value) =>
+                    void send('riteRitualPick', {
+                      altar: altar.map((x) =>
+                        x.control === a.control ? { ...x, value } : x,
+                      ),
+                    })
+                  }
+                />
+              </div>
+            ))}
+          </div>
           <button
             className="primary full"
             disabled={busy || puzzle.phase !== 'turn' || puzzle.performed}
@@ -225,14 +228,7 @@ export function Divination({
       {tab === 'omens' && (
         <>
           <h3>For {name(puzzle.omensFor ?? '')}’s ritual</h3>
-          {puzzle.omens?.map((set, i) => (
-            <div className="omen-card" key={i}>
-              <b>{['I', 'II', 'III'][i]}</b>
-              {set.map((symbol) => (
-                <SymbolArt key={symbol} symbol={symbol} />
-              ))}
-            </div>
-          ))}
+          <OmensTablet omens={puzzle.omens ?? []} />
           <p className="hint">
             Read the symbols aloud. Order inside a set does not matter. Sets are
             not labeled.
@@ -243,36 +239,7 @@ export function Divination({
         <>
           <h3>You keep this book for {name(puzzle.keeperFor ?? '')}</h3>
           <RitualRules rules={puzzle.keeperRules} />
-          <div className="ritual-tabs">
-            {puzzle.book?.map((p, i) => (
-              <button
-                key={p.control}
-                aria-pressed={page === i}
-                onClick={() => setPage(i)}
-              >
-                {p.control}
-              </button>
-            ))}
-          </div>
-          {puzzle.book?.[page]?.entries.map((e, i) => (
-            <div className="grimoire-entry" key={i}>
-              <div>
-                {e.symbols.map((s) => (
-                  <SymbolArt key={s} symbol={s} />
-                ))}
-              </div>
-              <span>→</span>
-              <div>
-                <AltarArt
-                  control={puzzle.book![page].control}
-                  value={e.value}
-                />
-                <small>
-                  {controlLabel(puzzle.book![page].control, e.value)}
-                </small>
-              </div>
-            </div>
-          ))}
+          <Grimoire book={puzzle.book ?? []} />
         </>
       )}
     </div>

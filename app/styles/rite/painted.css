@@ -1,0 +1,560 @@
+/* Painted assets stay behind live controls; logical puzzle coordinates do not change. */
+.rite-art {
+  display: block;
+  object-fit: contain;
+  max-width: 100%;
+  user-select: none;
+}
+.night-rite {
+  min-width: 0;
+  background:
+    linear-gradient(#0b1718ed, #0b1718f5),
+    url('/rite/scenes/village-landscape.webp') center / cover;
+}
+.escape-frame {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1;
+  margin: 12px auto;
+}
+.escape-frame-art {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.escape-puzzle .escape-frame .escape-board {
+  position: absolute;
+  left: 6.25%;
+  top: 6.25%;
+  width: 87.5%;
+  height: 87.5%;
+  border: 0;
+  padding: 0;
+  background: none;
+  box-shadow: none;
+}
+.escape-piece {
+  padding: 0 !important;
+}
+.escape-piece .rite-wreckage {
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
+}
+.escape-piece:disabled {
+  cursor: default;
+}
+
+/* Both orientation and vial anchors switch on this container, never on viewport width. */
+.lab-viewport {
+  container: laboratory / inline-size;
+  overflow-x: auto;
+  border-radius: 14px;
+}
+.lab-shelf-rooms .lab-shelves.lab-scene {
+  position: relative;
+  display: block;
+  min-width: 288px;
+  width: 100%;
+  max-width: none;
+  aspect-ratio: 9 / 16;
+  margin: 0;
+  padding: 0;
+  border-radius: 14px;
+  background: url('/rite/scenes/laboratory-portrait.webp') center / 100% 100%
+    no-repeat;
+  --vial-width: clamp(44px, 13cqw, 64px);
+}
+.lab-scene.lab-shelves .vial {
+  position: absolute;
+  left: calc(var(--vial-x) - var(--vial-width) / 2);
+  top: calc(var(--shelf-y) - var(--vial-width) * var(--vial-baseline));
+  width: var(--vial-width);
+  height: calc(var(--vial-width) * 106 / 60);
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  margin: 0;
+  transform: none;
+}
+.lab-scene .vial svg {
+  width: 100%;
+  height: 100%;
+}
+.lab-scene .vial.selected {
+  outline: 2px solid #f2d279;
+  outline-offset: 3px;
+  background: #1d302933 !important;
+}
+.lab-scene .vial > span {
+  position: absolute;
+  left: 50%;
+  top: 100%;
+  transform: translateX(-50%);
+  background: #0b1b17df;
+  border-radius: 4px;
+  padding: 1px 5px;
+  font-size: 12px;
+}
+@container laboratory (min-width: 640px) {
+  .lab-shelf-rooms .lab-shelves.lab-scene {
+    aspect-ratio: 16 / 9;
+    background-image: url('/rite/scenes/laboratory-landscape.webp');
+    --vial-width: clamp(44px, 8.5cqw, 72px);
+  }
+  .lab-scene.lab-shelves .vial {
+    left: calc(var(--vial-x-wide) - var(--vial-width) / 2);
+    top: calc(var(--shelf-y-wide) - var(--vial-width) * var(--vial-baseline));
+  }
+}
+
+.sphinx-viewport {
+  overflow-x: auto;
+  min-width: 0;
+  padding-bottom: 8px;
+  scrollbar-color: #b69b5c #14291f;
+}
+.sphinx-street-content {
+  min-width: 560px;
+}
+.sphinx-puzzle .town-map {
+  padding: 16px;
+  border: 0;
+  border-radius: 0;
+  background: url('/rite/surfaces/sphinx/street@2x.webp') center bottom / 100%
+    auto no-repeat;
+}
+.town-place > .rite-place-art {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 160 / 105;
+}
+.sphinx-puzzle .town-place > strong {
+  font-size: 12px;
+  white-space: normal;
+  letter-spacing: 0.02em;
+  border: 0;
+  background: #10201cdd;
+}
+.sphinx-puzzle .town-spots {
+  height: 72px;
+  gap: 6px;
+}
+.sphinx-puzzle .town-spots button,
+.sphinx-puzzle .character-token,
+.sphinx-puzzle .activity-spot {
+  width: 44px;
+  height: 44px;
+  min-height: 44px !important;
+  min-width: 44px !important;
+  margin: 0;
+  padding: 0 !important;
+}
+.sphinx-puzzle .character-token {
+  border: 0;
+  background: transparent !important;
+}
+.sphinx-puzzle .character-token:empty {
+  border: 2px dashed #c1a46d;
+}
+.sphinx-puzzle .activity-spot {
+  border-color: #ac955e;
+  border-radius: 50%;
+}
+.character-token .rite-art,
+.activity-spot .rite-art,
+.activity-token .rite-art {
+  width: 100%;
+  height: 100%;
+}
+.sphinx-puzzle .town-street {
+  background: #10211de8;
+  font-size: 12px;
+  text-transform: none;
+  letter-spacing: normal;
+}
+.town-street span:nth-child(2) {
+  background: transparent;
+}
+.sphinx-puzzle .rite-tray {
+  border: 18px solid transparent;
+  padding: 8px;
+  gap: 6px;
+  margin: 16px 0;
+  border-image: url('/rite/frames/activity-tray.webp') 51 fill / 18px / 0
+    stretch;
+}
+.sphinx-puzzle .rite-tray.character-tray {
+  border-image-source: url('/rite/frames/character-tray.webp');
+  border-image-slice: 68 fill;
+}
+.sphinx-puzzle .character-tray-card {
+  padding: 0;
+  border: 0;
+  background: none;
+  gap: 10px;
+}
+.sphinx-puzzle .rite-tray button {
+  min-height: 44px;
+}
+.sphinx-puzzle .rite-tray .activity-token {
+  width: 44px;
+  height: 44px;
+}
+.sphinx-puzzle .rite-tray small {
+  font-size: 13px;
+}
+
+.divination-puzzle {
+  padding: 0;
+  border: 0;
+  background: none;
+  min-width: 0;
+}
+.divination-puzzle .ritual-tabs button {
+  background: #173028;
+  border-color: #88774c;
+  color: #e0d4b6;
+}
+.divination-puzzle .ritual-tabs [aria-selected='true'],
+.divination-puzzle .ritual-tabs [aria-pressed='true'] {
+  background: #d3b16b;
+  color: #16291f;
+  border-color: #efd49a;
+}
+.altar-scene {
+  padding: clamp(12px, 3vw, 26px);
+  border-radius: 16px;
+  background:
+    linear-gradient(#0d1c174d, #0d1c1766),
+    url('/rite/scenes/altar-portrait.webp') center / cover;
+}
+.altar-scene .altar-control {
+  background: #0b201aeb;
+  border-color: #a28b53;
+}
+.altar-control > .rite-altar-art {
+  width: 100%;
+  height: 130px;
+  margin: 12px 0;
+}
+.rite-art-control > .rite-altar-art {
+  width: 100%;
+  height: 100px;
+}
+.divination-puzzle .rite-control-buttons button {
+  font-size: 14px;
+  background: #142b23;
+  border-color: #8d7b51;
+}
+.divination-puzzle .rite-control-buttons [aria-pressed='true'] {
+  color: #18251a;
+  background: #d3b16b;
+}
+.divination-puzzle .rite-control-buttons label,
+.divination-puzzle .rite-control-buttons select {
+  font-size: 14px;
+}
+.omens-tablets {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 20px;
+}
+.omens-tablet {
+  position: relative;
+  width: min(100%, 320px);
+  aspect-ratio: 320 / 452;
+}
+.omens-tablet-art {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.omen-bands {
+  position: absolute;
+  inset: 0;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.omen-band {
+  position: absolute;
+  width: 100%;
+  height: 48px;
+  transform: translateY(-50%);
+}
+.omen-symbol {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 15%;
+  max-width: 48px;
+  min-width: 40px;
+  aspect-ratio: 1;
+}
+.omen-symbol .rite-symbol {
+  width: 100%;
+  height: 100%;
+}
+
+/* Expandable parchment: do not scale these reading sizes with the image. */
+.grimoire-shell {
+  min-width: 0;
+}
+.grimoire-heading {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 18px 0 8px;
+}
+.grimoire-heading .grimoire-cover {
+  width: 54px;
+  height: 64px;
+  flex: 0 0 auto;
+}
+.grimoire-heading h3 {
+  margin: 0 0 4px;
+  font-family: Georgia, serif;
+}
+.grimoire-heading p {
+  margin: 0;
+  color: #c7c4ac;
+  font-size: 14px;
+}
+.grimoire-tabs {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  padding: 3px 2px 8px;
+  gap: 8px;
+}
+.grimoire-tabs button {
+  flex: 0 0 auto;
+  min-width: 88px;
+  font-size: 14px;
+  text-transform: capitalize;
+}
+.grimoire-reader {
+  container: grimoire / inline-size;
+  max-height: min(72svh, 800px);
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-color: #ac874d #bfa77c;
+}
+.grimoire-page {
+  --grimoire-row-height: var(--grimoire-narrow-row-height);
+  box-sizing: border-box;
+  position: relative;
+  min-width: 228px;
+  padding: 56px 36px;
+  color: #36251b;
+  font-family: Georgia, serif;
+  isolation: isolate;
+}
+.grimoire-page::before {
+  content: '';
+  box-sizing: border-box;
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-color: #ead8b5;
+  background-clip: padding-box;
+  border: solid transparent;
+  border-width: 36px 28px;
+  border-image: url('/rite/frames/grimoire-page.webp') 120 150 140 150 fill /
+    36px 28px / 0 stretch repeat;
+}
+.grimoire-page-heading {
+  height: 64px;
+  text-align: center;
+}
+.grimoire-page-heading h4 {
+  margin: 0;
+  padding-top: 8px;
+  font:
+    20px / 26px Georgia,
+    serif;
+  color: #36251b;
+  text-transform: capitalize;
+  letter-spacing: normal;
+}
+.grimoire-page-heading > span {
+  display: block;
+  font-size: 14px;
+  line-height: 20px;
+  padding-top: 4px;
+}
+.grimoire-page .grimoire-entry {
+  position: relative;
+  box-sizing: border-box;
+  height: var(--grimoire-row-height);
+  display: block;
+  padding: 0;
+  margin: 0;
+  background: none;
+  border: 0;
+  border-bottom: 1px solid #94744240;
+  border-radius: 0;
+}
+.grimoire-entry > .grimoire-symbols {
+  position: absolute;
+  left: 50%;
+  top: 8px;
+  transform: translateX(-50%);
+  display: flex;
+  flex-wrap: nowrap;
+  width: 160px;
+  height: 48px;
+  gap: 8px;
+}
+.grimoire-symbols .rite-symbol {
+  width: 48px;
+  height: 48px;
+  max-width: none;
+  flex: 0 0 48px;
+}
+.grimoire-entry > .grimoire-arrow {
+  position: absolute;
+  left: 50%;
+  top: 58px;
+  transform: translateX(-50%);
+  color: #856131;
+  font-size: 18px;
+  line-height: 24px;
+}
+.grimoire-arrow > span:last-child {
+  display: none;
+}
+.grimoire-entry > .grimoire-setting {
+  position: absolute;
+  left: 50%;
+  top: 84px;
+  transform: translateX(-50%);
+  width: 180px;
+  display: block;
+}
+.grimoire-setting .rite-altar-art {
+  width: 180px;
+  height: 80px;
+  max-width: none;
+}
+.grimoire-entry .grimoire-setting small {
+  display: block;
+  margin-top: 6px;
+  color: #36251b;
+  font:
+    14px / 18px Georgia,
+    serif;
+  text-align: center;
+}
+.grimoire-setting small > span {
+  display: block;
+}
+.grimoire-scroll-hint {
+  font-size: 14px;
+  color: #c7c4ac;
+  margin: 10px 0;
+}
+.grimoire-pagination {
+  display: flex;
+  gap: 12px;
+}
+.grimoire-pagination button {
+  flex: 1;
+  min-height: 44px;
+  font-size: 14px;
+  color: #eadcbe;
+  border: 1px solid #89764e;
+  background: #173028;
+  border-radius: 8px;
+  padding: 10px;
+}
+.grimoire-reader:focus-visible,
+.sphinx-viewport:focus-visible,
+.lab-viewport:focus-visible {
+  outline: 2px solid #f2d279;
+  outline-offset: 3px;
+}
+@container grimoire (max-width: 251px) {
+  .grimoire-page {
+    padding-inline: 24px;
+  }
+  .grimoire-page::before {
+    border-width: 36px 20px;
+    border-image-width: 36px 20px;
+  }
+}
+@container grimoire (min-width: 520px) {
+  .grimoire-page {
+    --grimoire-row-height: 152px;
+  }
+  .grimoire-entry > .grimoire-symbols {
+    left: 25%;
+    top: 22px;
+  }
+  .grimoire-entry > .grimoire-arrow {
+    top: 36px;
+    font-size: 22px;
+  }
+  .grimoire-arrow > span:first-child {
+    display: none;
+  }
+  .grimoire-arrow > span:last-child {
+    display: inline;
+  }
+  .grimoire-entry > .grimoire-setting {
+    top: 4px;
+    left: 76%;
+  }
+}
+@container grimoire (min-width: 1000px) {
+  .grimoire-page {
+    padding: 72px 0 160px;
+  }
+  .grimoire-page::before {
+    border-width: 14.15cqw 0;
+    border-image-source: url('/rite/frames/grimoire-spread.webp');
+    border-image-slice: 160 0 160 0 fill;
+    border-image-width: 14.15cqw 0;
+    border-image-repeat: stretch;
+  }
+  .grimoire-page-short::before {
+    border-image-source: url('/rite/frames/grimoire-spread-short.webp');
+    border-image-slice: 100 0 100 0 fill;
+    border-width: 8.237cqw 0;
+    border-image-width: 8.237cqw 0;
+  }
+  .grimoire-page-heading {
+    width: 31.5%;
+    margin-left: 11.111%;
+  }
+  .grimoire-entry > .grimoire-symbols {
+    left: 26.861%;
+  }
+  .grimoire-entry > .grimoire-setting {
+    left: 74.1%;
+  }
+  .grimoire-entry > .grimoire-arrow {
+    color: #ecd4a5;
+  }
+  .grimoire-page .grimoire-entry {
+    border-bottom: 0;
+  }
+}
+@media (min-width: 800px) {
+  .altar-scene {
+    background-image:
+      linear-gradient(#0d1c174d, #0d1c1766),
+      url('/rite/scenes/altar-landscape.webp');
+  }
+}
+@media (max-width: 600px) {
+  .night-rite {
+    background-image:
+      linear-gradient(#0b1718ed, #0b1718f5),
+      url('/rite/scenes/village-portrait.webp');
+  }
+}

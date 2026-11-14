@@ -2,6 +2,7 @@
 import { useRef, useState } from 'react';
 import type { RitePuzzleView } from '@/lib/rite/view';
 import { Wreckage } from '../art';
+import { EscapeFrame } from '../art/surfaces';
 import { type Send } from './shell.tsx';
 export function Escape({
   puzzle,
@@ -23,54 +24,58 @@ export function Escape({
   };
   return (
     <div className="escape-puzzle">
-      <div className="escape-board" ref={board}>
-        <div className="escape-gate" aria-hidden="true">
-          ✦ ❯❯
-        </div>
-        {blocks.map((b) => (
-          <button
-            key={b.id}
-            className={'escape-piece ' + (selected === b.id ? 'selected' : '')}
-            aria-label={`${b.key ? 'Red carriage' : b.kind}, ${b.horiz ? 'horizontal' : 'vertical'}, column ${b.x + 1}, row ${b.y + 1}`}
-            aria-pressed={selected === b.id}
-            style={{
-              left: `${(b.x / 6) * 100}%`,
-              top: `${(b.y / 6) * 100}%`,
-              width: `${((b.horiz ? b.len : 1) / 6) * 100}%`,
-              height: `${((b.horiz ? 1 : b.len) / 6) * 100}%`,
-            }}
-            onClick={() => setSelected(b.id)}
-            onPointerDown={(e) => {
-              setSelected(b.id);
-              drag.current = { id: b.id, x: e.clientX, y: e.clientY };
-              e.currentTarget.setPointerCapture(e.pointerId);
-            }}
-            onPointerUp={(e) => {
-              const d = drag.current;
-              drag.current = null;
-              if (!d || !board.current) return;
-              const cell = board.current.clientWidth / 6,
-                dx = Math.round((e.clientX - d.x) / cell),
-                dy = Math.round((e.clientY - d.y) / cell);
-              if (dx || dy) move(b.id, b.x + dx, b.y + dy);
-            }}
-            onKeyDown={(e) => {
-              const delta = {
-                ArrowLeft: [-1, 0],
-                ArrowRight: [1, 0],
-                ArrowUp: [0, -1],
-                ArrowDown: [0, 1],
-              }[e.key];
-              if (delta) {
-                e.preventDefault();
-                move(b.id, b.x + delta[0], b.y + delta[1]);
+      <EscapeFrame>
+        <div className="escape-board" ref={board}>
+          {blocks.map((b) => (
+            <button
+              key={b.id}
+              className={
+                'escape-piece ' + (selected === b.id ? 'selected' : '')
               }
-            }}
-          >
-            <Wreckage block={b} />
-          </button>
-        ))}
-      </div>
+              aria-label={`${b.key ? 'Red carriage' : b.kind}, ${b.horiz ? 'horizontal' : 'vertical'}, column ${b.x + 1}, row ${b.y + 1}`}
+              aria-pressed={selected === b.id}
+              style={{
+                left: `${(b.x / 6) * 100}%`,
+                top: `${(b.y / 6) * 100}%`,
+                width: `${((b.horiz ? b.len : 1) / 6) * 100}%`,
+                height: `${((b.horiz ? 1 : b.len) / 6) * 100}%`,
+              }}
+              onClick={() => setSelected(b.id)}
+              onPointerDown={(e) => {
+                setSelected(b.id);
+                drag.current = { id: b.id, x: e.clientX, y: e.clientY };
+                e.currentTarget.setPointerCapture(e.pointerId);
+              }}
+              onPointerUp={(e) => {
+                const d = drag.current;
+                drag.current = null;
+                if (!d || !board.current) return;
+                const cell = board.current.clientWidth / 6,
+                  dx = Math.round((e.clientX - d.x) / cell),
+                  dy = Math.round((e.clientY - d.y) / cell);
+                if (dx || dy) move(b.id, b.x + dx, b.y + dy);
+              }}
+              onPointerCancel={() => {
+                drag.current = null;
+              }}
+              onKeyDown={(e) => {
+                const delta = {
+                  ArrowLeft: [-1, 0],
+                  ArrowRight: [1, 0],
+                  ArrowUp: [0, -1],
+                  ArrowDown: [0, 1],
+                }[e.key];
+                if (delta) {
+                  e.preventDefault();
+                  move(b.id, b.x + delta[0], b.y + delta[1]);
+                }
+              }}
+            >
+              <Wreckage block={b} />
+            </button>
+          ))}
+        </div>
+      </EscapeFrame>
       <p className="hint">
         Slide a piece along its length. Get the red carriage through the gate.
         Tap a piece and use the arrows, or drag.

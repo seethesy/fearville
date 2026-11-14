@@ -1,0 +1,3 @@
+GENERATED asset export from the user-approved Fearville artwork.
+Painted with built-in image generation, October 2026. Runtime images are optimized WebP exports; labels, rules, puzzle states and grid geometry remain separate.
+Regenerate with scripts/import-rite-art.mjs and the approved source packs.
