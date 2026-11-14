@@ -360,8 +360,6 @@
   inset: 0;
   z-index: -1;
   pointer-events: none;
-  background-color: #ead8b5;
-  background-clip: padding-box;
   border: solid transparent;
   border-width: 36px 28px;
   border-image: url('/rite/frames/grimoire-page.webp') 120 150 140 150 fill /
