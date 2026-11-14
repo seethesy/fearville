@@ -20,6 +20,10 @@ export function deal(g: Game, plan: Plan): Squad {
         role(g.players.find((p) => p.id === id)?.role ?? '')?.team ?? '',
       ),
     );
+  const difficulty = r.generation?.settings.nightDifficulty;
+  const profile = difficulty
+    ? r.generation!.settings.profiles[difficulty]
+    : undefined;
   const state =
     plan.kind === 'board' || plan.kind === 'lab'
       ? r.prepared?.[`${plan.id}:${plan.kind}:${plan.members.length}`]
@@ -30,8 +34,14 @@ export function deal(g: Game, plan: Plan): Squad {
             evil,
             r.config.opensNight,
             r.config.forgedPerEvil,
+            profile ? { ...profile.grid, difficulty } : undefined,
           )
-        : generateRitual(seed, plan.members, evil);
+        : generateRitual(
+            seed,
+            plan.members,
+            evil,
+            profile ? { ...profile.ritual, difficulty } : undefined,
+          );
   check(
     state,
     'The puzzles are still preparing. Keep the table open, then try again.',

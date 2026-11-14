@@ -10,6 +10,7 @@ export { compile, clueHolds, solveGrid } from './grid/solver.ts';
 export { difficulty } from './grid/difficulty.ts';
 export {
   type GridDifficulty,
+  type GridGenerationOptions,
   makeRiddle,
   generateGrid,
   validTriples,

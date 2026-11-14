@@ -1,5 +1,6 @@
 import { rng, shuffle } from './random.ts';
 import type { Vial, LabState } from './types.ts';
+import { generationInteger } from './generation-limits.ts';
 export type Pour = { from: string; to: string };
 export function pour(vials: Vial[], move: Pour): Vial[] | null {
   const from = vials.find((v) => v.id === move.from),
@@ -136,44 +137,97 @@ export function solveLab(
   }
   return null;
 }
-// Every vigil, whatever its size, gets a hard laboratory: ten liquids in
-// twelve vials, certified at 28-32 pours by an optimal solver.
+// These remain the legacy defaults for existing callers and saved games.
 export const LAB_COLORS = 10;
 export const LAB_EMPTY = 2;
 export const LAB_PAR = [28, 32] as const;
+export type LabGenerationOptions = {
+  minMoves?: number;
+  maxMoves?: number;
+  colors?: number;
+  emptyVials?: number;
+  candidateLimit?: number;
+  searchLimit?: number;
+};
+export function labGenerationOptions(options: LabGenerationOptions = {}) {
+  const minMoves = generationInteger(
+    options.minMoves,
+    LAB_PAR[0],
+    1,
+    40,
+    'Minimum pours',
+  );
+  return {
+    minMoves,
+    maxMoves: generationInteger(
+      options.maxMoves,
+      Math.max(minMoves, LAB_PAR[1]),
+      minMoves,
+      40,
+      'Maximum pours',
+    ),
+    colors: generationInteger(options.colors, LAB_COLORS, 3, 10, 'Liquids'),
+    emptyVials: generationInteger(
+      options.emptyVials,
+      LAB_EMPTY,
+      1,
+      3,
+      'Spare vials',
+    ),
+    candidateLimit: generationInteger(
+      options.candidateLimit,
+      64,
+      1,
+      128,
+      'Laboratory candidates',
+    ),
+    searchLimit: generationInteger(
+      options.searchLimit,
+      120000,
+      100,
+      200000,
+      'Laboratory search states',
+    ),
+  };
+}
 export function labCandidate(
   seed: string,
   _members: number,
   attempt: number,
+  options: LabGenerationOptions = {},
 ): LabState | null {
+  const settings = labGenerationOptions(options);
   const random = rng(`${seed}:${attempt}`);
   const units = shuffle(
-    Array.from({ length: LAB_COLORS * 4 }, (_, i) => i >> 2),
+    Array.from({ length: settings.colors * 4 }, (_, i) => i >> 2),
     random,
   );
   let vials: Vial[] = Array.from(
-    { length: LAB_COLORS + LAB_EMPTY },
+    { length: settings.colors + settings.emptyVials },
     (_, i) => ({
       id: `v${i}`,
       shape: Math.floor(random() * 7),
-      layers: i < LAB_COLORS ? units.slice(i * 4, i * 4 + 4) : [],
+      layers: i < settings.colors ? units.slice(i * 4, i * 4 + 4) : [],
     }),
   );
-  const solution = solveLab(vials, 120000);
-  if (!solution || solution.length < LAB_PAR[0]) return null;
+  const solution = solveLab(vials, settings.searchLimit);
+  if (!solution || solution.length < settings.minMoves) return null;
   // Playing the first optimal pours leaves a position exactly `target` away.
-  const target = Math.min(
-    solution.length,
-    LAB_PAR[0] + Math.floor(random() * (LAB_PAR[1] - LAB_PAR[0] + 1)),
-  );
+  const target =
+    settings.minMoves +
+    Math.floor(
+      random() *
+        (Math.min(solution.length, settings.maxMoves) - settings.minMoves + 1),
+    );
   for (const move of solution.slice(0, solution.length - target))
     vials = pour(vials, move)!;
   const palette = shuffle(
     Array.from({ length: LAB_COLORS }, (_, i) => i),
     rng(`${seed}:palette`),
   );
-  vials = vials.map((v) => ({
+  vials = shuffle(vials, random).map((v, i) => ({
     ...v,
+    id: `v${i}`,
     layers: v.layers.map((c) => palette[c]),
   }));
   return {
@@ -187,12 +241,17 @@ export function labCandidate(
     history: [],
   };
 }
-export function generateLab(seed: string, members: number): LabState {
-  for (let attempt = 0; attempt < 20000; attempt++) {
-    const candidate = labCandidate(seed, members, attempt);
+export function generateLab(
+  seed: string,
+  members: number,
+  options: LabGenerationOptions = {},
+): LabState {
+  const settings = labGenerationOptions(options);
+  for (let attempt = 0; attempt < settings.candidateLimit; attempt++) {
+    const candidate = labCandidate(seed, members, attempt, settings);
     if (candidate) return candidate;
   }
   throw Error(
-    'Could not generate a certified Laboratory puzzle. Redeal the vigils.',
+    'Could not certify a Laboratory puzzle within the generation budget. Adjust the difficulty or try another seed.',
   );
 }

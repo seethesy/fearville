@@ -1,10 +1,53 @@
 'use client';
 import { useState } from 'react';
 import type { RitePuzzleView } from '@/lib/rite/view';
-import { type ControlName } from '@/lib/rite/types';
-import { CONTROL_COUNTS, OFFERINGS, controlLabel } from '@/lib/rite/ritual';
+import { type ControlName, type RitualRule } from '@/lib/rite/types';
+import {
+  CONTROL_COUNTS,
+  OFFERINGS,
+  controlLabel,
+  ritualRuleText,
+} from '@/lib/rite/ritual';
 import { SymbolArt, AltarArt } from '../art';
 import { type Send } from './shell.tsx';
+export function RitualRules({ rules = [] }: { rules?: RitualRule[] }) {
+  if (!rules.length) return null;
+  const controls = [
+    ...new Set(
+      rules.flatMap((rule) =>
+        rule.source ? [rule.control, rule.source] : [rule.control],
+      ),
+    ),
+  ];
+  return (
+    <section className="rite-rules" aria-label="Ritual instructions">
+      <h3>After reading the omens</h3>
+      <p>
+        Decode all three starting settings from the book, then apply these
+        instructions in order. Use each setting’s current value after any
+        earlier instruction.
+      </p>
+      <ol>
+        {rules.map((rule, index) => (
+          <li key={index}>{ritualRuleText(rule)}</li>
+        ))}
+      </ol>
+      <details>
+        <summary>Numbered setting order</summary>
+        {controls.map((control) => (
+          <div key={control}>
+            <h4>{control}</h4>
+            <ol>
+              {Array.from({ length: CONTROL_COUNTS[control] }, (_, value) => (
+                <li key={value}>{controlLabel(control, value)}</li>
+              ))}
+            </ol>
+          </div>
+        ))}
+      </details>
+    </section>
+  );
+}
 export function RitualControl({
   control,
   value,
@@ -142,6 +185,7 @@ export function Divination({
             Your omens: {name(puzzle.myOmensHolder ?? '')} · Your grimoire:{' '}
             {name(puzzle.myKeeper ?? '')}
           </p>
+          <RitualRules rules={puzzle.rules} />
           {altar.map((a) => (
             <div className="altar-control" key={a.control}>
               <h3>{a.control === 'dial' ? 'Moon dial' : a.control}</h3>
@@ -198,6 +242,7 @@ export function Divination({
       {tab === 'grimoire' && (
         <>
           <h3>You keep this book for {name(puzzle.keeperFor ?? '')}</h3>
+          <RitualRules rules={puzzle.keeperRules} />
           <div className="ritual-tabs">
             {puzzle.book?.map((p, i) => (
               <button

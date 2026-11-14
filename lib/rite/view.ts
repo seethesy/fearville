@@ -7,6 +7,7 @@ import {
   type Triple,
   type Page,
   type Altar,
+  type RitualRule,
 } from './types.ts';
 export type RitePuzzleView = {
   type: 'board' | 'lab' | 'grid' | 'ritual';
@@ -37,6 +38,8 @@ export type RitePuzzleView = {
   book?: Page[];
   altar?: Altar;
   omens?: number[][];
+  rules?: RitualRule[];
+  keeperRules?: RitualRule[];
   omensFor?: string;
   keeperFor?: string;
   myOmensHolder?: string;
@@ -182,6 +185,8 @@ export function riteView(g: Game, a: Actor, now: number) {
           : phase;
     puzzle.book = structuredClone(state.book);
     puzzle.altar = structuredClone(own.altar);
+    if (own.rules?.length) puzzle.rules = structuredClone(own.rules);
+    if (keep.rules?.length) puzzle.keeperRules = structuredClone(keep.rules);
     puzzle.omens = structuredClone(omens.decoys ?? omens.omens);
     puzzle.omensFor = omens.performer;
     puzzle.keeperFor = keep.performer;

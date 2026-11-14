@@ -3,6 +3,7 @@ import './globals.css';
 import './hub.css';
 import './rite.css';
 import './admin.css';
+import './styles/puzzles.css';
 import { TextProvider } from '@/components/ui-text';
 import { AccountBoundary } from '@/components/admin/boundary';
 import { AccountProvider } from '@/components/hub/account-context';

@@ -65,6 +65,15 @@ export const rateLimits = sqliteTable('rate_limits', {
   count: integer('count').notNull(),
   expires: integer('expires').notNull(),
 });
+export const puzzleGenerationVersions = sqliteTable(
+  'puzzle_generation_versions',
+  {
+    revision: integer('revision').primaryKey(),
+    settings: text('settings').notNull(),
+    created: integer('created').notNull(),
+  },
+  (t) => [check('puzzle_generation_revision', sql`${t.revision} > 0`)],
+);
 
 // Provider identities are keyed by issuer/subject, never by matching email.
 export const accounts = sqliteTable(

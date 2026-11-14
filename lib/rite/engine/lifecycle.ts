@@ -85,6 +85,9 @@ export function tickRite(g: Game, now: number) {
       const candidate = preparedPuzzle(
         plan.kind as 'board' | 'lab',
         `${r.seed}:${plan.id}`,
+        r.generation?.settings.profiles[r.generation.settings.nightDifficulty][
+          plan.kind as 'board' | 'lab'
+        ],
       );
       changed = true;
       r.prepared[key] = candidate;

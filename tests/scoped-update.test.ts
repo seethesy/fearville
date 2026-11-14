@@ -119,9 +119,9 @@ void test('Storyteller controls survive unrelated actions but cannot cross phase
   assert.throws(() => execute(g, host, command, 4), /phase changed/);
 });
 void test('offline puzzle bank preserves certified difficulty and deterministic selection', () => {
-  for (const board of PUZZLE_BANK.board)
+  for (const { puzzle: board } of PUZZLE_BANK.board)
     assert.equal(solveBoard(board.blocks)?.length, board.par);
-  for (const lab of PUZZLE_BANK.lab)
+  for (const { puzzle: lab } of PUZZLE_BANK.lab)
     assert.equal(solveLab(lab.vials, 200000)?.length, lab.par);
   for (const kind of ['board', 'lab'] as const) {
     assert.deepEqual(

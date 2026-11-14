@@ -86,6 +86,12 @@ export type Page = {
   control: ControlName;
   entries: { symbols: number[]; value: number }[];
 };
+export type RitualRule = {
+  control: ControlName;
+  kind: 'shift' | 'mirror' | 'link';
+  amount?: number;
+  source?: ControlName;
+};
 export type Ritual = {
   performer: string;
   omensHolder: string;
@@ -94,6 +100,7 @@ export type Ritual = {
   target: Altar;
   altar: Altar;
   omens: number[][];
+  rules?: RitualRule[];
   decoys?: number[][];
   attempts: { night: number; ok: boolean }[];
   doneNight?: number;
@@ -158,6 +165,7 @@ export type Squad = {
 };
 export type Plan = { id: string; kind: Pattern; members: string[] };
 export type RiteState = {
+  generation?: import('./generation-settings.ts').GenerationSnapshot;
   config: RiteConfig;
   seed: string;
   epoch: string;

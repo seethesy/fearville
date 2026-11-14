@@ -1,6 +1,7 @@
-import { rng } from './random.ts';
+import { rng, shuffle } from './random.ts';
 import type { Block, BoardState } from './types.ts';
 import { BOARD_LAYOUTS } from './board-layouts.ts';
+import { generationInteger } from './generation-limits.ts';
 export type Slide = { block: string; x: number; y: number };
 export function slide(blocks: Block[], move: Slide): Block[] | null {
   const b = blocks.find((b) => b.id === move.block);
@@ -60,7 +61,7 @@ export function solveBoard(
   for (let i = 0; i < queue.length; i++) {
     if (i % 64 === 0 && performance.now() >= deadline) return undefined;
     const state = queue[i];
-    if (state.charCodeAt(keyIndex) - 48 === 4) {
+    if (state.charCodeAt(keyIndex) - 48 + blocks[keyIndex].len === 6) {
       const path: Slide[] = [];
       for (let j = i; parents[j] >= 0; j = parents[j]) path.push(steps[j]!);
       return path.reverse();
@@ -99,6 +100,55 @@ export function solveBoard(
   return null;
 }
 export const BOARD_PAR = [28, 32] as const;
+export type BoardGenerationOptions = {
+  minMoves?: number;
+  maxMoves?: number;
+  // Removing blockers changes the dependency graph, rather than merely the
+  // appearance of a known layout. Every changed layout is solved again.
+  maxRemovedBlocks?: number;
+  candidateLimit?: number;
+  searchLimit?: number;
+};
+export function boardGenerationOptions(options: BoardGenerationOptions = {}) {
+  const minMoves = generationInteger(
+    options.minMoves,
+    BOARD_PAR[0],
+    1,
+    40,
+    'Minimum slides',
+  );
+  return {
+    minMoves,
+    maxMoves: generationInteger(
+      options.maxMoves,
+      Math.max(minMoves, BOARD_PAR[1]),
+      minMoves,
+      40,
+      'Maximum slides',
+    ),
+    maxRemovedBlocks: generationInteger(
+      options.maxRemovedBlocks,
+      0,
+      0,
+      5,
+      'Removed blockers',
+    ),
+    candidateLimit: generationInteger(
+      options.candidateLimit,
+      64,
+      1,
+      128,
+      'Board candidates',
+    ),
+    searchLimit: generationInteger(
+      options.searchLimit,
+      40000,
+      100,
+      200000,
+      'Board search states',
+    ),
+  };
+}
 type Field = { states: string[]; dist: Int16Array };
 // Every position reachable from `blocks`, with its optimal distance to escape.
 export function boardField(blocks: Block[], cap = 40000): Field | null {
@@ -171,13 +221,13 @@ export function boardCandidate(
   seed: string,
   _members: number,
   attempt: number,
+  options: BoardGenerationOptions = {},
 ): BoardState | null {
-  // Every vigil, whatever its size, gets a hard board: a position 28-32
-  // optimal slides from escape, drawn from a certified seed layout's cluster.
+  const settings = boardGenerationOptions(options);
   const random = rng(`${seed}:${attempt}`);
   const layout =
     BOARD_LAYOUTS[Math.floor(random() * BOARD_LAYOUTS.length)].split(' ');
-  const base: Block[] = layout.map((code, i) => {
+  let base: Block[] = layout.map((code, i) => {
     const len = Number(code[2]) as 2 | 3;
     return i === 0
       ? {
@@ -198,20 +248,67 @@ export function boardCandidate(
           horiz: code[3] === 'h',
         };
   });
-  const field = boardField(base);
-  if (!field) return null;
-  const deepest = Math.max(...field.dist);
-  if (deepest < BOARD_PAR[0]) return null;
-  const target = Math.min(
-    deepest,
-    BOARD_PAR[0] + Math.floor(random() * (BOARD_PAR[1] - BOARD_PAR[0] + 1)),
-  );
-  const starts = field.states.filter((_, i) => field.dist[i] === target);
-  const start = starts[Math.floor(random() * starts.length)];
-  const blocks = base.map((b, j) => {
-    const p = start.charCodeAt(j) - 48;
-    return b.horiz ? { ...b, x: p } : { ...b, y: p };
-  });
+  const removed = Math.floor(random() * (settings.maxRemovedBlocks + 1));
+  let blocks: Block[], target: number;
+  if (removed) {
+    const remove = new Set(
+      shuffle(
+        base.filter((b) => !b.key),
+        random,
+      )
+        .slice(0, removed)
+        .map((b) => b.id),
+    );
+    base = base.filter((b) => !remove.has(b.id));
+    // A reversible walk creates additional starts in the changed geometry.
+    // Avoid undoing the immediately preceding move and escaping mid-walk.
+    let previous = '';
+    const walks = 12 + Math.floor(random() * 25);
+    for (let i = 0; i < walks; i++) {
+      const moves = boardMoves(base).filter(
+        (m) => m.move.block !== previous && !boardSolved(m.blocks),
+      );
+      if (!moves.length) break;
+      const next = moves[Math.floor(random() * moves.length)];
+      base = next.blocks;
+      previous = next.move.block;
+    }
+    // Enumerating the entire component after removing blockers can explode.
+    // A bounded shortest-path search certifies only the selected start.
+    const solution = solveBoard(base, settings.searchLimit);
+    if (!solution || solution.length < settings.minMoves) return null;
+    target =
+      settings.minMoves +
+      Math.floor(
+        random() *
+          (Math.min(settings.maxMoves, solution.length) -
+            settings.minMoves +
+            1),
+      );
+    blocks = base;
+    for (const move of solution.slice(0, solution.length - target))
+      blocks = slide(blocks, move)!;
+  } else {
+    const field = boardField(base, settings.searchLimit);
+    if (!field) return null;
+    const deepest = field.dist.reduce(
+      (max, distance) => Math.max(max, distance),
+      0,
+    );
+    if (deepest < settings.minMoves) return null;
+    target =
+      settings.minMoves +
+      Math.floor(
+        random() *
+          (Math.min(deepest, settings.maxMoves) - settings.minMoves + 1),
+      );
+    const starts = field.states.filter((_, i) => field.dist[i] === target);
+    const start = starts[Math.floor(random() * starts.length)];
+    blocks = base.map((b, j) => {
+      const p = start.charCodeAt(j) - 48;
+      return b.horiz ? { ...b, x: p } : { ...b, y: p };
+    });
+  }
   return {
     type: 'board',
     blocks,
@@ -221,12 +318,17 @@ export function boardCandidate(
     solved: false,
   };
 }
-export function generateBoard(seed: string, members: number): BoardState {
-  for (let attempt = 0; attempt < 20000; attempt++) {
-    const candidate = boardCandidate(seed, members, attempt);
+export function generateBoard(
+  seed: string,
+  members: number,
+  options: BoardGenerationOptions = {},
+): BoardState {
+  const settings = boardGenerationOptions(options);
+  for (let attempt = 0; attempt < settings.candidateLimit; attempt++) {
+    const candidate = boardCandidate(seed, members, attempt, settings);
     if (candidate) return candidate;
   }
   throw Error(
-    'Could not generate a certified Escape puzzle. Redeal the vigils.',
+    'Could not certify an Escape puzzle within the generation budget. Adjust the difficulty or try another seed.',
   );
 }
