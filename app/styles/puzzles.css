@@ -210,9 +210,6 @@
   max-width: 560px;
   margin: auto;
 }
-.puzzle-player .escape-board {
-  width: calc(100% - 24px);
-}
 .puzzle-player .escape-piece {
   touch-action: none;
 }
@@ -249,10 +246,6 @@
 .puzzle-player .lab-shelves {
   max-width: 760px;
   margin: 20px auto;
-  background: none;
-}
-.puzzle-player .lab-shelves .vial {
-  border-bottom: 3px solid #805b32;
 }
 .puzzle-player .vial > span {
   display: block;
@@ -500,9 +493,6 @@
   }
 }
 @media (max-width: 600px) {
-  .puzzle-player .lab-shelves {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
   .puzzle-intro {
     align-items: start;
     flex-direction: column;
@@ -577,5 +567,95 @@
   }
   .puzzle-next {
     flex-direction: column;
+  }
+}
+
+/* The standalone room shares the painted puzzle surfaces with the Night Rite. */
+.puzzle-intro {
+  background:
+    linear-gradient(#0c1b17cc, #0c1b17ed),
+    url('/rite/scenes/square-landscape.webp') center / cover;
+}
+.puzzle-choice {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+}
+.puzzle-choice::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background:
+    linear-gradient(#0b1816b8, #0b1816ed),
+    var(--puzzle-scene) center / cover;
+}
+.puzzle-choice[data-pattern='board'] {
+  --puzzle-scene: url('/rite/scenes/village-landscape.webp');
+}
+.puzzle-choice[data-pattern='grid'] {
+  --puzzle-scene: url('/rite/scenes/street-landscape.webp');
+}
+.puzzle-choice[data-pattern='ritual'] {
+  --puzzle-scene: url('/rite/scenes/gate-landscape.webp');
+}
+.puzzle-choice[data-pattern='lab'] {
+  --puzzle-scene: url('/rite/scenes/square-landscape.webp');
+}
+.puzzle-player .puzzle-street {
+  min-width: 820px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  padding-bottom: 120px;
+  background: url('/rite/surfaces/sphinx/street@2x.webp') center bottom / 100%
+    auto no-repeat;
+}
+.puzzle-player .puzzle-place {
+  display: block;
+  border: 14px solid transparent;
+  padding: 10px;
+  border-image: url('/rite/frames/character-tray.webp') 68 fill / 14px / 0
+    stretch;
+}
+.puzzle-place > .rite-place-art {
+  width: 100%;
+  height: 95px;
+}
+.puzzle-token-preview {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  min-height: 56px;
+  border: 6px solid transparent;
+  border-image: url('/rite/frames/activity-tray.webp') 51 fill / 6px / 0 stretch;
+}
+.puzzle-token-preview .rite-art {
+  width: 40px;
+  height: 40px;
+}
+.puzzle-divination > .puzzle-grimoire {
+  padding: 0;
+  border: 0;
+  background: none;
+}
+.puzzle-altar.altar-scene {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
+}
+@media (max-width: 600px) {
+  .puzzle-intro {
+    background-image:
+      linear-gradient(#0c1b17cc, #0c1b17ed),
+      url('/rite/scenes/square-portrait.webp');
+  }
+  .puzzle-choice[data-pattern='board'] {
+    --puzzle-scene: url('/rite/scenes/village-portrait.webp');
+  }
+  .puzzle-choice[data-pattern='grid'] {
+    --puzzle-scene: url('/rite/scenes/street-portrait.webp');
+  }
+  .puzzle-choice[data-pattern='ritual'] {
+    --puzzle-scene: url('/rite/scenes/gate-portrait.webp');
+  }
+  .puzzle-choice[data-pattern='lab'] {
+    --puzzle-scene: url('/rite/scenes/square-portrait.webp');
   }
 }

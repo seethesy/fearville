@@ -239,6 +239,7 @@ export function PuzzleArcade() {
             {(Object.keys(PATTERNS) as Pattern[]).map((kind) => (
               <label
                 className={`puzzle-choice ${pattern === kind ? 'puzzle-choice-selected' : ''}`}
+                data-pattern={kind}
                 key={kind}
               >
                 <input
